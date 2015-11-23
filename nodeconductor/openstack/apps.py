@@ -17,10 +17,18 @@ class OpenStackConfig(AppConfig):
         Instance = self.get_model('Instance')
         FloatingIP = self.get_model('FloatingIP')
 
+        # structure
         from nodeconductor.openstack.backend import OpenStackBackend
-        from nodeconductor.openstack.cost_tracking import OpenStackCostTrackingBackend
         SupportedServices.register_backend(OpenStackService, OpenStackBackend)
+
+        # cost tracking
+        from nodeconductor.openstack.cost_tracking import OpenStackCostTrackingBackend
         CostTrackingRegister.register(self.label, OpenStackCostTrackingBackend)
+
+        # template
+        from nodeconductor.template import TemplateRegistry
+        from nodeconductor.openstack.template import InstanceProvisionTemplateForm
+        TemplateRegistry.register(InstanceProvisionTemplateForm)
 
         signals.post_save.connect(
             handlers.create_initial_security_groups,

@@ -92,7 +92,7 @@ class SecurityGroup(core_models.UuidMixin,
     backend_id = models.CharField(max_length=128, blank=True)
 
     def __str__(self):
-        return self.name
+        return '%s (%s)' % (self.name, self.service_project_link)
 
     @classmethod
     def get_url_name(cls):

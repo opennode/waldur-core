@@ -1,84 +1,65 @@
-from __future__ import unicode_literals
+from simplejson import JSONDecodeError
 
-from rest_framework import viewsets, decorators, response, status, exceptions
+from rest_framework import viewsets, decorators, exceptions, status, reverse
+from rest_framework.response import Response
 
-from nodeconductor.template import models, serializers, get_template_services, TemplateProvisionError
+from nodeconductor.template import models, serializers
 
 
-class TemplateViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Template.objects.all().prefetch_related('services')
-    serializer_class = serializers.TemplateSerializer
+class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.TemplateGroup.objects.filter(is_active=True).prefetch_related('templates')
+    serializer_class = serializers.TemplateGroupSerializer
     lookup_field = 'uuid'
 
     @decorators.detail_route(methods=['post'])
     def provision(self, request, uuid=None):
-        """ It accepts an empty POST or a list with redefined services' data must be supplied.
-            Example post data:
-            [
-                {
-                    "name": "Production VM",
-                    "flavor": "http://example.com/api/flavors/d760e6a00b5949bdb87e5f0dcfacd804/",
-                    "template": "http://example.com/api/iaas-templates/fffb21de7bfd47de9661e9d9fdd4d619/",
-                    "backup_schedule": "0 10 * * *",
-                    "data_volume_size": 1024,
-                    "service_type": "IaaS",
-                },
-                {
-                    "name": "Main Jira",
-                    "service_type": "JIRA",
-                },
-            ]
+        """ Schedule head(first) template provision synchronously, tail templates - as task.
 
-            Provision options will be taken from a template instance unless redefined here.
-            Additional options required for provisioning could be passed and will be
-            forwarded to specific service provisioning with no change.
+            Method will return validation errors if they occurs on head template provision.
+            If head template provision succeed - method will return URL of template group result.
         """
-        template = self.get_object()
-        services = {service.service_type: service for service in get_template_services()}
-        initdata = request.data or []
-
-        def fill_data_from_req_or_db(data, service_cls):
-            cur_service = service_cls.objects.get(base_template=template)
-            cur_serializer = service_cls._serializer(cur_service, context={'request': request})
-
-            for field in cur_serializer.fields:
-                if hasattr(cur_service, field) and field not in data:
-                    value = cur_serializer.data[field]
-                    if value is not None:
-                        data[field] = value
-
-            return data
-
-        if not isinstance(initdata, list):
-            raise exceptions.ParseError("Invalid input data, JSON list expected.")
-
-        # Inspect services from POST request and fill missed fields from DB if required
-        for data in initdata:
-            service_type = data.get('service_type')
-            if service_type not in services.keys():
-                raise exceptions.ParseError(
-                    "Unsupported service type %s" % data.get('service_type'))
-            else:
-                fill_data_from_req_or_db(data, services[service_type])
-                del services[service_type]
-
-        # Use data from DB for missed services in POST
-        for service_type, service in services.items():
-            initdata.append(fill_data_from_req_or_db({'service_type': service_type}, service))
-
-        serializer = serializers.TemplateServiceSerializer(
-            data=initdata, many=True, context={'request': request, 'template': template})
-
-        if serializer.is_valid():
+        group = self.get_object()
+        templates_additional_options = self._get_templates_additional_options(request)
+        # execute request to head(first) template and raise exception if its validation fails
+        try:
+            response = group.schedule_head_template_provision(request, templates_additional_options)
+        except models.TemplateActionException as e:
+            return Response({'error_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        if not response.ok:
             try:
-                template.provision(initdata, request=request)
-            except TemplateProvisionError as e:
-                return response.Response(
-                    {'detail': "Failed to provision template", 'errors': e.errors},
-                    status=status.HTTP_409_CONFLICT)
-            else:
-                return response.Response(
-                    {'detail': 'Provisioning for template services has been scheduled.'},
-                    status=status.HTTP_200_OK)
-        else:
-            return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response(response.json(), status=response.status_code)
+            except JSONDecodeError:
+                return Response(
+                    {'Error message': 'cannot schedule head template provision'}, status=response.status_code)
+        # schedule tasks for other templates provision
+        result = group.schedule_tail_templates_provision(request, templates_additional_options, response)
+        result_url = reverse.reverse('template-result-detail', args=(result.uuid.hex, ), request=request)
+        return Response({'result_url': result_url}, status=status.HTTP_200_OK)
+
+    def _get_templates_additional_options(self, request):
+        """ Get additional options from request, validate them and transform to internal values """
+        group = self.get_object()
+        inputed_additional_options = request.data or []
+        if not isinstance(inputed_additional_options, list):
+            raise exceptions.ParseError(
+                'Cannot parse templates additional options. '
+                'Required format: [{template1_option1: value1, template1_option2: value2 ...}, {template2_option: ...}]')
+
+        templates = group.templates.order_by('order_number')
+        if len(inputed_additional_options) > templates.count():
+            raise exceptions.ParseError(
+                'Too many additional options provided, group has only %s templates.' % templates.count())
+
+        for options in inputed_additional_options:
+            if not isinstance(options, dict):
+                raise exceptions.ParseError(
+                    'Cannot parse templates options %s - they should be dictionary' % options)
+
+        templates_additional_options = dict(zip(templates, inputed_additional_options))
+        return templates_additional_options
+
+
+class TemplateGroupResultViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.TemplateGroupResult.objects.all()
+    serializer_class = serializers.TemplateGroupResultSerializer
+    lookup_field = 'uuid'

@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - <none yet>.
 
+Release 0.81.0
+--------------
+- Refactored template application adding capability to provision multiple resources in a row.
+
 Release 0.80.0
 --------------
 - Exposed error_message field for each of the SynchronizableMixin-objects.

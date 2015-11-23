@@ -1,9 +1,12 @@
-Templates
----------
+Templates workflow
+------------------
 
-A NodeConductor template is a way to group typically provisioned resource templates. For example, a template called
-'My development infrastructure' can contain a template for IaaS service, an issue tracking service and a
-code repository service. In addition, it is possible to provide a default configuration for added value services
-like monitoring or backup.
+1. Staff defines a template group through admin interfaces and links several
+templates to it. A template corresponds to provisioning of a resource and allows
+to set default options.
 
-A REST client can request available packages and use them as a shortcut when provisioning resources.
+2. Project administrator or customer owner executes "provision" action of the
+template groups with passing additional options required for provisioning of the
+resources. Respone of the "provision" action will contain
+provision state description and links to provisioned resources or error messages
+should an exception occur.
