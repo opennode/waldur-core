@@ -1,44 +1,79 @@
+"""
+Template application allows provisioning of one or more resources with pre-defined parameters in a sequential order.
 
-import pkg_resources
 
-from django.utils.lru_cache import lru_cache
+To enable an application to be part of a template, the following steps are required:
 
+    1. Define <YourApplication>TemplateForm that will inherit from nodeconductor.template.forms.TemplateForm and
+       describe template fields.
+
+    2. Implement form methods:
+     - get_resource_model - this method should return model of resource that will be provisioned by template.
+     - get_serializer_class - this method should return serializer that will be used for form fields serialization for
+                              requests execution.
+                              It is highly recommended to use nodeconductor.template.serializers.BaseTemplateSerializer.
+                              Alternatively it is possible to override methods serialize() and desrialize().
+
+        Example:
+
+        .. code-block:: python
+
+            class HostProvisionTemplateForm(TemplateForm):
+                service = forms.ModelChoiceField(
+                    label='Zabbix service', queryset=models.ZabbixService.objects.all(), required=False)
+                name = forms.CharField(label='Name', required=False)
+                visible_name = forms.CharField(label='Visible name', required=False)
+                host_group_name = forms.CharField(label='Host group name', required=False)
+
+                class Meta(TemplateForm.Meta):
+                    fields = TemplateForm.Meta.fields + ('name', 'visible_name', 'host_group_name')
+
+                class Serializer(BaseTemplateSerializer):
+                    service = serializers.HyperlinkedRelatedField(
+                        view_name='zabbix-detail',
+                        queryset=models.ZabbixService.objects.all(),
+                        lookup_field='uuid',
+                        required=False,
+                    )
+                    name = serializers.CharField(required=False)
+                    visible_name = serializers.CharField(required=False)
+                    host_group_name = serializers.CharField(required=False)
+
+                @classmethod
+                def get_serializer_class(cls):
+                    return cls.Serializer
+
+                @classmethod
+                def get_resource_model(cls):
+                    return models.Host
+
+    3. Register form in nodeconductor.template.TemplateRegistry:
+
+        .. code-block:: python
+
+            TemplateRegistry.register(HostProvisionTemplateForm)
+
+
+Check API docs for description of template endpoints and workflow.
+
+"""
 
 default_app_config = 'nodeconductor.template.apps.TemplateConfig'
 
 
-class TemplateProvisionError(Exception):
-    def __init__(self, errors=()):
-        self.errors = errors
+class TemplateRegistry(object):
+    """ Registry of all template applications """
 
-
-class TemplateServiceStrategy(object):
-    """ A parent class for the model-specific template strategies. """
+    _registry = {}
 
     @classmethod
-    def get_model(cls):
-        raise NotImplementedError(
-            'Implement get_model() that would return TemplateService inherited model.')
+    def register(cls, form):
+        cls._registry[form.get_resource_model()] = form
 
     @classmethod
-    def get_serializer(cls):
-        raise NotImplementedError(
-            'Implement get_serializer() that would return TemplateService model serializer.')
+    def get_resource_models(cls):
+        return cls._registry.keys()
 
     @classmethod
-    def get_admin_form(cls):
-        pass
-
-
-@lru_cache(maxsize=1)
-def get_template_services():
-    services = []
-    entry_points = pkg_resources.get_entry_map('nodeconductor').get('template_services', {})
-    for name, entry_point in entry_points.iteritems():
-        service_cls = entry_point.load()
-        service_model = service_cls.get_model()
-        setattr(service_model, 'service_type', name)
-        setattr(service_model, '_serializer', service_cls.get_serializer())
-        setattr(service_model, '_admin_form', service_cls.get_admin_form())
-        services.append(service_model)
-    return services
+    def get_resource_form(cls, resource_model):
+        return cls._registry[resource_model]
