@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+- <none yet>.
+
+Release 0.81.0
+--------------
 - Refactored template application adding capability to provision multiple resources in a row.
 
 Release 0.80.0
