@@ -1,87 +1,122 @@
-VM template is a description of a system installed on VM instances: OS, disk partition etc.
+List template groups
+--------------------
 
-VM template is not to be confused with VM instance flavor -- template is a definition of a system to be installed
-(set of software) whereas flavor is a set of virtual hardware parameters.
+To get a list of all template groups, issue GET request against **/api/templates-groups/**.
 
-IaaS Template list
-------------------
-
-To get a list of available templates, run GET against **/api/iaas-templates/** as authenticated user.
-
-A user with staff role will be able to see all of the templates, non-staff user only active ones.
-
-An optional filter **?cloud=<CLOUD_UUID>** can be used - if defined, only templates that can be instantiated
-on a defined cloud are shown.
-
-In addition, the following filters are supported:
-
-- ?name - case insensitive matching of a template name
-- ?os_type - enum matching of an OS type
-    - Supported OS types: windows, centos6, centos7, redhat6, redhat7, freebsd, ubuntu, other.
-    - You can filter by OS family: linux.
-- ?os - case insensitive matching of a template OS name
-- ?type - exact match of the template type
-- ?application_type - exact match of the application_type (optional)
-- ?is_active=True - return only active templates
-
-IaaS Template permissions
--------------------------
-
-- VM templates are connected to clouds, whereas the template may belong to one cloud only, and the cloud may have
-  multiple VM templates.
-- Staff members can list all available VM templates in any cloud and create new templates.
-- Customer owners can list all VM templates in all the clouds that belong to any of the customers they own.
-- Project administrators can list all VM templates and create new VM instances using these templates in all the clouds
-  that are connected to any of the projects they are administrators in.
-- Project managers can list all VM templates in all the clouds that are connected to any of the projects they are
-  managers in.
-- Staff members can add licenses to template by sending POST request with list of licenses UUIDs.
-
-Create a new template
----------------------
-
-A new template can only be created by users with staff privilege (is_staff=True). Example of a valid request:
-
-.. code-block:: http
-
-    POST /api/iaas-templates/ HTTP/1.1
-    Content-Type: application/json
-    Accept: application/json
-    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-    Host: example.com
-
-    {
-        "name": "CentOS 7 minimal",
-        "description": "Minimal installation of CentOS7",
-        "icon_url": "http://centos.org/images/logo_small.png",
-        "icon_name": "my_image_stored_in_different_place.png",
-        "os": "CentOS 7",
-        "os_type": "Linux",
-        "is_active": true,
-        "sla_level": 99.9,
-        "type": "IaaS",
-        "application_type": "OS",
-        "template_licenses": [
-            "http://example.com:8000/api/template-licenses/5752a31867dc45aebcceafe82c181870/"
-        ]
-    }
+Example of response:
 
 
-Deletion of a template
-----------------------
+.. code-block:: javascript
 
-Deletion of a template is done through sending a DELETE request to the template instance URI.
+    [
+        {
+            "url": "http://example.com/api/templates-groups/5a587c00ac1647ae9f9325423368a243/",
+            "uuid": "5a587c00ac1647ae9f9325423368a243",
+            "name": "templates group test",
+            "templates": [
+                // this template will be executed first because its order number is one.
+                {
+                    "uuid": "84242c11255b402dbbb7186265b8984b",
+                    "options": {
+                        "service": "http://example.com/api/openstack/582b6334b2574385b166f14a49742069/",
+                        "image": "http://example.com/api/openstack-images/097a991b916a4f5796e3976c5684229f/",
+                        "data_volume_size": 10240,
+                        "project": "http://example.com/api/projects/dcd0c0751a5546939d642442eff8d008/",
+                        "flavor": "http://example.com/api/openstack-flavors/6182198f954244cba3bea3c2c86e07e4/",
+                        "system_volume_size": 10240
+                    },
+                    "resource_type": "OpenStack.Instance",
+                    "order_number": 1
+                },
+                {
+                    "uuid": "e785631d67f84f54995385c02fcb40bd",
+                    "options": {
+                        "project": "http://example.com/api/projects/873d6858eabb4ec6b232b32da81d752a/",
+                        "visible_name": "{{ response.name }}",
+                        "name": "pavel-test-{{ response.uuid }}",
+                        "service": "http://example.com/api/zabbix/0923177a994742dd97257d004d3afae3/"
+                    },
+                    "resource_type": "Zabbix.Host",
+                    "order_number": 2
+                }
+            ],
+            "is_active": true
+        }
+    ]
 
-Valid request example (token is user specific):
-
-.. code-block:: http
-
-    DELETE /api/iaas-templates/33dfe35ecbeb4df0a119c48c206404e9/ HTTP/1.1
-    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-    Host: example.com
+Template field "order_number" shows templates execution order: template with lowest order number will be executed first.
 
 
-Updating a template
--------------------
+Start template group provisioning
+---------------------------------
 
-Can be done by POSTing a new data to the template instance URI, i.e. **/api/template-licenses/<UUID>/**.
+To start a template group provisioning, issue POST request against **/api/templates-groups/<uuid>/provision/**
+with a list of templates' additional options. Additional options should contain options for what should be added to
+template options and passed to resource provisioning endpoint.
+
+Additional options example:
+
+.. code-block:: javascript
+
+    [
+        // options for first template
+        {
+            "name": "test-openstack-instance",
+            "system_volume_size": 20
+        },
+        // options for second template
+        {
+            "host_group": "zabbix-host-group"
+        }
+    ]
+
+If provision starts successfully, template group result object will be returned.
+
+
+Get a list of template groups results
+-------------------------------------
+
+To get a list of template group results - issue POST request against **/api/templates-results/**.
+
+Template group result has the following fields:
+
+ - url
+ - uuid
+ - is_finished - false if corresponding template group is provisioning resources, true otherwise
+ - is_erred - true if corresponding template group provisioning has failed
+ - provisioned_resources - list of resources URLs that were provisioned by the template group
+ - state_message - human-readable description of the state of the provisioning group
+ - error_message - human-readable error message (empty if provisioning was successful)
+ - error_details - technical details of the error
+
+Response examples:
+
+.. code-block:: javascript
+
+    [
+        // succeed
+        {
+            "url": "http://example.com/api/templates-results/78d2473769124248a19e5070c634e692/",
+            "uuid": "78d2473769124248a19e5070c634e692",
+            "is_finished": true,
+            "is_erred": false,
+            "provisioned_resources": {
+                "Zabbix.Host": "http://example.com/api/zabbix-hosts/6fb9273115514b6ebf0d0140d41579bb/",
+                "OpenStack.Instance": "http://example.com/api/openstack-instances/ee55107e32874814828524c99b866b13/"
+            },
+            "state_message": "Template group has been executed successfully.",
+            "error_message": "",
+            "error_details": ""
+        },
+        // failed
+        {
+            "url": "http://example.com/api/templates-results/ac04a5daf1f542b4b616da1a394956dd/",
+            "uuid": "ac04a5daf1f542b4b616da1a394956dd",
+            "is_finished": true,
+            "is_erred": true,
+            "provisioned_resources": {},
+            "state_message": "Template group execution has been failed.",
+            "error_message": "Failed to schedule nodeconductor_zabbix host provision.",
+            "error_details": "POST request to URL http://example.com/api/zabbix-hosts/ failed...]}"
+        }
+    ]
