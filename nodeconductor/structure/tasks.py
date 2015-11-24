@@ -281,7 +281,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
         return True
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logger.warning(
+        logger.debug(
             'Not pushing public keys for service project link %s which is in state %s.',
             service_project_link_str, service_project_link.get_state_display())
 
@@ -349,7 +349,7 @@ def add_user(user_uuid, service_project_link_str):
         return True
 
     if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logger.warning(
+        logger.debug(
             'Not adding users for service project link %s which is in state %s.',
             service_project_link_str, service_project_link.get_state_display())
 
