@@ -23,7 +23,7 @@ class CustomAppList(items.AppList):
                 'url': self._get_admin_change_url(model, context)
             })
 
-        for app in sorted(apps.keys()):
+        for app in sorted(apps, key=lambda k: apps[k]['title']):
             app_dict = apps[app]
             item = items.MenuItem(title=app_dict['title'], url=app_dict['url'])
             # sort model list alphabetically
