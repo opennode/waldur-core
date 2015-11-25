@@ -1081,7 +1081,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'resource_type', 'state', 'created', 'service_project_link',
         )
         protected_fields = ('service', 'service_project_link')
-        read_only_fields = ('start_time',)
+        read_only_fields = ('start_time', 'error_message')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
