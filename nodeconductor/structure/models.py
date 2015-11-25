@@ -806,7 +806,7 @@ class Resource(core_models.UuidMixin,
         max_length=1)
 
     def get_backend(self, **kwargs):
-        return self.service_project_link.get_backend()
+        return self.service_project_link.get_backend(**kwargs)
 
     def get_cost(self, start_date, end_date):
         raise NotImplementedError(
