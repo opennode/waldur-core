@@ -1100,9 +1100,12 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
         return super(BaseResourceSerializer, self).to_representation(instance)
 
+    def get_resource_fields(self):
+        return self.Meta.model._meta.get_all_field_names()
+
     def create(self, validated_data):
         data = validated_data.copy()
-        fields = self.Meta.model._meta.get_all_field_names()
+        fields = self.get_resource_fields()
         # Remove `virtual` properties which ain't actually belong to the model
         for prop in data.keys():
             if prop not in fields:
