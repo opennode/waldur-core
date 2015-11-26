@@ -88,6 +88,10 @@ class Cloud(core_models.UuidMixin, core_models.NameMixin, LoggableMixin,
     def get_statistics(self):
         return {s.key: s.value for s in self.stats.all()}
 
+    @classmethod
+    def get_url_name(cls):
+        return 'cloud'
+
     def __str__(self):
         return self.name
 

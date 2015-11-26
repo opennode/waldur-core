@@ -2,13 +2,11 @@ from __future__ import unicode_literals
 
 from rest_framework import serializers
 
-from nodeconductor.structure import SupportedServices, serializers as structure_serializers
+from nodeconductor.structure import serializers as structure_serializers
 from nodeconductor.oracle import models
 
 
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
-
-    SERVICE_TYPE = SupportedServices.Types.Oracle
 
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
         model = models.OracleService
@@ -16,8 +14,6 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
 
 class ZoneSerializer(structure_serializers.BasePropertySerializer):
-
-    SERVICE_TYPE = SupportedServices.Types.Oracle
 
     class Meta(object):
         model = models.Zone
@@ -29,8 +25,6 @@ class ZoneSerializer(structure_serializers.BasePropertySerializer):
 
 
 class TemplateSerializer(structure_serializers.BasePropertySerializer):
-
-    SERVICE_TYPE = SupportedServices.Types.Oracle
 
     type = serializers.ReadOnlyField(source='get_type_display')
 
