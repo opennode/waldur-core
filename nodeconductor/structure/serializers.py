@@ -746,7 +746,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'dummy'
         )
         protected_fields = ('type', 'customer')
-        read_only_fields = ('shared', 'state')
+        read_only_fields = ('shared', 'state', 'error_message')
         write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
         related_paths = ('customer',)
         extra_kwargs = {
@@ -981,6 +981,7 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
             'state', 'error_message'
         )
         related_paths = ('project', 'service')
+        read_only_fields = ('error_message',)
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }
@@ -1081,7 +1082,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'resource_type', 'state', 'created', 'service_project_link',
         )
         protected_fields = ('service', 'service_project_link')
-        read_only_fields = ('start_time',)
+        read_only_fields = ('start_time', 'error_message')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
