@@ -1969,7 +1969,7 @@ class OpenStackBackend(OpenStackClient):
             username = membership.username
         else:
             username = '{0}-{1}'.format(
-                membership.project.name,
+                membership.project.get_ascii_name(),
                 User.objects.make_random_password(),
             )[:self.MAX_USERNAME_LENGTH]
 
