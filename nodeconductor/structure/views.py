@@ -1004,13 +1004,16 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def perform_provision(self, serializer):
         raise NotImplementedError
 
-    @safe_operation(valid_state=models.Resource.States.OFFLINE)
-    def destroy(self, request, resource, uuid=None):
+    def perform_managed_resource_destroy(self, resource):
         if resource.backend_id:
             backend = resource.get_backend()
             backend.destroy(resource)
         else:
             self.perform_destroy(resource)
+
+    @safe_operation(valid_state=models.Resource.States.OFFLINE)
+    def destroy(self, request, resource, uuid=None):
+        self.perform_managed_resource_destroy(resource)
 
     @detail_route(methods=['post'])
     @safe_operation()
@@ -1034,6 +1037,14 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def restart(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.restart(resource)
+
+
+class BaseOnlineResourceViewSet(BaseResourceViewSet):
+
+    # User can only create and delete those resourse. He cannot stop them.
+    @safe_operation(valid_state=models.Resource.States.ONLINE)
+    def destroy(self, request, resource, uuid=None):
+        self.perform_managed_resource_destroy(resource)
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
