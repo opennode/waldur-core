@@ -870,8 +870,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def get_fields(self):
         fields = super(BaseServiceSerializer, self).get_fields()
 
-        if cls.Meta.model is not NotImplemented:
-            key = SupportedServices.get_model_key(cls.Meta.model)
+        if self.Meta.model is not NotImplemented:
+            key = SupportedServices.get_model_key(self.Meta.model)
             fields['settings'].queryset = fields['settings'].queryset.filter(type=key)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
@@ -930,7 +930,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
                 settings = models.ServiceSettings.objects.create(
-                    type=SupportedServices.get_model_key(cls.Meta.model),
+                    type=SupportedServices.get_model_key(self.Meta.model),
                     name=attrs['name'],
                     customer=customer,
                     **args)

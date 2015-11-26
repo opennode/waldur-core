@@ -516,7 +516,7 @@ class ServiceSettings(core_models.UuidMixin,
     password = models.CharField(max_length=100, blank=True, null=True)
     token = models.CharField(max_length=255, blank=True, null=True)
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
-    type = models.CharField(max_length=255, validators=[validate_service_type])
+    type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
 
     options = JSONField(blank=True, help_text='Extra options')
 

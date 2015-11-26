@@ -29,7 +29,7 @@ class ResourceQuotasTest(test.APITransactionTestCase):
                 class Meta(object):
                     model = models['service_project_link']
 
-            if service_type == SupportedServices.Types.IaaS:
+            if service_type == SupportedServices.get_model_key(OpenStackSettings):
                 service = ServiceFactory(customer=self.customer, state=SynchronizationStates.IN_SYNC)
                 OpenStackSettings.objects.get_or_create(
                     auth_url='http://example.com:5000/v2',

@@ -6,6 +6,9 @@ from nodeconductor.structure import models, SupportedServices
 from nodeconductor.structure.tests import factories
 
 
+OpenStackType = SupportedServices.get_model_key(openstack_models.OpenStackService)
+
+
 class ProjectSignalsTest(TestCase):
 
     def setUp(self):
@@ -34,7 +37,7 @@ class ServiceSettingsSignalsTest(TestCase):
 
     def setUp(self):
         self.openstack_shared_service_settings = factories.ServiceSettingsFactory(
-            type=SupportedServices.Types.OpenStack, shared=True)
+            type=OpenStackType, shared=True)
 
     def test_shared_service_is_created_for_new_customer(self):
         customer = factories.CustomerFactory()
@@ -45,7 +48,7 @@ class ServiceSettingsSignalsTest(TestCase):
     def test_new_shared_services_connects_to_existed_customers(self):
         customer = factories.CustomerFactory()
         new_shared_service_settings = factories.ServiceSettingsFactory(
-            type=SupportedServices.Types.OpenStack, shared=True, state=SynchronizationStates.CREATING)
+            type=OpenStackType, shared=True, state=SynchronizationStates.CREATING)
         new_shared_service_settings.set_in_sync()
         new_shared_service_settings.save()
 
@@ -86,7 +89,7 @@ class ServiceProjectLinkSignalsTest(TestCase):
         self.assertFalse(self.link_exists(other_project, service))
 
     def create_service(self, customer, available_for_all):
-        service_settings = factories.ServiceSettingsFactory(type=SupportedServices.Types.OpenStack, shared=False)
+        service_settings = factories.ServiceSettingsFactory(type=OpenStackType, shared=False)
         return openstack_models.OpenStackService.objects.create(name='test',
                                                                 customer=customer,
                                                                 settings=service_settings,

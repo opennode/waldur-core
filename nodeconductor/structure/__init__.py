@@ -62,20 +62,21 @@ class SupportedServices(object):
     def register_backend(cls, backend_class):
         from django.apps import apps
 
-        module = backend_class.__module__
-        app_config = apps.get_containing_app_config(module)
-        key = app_config.label
+        if not cls._is_active_model(backend_class):
+            return
+
+        key = cls.get_model_key(backend_class)
         cls._registry[key]['backend'] = backend_class
 
         try:
             # Forcely import service serialize to run services autodiscovery
-            importlib.import_module(module.replace('backend', 'serializers'))
+            importlib.import_module(backend_class.__module__.replace('backend', 'serializers'))
         except ImportError:
             pass
 
     @classmethod
     def register_service(cls, model):
-        if model is NotImplemented:
+        if model is NotImplemented or not cls._is_active_model(model):
             return
         app_config = model._meta.app_config
         key = app_config.label
@@ -86,7 +87,7 @@ class SupportedServices(object):
 
     @classmethod
     def register_resource(cls, model):
-        if model is NotImplemented:
+        if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
         model_str = cls._get_model_str(model)
@@ -98,7 +99,7 @@ class SupportedServices(object):
 
     @classmethod
     def register_property(cls, model):
-        if model is NotImplemented:
+        if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
         model_str = cls._get_model_str(model)
@@ -287,6 +288,15 @@ class SupportedServices(object):
             for resource_model in models['resources']:
                 if model_str == cls._get_model_str(resource_model):
                     return models
+
+    @classmethod
+    def _is_active_model(cls, model):
+        """ Check is model app name is in list of INSTALLED_APPS """
+        # We need to use such tricky way to check because of inconsistence apps names:
+        # some apps are included in format "<module_name>.<app_name>" like "nodeconductor.openstack"
+        # other apps are included in format "<app_name>" like "nodecondcutor_sugarcrm"
+        return ('.'.join(model.__module__.split('.')[:2]) in settings.INSTALLED_APPS or
+                '.'.join(model.__module__.split('.')[:1]) in settings.INSTALLED_APPS)
 
     @classmethod
     def _get_model_str(cls, model):
