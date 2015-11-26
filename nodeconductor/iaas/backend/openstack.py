@@ -1969,8 +1969,8 @@ class OpenStackBackend(OpenStackClient):
             username = membership.username
         else:
             username = '{0}-{1}'.format(
-                User.objects.make_random_password(),
                 membership.project.name,
+                User.objects.make_random_password(),
             )[:self.MAX_USERNAME_LENGTH]
 
         # Try to create user in keystone
@@ -2067,7 +2067,7 @@ class OpenStackBackend(OpenStackClient):
             membership.save()
             logger.info('Internal network %s was created for tenant %s.', network_name, membership.tenant_id)
 
-            subnet_name = '{0}-sn01'.format(network_name)
+            subnet_name = '{0}-subnet01'.format(network_name)
 
             logger.info('Creating subnet %s', subnet_name)
             subnet_data = {
@@ -2259,10 +2259,14 @@ class OpenStackBackend(OpenStackClient):
         return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)[:17]
 
     def get_tenant_name(self, membership):
-        return 'nc-{0}'.format(membership.project.uuid.hex)
+        return '%(project_name)s-%(project_uuid)s' % {
+            'project_name': membership.project.get_ascii_name()[:15],
+            'project_uuid': membership.project.uuid.hex[:4]
+        }
 
     def get_tenant_internal_network_name(self, membership):
-        return 'nc-{0}'.format(membership.project.uuid.hex)
+        tenant_name = self.get_tenant_name(membership)
+        return '{0}-int-net'.format(tenant_name)
 
     def create_backend_name(self):
         return 'nc-{0}'.format(uuid.uuid4().hex)
