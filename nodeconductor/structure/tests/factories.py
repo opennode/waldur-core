@@ -142,7 +142,7 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Settings %s' % n)
     state = core_models.SynchronizationStates.IN_SYNC
     shared = False
-    type = 1
+    type = 'openstack'
 
     @classmethod
     def get_url(cls, settings=None):

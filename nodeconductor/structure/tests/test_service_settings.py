@@ -29,7 +29,7 @@ class ServiceSettingsTest(test.APITransactionTestCase):
             'shared': factories.ServiceSettingsFactory(shared=True),
             'inaccessible': factories.ServiceSettingsFactory(customer=self.customers['inaccessible']),
             'owned': factories.ServiceSettingsFactory(
-                customer=self.customers['owned'], backend_url='bk.url', password='123', type=1),
+                customer=self.customers['owned'], backend_url='bk.url', password='123', type='openstack'),
         }
 
         # Token is excluded, because it is not available for OpenStack
@@ -129,7 +129,7 @@ class ServiceSettingsTest(test.APITransactionTestCase):
             "backend_url": "http://example.com",
             "username": "user",
             "password": "secret",
-            "type": 1,
+            "type": 'openstack',
             "dummy": False,
         }
 
