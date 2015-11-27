@@ -1,95 +1,11 @@
 {% extends 'admin/change_form.html' %}
+{% load nodeconductor_structure %}
 {% block form_top %}
 <div class="module">
     <a href="#" id="service-settings-toggle">Supported credentials depending on service type</a>
     <p></p>
     <div id="service-settings-content">
-        <h4>Amazon</h4>
-        <ul>
-            <li>Username — AWS access key ID</li>
-            <li>Token — AWS secret access key</li>
-        </ul>
-        <p>* make sure your AWS user have proper permission policy attached, e.g. "AmazonEC2FullAccess"</p>
-        <p>
-            Supported Amazon options are: "<code>region</code>" (default: "us-east-1")
-        </p>
-        <h4>Azure</h4>
-        <ul>
-            <li>Username — Azure subscription id in the form of GUID</li>
-            <li>Certificate — Azure X509 certificate file in .pem form</li>
-        </ul>
-        <p>
-            Supported Azure options are: "<code>location</code>" (default: "Central US"),
-            "<code>cloud_service_name</code>" (optional, if defined all connected SPLs will operate in the defined cloud service group),
-            "<code>images_regex</code>" (optional, an regex to limit images list)
-        </p>
-        <h4>DigitalOcean</h4>
-        <ul>
-            <li>Token — DigitalOcean personal access token</li>
-        </ul>
-        <h4>Jira</h4>
-        <ul>
-            <li>Backend url — Jira host (e.g. http://example.atlassian.net/)</li>
-            <li>Username</li>
-            <li>Password</li>
-        </ul>
-        <h4>GitLab</h4>
-        <ul>
-            <li>Backend url — GitLab host (e.g. https://git.example.com/)</li>
-            <li>Username — Username or Email</li>
-            <li>Password</li>
-            <li>Token — Private token (will be used instead of username/password if supplied)</li>
-        </ul>
-        <h4>OpenStack</h4>
-        <ul>
-            <li>Backend url — Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)</li>
-            <li>Username</li>
-            <li>Password</li>
-        </ul>
-        <p>
-            Supported OpenStack options are: "<code>tenant_name</code>" (default: "admin"),
-            "<code>availability_zone</code>", "<code>cpu_overcommit_ratio</code>" (default: 1) and
-            "<code>external_network_id</code>" (ID of OpenStack external network that will be connected to new service
-            tenants)
-        </p>
-        <h4>Oracle</h4>
-        <ul>
-            <li>Backend url — Oracle EM host (e.g. https://oracle.example.com:7802/em)</li>
-            <li>Username</li>
-            <li>Password</li>
-        </ul>
-        <h4>SugarCRM</h4>
-        <ul>
-            <li>Backend url - URL of template group that describes OpenStack instance provision with default parameters
-                              (required, e.g.: http://example.com/api/template-groups/16c7675752244f5d9e870a2cb0cfeb02/)</li>
-            <li>Username - NodeConductor user username (e.g. Username)</li>
-            <li>Password - NodeConductor user password (e.g. Password)</li>
-        </ul>
-        <p>
-            <ul style="margin-left:30px;">Supported SugarCRM options are:
-                <li>"<code>protocol</code>" - CRMs access protocol (default: "http")</li>
-                <li>"<code>user_data</code>" - User data that will be passed to CRMs OpenStack instance on creation, word {password} will be replaced with auto-generated admin password (default: "#cloud-config:\nruncmd:\n - [bootstrap, -p, {password}])</li>
-            </ul>
-        </p>
-        <h4>SaltStack</h4>
-        <ul>
-            <li>Backend url — URL for salt master API (required, e.g.: http://salt-master.example.com:8080)</li>
-            <li>Username</li>
-            <li>Password</li>
-        </ul>
-        <h4>Zabbix</h4>
-        <ul>
-            <li>Backend url - Zabbix API URL (e.g. http://example.com/zabbix/api_jsonrpc.php)</li>
-            <li>Username - Zabbix user username (e.g. admin)</li>
-            <li>Password - Zabbix user password (e.g. zabbix)</li>
-        </ul>
-        <p>
-            <ul style="margin-left:30px;">Supported SugarCRM options are:
-                <li>"<code>host_group_name</code>" - Zabbix host group name for registered hosts. (default: "nodeconductor")</li>
-                <li>"<code>interface_parameters</code>" - Parameters for hosts interface. (default: {"dns": "", "ip": "0.0.0.0", "main": 1, "port": "10050", "type": 1, "useip": 1})</li>
-                <li>"<code>templates_names</code>" - List of Zabbix hosts templates. (default: ["nodeconductor"])</li>
-            </ul>
-        </p>
+        {% service_settings %}
     </div>
 </div>
 <script type="text/javascript">

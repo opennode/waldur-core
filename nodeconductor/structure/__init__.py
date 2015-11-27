@@ -47,16 +47,12 @@ class SupportedServices(object):
     })
 
     @classmethod
-    def get_direct_filter_mapping(cls):
-        return tuple((service['name'], service['name']) for service in cls._registry.values())
+    def get_list_view_for_model(cls, model):
+        return model.get_url_name() + '-list'
 
     @classmethod
-    def get_reverse_filter_mapping(cls):
-        return {service['name']: key for key, service in cls._registry.items()}
-
-    @classmethod
-    def has_service_type(cls, service_type):
-        return service_type in cls._registry
+    def get_detail_view_for_model(cls, model):
+        return model.get_url_name() + '-detail'
 
     @classmethod
     def register_backend(cls, backend_class):
@@ -244,14 +240,6 @@ class SupportedServices(object):
         return [apps.get_model(resource) for resource in resources]
 
     @classmethod
-    def get_list_view_for_model(cls, model):
-        return model.get_url_name() + '-list'
-
-    @classmethod
-    def get_detail_view_for_model(cls, model):
-        return model.get_url_name() + '-detail'
-
-    @classmethod
     def get_name_for_model(cls, model):
         """ Get a name for given class or model:
             -- it's a service type for a service
@@ -306,6 +294,35 @@ class SupportedServices(object):
     def get_model_key(cls, model):
         from django.apps import apps
         return apps.get_containing_app_config(model.__module__).label
+
+    @classmethod
+    def get_direct_filter_mapping(cls):
+        return tuple((service['name'], service['name']) for service in cls._registry.values())
+
+    @classmethod
+    def get_reverse_filter_mapping(cls):
+        return {service['name']: key for key, service in cls._registry.items()}
+
+    @classmethod
+    def has_service_type(cls, service_type):
+        return service_type in cls._registry
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_service_settings(cls):
+        from django.template.base import TemplateDoesNotExist
+        from django.template.loader import render_to_string
+
+        templates = []
+        for app, _ in sorted(
+                cls._registry.items(),
+                key=lambda (app, service): service['name']):
+            template_name = '{}/service_settings.html'.format(app)
+            try:
+                templates.append(render_to_string(template_name))
+            except TemplateDoesNotExist:
+                pass
+        return "\n".join(templates)
 
 
 class ServiceBackendError(Exception):
