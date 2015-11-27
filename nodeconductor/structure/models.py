@@ -538,7 +538,7 @@ class ServiceSettings(core_models.UuidMixin,
         return context
 
     def get_type_display(self):
-        return SupportedServices.get_name_for_model(self)
+        return SupportedServices.get_name_for_type(self.type)
 
 
 @python_2_unicode_compatible

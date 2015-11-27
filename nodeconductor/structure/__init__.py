@@ -248,10 +248,10 @@ class SupportedServices(object):
         key = cls.get_model_key(model)
         model_str = cls._get_model_str(model)
         service = cls._registry[key]
-        if service['model_name'] == model_str:
-            return service['name']
         if model_str in service['resources']:
             return '{}.{}'.format(service['name'], service['resources'][model_str]['name'])
+        else:
+            return service['name']
 
     @classmethod
     def get_related_models(cls, model):
@@ -306,6 +306,10 @@ class SupportedServices(object):
     @classmethod
     def has_service_type(cls, service_type):
         return service_type in cls._registry
+
+    @classmethod
+    def get_name_for_type(cls, service_type):
+        return cls._registry[service_type]['name']
 
     @classmethod
     @lru_cache(maxsize=1)
