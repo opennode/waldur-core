@@ -591,6 +591,12 @@ class Service(core_models.SerializableAbstractMixin,
         context['service_type'] = SupportedServices.get_name_for_model(self)
         return context
 
+    def get_service_project_links(self):
+        """
+        Generic method for getting queryset of service project links related to current service
+        """
+        return self.projects.through.objects.filter(service=self)
+
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
