@@ -1044,6 +1044,8 @@ class BaseOnlineResourceViewSet(BaseResourceViewSet):
     # User can only create and delete those resourse. He cannot stop them.
     @safe_operation(valid_state=models.Resource.States.ONLINE)
     def destroy(self, request, resource, uuid=None):
+        resource.state = resource.States.OFFLINE
+        resource.save()
         self.perform_managed_resource_destroy(resource)
 
 
