@@ -296,12 +296,18 @@ class SupportedServices(object):
         return apps.get_containing_app_config(model.__module__).label
 
     @classmethod
+    @lru_cache(maxsize=1)
+    def get_choices(cls):
+        items = [(code, service['name']) for code, service in cls._registry.items()]
+        return sorted(items, key=lambda (code, name): name)
+
+    @classmethod
     def get_direct_filter_mapping(cls):
-        return tuple((service['name'], service['name']) for service in cls._registry.values())
+        return tuple((name, name) for _, name in cls.get_choices())
 
     @classmethod
     def get_reverse_filter_mapping(cls):
-        return {service['name']: key for key, service in cls._registry.items()}
+        return {name: code for code, name in cls.get_choices()}
 
     @classmethod
     def has_service_type(cls, service_type):
