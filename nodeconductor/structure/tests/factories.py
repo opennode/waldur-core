@@ -9,7 +9,7 @@ import factory.fuzzy
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import models as core_models
-from nodeconductor.structure import models
+from nodeconductor.structure import models, SupportedServices
 
 
 class UserFactory(factory.DjangoModelFactory):
@@ -142,7 +142,7 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Settings %s' % n)
     state = core_models.SynchronizationStates.IN_SYNC
     shared = False
-    type = 'openstack'
+    type = SupportedServices.Types.OpenStack
 
     @classmethod
     def get_url(cls, settings=None):
