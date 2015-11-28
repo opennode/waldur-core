@@ -40,6 +40,10 @@ class SupportedServices(object):
 
     """
 
+    class Types(object):
+        OpenStack = 'openstack'
+        IaaS = 'iaas'
+
     _registry = collections.defaultdict(lambda: {
         'backend': None,
         'resources': {},

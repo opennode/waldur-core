@@ -84,7 +84,7 @@ class SuspendServiceTest(test.APITransactionTestCase):
                 class Meta(object):
                     model = models['service_project_link']
 
-            if service_type == SupportedServices.get_model_key(OpenStackSettings):
+            if service_type == SupportedServices.Types.IaaS:
                 service = ServiceFactory(customer=self.customer, state=SynchronizationStates.IN_SYNC)
                 OpenStackSettings.objects.get_or_create(
                     auth_url='http://example.com:5000/v2',
@@ -108,7 +108,7 @@ class SuspendServiceTest(test.APITransactionTestCase):
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
             for resource_model in models['resources']:
-                if service_type == SupportedServices.get_model_key(OpenStackSettings):
+                if service_type == SupportedServices.Types.IaaS:
                     continue
 
                 class ResourceFactory(factory.DjangoModelFactory):

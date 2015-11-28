@@ -16,7 +16,6 @@ from nodeconductor.structure import (SupportedServices, ServiceBackendError,
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
 
 
-IaasType = SupportedServices.get_model_key(CloudBackendError)
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +53,7 @@ def recover_erred_services(service_project_links=None):
     else:
         for service_type, service in SupportedServices.get_service_models().items():
             # TODO: Remove IaaS support (NC-645)
-            is_iaas = service_type == IaasType
+            is_iaas = service_type == SupportedServices.Types.IaaS
 
             query = Q(state=SynchronizationStates.ERRED)
             if is_iaas:

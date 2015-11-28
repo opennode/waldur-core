@@ -43,7 +43,7 @@ class ServicePermissionTest(test.APITransactionTestCase):
         }
 
         self.settings = structure_factories.ServiceSettingsFactory(
-            type=SupportedServices.get_model_key(models.OpenStackService), customer=self.customers['owned'])
+            type=SupportedServices.Types.OpenStack, customer=self.customers['owned'])
         self.customers['owned'].add_user(self.users['customer_owner'], CustomerRole.OWNER)
 
         self.projects['admined'].add_user(self.users['project_admin'], ProjectRole.ADMINISTRATOR)
