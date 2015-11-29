@@ -28,7 +28,7 @@ from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.filters import DjangoMappingFilterBackend, CategoryFilter, SynchronizationStateFilter
+from nodeconductor.core.filters import DjangoMappingFilterBackend, CategoryFilter, SynchronizationStateFilter, URLFilter
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.utils import sort_dict, datetime_to_timestamp
 from nodeconductor.iaas import models
@@ -1037,6 +1037,8 @@ class CloudFilter(django_filters.FilterSet):
         lookup_type='icontains',
         distinct=True,
     )
+    # Hook: allows to filter out iaas clouds from list of service filtering by service settings
+    settings = URLFilter(view_name='servicesettings-detail', name='uuid', distinct=True)
 
     class Meta(object):
         model = models.Cloud
@@ -1047,6 +1049,7 @@ class CloudFilter(django_filters.FilterSet):
             'customer_native_name',
             'project',
             'project_name',
+            'settings',
         ]
 
 
