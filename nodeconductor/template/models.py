@@ -158,7 +158,7 @@ class Template(core_models.UuidMixin, models.Model):
             try:
                 service_url = next((s['url'] for s in project_services if s['settings'] == service_settings_url))
             except StopIteration:
-                details = 'There is no service between project "%s" and service settings "%s"' % (
+                details = 'There is no service connected to project "%s" based on service settings "%s"' % (
                     project_url, service_settings_url)
                 raise TemplateActionException('Cannot find suitable service'. details)
             options['service'] = service_url

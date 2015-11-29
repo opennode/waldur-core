@@ -467,7 +467,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     @detail_route()
     def usage(self, request, uuid):
-        # XXX: hook. Should be removed after zabbix refactoring
+        # XXX: Hack. Should be removed after zabbix refactoring
         if not ZABBIX_ENABLED:
             raise Http404()
 
@@ -502,7 +502,7 @@ class InstanceViewSet(UpdateOnlyByPaidCustomerMixin,
         """
         Find max or min utilization of cpu, memory and storage of the instance within timeframe.
         """
-        # XXX: hook. Should be removed after zabbix refactoring
+        # XXX: Hack. Should be removed after zabbix refactoring
         if not ZABBIX_ENABLED:
             raise Http404()
 
@@ -952,7 +952,7 @@ class UsageStatsView(views.APIView):
         return {path: obj}
 
     def get(self, request, format=None):
-        # XXX: hook. Should be removed after zabbix refactoring
+        # XXX: Hack. Should be removed after zabbix refactoring
         if not ZABBIX_ENABLED:
             raise Http404()
 
@@ -1037,7 +1037,7 @@ class CloudFilter(django_filters.FilterSet):
         lookup_type='icontains',
         distinct=True,
     )
-    # Hook: allows to filter out iaas clouds from list of service filtering by service settings
+    # Hack: allows to filter out iaas clouds from list of service filtering by service settings
     settings = URLFilter(view_name='servicesettings-detail', name='uuid', distinct=True)
 
     class Meta(object):
