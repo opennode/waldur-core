@@ -1,4 +1,5 @@
 import django_filters
+import taggit
 
 from nodeconductor.template import models
 
@@ -8,7 +9,7 @@ class TemplateGroupFilter(django_filters.FilterSet):
         name='tags__name',
         to_field_name='name',
         lookup_type='in',
-        queryset=models.TemplateGroup.tags.all(),
+        queryset=taggit.models.Tag.objects.all(),
         conjoined=True,
     )
 
