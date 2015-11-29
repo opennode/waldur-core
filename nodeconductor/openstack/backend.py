@@ -230,8 +230,6 @@ class OpenStackBackend(ServiceBackend):
         self._old_backend.pull_resource_quota_usage(service_project_link)
         # additional quotas that are not implemented for in iaas application
         logger.debug('About to get floating ip quota for tenant %s', service_project_link.tenant_id)
-        # XXX: a hack -- assure that current Backend instance has the same tenant_id as a link
-        self.tenant_id = service_project_link.tenant_id
         neutron = self.neutron_client
         try:
             floating_ip_count = len(self._old_backend.get_floating_ips(
@@ -263,7 +261,7 @@ class OpenStackBackend(ServiceBackend):
         keystone = self.keystone_admin_client
         tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
 
-        service_project_link.tenant_id = tenant.id
+        service_project_link.tenant_id = self.tenant_id = tenant.id
         service_project_link.save(update_fields=['tenant_id'])
 
         self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
