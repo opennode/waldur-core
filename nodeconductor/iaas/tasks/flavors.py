@@ -25,7 +25,7 @@ def resize_flavor(instance_uuid, flavor_uuid, transition_entity=None):
     flavor_id = flavor.backend_id
 
     chain(
-        openstack_create_session.s(instance_uuid=instance_uuid, dummy=cloud.dummy),
+        openstack_create_session.s(instance_uuid=instance_uuid),
         nova_server_resize.s(server_id, flavor_id),
         nova_wait_for_server_status.s(server_id, 'VERIFY_RESIZE'),
         nova_server_resize_confirm.s(server_id),

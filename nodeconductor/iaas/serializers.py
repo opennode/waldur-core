@@ -62,7 +62,7 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
             'url',
             'name',
             'customer', 'customer_name', 'customer_native_name',
-            'flavors', 'projects', 'auth_url', 'dummy',
+            'flavors', 'projects', 'auth_url',
             'resources_count', 'service_type',
         )
         extra_kwargs = {

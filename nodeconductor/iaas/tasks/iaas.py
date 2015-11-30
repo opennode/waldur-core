@@ -334,7 +334,7 @@ def create_external_network(membership_pk, network_data):
     backend = membership.cloud.get_backend()
 
     try:
-        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        session = backend.create_session(keystone_url=membership.cloud.auth_url)
         neutron = backend.create_neutron_client(session)
 
         backend.get_or_create_external_network(membership, neutron, **network_data)
@@ -348,7 +348,7 @@ def delete_external_network(membership_pk):
     backend = membership.cloud.get_backend()
 
     try:
-        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        session = backend.create_session(keystone_url=membership.cloud.auth_url)
         neutron = backend.create_neutron_client(session)
 
         backend.delete_external_network(membership, neutron)
@@ -362,7 +362,7 @@ def detect_external_network(membership_pk):
     backend = membership.cloud.get_backend()
 
     try:
-        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        session = backend.create_session(keystone_url=membership.cloud.auth_url)
         neutron = backend.create_neutron_client(session)
 
         backend.detect_external_network(membership, neutron)
@@ -376,7 +376,7 @@ def allocate_floating_ip(membership_pk):
     backend = membership.cloud.get_backend()
 
     try:
-        session = backend.create_session(keystone_url=membership.cloud.auth_url, dummy=backend.dummy)
+        session = backend.create_session(keystone_url=membership.cloud.auth_url)
         neutron = backend.create_neutron_client(session)
 
         backend.allocate_floating_ip_address(neutron, membership)
@@ -392,9 +392,7 @@ def assign_floating_ip(floating_ip_uuid, instance_uuid):
     floating_ip = models.FloatingIP.objects.get(uuid=floating_ip_uuid)
 
     try:
-        session = backend.create_session(
-            keystone_url=instance.cloud_project_membership.cloud.auth_url,
-            dummy=backend.dummy)
+        session = backend.create_session(keystone_url=instance.cloud_project_membership.cloud.auth_url)
         nova = backend.create_nova_client(session)
 
         backend.assign_floating_ip_to_instance(nova, instance, floating_ip)

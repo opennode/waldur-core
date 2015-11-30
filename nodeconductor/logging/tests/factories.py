@@ -4,14 +4,13 @@ from django.core.urlresolvers import reverse
 import factory
 
 from nodeconductor.logging import models
-from nodeconductor.logging import elasticsearch_dummy_client
 # Dependency from `structure` application exists only in tests
 from nodeconductor.structure.tests import factories as structure_factories
 
 
 class EventFactory(object):
     """
-    Event factory that provides default data for events and adds created events to elasticsearch dummy client.
+    Event factory that provides default data for events.
 
     Created event fields can be accessible via .fields attribute of created event.
     """
@@ -53,10 +52,6 @@ class EventFactory(object):
         }
         for key, value in kwargs.items():
             self.fields[key] = value
-
-    def save(self):
-        """ Add event to elasticsearch dummy client events """
-        elasticsearch_dummy_client.DUMMY_EVENTS.append(self.fields)
 
     @classmethod
     def get_list_url(cls):
