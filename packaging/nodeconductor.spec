@@ -35,6 +35,7 @@ Requires: python-django-permission = 0.8.2
 Requires: python-django-polymorphic >= 0.7.0
 Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7
+Requires: python-django-taggit >= 0.17.5
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
 Requires: python-glanceclient = 1:0.15.0
