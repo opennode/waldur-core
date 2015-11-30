@@ -44,19 +44,20 @@ class SupportedServices(object):
         OpenStack = 'openstack'
         IaaS = 'iaas'
 
+        @classmethod
+        def get_direct_filter_mapping(cls):
+            return tuple((name, name) for _, name in SupportedServices.get_choices())
+
+        @classmethod
+        def get_reverse_filter_mapping(cls):
+            return {name: code for code, name in SupportedServices.get_choices()}
+
+
     _registry = collections.defaultdict(lambda: {
         'backend': None,
         'resources': {},
         'properties': {}
     })
-
-    @classmethod
-    def get_list_view_for_model(cls, model):
-        return model.get_url_name() + '-list'
-
-    @classmethod
-    def get_detail_view_for_model(cls, model):
-        return model.get_url_name() + '-detail'
 
     @classmethod
     def register_backend(cls, backend_class):
@@ -300,18 +301,18 @@ class SupportedServices(object):
         return apps.get_containing_app_config(model.__module__).label
 
     @classmethod
+    def get_list_view_for_model(cls, model):
+        return model.get_url_name() + '-list'
+
+    @classmethod
+    def get_detail_view_for_model(cls, model):
+        return model.get_url_name() + '-detail'
+
+    @classmethod
     @lru_cache(maxsize=1)
     def get_choices(cls):
         items = [(code, service['name']) for code, service in cls._registry.items()]
         return sorted(items, key=lambda (code, name): name)
-
-    @classmethod
-    def get_direct_filter_mapping(cls):
-        return tuple((name, name) for _, name in cls.get_choices())
-
-    @classmethod
-    def get_reverse_filter_mapping(cls):
-        return {name: code for code, name in cls.get_choices()}
 
     @classmethod
     def has_service_type(cls, service_type):
@@ -320,23 +321,6 @@ class SupportedServices(object):
     @classmethod
     def get_name_for_type(cls, service_type):
         return cls._registry[service_type]['name']
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_service_settings(cls):
-        from django.template.base import TemplateDoesNotExist
-        from django.template.loader import render_to_string
-
-        templates = []
-        for app, _ in sorted(
-                cls._registry.items(),
-                key=lambda (app, service): service['name']):
-            template_name = '{}/service_settings.html'.format(app)
-            try:
-                templates.append(render_to_string(template_name))
-            except TemplateDoesNotExist:
-                pass
-        return "\n".join(templates)
 
 
 class ServiceBackendError(Exception):

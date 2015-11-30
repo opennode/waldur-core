@@ -8,6 +8,12 @@ from nodeconductor.oracle import models
 
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
+    SERVICE_ACCOUNT_FIELDS = {
+        'backend_url': 'Keystone auth URL (e.g. https://oracle.example.com:7802/em)',
+        'username': 'Administrative user',
+        'password': ''
+    }
+
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
         model = models.OracleService
         view_name = 'oracle-detail'

@@ -29,6 +29,12 @@ from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
 
 
+def validate_service_type(service_type):
+    from django.core.exceptions import ValidationError
+    if not SupportedServices.has_service_type(service_type):
+        raise ValidationError('Invalid service type')
+
+
 def set_permissions_for_model(model, **kwargs):
     class Permissions(object):
         pass
@@ -488,12 +494,6 @@ class ProjectGroup(core_models.UuidMixin,
     @classmethod
     def get_permitted_objects_uuids(cls, user):
         return {'project_group_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
-
-
-def validate_service_type(service_type):
-    from django.core.exceptions import ValidationError
-    if not SupportedServices.has_service_type(service_type):
-        raise ValidationError('Invalid service type')
 
 
 @python_2_unicode_compatible
