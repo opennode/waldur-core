@@ -3,6 +3,11 @@ List template groups
 
 To get a list of all template groups, issue GET request against **/api/templates-groups/**.
 
+Supported filters are:
+
+ - tag=<template group tag>, can be list.
+
+
 Example of response:
 
 

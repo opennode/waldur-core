@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- <none yet>.
+- Added ability to define service by settings and project on template provision.
+- Tags were added to template groups.
 
 Release 0.81.0
 --------------
