@@ -7,15 +7,15 @@ import nodeconductor.structure.models
 
 def create_service_type(apps, schema_editor):
     service_types = {
-        1: 'openstack',
-        2: 'digitalocean',
-        3: 'aws',
-        5: 'gitlab',
-        6: 'oracle',
-        7: 'azure',
-        8: 'nodeconductor_sugarcrm',
-        9: 'nodeconductor_saltstack',
-        10: 'nodeconductor_zabbix'
+        1: 'OpenStack',
+        2: 'DigitalOcean',
+        3: 'Amazon',
+        5: 'GitLab',
+        6: 'Oracle',
+        7: 'Azure',
+        8: 'SugarCRM',
+        9: 'SaltStack',
+        10: 'Zabbix'
     }
 
     ServiceSettings = apps.get_model('structure', 'ServiceSettings')

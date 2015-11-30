@@ -41,8 +41,8 @@ class SupportedServices(object):
     """
 
     class Types(object):
-        OpenStack = 'openstack'
-        IaaS = 'iaas'
+        OpenStack = 'OpenStack'
+        IaaS = 'IaaS'
 
         @classmethod
         def get_direct_filter_mapping(cls):
@@ -79,9 +79,8 @@ class SupportedServices(object):
     def register_service(cls, model):
         if model is NotImplemented or not cls._is_active_model(model):
             return
-        app_config = model._meta.app_config
-        key = app_config.label
-        cls._registry[key]['name'] = app_config.service_name
+        key = cls.get_model_key(model)
+        cls._registry[key]['name'] = key
         cls._registry[key]['model_name'] = cls._get_model_str(model)
         cls._registry[key]['detail_view'] = cls.get_detail_view_for_model(model)
         cls._registry[key]['list_view'] = cls.get_list_view_for_model(model)
@@ -298,7 +297,7 @@ class SupportedServices(object):
     @classmethod
     def get_model_key(cls, model):
         from django.apps import apps
-        return apps.get_containing_app_config(model.__module__).label
+        return apps.get_containing_app_config(model.__module__).service_name
 
     @classmethod
     def get_list_view_for_model(cls, model):
