@@ -515,6 +515,7 @@ class ServiceSettings(core_models.UuidMixin,
     options = JSONField(blank=True, help_text='Extra options')
 
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    # TODO: Implement demo mode instead of dummy mode (NC-900)
     dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
 
     def get_backend(self, **kwargs):

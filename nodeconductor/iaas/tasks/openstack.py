@@ -6,7 +6,7 @@ import functools
 from celery import shared_task
 
 from nodeconductor.iaas.models import Instance, SecurityGroup
-from nodeconductor.iaas.backend.openstack import OpenStackBackend
+from nodeconductor.iaas.backend import OpenStackBackend
 from nodeconductor.core.tasks import throttle, retry_if_false
 
 

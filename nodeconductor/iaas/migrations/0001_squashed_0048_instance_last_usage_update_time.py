@@ -21,7 +21,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from keystoneclient.exceptions import ClientException
 from neutronclient.common.exceptions import NeutronClientException
 
-from nodeconductor.iaas.backend.openstack import OpenStackBackend
+from nodeconductor.iaas.backend import OpenStackBackend
 
 
 RESOURCE_COUNT_QUOTA = 'nc_resource_count'

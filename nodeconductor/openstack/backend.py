@@ -13,8 +13,8 @@ from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import ServiceBackend, ServiceBackendError
-from nodeconductor.iaas.backend.openstack import OpenStackClient, CloudBackendError
-from nodeconductor.iaas.backend.openstack import OpenStackBackend as OldOpenStackBackend
+from nodeconductor.iaas.backend import OpenStackClient, CloudBackendError
+from nodeconductor.iaas.backend import OpenStackBackend as OldOpenStackBackend
 from nodeconductor.openstack import models
 
 
@@ -34,7 +34,7 @@ class OpenStackBackend(ServiceBackend):
         self.tenant_id = tenant_id
 
         # TODO: Get rid of it (NC-646)
-        self._old_backend = OldOpenStackBackend(dummy=self.settings.dummy)
+        self._old_backend = OldOpenStackBackend()
 
     def _get_session(self, admin=False):
         credentials = {
@@ -55,7 +55,7 @@ class OpenStackBackend(ServiceBackend):
             credentials['tenant_name'] = self.DEFAULT_TENANT
 
         try:
-            return OpenStackClient(dummy=self.settings.dummy).create_tenant_session(credentials)
+            return OpenStackClient().create_tenant_session(credentials)
         except CloudBackendError as e:
             six.reraise(OpenStackBackendError, e)
 
