@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from django.core.urlresolvers import reverse
 from rest_framework import test, status
@@ -173,16 +173,17 @@ class ServiceEventsTest(test.APISimpleTestCase):
         self.sla_history = factories.InstanceSlaHistoryFactory(instance=self.instance,
                                                                period='%s-%s' % (today.year, today.month))
 
-    def test_service_without_events_returns_empty_list(self):
+    def test_service_without_sla_returns_404(self):
         today = date.today()
         response = self.client.get(self._get_service_events_url(self.instance),
                                    data={'period': '%s-%s' % (today.year, today.month)})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data, [])
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_service_with_events_returns_events_list(self):
         today = date.today()
         event = factories.InstanceSlaHistoryEventsFactory(instance=self.sla_history)
+        self.instance.created = datetime.now() - timedelta(days=32)
+        self.instance.save()
         response = self.client.get(self._get_service_events_url(self.instance),
                                    data={'period': '%s-%s' % (today.year, today.month)})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
