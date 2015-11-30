@@ -795,7 +795,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
 
         self.membership = mock.Mock()
         self.membership.project.uuid.hex = 'a73942ec403e4458a5f1d2b3be0d3041'
-        self.membership.project.get_ascii_name = mock.Mock(return_value='project_name')
+        self.membership.project.name = 'project_name'
         self.membership.project.description = 'project_description'
 
         self.backend = OpenStackBackend()

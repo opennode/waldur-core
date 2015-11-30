@@ -380,9 +380,6 @@ class Project(core_models.DescribableMixin,
         return [link for model in SupportedServices.get_service_models().values()
                      for link in model['service_project_link'].objects.filter(project=self)]
 
-    def get_ascii_name(self):
-        return ''.join([c if ord(c) < 128 else '' for c in self.name])
-
 
 @python_2_unicode_compatible
 class ProjectGroupRole(core_models.UuidMixin, models.Model):

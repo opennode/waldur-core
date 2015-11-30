@@ -1969,7 +1969,7 @@ class OpenStackBackend(OpenStackClient):
             username = membership.username
         else:
             username = '{0}-{1}'.format(
-                membership.project.get_ascii_name(),
+                self._get_project_ascii_name(membership.project),
                 User.objects.make_random_password(),
             )[:self.MAX_USERNAME_LENGTH]
 
@@ -2258,9 +2258,12 @@ class OpenStackBackend(OpenStackClient):
         # Safe key name length must be less than 17 chars due to limit of full key name to 50 chars.
         return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)[:17]
 
+    def _get_project_ascii_name(self, project):
+        return ''.join([c for c in project.name if ord(c) < 128])
+
     def get_tenant_name(self, membership):
         return '%(project_name)s-%(project_uuid)s' % {
-            'project_name': membership.project.get_ascii_name()[:15],
+            'project_name': self._get_project_ascii_name(membership.project)[:15],
             'project_uuid': membership.project.uuid.hex[:4]
         }
 
