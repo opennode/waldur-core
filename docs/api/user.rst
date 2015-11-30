@@ -8,8 +8,10 @@ Field filters are listed below. All of the filters apart from ?organization are 
 
 - ?full_name=
 - ?native_name=
-- ?organization=
-- ?organization_approved=
+- ?organization= (deprecated, use
+  `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
+- ?organization_approved= (deprecated, use
+  `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
 - ?email=
 - ?phone_number=
 - ?description=
@@ -27,15 +29,19 @@ In addition, several custom filters are supported:
   users. Staff users can see all the customers.
 - ?potential_customer=<Customer UUID> - optionally filter potential users by customer UUID
 - ?potential_organization=<organization name> - optionally filter potential unconnected users by their organization name
+   (deprecated, use `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
 - ?organization_claimed - show only users with a non-empty organization
+  (deprecated, use `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
 
 Ordering is supported by the fields below. Descending sorting can be achieved through prefixing
 field name with a dash (**-**).
 
 - ?o=full_name
 - ?o=native_name
-- ?o=organization
-- ?o=organization_approved
+- ?o=organization (deprecated, use
+  `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
+- ?o=organization_approved (deprecated, use
+  `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
 - ?o=email
 - ?o=phone_number
 - ?o=description
@@ -79,11 +85,11 @@ Updating a user
 User fields can be updated by account owner or user with staff privilege (is_staff=True).
 Following user fields can be updated:
 
-- organization
+- organization (deprecated, use
+  `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
 - full_name
 - native_name
 - job_title
-- organization
 - phone_number
 - email
 
@@ -131,6 +137,9 @@ Example of a valid request:
 
 User organization management
 ----------------------------
+
+**Deprecated, use**
+`organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ **instead.**
 
 There is a lightweight mechanism available that allows users with customer owner roles to control
 claims of users about their organizations.

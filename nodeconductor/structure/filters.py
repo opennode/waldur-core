@@ -489,11 +489,13 @@ class ServiceSettingsFilter(django_filters.FilterSet):
 class BaseServiceFilter(django_filters.FilterSet):
     customer = django_filters.CharFilter(name='customer__uuid')
     name = django_filters.CharFilter(lookup_type='icontains')
+    project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
     project_uuid = django_filters.CharFilter(name='projects__uuid', distinct=True)
+    settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
 
     class Meta(object):
         model = models.Service
-        fields = ('name', 'project_uuid', 'customer')
+        fields = ('name', 'project_uuid', 'customer', 'project', 'settings')
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):

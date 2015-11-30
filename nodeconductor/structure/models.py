@@ -582,6 +582,12 @@ class Service(core_models.SerializableAbstractMixin,
         context['service_type'] = SupportedServices.get_name_for_model(self)
         return context
 
+    def get_service_project_links(self):
+        """
+        Generic method for getting queryset of service project links related to current service
+        """
+        return self.projects.through.objects.filter(service=self)
+
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
@@ -806,7 +812,7 @@ class Resource(core_models.UuidMixin,
         max_length=1)
 
     def get_backend(self, **kwargs):
-        return self.service_project_link.get_backend()
+        return self.service_project_link.get_backend(**kwargs)
 
     def get_cost(self, start_date, end_date):
         raise NotImplementedError(

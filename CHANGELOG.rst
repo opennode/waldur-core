@@ -3,7 +3,14 @@ CHANGELOG
 
 Release NEXT
 ------------
-- <none yet>.
+<nothing yet>
+
+Release 0.82.0
+--------------
+- Added ability to define service by settings and project on template provisioning.
+- Tags were added to template groups.
+- Exposed VM and non-VM counters in project REST view.
+- Bugfixes.
 
 Release 0.81.0
 --------------

@@ -1,0 +1,12 @@
+{% extends 'admin/change_form.html' %}
+{% block form_top %}
+<div class="module">
+    <div>
+        <br/>
+        <h4>Resource parameters propagation</h4>
+        <p>It's possible pass data from the provisioned resource as input to the next resource. The passed data can be
+        referenced in the template using the following method:
+        <code>{% templatetag openvariable %} response.field {% templatetag closevariable %}</code> </p>
+    </div>
+</div>
+{% endblock %}
