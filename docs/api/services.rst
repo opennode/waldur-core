@@ -53,6 +53,8 @@ Filtering of services list is supported through HTTP query parameters, the follo
 - ?customer=<customer uuid>
 - ?project_uuid=<project uuid>
 
+Sorting can be done by specifying field name as a parameter to **?o=<field_name>**
+
 To list services of specific type issue GET to specific endpoint from a list above as a customer owner.
 Individual endpoint used for every service type.
 Example:

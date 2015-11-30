@@ -3,13 +3,16 @@ from simplejson import JSONDecodeError
 from rest_framework import viewsets, decorators, exceptions, status, reverse
 from rest_framework.response import Response
 
-from nodeconductor.template import models, serializers
+from nodeconductor.core import filters as core_filters
+from nodeconductor.template import models, serializers, filters
 
 
 class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.TemplateGroup.objects.filter(is_active=True).prefetch_related('templates')
     serializer_class = serializers.TemplateGroupSerializer
     lookup_field = 'uuid'
+    filter_class = filters.TemplateGroupFilter
+    filter_backends = (core_filters.DjangoMappingFilterBackend,)
 
     @decorators.detail_route(methods=['post'])
     def provision(self, request, uuid=None):

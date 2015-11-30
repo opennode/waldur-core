@@ -104,6 +104,18 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     resources_count = serializers.SerializerMethodField(source='get_resources_count')
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
+    settings = serializers.SerializerMethodField()
+
+    def get_settings(self, link):
+        """
+        URL of service settings
+        """
+        try:
+            return reverse(
+                'servicesettings-detail', kwargs={'uuid': link.service.settings.uuid}, request=self.context['request'])
+        except AttributeError:
+            # IaaS cloud does not have settings
+            return ''
 
     def get_url(self, link):
         """
@@ -156,6 +168,9 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     services = NestedServiceProjectLinkSerializer(source='get_links', many=True, read_only=True)
 
+    app_count = serializers.SerializerMethodField()
+    vm_count = serializers.SerializerMethodField()
+
     class Meta(object):
         model = models.Project
         fields = (
@@ -168,6 +183,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'services',
             'resource_quota', 'resource_quota_usage',
             'created',
+            'app_count', 'vm_count'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -198,6 +214,18 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'customer',
+
+    def get_app_count(self, project):
+        resources = models.Resource.get_all_models()
+        return sum(resource.objects.filter(project=project).count()
+                   for resource in resources
+                   if not issubclass(resource, models.VirtualMachineMixin))
+
+    def get_vm_count(self,  project):
+        resources = models.Resource.get_all_models()
+        return sum(resource.objects.filter(project=project).count()
+                   for resource in resources
+                   if issubclass(resource, models.VirtualMachineMixin))
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:
@@ -730,7 +758,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'dummy'
         )
         protected_fields = ('type', 'customer')
-        read_only_fields = ('shared', 'state')
+        read_only_fields = ('shared', 'state', 'error_message')
         write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
         related_paths = ('customer',)
         extra_kwargs = {
@@ -965,6 +993,7 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
             'state', 'error_message'
         )
         related_paths = ('project', 'service')
+        read_only_fields = ('error_message',)
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }
@@ -1065,7 +1094,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'resource_type', 'state', 'created', 'service_project_link',
         )
         protected_fields = ('service', 'service_project_link')
-        read_only_fields = ('start_time',)
+        read_only_fields = ('start_time', 'error_message')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -1084,9 +1113,12 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
         return super(BaseResourceSerializer, self).to_representation(instance)
 
+    def get_resource_fields(self):
+        return self.Meta.model._meta.get_all_field_names()
+
     def create(self, validated_data):
         data = validated_data.copy()
-        fields = self.Meta.model._meta.get_all_field_names()
+        fields = self.get_resource_fields()
         # Remove `virtual` properties which ain't actually belong to the model
         for prop in data.keys():
             if prop not in fields:

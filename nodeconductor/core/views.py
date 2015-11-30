@@ -114,7 +114,14 @@ class BaseSummaryView(GenericViewSet):
     params = []
 
     def list(self, request):
+        qs = self.get_queryset(request)
+        qs = self.order_queryset(request, qs)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            return self.get_paginated_response(page)
+        return Response(qs)
 
+    def get_queryset(self, request):
         def fetch_data(view_name, params):
             response = request_api(request, view_name, params=params)
             if not response.success:
@@ -130,11 +137,7 @@ class BaseSummaryView(GenericViewSet):
                 params['page_size'] = response.total
                 response = fetch_data(url, params)
             data += response.data
-
-        page = self.paginate_queryset(data)
-        if page is not None:
-            return self.get_paginated_response(page)
-        return Response(data)
+        return data
 
     def get_params(self, request):
         params = {}
@@ -145,3 +148,9 @@ class BaseSummaryView(GenericViewSet):
 
     def get_urls(self, request):
         return []
+
+    def order_queryset(self, request, qs):
+        field = request.query_params.get('o')
+        if not field:
+            return qs
+        return sorted(qs, key=lambda x: x.get(field))
