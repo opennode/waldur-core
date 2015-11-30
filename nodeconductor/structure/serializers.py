@@ -104,6 +104,18 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     resources_count = serializers.SerializerMethodField(source='get_resources_count')
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
+    settings = serializers.SerializerMethodField()
+
+    def get_settings(self, link):
+        """
+        URL of service settings
+        """
+        try:
+            return reverse(
+                'servicesettings-detail', kwargs={'uuid': link.service.settings.uuid}, request=self.context['request'])
+        except AttributeError:
+            # IaaS cloud does not have settings
+            return ''
 
     def get_url(self, link):
         """

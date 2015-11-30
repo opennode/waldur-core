@@ -28,6 +28,11 @@ Cloud-project link management
 
 .. include:: cloud_project_membership.rst
 
+Default price list items
+========================
+
+.. include:: default_price_list_items.rst
+
 Events
 ======
 

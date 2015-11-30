@@ -10,6 +10,7 @@ from model_utils.models import TimeStampedModel
 import requests
 from rest_framework import reverse
 from rest_framework.authtoken.models import Token
+from taggit.managers import TaggableManager
 
 from nodeconductor.core import models as core_models
 
@@ -20,6 +21,7 @@ class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, model
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=True)
+    tags = TaggableManager()
 
     def __str__(self):
         return self.name
@@ -136,32 +138,42 @@ class Template(core_models.UuidMixin, models.Model):
         # prepare request data: get default data and override it with user data
         options = self.options.copy()
         options.update(additional_options or {})
+
         # prepare request data: insert previous execution response variables as context to request data.
         # Example: {{ response.state }} will be replaced with real state field of previous execution response.
         if previous_template_data is not None:
             context = django_template.Context({'response': previous_template_data})
             for key, value in options.items():
                 options[key] = django_template.Template(value).render(context)
+
         # prepare request data: use project from previous_template_data if <use_previous_resource_project> is True
         if self.use_previous_resource_project and not options.get('project'):
             options['project'] = previous_template_data['project']
+
+        # prepare request data: get service if service settings and project are defined in options
+        if options.get('project') and options.get('service_settings'):
+            project_url = options.get('project')
+            service_settings_url = options.pop('service_settings')
+            project_services = self._get_project_services(project_url, headers)
+            try:
+                service_url = next((s['url'] for s in project_services if s['settings'] == service_settings_url))
+            except StopIteration:
+                details = 'There is no service connected to project "%s" based on service settings "%s"' % (
+                    project_url, service_settings_url)
+                raise TemplateActionException('Cannot find suitable service'. details)
+            options['service'] = service_url
+
         # prepare request data: get SPL if service and project are defined in options
         if options.get('project') and options.get('service'):
             service_url = options.pop('service')
             project_url = options.pop('project')
-            error_message = 'Cannot get SPL for service "%s" and project "%s"' % (service_url, project_url)
-            response = requests.get(project_url, headers=headers, verify=False)
-            if not response.ok:
-                details = ('Failed get SPL from project. URL: "%s", response code - %s, '
-                           'response content - %s' % (project_url, response.status_code, response.content))
-                raise TemplateActionException(error_message, details)
-            project_services = response.json()['services']
+            project_services = self._get_project_services(project_url, headers)
             try:
                 spl_url = next((s['service_project_link_url'] for s in project_services if s['url'] == service_url))
             except StopIteration:
                 details = 'Failed to find connection between project "%s" and service "%s" ' % (
                           project_url, service_url)
-                raise TemplateActionException(error_message, details)
+                raise TemplateActionException('Cannot find suitable SPL', details)
             options['service_project_link'] = spl_url
 
         # execute post request
@@ -175,6 +187,14 @@ class Template(core_models.UuidMixin, models.Model):
             raise TemplateActionException(message, details)
 
         return response
+
+    def _get_project_services(self, project_url, headers):
+        response = requests.get(project_url, headers=headers, verify=False)
+        if not response.ok:
+            details = ('Failed get SPL from project. URL: "%s", response code - %s, '
+                       'response content - %s' % (project_url, response.status_code, response.content))
+            raise TemplateActionException('Cannot get project details', details)
+        return response.json()['services']
 
     def get_resource(self, url, token_key):
         response = requests.get(url, headers={'Authorization': 'Token %s' % token_key}, verify=False)
