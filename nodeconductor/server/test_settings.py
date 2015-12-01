@@ -36,7 +36,4 @@ NODECONDUCTOR.update({
             'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
         }
     },
-    'JIRA_SUPPORT': {'dummy': True},
-    'ELASTICSEARCH_DUMMY': True,
-    'BILLING_DUMMY': True,
 })

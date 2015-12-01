@@ -46,7 +46,7 @@ class CloudTest(test.APISimpleTestCase):
         self.expected_public_fields = (
             'auth_url', 'uuid', 'url', 'name',
             'customer', 'customer_name', 'customer_native_name',
-            'flavors', 'projects', 'dummy', 'resources_count', 'service_type'
+            'flavors', 'projects', 'resources_count', 'service_type'
         )
 
     def test_admin_can_view_only_cloud_public_fields(self):

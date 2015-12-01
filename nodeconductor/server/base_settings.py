@@ -277,8 +277,6 @@ NODECONDUCTOR = {
             ),
         },
     ),
-    'JIRA_SUPPORT': {'dummy': True},
-    'ELASTICSEARCH_DUMMY': True,
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'TOKEN_KEY': 'x-auth-token',
 }

@@ -20,9 +20,7 @@ def create_security_group(security_group_uuid, transition_entity=None):
     security_group = transition_entity
 
     chain(
-        openstack_create_session.s(
-            membership_id=security_group.cloud_project_membership.id,
-            dummy=security_group.cloud_project_membership.cloud.dummy),
+        openstack_create_session.s(membership_id=security_group.cloud_project_membership.id),
         openstack_create_security_group.s(security_group_uuid),
     ).apply_async(
         link=security_group_sync_succeeded.si(security_group_uuid),
@@ -36,9 +34,7 @@ def update_security_group(security_group_uuid, transition_entity=None):
     security_group = transition_entity
 
     chain(
-        openstack_create_session.s(
-            membership_id=security_group.cloud_project_membership.id,
-            dummy=security_group.cloud_project_membership.cloud.dummy),
+        openstack_create_session.s(membership_id=security_group.cloud_project_membership.id),
         openstack_update_security_group.s(security_group_uuid),
     ).apply_async(
         link=security_group_sync_succeeded.si(security_group_uuid),
@@ -52,9 +48,7 @@ def delete_security_group(security_group_uuid, transition_entity=None):
     security_group = transition_entity
 
     chain(
-        openstack_create_session.s(
-            membership_id=security_group.cloud_project_membership.id,
-            dummy=security_group.cloud_project_membership.cloud.dummy),
+        openstack_create_session.s(membership_id=security_group.cloud_project_membership.id),
         openstack_delete_security_group.s(security_group_uuid),
     ).apply_async(
         link=security_group_deletion_succeeded.si(security_group_uuid),
