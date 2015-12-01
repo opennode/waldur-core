@@ -273,7 +273,7 @@ def push_ssh_public_keys(service_project_links):
 
         ssh_keys = SshPublicKey.objects.filter(user__groups__projectrole__project=link.project)
         if not ssh_keys.exists():
-            logger.warning('There are no SSH public keys to push for link %s', str_link)
+            logger.debug('There are no SSH public keys to push for link %s', str_link)
             continue
 
         for key in ssh_keys:

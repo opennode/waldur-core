@@ -68,7 +68,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     inlines = [QuotaInline]
 
     actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships',
-               'detect_external_networks', 'sync_ssh_public_keys', 'allocate_floating_ip']
+               'detect_external_networks', 'push_ssh_public_keys', 'allocate_floating_ip']
 
     def get_queryset(self, request):
         queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
@@ -120,7 +120,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
 
     recover_erred_cloud_memberships.short_description = "Recover selected cloud project memberships"
 
-    def sync_ssh_public_keys(self, request, queryset):
+    def push_ssh_public_keys(self, request, queryset):
         tasks_scheduled = queryset.count()
         if tasks_scheduled:
             send_task('structure', 'push_ssh_public_keys')([spl.to_string() for spl in queryset])
@@ -136,7 +136,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
 
         self.message_user(request, message)
 
-    sync_ssh_public_keys.short_description = "Push SSH public keys for selected cloud project memberships"
+    push_ssh_public_keys.short_description = "Push SSH public keys for selected cloud project memberships"
 
     def detect_external_networks(self, request, queryset):
         queryset = queryset.exclude(state=SynchronizationStates.ERRED)
