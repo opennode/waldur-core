@@ -793,7 +793,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         self.nova_client = mock.Mock()
 
         self.membership = mock.Mock()
-        self.membership.project.uuid.hex = 'project_uuid'
+        self.membership.project.uuid.hex = 'a73942ec403e4458a5f1d2b3be0d3041'
         self.membership.project.name = 'project_name'
         self.membership.project.description = 'project_description'
 
@@ -807,7 +807,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
 
         self.keystone_client.tenants.create.assert_called_once_with(
-            tenant_name='nc-project_uuid',
+            tenant_name='project_name-a739',
             description='project_description',
         )
 
@@ -822,7 +822,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
 
         self.keystone_client.tenants.find.assert_called_once_with(
-            name='nc-project_uuid',
+            name='project_name-a739',
         )
 
         self.assertEquals(tenant, existing_tenant, 'Looked up tenant not returned')
@@ -854,7 +854,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
             'Credentials used for account creation do not match the ones returned')
 
         self.assertTrue(
-            username.endswith('-{0}'.format('project_name')),
+            username.startswith('{0}-'.format('project_name')),
             'Username should contain project name'
         )
         self.assertTrue(password, 'Password should not be empty')
