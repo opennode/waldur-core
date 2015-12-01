@@ -477,7 +477,7 @@ class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
     type = core_filters.MappedChoiceFilter(
         choices=SupportedServices.Types.get_direct_filter_mapping(),
-        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping(),
+        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping()
     )
     state = core_filters.SynchronizationStateFilter()
 

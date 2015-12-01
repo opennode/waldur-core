@@ -63,7 +63,7 @@ class BackupSchedule(core_models.UuidMixin,
         """
         Defines next backup creation time
         """
-        base_time = datetime.now(pytz.timezone(self.timezone))
+        base_time = django_timezone.now().replace(tzinfo=pytz.timezone(self.timezone))
         self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
     def _check_backup_source_state(self):
