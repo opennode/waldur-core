@@ -10,7 +10,6 @@ from celery import shared_task
 from nodeconductor.core.tasks import transition, retry_if_false, save_error_message
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.structure.log import event_logger
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
@@ -245,9 +244,9 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
         if is_iaas:
             try:
                 if spl.state == SynchronizationStates.ERRED:
-                    backend.create_session(membership=spl, dummy=spl.cloud.dummy)
+                    backend.create_session(membership=spl)
                 if spl.cloud.state == SynchronizationStates.ERRED:
-                    backend.create_session(keystone_url=spl.cloud.auth_url, dummy=spl.cloud.dummy)
+                    backend.create_session(keystone_url=spl.cloud.auth_url)
             except CloudBackendError:
                 is_active = False
             else:
