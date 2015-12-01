@@ -984,9 +984,14 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         return queryset
 
     def perform_create(self, serializer):
-        if serializer.validated_data['service_project_link'].state == core_models.SynchronizationStates.ERRED:
+        service_project_link = serializer.validated_data['service_project_link']
+        if service_project_link.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
-                detail='Cannot modify resource if its service project link in erred state.')
+                detail='Cannot create resource if its service project link is in erred state.')
+
+        if service_project_link.service.settings.state == core_models.SynchronizationStates.ERRED:
+            raise core_exceptions.IncorrectStateException(
+                detail='Cannot create resource if its service is in erred state.')
 
         try:
             self.perform_provision(serializer)
@@ -997,7 +1002,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         spl = self.get_object().service_project_link
         if spl.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
-                detail='Cannot modify resource if its service project link in erred state.')
+                detail='Cannot modify resource if its service project link is in erred state.')
 
         serializer.save()
 
