@@ -27,7 +27,7 @@ class IaasConfig(AppConfig):
 
         CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
 
-        from nodeconductor.iaas.backend.openstack import OpenStackBackend
+        from nodeconductor.iaas.backend import OpenStackBackend
         SupportedServices.register_backend(OpenStackBackend)
         SupportedServices.register_service(Cloud)
         SupportedServices.register_resource(Instance)
