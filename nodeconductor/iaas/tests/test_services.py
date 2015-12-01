@@ -1,7 +1,8 @@
 from decimal import Decimal
-from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework import test, status
 
 from nodeconductor.core.tests import helpers
@@ -169,20 +170,20 @@ class ServiceEventsTest(test.APISimpleTestCase):
         self.user = structure_factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=self.user)
         self.instance = factories.InstanceFactory()
-        today = date.today()
+        today = timezone.now()
         self.sla_history = factories.InstanceSlaHistoryFactory(instance=self.instance,
                                                                period='%s-%s' % (today.year, today.month))
 
     def test_service_without_sla_returns_404(self):
-        today = date.today()
+        month_ago = timezone.now() - relativedelta(month=+1)
         response = self.client.get(self._get_service_events_url(self.instance),
-                                   data={'period': '%s-%s' % (today.year, today.month)})
+                                   data={'period': '%s-%s' % (month_ago.year, month_ago.month)})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_service_with_events_returns_events_list(self):
-        today = date.today()
+        today = timezone.now()
         event = factories.InstanceSlaHistoryEventsFactory(instance=self.sla_history)
-        self.instance.created = datetime.now() - timedelta(days=32)
+        self.instance.created = timezone.now() - relativedelta(month=+1)
         self.instance.save()
         response = self.client.get(self._get_service_events_url(self.instance),
                                    data={'period': '%s-%s' % (today.year, today.month)})
