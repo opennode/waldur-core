@@ -492,10 +492,11 @@ class BaseServiceFilter(django_filters.FilterSet):
     project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
     project_uuid = django_filters.CharFilter(name='projects__uuid', distinct=True)
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
+    shared = django_filters.BooleanFilter(name='settings__shared', distinct=True)
 
     class Meta(object):
         model = models.Service
-        fields = ('name', 'project_uuid', 'customer', 'project', 'settings')
+        fields = ('name', 'project_uuid', 'customer', 'project', 'settings', 'shared')
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
