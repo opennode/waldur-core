@@ -32,6 +32,12 @@ def wait_for_provision(previous_task_data=None, template_uuid=None, token_key=No
     resource_type = SupportedServices.get_name_for_model(template.resource_content_type.model_class())
     state = resource_data['state']
     if state == success_state:
+        tags = [tag.name for tag in template.tags.all()]
+        if tags:
+            instance = template.resource_content_type.model_class().objects.get(uuid=resource_data['uuid'])
+            if hasattr(instance, 'tags'):
+                instance.tags.add(*tags)
+
         template_group_result.state_message = '%s has been successfully provisioned.' % resource_type
         template_group_result.provisioned_resources[resource_type] = url
         template_group_result.save()

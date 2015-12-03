@@ -110,6 +110,7 @@ class TemplateActionException(Exception):
             return {'message': str(serialized_exception)}
 
 
+@python_2_unicode_compatible
 class Template(core_models.UuidMixin, models.Model):
     """ Template for application action.
 
@@ -118,6 +119,7 @@ class Template(core_models.UuidMixin, models.Model):
     """
     group = models.ForeignKey(TemplateGroup, related_name='templates')
     options = JSONField(default={}, help_text='Default options for resource provision request.')
+    tags = TaggableManager()
     resource_content_type = models.ForeignKey(
         ContentType, help_text='Content type of resource which provision process is described in template.')
     order_number = models.PositiveSmallIntegerField(
@@ -205,6 +207,9 @@ class Template(core_models.UuidMixin, models.Model):
                       response.request.url, response.status_code, response.content)
             raise TemplateActionException(message, details, response.status_code)
         return response
+
+    def __str__(self):
+        return "%s -> %s" % (self.group.name, self.resource_content_type)
 
 
 class TemplateGroupResult(core_models.UuidMixin, TimeStampedModel):
