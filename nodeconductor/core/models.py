@@ -257,6 +257,10 @@ class SynchronizableMixin(ErrorMessageMixin):
     def begin_syncing(self):
         pass
 
+    @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.SYNCING)
+    def begin_recovering(self):
+        pass
+
     @transition(field=state, source=SynchronizationStates.IN_SYNC, target=SynchronizationStates.SYNCING_SCHEDULED)
     def schedule_syncing(self):
         pass

@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-<nothing yet>
+- Added recovery transition from ERRED to SYNCING state
 
 Release 0.82.0
 --------------
