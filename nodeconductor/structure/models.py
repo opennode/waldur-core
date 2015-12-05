@@ -546,6 +546,7 @@ class ServiceSettings(core_models.UuidMixin,
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
+              quotas_models.QuotaModelMixin,
               LoggableMixin,
               StructureModel):
     """ Base service class. """
@@ -558,6 +559,8 @@ class Service(core_models.SerializableAbstractMixin,
         customer_path = 'customer'
         project_path = 'projects'
         project_group_path = 'customer__projects__project_groups'
+
+    QUOTAS_NAMES = ['nc_resource_count']
 
     settings = models.ForeignKey(ServiceSettings)
     customer = models.ForeignKey(Customer)
@@ -810,6 +813,7 @@ class Resource(core_models.UuidMixin,
         customer_path = 'service_project_link__project__customer'
         project_path = 'service_project_link__project'
         project_group_path = 'service_project_link__project__project_groups'
+        service_path = 'service_project_link__service'
 
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)

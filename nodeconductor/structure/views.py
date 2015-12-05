@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import transaction, IntegrityError
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.utils import timezone
 from django_fsm import TransitionNotAllowed
 
@@ -33,6 +33,7 @@ from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.core.utils import request_api, datetime_to_timestamp
+from nodeconductor.quotas.models import Quota
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
@@ -788,6 +789,15 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
+
+    def get_queryset(self, *args, **kwargs):
+        return super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)\
+            .select_related('customer', 'settings__uuid')\
+            .prefetch_related(Prefetch('projects',
+                                       queryset=models.Project.objects.only('id', 'uuid', 'name')))\
+            .prefetch_related(Prefetch('quotas',
+                                       queryset=Quota.objects.filter(name='nc_resource_count'),
+                                       to_attr='resource_count'))
 
     def _can_import(self):
         return self.import_serializer_class is not NotImplemented

@@ -194,6 +194,20 @@ class StructureConfig(AppConfig):
             )
 
             signals.post_save.connect(
+                handlers.change_service_nc_resource_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.increase_service_nc_resource_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.change_service_nc_resource_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_service_nc_resource_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+            signals.post_save.connect(
                 handlers.log_resource_created,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.log_resource_created_{}_{}'.format(

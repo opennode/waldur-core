@@ -955,13 +955,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return attrs
 
     def get_resources_count(self, obj):
-        resources_count = 0
-        resource_models = SupportedServices.get_service_resources(obj)
-        for resource_model in resource_models:
-            # Format query path to service project link
-            query = {resource_model.Permissions.project_path.split('__')[0] + '__service': obj}
-            resources_count += resource_model.objects.filter(**query).count()
-        return resources_count
+        try:
+            return int(obj.resource_count[0].usage)
+        except:
+            return 0
 
     def get_service_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
