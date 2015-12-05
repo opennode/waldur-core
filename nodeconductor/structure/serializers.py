@@ -216,16 +216,12 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         return 'customer',
 
     def get_app_count(self, project):
-        resources = models.Resource.get_all_models()
         return sum(resource.objects.filter(project=project).count()
-                   for resource in resources
-                   if not issubclass(resource, models.VirtualMachineMixin))
+                   for resource in models.Resource.get_app_models())
 
     def get_vm_count(self,  project):
-        resources = models.Resource.get_all_models()
         return sum(resource.objects.filter(project=project).count()
-                   for resource in resources
-                   if issubclass(resource, models.VirtualMachineMixin))
+                   for resource in models.Resource.get_vm_models())
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:

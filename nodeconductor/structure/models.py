@@ -835,6 +835,18 @@ class Resource(core_models.UuidMixin,
 
     @classmethod
     @lru_cache(maxsize=1)
+    def get_vm_models(cls):
+        return [resource for resource in cls.get_all_models()
+                if issubclass(resource, VirtualMachineMixin)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_app_models(cls):
+        return [resource for resource in cls.get_all_models()
+                if not issubclass(resource, VirtualMachineMixin)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
