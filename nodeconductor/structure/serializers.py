@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.contrib import auth
 from django.db import models as django_models
@@ -161,7 +161,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         default=(),
     )
 
-    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     # These fields exist for backward compatibility
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
@@ -193,6 +193,13 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
 
+    def get_fields(self):
+        fields = super(ProjectSerializer, self).get_fields()
+        view = self.context['view']
+        if view.action == 'list':
+            del fields['services']
+        return fields
+
     def create(self, validated_data):
         project_groups = validated_data.pop('project_groups')
         project = super(ProjectSerializer, self).create(validated_data)
@@ -216,16 +223,34 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         return 'customer',
 
     def get_app_count(self, project):
-        resources = models.Resource.get_all_models()
-        return sum(resource.objects.filter(project=project).count()
-                   for resource in resources
-                   if not issubclass(resource, models.VirtualMachineMixin))
+        if 'app_count' not in self.context:
+            app_models = [model for model in SupportedServices.get_resource_models().values()
+                          if not issubclass(model, models.VirtualMachineMixin)]
+            self.context['app_count'] = self.get_resources_count(app_models)
+
+        return self.context['app_count'][project.pk]
 
     def get_vm_count(self,  project):
-        resources = models.Resource.get_all_models()
-        return sum(resource.objects.filter(project=project).count()
-                   for resource in resources
-                   if issubclass(resource, models.VirtualMachineMixin))
+        if 'vm_count' not in self.context:
+            vm_models = [model for model in SupportedServices.get_resource_models().values()
+                          if issubclass(model, models.VirtualMachineMixin)]
+            self.context['vm_count'] = self.get_resources_count(vm_models)
+
+        return self.context['vm_count'][project.pk]
+
+    def get_resources_count(self, resource_models):
+        counts = defaultdict(lambda: 0)
+        for model in resource_models:
+            project_path = model.Permissions.project_path
+            if isinstance(self.instance, list):
+                query = {project_path + '__in': self.instance}
+            else:
+                query = {project_path: self.instance}
+            rows = model.objects.filter(**query).values(project_path).annotate(count=django_models.Count('id'))
+            for row in rows:
+                project_id = row[project_path]
+                counts[project_id] += row['count']
+        return counts
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:
@@ -258,7 +283,7 @@ class CustomerSerializer(core_serializers.DynamicSerializer,
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     image = DefaultImageField(required=False, read_only=True)
-    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.Customer

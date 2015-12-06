@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import transaction, IntegrityError
-from django.db.models import Q, Prefetch
+from django.db.models import Q
 from django.utils import timezone
 from django_fsm import TransitionNotAllowed
 
@@ -54,7 +54,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer-management
     """
 
-    queryset = models.Customer.objects.all()
+    queryset = models.Customer.objects.all().select_related('quotas')
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,
@@ -156,6 +156,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 roles__role_type=models.ProjectRole.ADMINISTRATOR,
             )
 
+        queryset = queryset.prefetch_related('quotas', 'project_groups').select_related('customer')
         return queryset
 
     def perform_create(self, serializer):
