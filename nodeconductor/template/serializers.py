@@ -8,13 +8,20 @@ from nodeconductor.template import models
 class TemplateSerializer(serializers.ModelSerializer):
     resource_type = serializers.SerializerMethodField()
     options = JsonField()
+    tags = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.Template
-        fields = ('uuid', 'options', 'resource_type', 'order_number')
+        fields = ('uuid', 'options', 'tags', 'resource_type', 'order_number')
 
     def get_resource_type(self, obj):
-        return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
+        try:
+            return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
+        except AttributeError:
+            return '.'.join(obj.resource_content_type.natural_key())
+
+    def get_tags(self, template):
+        return [t.name for t in template.tags.all()]
 
 
 class TemplateGroupSerializer(serializers.HyperlinkedModelSerializer):

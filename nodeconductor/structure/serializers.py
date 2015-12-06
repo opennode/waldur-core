@@ -1083,6 +1083,8 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     created = serializers.DateTimeField(read_only=True)
     resource_type = serializers.SerializerMethodField()
 
+    tags = serializers.SerializerMethodField()
+
     class Meta(object):
         model = NotImplemented
         view_name = NotImplemented
@@ -1091,7 +1093,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'service', 'service_name', 'service_uuid',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'project_groups', 'error_message',
+            'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link',
         )
         protected_fields = ('service', 'service_project_link')
@@ -1105,6 +1107,9 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_resource_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
+
+    def get_tags(self, obj):
+        return [t.name for t in obj.tags.all()]
 
     def to_representation(self, instance):
         # We need this hook, because ips have to be represented as list
