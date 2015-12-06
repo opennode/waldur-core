@@ -979,11 +979,24 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
         return attrs
 
-    def get_resources_count(self, obj):
-        try:
-            return int(obj.resource_count[0].usage)
-        except:
-            return 0
+    def get_resources_count(self, service):
+        if 'resources_count' not in self.context:
+            resource_models = SupportedServices.get_service_resources(service)
+            counts = defaultdict(lambda: 0)
+            for model in resource_models:
+                service_path = model.Permissions.service_path
+                if isinstance(self.instance, list):
+                    query = {service_path + '__in': self.instance}
+                else:
+                    query = {service_path: self.instance}
+                rows = model.objects.filter(**query).values(service_path)\
+                    .annotate(count=django_models.Count('id'))
+                for row in rows:
+                    service_id = row[service_path]
+                    counts[service_id] += row['count']
+            self.context['resources_count'] = counts
+
+        return self.context['resources_count'][service.pk]
 
     def get_service_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
