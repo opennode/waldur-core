@@ -62,8 +62,8 @@ class InstanceProvisionTemplateForm(TemplateForm):
             child=NestedHyperlinkedRelatedField(
                 view_name='openstack-sgp-detail',
                 lookup_field='uuid',
-                queryset=models.SecurityGroup.objects.all(),
-                required=False)
+                queryset=models.SecurityGroup.objects.all()),
+            required=False,
         )
         user_data = serializers.CharField(required=False)
 
