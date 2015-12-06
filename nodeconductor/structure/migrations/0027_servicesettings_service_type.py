@@ -20,8 +20,11 @@ def create_service_type(apps, schema_editor):
 
     ServiceSettings = apps.get_model('structure', 'ServiceSettings')
     for service in ServiceSettings.objects.all():
-        service.service_type = service_types[service.type]
-        service.save()
+        try:
+            service.service_type = service_types[service.type]
+            service.save()
+        except KeyError:
+            pass
 
 
 class Migration(migrations.Migration):
