@@ -29,7 +29,11 @@ def create_service_type(apps, schema_editor):
             service.service_type = service_types[service.type]
             service.save()
         except KeyError:
-            logger.warning('Cannot migrate service type %s' % service.type)
+            if service.type in service_types.values():
+                service.service_type = service.type
+                service.save()
+            else:
+                logger.warning('Cannot migrate service type %s' % service.type)
 
 
 class Migration(migrations.Migration):
