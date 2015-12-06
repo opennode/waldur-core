@@ -10,7 +10,6 @@ from celery import shared_task
 from nodeconductor.core.tasks import transition, retry_if_false, save_error_message
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
-from nodeconductor.structure.log import event_logger
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
@@ -245,9 +244,9 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
         if is_iaas:
             try:
                 if spl.state == SynchronizationStates.ERRED:
-                    backend.create_session(membership=spl, dummy=spl.cloud.dummy)
+                    backend.create_session(membership=spl)
                 if spl.cloud.state == SynchronizationStates.ERRED:
-                    backend.create_session(keystone_url=spl.cloud.auth_url, dummy=spl.cloud.dummy)
+                    backend.create_session(keystone_url=spl.cloud.auth_url)
             except CloudBackendError:
                 is_active = False
             else:
@@ -264,6 +263,21 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
                 entity.save()
     else:
         logger.info('Failed to recover service settings %s.' % settings)
+
+
+@shared_task(name='nodeconductor.structure.push_ssh_public_keys')
+def push_ssh_public_keys(service_project_links):
+    link_objects = models.ServiceProjectLink.from_string(service_project_links)
+    for link in link_objects:
+        str_link = link.to_string()
+
+        ssh_keys = SshPublicKey.objects.filter(user__groups__projectrole__project=link.project)
+        if not ssh_keys.exists():
+            logger.debug('There are no SSH public keys to push for link %s', str_link)
+            continue
+
+        for key in ssh_keys:
+            push_ssh_public_key.delay(key.uuid.hex, str_link)
 
 
 @shared_task(name='nodeconductor.structure.push_ssh_public_key', max_retries=120, default_retry_delay=30)

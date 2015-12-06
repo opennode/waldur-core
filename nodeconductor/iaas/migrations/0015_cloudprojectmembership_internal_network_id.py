@@ -5,7 +5,7 @@ from django.db import models, migrations
 from keystoneclient.exceptions import ClientException
 from neutronclient.common.exceptions import NeutronClientException
 
-from nodeconductor.iaas.backend.openstack import OpenStackBackend
+from nodeconductor.iaas.backend import OpenStackBackend
 
 
 def get_tenant_name(membership):

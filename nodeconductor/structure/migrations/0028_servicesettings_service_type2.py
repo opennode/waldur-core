@@ -14,6 +14,7 @@ def create_service_type(apps, schema_editor):
         1: 'OpenStack',
         2: 'DigitalOcean',
         3: 'Amazon',
+        4: 'Jira',
         5: 'GitLab',
         6: 'Oracle',
         7: 'Azure',
