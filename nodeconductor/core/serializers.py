@@ -394,16 +394,24 @@ class DynamicSerializer(serializers.ModelSerializer):
     Allows to specify additional fields for serializer.
     Useful for managing dependencies between applications.
     """
-    _additional_fields = {}
 
     @classmethod
     def add_field(cls, field_name, model_class, options=None):
         cls.Meta.fields += (field_name,)
-        cls._additional_fields[field_name] = (model_class, options or {})
+        if not hasattr(cls.Meta, '_additional_fields'):
+            cls.Meta._additional_fields = {}
+        cls.Meta._additional_fields[field_name] = (model_class, options or {})
+
+    def get_fields(self):
+        fields = super(DynamicSerializer, self).get_fields()
+        for name, field in self.Meta._additional_fields.items():
+            model_class, options = field
+            fields[name] = model_class(**options)
+        return fields
 
     def build_unknown_field(self, field_name, model_class):
-        if field_name in self._additional_fields:
-            return self._additional_fields[field_name]
+        if field_name in self.Meta._additional_fields:
+            return self.Meta._additional_fields[field_name]
         return super(DynamicSerializer, self).build_unknown_field(field_name, model_class)
 
     @classmethod
