@@ -559,10 +559,7 @@ def log_service_project_link_recovered(sender, instance, name, source, target, *
 
 
 def remove_service_project_link_from_backend(sender, instance, **kwargs):
-    try:
-        backend = instance.get_backend()
-    except:
-        return
+    backend = instance.get_backend()
     try:
         backend.remove_link(instance)
     except ServiceBackendNotImplemented:
