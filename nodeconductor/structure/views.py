@@ -792,7 +792,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def get_queryset(self, *args, **kwargs):
         return super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)\
-            .select_related('customer', 'settings').prefetch_related('projects')
+            .prefetch_related('customer', 'settings', 'projects')
 
     def _can_import(self):
         return self.import_serializer_class is not NotImplemented

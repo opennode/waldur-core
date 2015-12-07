@@ -33,7 +33,7 @@ def get_clouds_for_project(serializer, project):
     request = serializer.context['request']
 
     if 'clouds' not in serializer.context:
-        links = models.CloudProjectMembership.objects.all()
+        links = models.CloudProjectMembership.objects.all().select_related('cloud')
         links = filter_queryset_for_user(links, request.user)
 
         if isinstance(serializer.instance, list):

@@ -1,21 +1,24 @@
 from __future__ import unicode_literals
 
 from collections import OrderedDict, defaultdict
-from django.core.validators import RegexValidator, MaxLengthValidator
+
 from django.contrib import auth
+from django.contrib.contenttypes.models import ContentType
+from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
 from django.conf import settings
 from django.utils import six
 from django.utils.encoding import force_text
+from django.utils.lru_cache import lru_cache
 from rest_framework import exceptions, metadata, serializers
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.tasks import send_task
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
+from nodeconductor.quotas.models import Quota
 from nodeconductor.structure import models, SupportedServices
 from nodeconductor.structure.managers import filter_queryset_for_user
 
@@ -101,7 +104,6 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     name = serializers.ReadOnlyField(source='service.name')
     type = serializers.SerializerMethodField()
     state = serializers.ReadOnlyField(source='get_state_display')
-    resources_count = serializers.SerializerMethodField(source='get_resources_count')
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
@@ -166,8 +168,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
     resource_quota = serializers.SerializerMethodField('get_resource_quotas')
     resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
 
-    services = NestedServiceProjectLinkSerializer(source='get_links', many=True, read_only=True)
-
+    services = serializers.SerializerMethodField()
     app_count = serializers.SerializerMethodField()
     vm_count = serializers.SerializerMethodField()
 
@@ -193,13 +194,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
 
-    def get_fields(self):
-        fields = super(ProjectSerializer, self).get_fields()
-        view = self.context['view']
-        if view.action == 'list':
-            del fields['services']
-        return fields
-
     def create(self, validated_data):
         project_groups = validated_data.pop('project_groups')
         project = super(ProjectSerializer, self).create(validated_data)
@@ -207,17 +201,35 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
         return project
 
-    def get_resource_quotas(self, obj):
-        return models.Project.get_sum_of_quotas_as_dict(
-            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['limit'])
-
-    def get_resource_quotas_usage(self, obj):
-        quota_values = models.Project.get_sum_of_quotas_as_dict(
-            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['usage'])
-        # No need for '_usage' suffix in quotas names
-        return {
-            key[:-6]: value for key, value in quota_values.iteritems()
+    @lru_cache(maxsize=1)
+    def get_quotas_map(self):
+        query = {
+            'content_type': ContentType.objects.get_for_model(models.Project),
+            'name__in': ['ram', 'storage', 'max_instances', 'vcpu']
         }
+        if isinstance(self.instance, list):
+            query['object_id__in'] = [instance.id for instance in self.instance]
+        else:
+            query['object_id'] = self.instance.id
+
+        quotas = Quota.objects.filter(**query)
+        limits = defaultdict(dict)
+        usages = defaultdict(dict)
+
+        for quota in quotas:
+            limits[quota.object_id][quota.name] = quota.limit
+            usages[quota.object_id][quota.name.replace('_usage', '')] = quota.usage
+
+        return {
+            'limits': limits,
+            'usages': usages
+        }
+
+    def get_resource_quotas(self, project):
+        return self.get_quotas_map()['limits'][project.pk]
+
+    def get_resource_quotas_usage(self, project):
+        return self.get_quotas_map()['usages'][project.pk]
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -233,7 +245,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
     def get_vm_count(self,  project):
         if 'vm_count' not in self.context:
             vm_models = [model for model in SupportedServices.get_resource_models().values()
-                          if issubclass(model, models.VirtualMachineMixin)]
+                         if issubclass(model, models.VirtualMachineMixin)]
             self.context['vm_count'] = self.get_resources_count(vm_models)
 
         return self.context['vm_count'][project.pk]
@@ -251,6 +263,28 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
                 project_id = row[project_path]
                 counts[project_id] += row['count']
         return counts
+
+    def get_services(self, project):
+        if 'services' not in self.context:
+            services = defaultdict(list)
+            for service in SupportedServices.get_service_models().values():
+                links = service['service_project_link'].objects.all()\
+                        .select_related('service', 'service__settings')
+                if isinstance(self.instance, list):
+                    links = links.filter(project__in=self.instance)
+                else:
+                    links = links.filter(project=self.instance)
+                for link in links:
+                    services[link.project_id].append(link)
+            self.context['services'] = services
+
+        services = self.context['services'][project.pk]
+        serializer = NestedServiceProjectLinkSerializer(
+            services,
+            many=True,
+            read_only=True,
+            context={'request': self.context['request']})
+        return serializer.data
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:
@@ -980,23 +1014,24 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return attrs
 
     def get_resources_count(self, service):
-        if 'resources_count' not in self.context:
-            resource_models = SupportedServices.get_service_resources(service)
-            counts = defaultdict(lambda: 0)
-            for model in resource_models:
-                service_path = model.Permissions.service_path
-                if isinstance(self.instance, list):
-                    query = {service_path + '__in': self.instance}
-                else:
-                    query = {service_path: self.instance}
-                rows = model.objects.filter(**query).values(service_path)\
-                    .annotate(count=django_models.Count('id'))
-                for row in rows:
-                    service_id = row[service_path]
-                    counts[service_id] += row['count']
-            self.context['resources_count'] = counts
+        return self.get_resources_count_map()[service.pk]
 
-        return self.context['resources_count'][service.pk]
+    @lru_cache(maxsize=1)
+    def get_resources_count_map(self):
+        resource_models = SupportedServices.get_service_resources(self.Meta.model)
+        counts = defaultdict(lambda: 0)
+        for model in resource_models:
+            service_path = model.Permissions.service_path
+            if isinstance(self.instance, list):
+                query = {service_path + '__in': self.instance}
+            else:
+                query = {service_path: self.instance}
+            rows = model.objects.filter(**query).values(service_path)\
+                .annotate(count=django_models.Count('id'))
+            for row in rows:
+                service_id = row[service_path]
+                counts[service_id] += row['count']
+        return counts
 
     def get_service_type(self, obj):
         return SupportedServices.get_name_for_model(obj)

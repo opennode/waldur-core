@@ -6,11 +6,11 @@ from django.utils.encoding import python_2_unicode_compatible
 
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import exceptions, managers
-from nodeconductor.core.models import UuidMixin, NameMixin, ReversionMixin, DescendantMixin
+from nodeconductor.core.models import UuidMixin, ReversionMixin, DescendantMixin
 
 
 @python_2_unicode_compatible
-class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
+class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     """
     Abstract quota for any resource.
 
@@ -22,6 +22,7 @@ class Quota(UuidMixin, NameMixin, LoggableMixin, ReversionMixin, models.Model):
 
     limit = models.FloatField(default=-1)
     usage = models.FloatField(default=0)
+    name = models.CharField(max_length=150, db_index=True)
 
     content_type = models.ForeignKey(ct_models.ContentType, null=True)
     object_id = models.PositiveIntegerField(null=True)
