@@ -1012,16 +1012,17 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def perform_provision(self, serializer):
         raise NotImplementedError
 
-    def perform_managed_resource_destroy(self, resource):
+    def perform_managed_resource_destroy(self, resource, force=False):
         if resource.backend_id:
             backend = resource.get_backend()
-            backend.destroy(resource)
+            backend.destroy(resource, force=force)
         else:
             self.perform_destroy(resource)
 
-    @safe_operation(valid_state=models.Resource.States.OFFLINE)
+    @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
     def destroy(self, request, resource, uuid=None):
-        self.perform_managed_resource_destroy(resource)
+        self.perform_managed_resource_destroy(
+            resource, force=resource.state == models.Resource.States.ERRED)
 
     @detail_route(methods=['post'])
     @safe_operation()

@@ -358,7 +358,7 @@ class ServiceBackend(object):
     def provision(self, resource, *args, **kwargs):
         raise ServiceBackendNotImplemented
 
-    def destroy(self, resource):
+    def destroy(self, resource, force=False):
         raise ServiceBackendNotImplemented
 
     def stop(self, resource):
