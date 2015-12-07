@@ -138,9 +138,11 @@ def check_project_name_update(sender, instance=None, created=False, **kwargs):
         cpms = CloudProjectMembership.objects.filter(project__uuid=instance.uuid)
         if cpms.exists():
             from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
+            from nodeconductor.iaas.tasks.iaas import update_cloud_project_membership_tenant_name
 
             for cpm in cpms:
                 zabbix_update_host_visible_name.delay(cpm.pk, is_tenant=True)
+                update_cloud_project_membership_tenant_name.delay(cpm.pk)
 
 
 change_customer_nc_service_quota = quotas_handlers.quantity_quota_handler_factory(

@@ -1822,6 +1822,22 @@ class OpenStackBackend(OpenStackClient):
                 'server_usages': getattr(usage, "server_usages", []),
             }
 
+    def update_tenant_name(self, membership, keystone):
+        tenant_name = self.get_tenant_name(membership)
+
+        if membership.tenant_id:
+            logger.info('Trying to update name for tenant with id %s', membership.tenant_id)
+            try:
+                keystone.tenants.update(membership.tenant_id, name=tenant_name)
+                logger.info("Successfully updated name for tenant with id %s. New tenant's name is %s",
+                            membership.tenant_id, tenant_name)
+            except keystone_exceptions.NotFound as e:
+                logger.warning('Tenant with id %s does not exist', membership.tenant_id)
+                six.reraise(CloudBackendError, e)
+        else:
+            logger.warning('Cannot update tenant name for cloud project membership %s without tenant ID',
+                        membership)
+
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
         return neutron.list_floatingips(tenant_id=tenant_id)['floatingips']
@@ -1979,9 +1995,14 @@ class OpenStackBackend(OpenStackClient):
     def get_or_create_tenant(self, membership, keystone):
         tenant_name = self.get_tenant_name(membership)
 
-        # First try to create a tenant
-        logger.info('Creating tenant %s', tenant_name)
+        if membership.tenant_id:
+            logger.info('Trying to get connected tenant with id %s', membership.tenant_id)
+            try:
+                return keystone.tenants.get(membership.tenant_id)
+            except keystone_exceptions.NotFound:
+                logger.warning('Tenant with id %s does not exist', membership.tenant_id)
 
+        logger.info('Creating tenant %s', tenant_name)
         try:
             return keystone.tenants.create(
                 tenant_name=tenant_name,
@@ -2253,21 +2274,14 @@ class OpenStackBackend(OpenStackClient):
         return ''.join([c for c in project.name if ord(c) < 128])
 
     def get_tenant_name(self, membership):
-        return 'nc-{0}'.format(membership.project.uuid.hex)
+        return '%(project_name)s-%(project_uuid)s' % {
+            'project_name': self._get_project_ascii_name(membership.project)[:15],
+            'project_uuid': membership.project.uuid.hex[:4]
+        }
 
     def get_tenant_internal_network_name(self, membership):
-        return 'nc-{0}'.format(membership.project.uuid.hex)
-
-    # TODO: Use human-readable names, but make sure that OpenStack will not create new tenant on project rename. (NC-985)
-    # def get_tenant_name(self, membership):
-    #     return '%(project_name)s-%(project_uuid)s' % {
-    #         'project_name': self._get_project_ascii_name(membership.project)[:15],
-    #         'project_uuid': membership.project.uuid.hex[:4]
-    #     }
-
-    # def get_tenant_internal_network_name(self, membership):
-    #     tenant_name = self.get_tenant_name(membership)
-    #     return '{0}-int-net'.format(tenant_name)
+        tenant_name = self.get_tenant_name(membership)
+        return '{0}-int-net'.format(tenant_name)
 
     def create_backend_name(self):
         return 'nc-{0}'.format(uuid.uuid4().hex)
