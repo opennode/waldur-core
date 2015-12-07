@@ -25,6 +25,7 @@ import logging
 from decimal import Decimal
 
 from django.contrib.contenttypes.models import ContentType
+from nodeconductor.structure import ServiceBackendNotImplemented
 
 
 default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
@@ -46,7 +47,10 @@ class CostTrackingRegister(object):
 
     @classmethod
     def get_resource_backend(cls, resource):
-        return cls._register.get(resource._meta.app_label)
+        try:
+            return cls._register[resource._meta.app_label]
+        except KeyError:
+            raise ServiceBackendNotImplemented
 
 
 class CostTrackingBackend(object):

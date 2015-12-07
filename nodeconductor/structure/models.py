@@ -815,6 +815,7 @@ class Resource(core_models.UuidMixin,
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
     tags = TaggableManager(related_name='+')
+    imported = models.BooleanField(default=False, editable=False, help_text='Was it imported or created')
 
     start_time = models.DateTimeField(blank=True, null=True)
     state = FSMIntegerField(

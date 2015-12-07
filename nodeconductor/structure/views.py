@@ -852,7 +852,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                     "Only customer owner or staff are allowed to perform this action.")
 
             try:
-                resource = serializer.save()
+                resource = serializer.save(imported=True)
             except ServiceBackendError as e:
                 raise APIException(e)
 

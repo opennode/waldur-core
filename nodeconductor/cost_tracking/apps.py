@@ -48,9 +48,16 @@ class CostTrackingConfig(AppConfig):
 
         for index, resource in enumerate(structure_models.Resource.get_all_models()):
             post_transition.connect(
-                handlers.estimate_costs,
+                handlers.add_estimate_costs,
                 sender=resource,
-                dispatch_uid='nodeconductor.cost_tracking.handlers.estimate_costs_{}_{}'.format(
+                dispatch_uid='nodeconductor.cost_tracking.handlers.add_estimate_costs_{}_{}'.format(
+                    resource.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.delete_estimate_costs,
+                sender=resource,
+                dispatch_uid='nodeconductor.cost_tracking.handlers.delete_estimate_costs_{}_{}'.format(
                     resource.__name__, index),
             )
 

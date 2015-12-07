@@ -1,9 +1,7 @@
 import logging
 
 from django.contrib.contenttypes.models import ContentType
-from django.db import transaction
 
-from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import send_task
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices
@@ -12,10 +10,14 @@ from nodeconductor.structure import SupportedServices
 logger = logging.getLogger('nodeconductor.cost_tracking')
 
 
-def estimate_costs(sender, instance, name=None, source=None, **kwargs):
+def add_estimate_costs(sender, instance, name=None, source=None, **kwargs):
     if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
         send_task('cost_tracking', 'update_projected_estimate')(
             resource_uuid=instance.uuid.hex)
+
+
+def delete_estimate_costs(sender, instance, **kwargs):
+    models.PriceEstimate.update_price_for_resource(instance, delete=True)
 
 
 def make_autocalculate_price_estimate_invisible_on_manual_estimate_creation(sender, instance, created=False, **kwargs):
