@@ -155,10 +155,10 @@ class OpenStackBackend(ServiceBackend):
             skip_external_ip_assignment=skip_external_ip_assignment
         )
 
-    def destroy(self, instance):
+    def destroy(self, instance, force=False):
         instance.schedule_deletion()
         instance.save()
-        send_task('openstack', 'destroy')(instance.uuid.hex)
+        send_task('openstack', 'destroy')(instance.uuid.hex, force=force)
 
     def start(self, instance):
         instance.schedule_starting()
@@ -576,6 +576,18 @@ class OpenStackBackend(ServiceBackend):
         logger.info("Deleting tenant %s", self.tenant_id)
         if not dryrun:
             keystone.tenants.delete(self.tenant_id)
+
+    def cleanup_instance(self, backend_id=None, external_ips=None, internal_ips=None,
+                         system_volume_id=None, data_volume_id=None):
+
+        # instance
+        nova = self.nova_client
+        nova.servers.delete(backend_id)
+
+        # volumes
+        cinder = self.cinder_client
+        cinder.volumes.delete(system_volume_id)
+        cinder.volumes.delete(data_volume_id)
 
     @reraise_exceptions
     def create_security_group(self, security_group):

@@ -5,7 +5,7 @@ from celery import shared_task, chain
 from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack.backend import OpenStackBackendError
-from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, SecurityGroup
+from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, FloatingIP, SecurityGroup
 from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.structure.tasks import (
     begin_syncing_service_project_links, sync_service_project_link_succeeded, sync_service_project_link_failed)
@@ -40,7 +40,27 @@ def provision(instance_uuid, **kwargs):
 
 
 @shared_task(name='nodeconductor.openstack.destroy')
-def destroy(instance_uuid, transition_entity=None):
+def destroy(instance_uuid, force=False):
+    if force:
+        instance = Instance.objects.get(uuid=instance_uuid)
+
+        FloatingIP.objects.filter(
+            service_project_link=instance.service_project_link,
+            address=instance.external_ips,
+        ).update(status='DOWN')
+
+        instance.delete()
+
+        backend = instance.get_backend()
+        backend.cleanup_instance(
+            backend_id=instance.backend_id,
+            external_ips=instance.external_ips,
+            internal_ips=instance.internal_ips,
+            system_volume_id=instance.system_volume_id,
+            data_volume_id=instance.data_volume_id)
+
+        return
+
     destroy_instance.apply_async(
         args=(instance_uuid,),
         link=delete.si(instance_uuid),

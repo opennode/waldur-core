@@ -182,6 +182,21 @@ Example rendering of the Instance object:
     ]
 
 
+Delete OpenStack instance
+-------------------------
+
+Deletion of an instance is done through sending a DELETE request to the instance URI.
+Valid request example (token is user specific):
+
+.. code-block:: http
+
+    DELETE /api/openstack-instances/abceed63b8e844afacd63daeac855474/ HTTP/1.1
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+Only stopped instances or instances in ERRED state can be deleted.
+
+
 Import OpenStack instance
 -------------------------
 

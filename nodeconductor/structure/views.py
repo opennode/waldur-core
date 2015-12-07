@@ -914,7 +914,10 @@ def safe_operation(valid_state=None):
                         raise PermissionDenied(
                             "Only project administrator or staff allowed to perform this action.")
 
-                    if valid_state and resource.state != valid_state:
+                    if not isinstance(valid_state, (list, tuple)):
+                        valid_state = [valid_state]
+
+                    if valid_state and resource.state not in valid_state:
                         raise core_exceptions.IncorrectStateException(message % operation_name)
 
                     # Important! We are passing back the instance from current transaction to a view

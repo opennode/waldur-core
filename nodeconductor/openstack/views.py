@@ -124,6 +124,14 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             ssh_key=serializer.validated_data.get('ssh_public_key'),
             skip_external_ip_assignment=serializer.validated_data['skip_external_ip_assignment'])
 
+    @structure_views.safe_operation(valid_state=(models.Instance.States.OFFLINE, models.Instance.States.ERRED))
+    def destroy(self, request, resource, uuid=None):
+        if resource.backend_id:
+            backend = resource.get_backend()
+            backend.destroy(resource, force=resource.state == models.Instance.States.ERRED)
+        else:
+            self.perform_destroy(resource)
+
     @decorators.detail_route(methods=['post'])
     def assign_floating_ip(self, request, uuid):
         instance = self.get_object()
