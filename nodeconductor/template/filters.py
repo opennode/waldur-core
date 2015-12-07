@@ -8,12 +8,15 @@ from nodeconductor.template import models
 
 
 class ProjectFilter(core_filters.URLFilter):
-    """ Filter template groups by project.
+    """ Filter template groups by project where it can be provisioned.
 
-        Template group is related to project if project is connected
-        to services settings of template group head(first) template.
-        If head template does not have service settings - template group could be related to any project.
+        Template group can be provisioned in a particular project, if services settings
+        of the first template (aka head) are connected to that project.
+
+        If a head template does not have service settings specified, the
+        template group is considered to be OK for provisioning in any project.
     """
+
     def get_project(self, value):
         uuid = self.get_uuid(value)
         try:
