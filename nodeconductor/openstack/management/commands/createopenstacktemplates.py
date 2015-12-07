@@ -84,7 +84,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.NOTICE('\tWrong Application'))
 
         tags = os_tags[os] + app_tags[app]
-        tags.append('type:%s' % (SupportTypes.IAAS if app_names[app] else SupportTypes.PAAS))
+        tags.append('type:%s' % (SupportTypes.PAAS if app_names[app] else SupportTypes.IAAS))
 
         self.stdout.write('\nChoose Project:')
 
