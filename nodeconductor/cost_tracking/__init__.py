@@ -87,7 +87,7 @@ class CostTrackingBackend(object):
         monthly_cost = 0
         for item_type, item_key, item_count in cls.get_used_items(resource):
             try:
-                monthly_cost += resource_prices[(item_type, item_key)] * item_count
+                monthly_cost += resource_prices[(item_type, item_key)] * Decimal(format(item_count, ".15g"))
             except KeyError:
                 logger.error('Can not find price item with key "%s" and type "%s" for resource "%s"',
                              item_key, item_type, resource_content_type.name)
