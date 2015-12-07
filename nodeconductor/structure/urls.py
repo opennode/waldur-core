@@ -28,4 +28,5 @@ urlpatterns = patterns(
     url(r'^customers/(?P<uuid>[a-z0-9]+)/image/$', views.CustomerImageView.as_view(), name='customer_image'),
     url(r'^customers/(?P<uuid>[a-z0-9]+)/counters/$', views.CustomerCountersView.as_view({'get': 'list'}), name='customer_counters'),
     url(r'^projects/(?P<uuid>[a-z0-9]+)/counters/$', views.ProjectCountersView.as_view({'get': 'list'}), name='project_counters'),
+    url(r'^user-counters/$', views.UserCountersView.as_view({'get': 'list'}), name='user_counters'),
 )

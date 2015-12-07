@@ -889,6 +889,44 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
 
+class UserCountersView(CounterMixin, viewsets.GenericViewSet):
+    def list(self, request):
+        """
+        Count number of entities related to current user
+        {
+            "events": 2,
+            "keys": 1,
+            "hooks": 1
+        }
+        """
+        self.request = request
+
+        self.user_uuid = self.request.user.uuid.hex
+        self.user_url = reverse('user-detail', kwargs={'uuid': self.user_uuid})
+
+        self.exclude_features = request.query_params.getlist('exclude_features')
+
+        return Response({
+            'events': self.get_events(),
+            'keys': self.get_keys(),
+            'hooks': self.get_hooks()
+        })
+
+    def get_events(self):
+        return self.get_count('event-list', {
+            'scope': self.user_url,
+            'exclude_features': self.exclude_features
+        })
+
+    def get_keys(self):
+        return self.get_count('sshpublickey-list', {
+            'user_uuid': self.user_uuid
+        })
+
+    def get_hooks(self):
+        return self.get_count('hooks-list', {})
+
+
 class UpdateOnlyByPaidCustomerMixin(object):
     """ Allow modification of entities if their customer's balance is positive. """
 
