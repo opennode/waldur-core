@@ -1,3 +1,4 @@
+import calendar
 import logging
 
 from dateutil.relativedelta import relativedelta
@@ -90,11 +91,6 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
     @classmethod
     def update_price_for_resource(cls, resource, delete=False):
-        # Remove estimates only if resource is being unlinked from NodeConductor
-        is_unlink = getattr(resource, 'PERFORM_UNLINK', False)
-        if delete and not is_unlink:
-            return
-
         try:
             cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)
             monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(resource))
@@ -110,8 +106,9 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             now = timezone.now()
             created = resource.created
 
+            days_in_month = calendar.monthrange(created.year, created.month)[1]
             month_start = created.replace(day=1, hour=0, minute=0, second=0)
-            month_end = month_start.replace(month=month_start.month + 1)
+            month_end = month_start + timezone.timedelta(days=days_in_month)
             seconds_in_month = (month_end - month_start).total_seconds()
             seconds_of_work = (month_end - created).total_seconds()
 

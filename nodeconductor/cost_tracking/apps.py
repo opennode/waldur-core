@@ -54,13 +54,6 @@ class CostTrackingConfig(AppConfig):
                     resource.__name__, index),
             )
 
-            signals.post_delete.connect(
-                handlers.delete_estimate_costs,
-                sender=resource,
-                dispatch_uid='nodeconductor.cost_tracking.handlers.delete_estimate_costs_{}_{}'.format(
-                    resource.__name__, index),
-            )
-
         signals.post_save.connect(
             handlers.change_price_list_items_if_default_was_changed,
             sender=DefaultPriceListItem,
