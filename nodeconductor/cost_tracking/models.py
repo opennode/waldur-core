@@ -90,8 +90,9 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
     @classmethod
     def update_price_for_resource(cls, resource, delete=False):
-        # Do not remove estimates for resource created by NodeConductor
-        if delete and not resource.imported:
+        # Remove estimates only if resource is being unlinked from NodeConductor
+        is_unlink = getattr(resource, 'PERFORM_UNLINK', False)
+        if delete and not is_unlink:
             return
 
         try:
