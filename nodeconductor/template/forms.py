@@ -20,7 +20,7 @@ class TemplateForm(forms.ModelForm):
 
     class Meta:
         model = Template
-        fields = ('order_number', 'project', 'service_settings')
+        fields = ('order_number', 'project', 'service_settings', 'tags')
 
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
@@ -29,6 +29,7 @@ class TemplateForm(forms.ModelForm):
             initial.update(self.deserialize(instance))
         kwargs['initial'] = initial
         super(TemplateForm, self).__init__(*args, **kwargs)
+        self.fields['tags'].required = False
 
     @classmethod
     def get_serializer_class(cls):
@@ -75,4 +76,7 @@ class TemplateForm(forms.ModelForm):
         self.instance.options = self.serialize(self.cleaned_data)
         self.instance.resource_content_type = self.get_resource_content_type()
         self.instance.save()
+        self.instance.tags.clear()
+        for tag in self.cleaned_data.pop('tags', []):
+            self.instance.tags.add(tag)
         return self.instance

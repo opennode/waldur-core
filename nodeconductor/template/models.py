@@ -214,11 +214,6 @@ class Template(core_models.UuidMixin, models.Model):
             raise TemplateActionException(message, details, response.status_code)
         return response
 
-    def clean(self):
-        if self.group.templates.count() < self.order_number:
-            raise ValidationError(
-                {'order_number': 'Template order number cannot be greater than count of templates in group'})
-
     def __str__(self):
         return "%s -> %s" % (self.group.name, self.resource_content_type)
 
