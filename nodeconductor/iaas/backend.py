@@ -1829,7 +1829,7 @@ class OpenStackBackend(OpenStackClient):
             logger.info('Trying to update name for tenant with id %s', membership.tenant_id)
             try:
                 keystone.tenants.update(membership.tenant_id, name=tenant_name)
-                logger.info("Successfully updated name for tenant with id %s. New tenant's name is %s",
+                logger.info("Successfully updated name for tenant with id %s. Tenant's new name is %s",
                             membership.tenant_id, tenant_name)
             except keystone_exceptions.NotFound as e:
                 logger.warning('Tenant with id %s does not exist', membership.tenant_id)
