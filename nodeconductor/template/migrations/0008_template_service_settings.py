@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
+import django.core.validators
 
 
 class Migration(migrations.Migration):
@@ -16,6 +17,12 @@ class Migration(migrations.Migration):
             model_name='template',
             name='service_settings',
             field=models.ForeignKey(related_name='templates', to='structure.ServiceSettings', null=True),
+            preserve_default=True,
+        ),
+        migrations.AlterField(
+            model_name='template',
+            name='order_number',
+            field=models.PositiveSmallIntegerField(default=1, help_text=b'Templates in group are sorted by order number. Template with smaller order number will be executed first.', validators=[django.core.validators.MinValueValidator(1)]),
             preserve_default=True,
         ),
     ]

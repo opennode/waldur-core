@@ -3,6 +3,8 @@ import json
 from celery import chain
 from django import template as django_template
 from django.contrib.contenttypes.models import ContentType
+from django.core import validators
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from jsonfield import JSONField
@@ -125,8 +127,10 @@ class Template(core_models.UuidMixin, models.Model):
     resource_content_type = models.ForeignKey(
         ContentType, help_text='Content type of resource which provision process is described in template.')
     order_number = models.PositiveSmallIntegerField(
-        default=1, help_text='Templates in group are sorted by order number. '
-                             'Template with smaller order number will be executed first.')
+        default=1,
+        help_text='Templates in group are sorted by order number. '
+                  'Template with smaller order number will be executed first.',
+        validators=[validators.MinValueValidator(1)])
     use_previous_resource_project = models.BooleanField(
         default=False, help_text='If True and project is not defined in template - current resource will use the same '
                                  'project as previous created.')
@@ -209,6 +213,11 @@ class Template(core_models.UuidMixin, models.Model):
                       response.request.url, response.status_code, response.content)
             raise TemplateActionException(message, details, response.status_code)
         return response
+
+    def clean(self):
+        if self.group.templates.count() < self.order_number:
+            raise ValidationError(
+                {'order_number': 'Template order number cannot be greater than count of templates in group'})
 
     def __str__(self):
         return "%s -> %s" % (self.group.name, self.resource_content_type)
