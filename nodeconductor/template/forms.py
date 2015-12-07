@@ -10,13 +10,17 @@ class TemplateForm(forms.ModelForm):
 
         Form will use registered serializer to serialize options and store them in template.
     """
+    service_settings = forms.ModelChoiceField(
+        label="Service settings",
+        queryset=structure_models.ServiceSettings.objects.all(),
+        required=False)
     project = forms.ModelChoiceField(label="Project", queryset=structure_models.Project.objects.all(), required=False)
     use_previous_resource_project = forms.BooleanField(
         label='Use project of the previous resource', initial=False, required=False)
 
     class Meta:
         model = Template
-        fields = ('order_number', 'project', )
+        fields = ('order_number', 'project', 'service_settings')
 
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
@@ -44,7 +48,6 @@ class TemplateForm(forms.ModelForm):
         """ Serialize form data for provision request """
         serializer_class = self.get_serializer_class()
         serializer = serializer_class(context={'request': self.request})
-        print serializer.to_representation(data).items()
         return {k: v for k, v in serializer.to_representation(data).items() if v}
 
     def deserialize(self, template):
@@ -62,20 +65,14 @@ class TemplateForm(forms.ModelForm):
 
     def save(self, **kwargs):
         """ Serialize form data with template serializer and save serialized data into template """
-        group = self.cleaned_data.pop('group')
-        order_number = self.cleaned_data.pop('order_number')
-        use_previous_resource_project = self.cleaned_data.pop('use_previous_resource_project')
-        options = self.serialize(self.cleaned_data)
-        if self.instance.id is not None:
-            self.instance.options = options
-            self.instance.order_number = order_number
-            self.instance.use_previous_resource_project = use_previous_resource_project
-            self.instance.save()
-            return self.instance
-
-        return Template.objects.create(
-            group=group,
-            options=options,
-            order_number=order_number,
-            use_previous_resource_project=use_previous_resource_project,
-            resource_content_type=self.get_resource_content_type())
+        self.instance.group = self.cleaned_data.pop('group')
+        self.instance.order_number = self.cleaned_data.pop('order_number')
+        self.instance.use_previous_resource_project = self.cleaned_data.pop('use_previous_resource_project')
+        if self.cleaned_data.get('service'):
+            self.instance.service_settings = self.cleaned_data['service'].settings
+        if self.cleaned_data.get('service_settings'):
+            self.instance.service_settings = self.cleaned_data['service_settings']
+        self.instance.options = self.serialize(self.cleaned_data)
+        self.instance.resource_content_type = self.get_resource_content_type()
+        self.instance.save()
+        return self.instance

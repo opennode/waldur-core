@@ -13,6 +13,7 @@ from rest_framework.authtoken.models import Token
 from taggit.managers import TaggableManager
 
 from nodeconductor.core import models as core_models
+from nodeconductor.structure import models as structure_models
 
 
 @python_2_unicode_compatible
@@ -120,6 +121,7 @@ class Template(core_models.UuidMixin, models.Model):
     group = models.ForeignKey(TemplateGroup, related_name='templates')
     options = JSONField(default={}, help_text='Default options for resource provision request.')
     tags = TaggableManager()
+    service_settings = models.ForeignKey(structure_models.ServiceSettings, related_name='templates', null=True)
     resource_content_type = models.ForeignKey(
         ContentType, help_text='Content type of resource which provision process is described in template.')
     order_number = models.PositiveSmallIntegerField(

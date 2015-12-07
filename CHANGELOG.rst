@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-<nothing yet>
+ - Add project filter to template groups
 
 Release 0.82.0
 --------------
