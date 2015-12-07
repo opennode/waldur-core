@@ -727,7 +727,17 @@ class ServicesViewSet(BaseSummaryView):
         return SupportedServices.get_services(request).values()
 
 
-class CustomerCountersView(viewsets.GenericViewSet):
+class CounterMixin(object):
+    def get_count(self, url, params):
+        response = request_api(self.request, url, method='HEAD', params=params)
+        if response.success:
+            return response.total
+        else:
+            logger.warning('Unable to execute API request with URL %s and error %s', url, response.data)
+        return 0
+
+
+class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
     queryset = models.Customer.objects.all()
     lookup_field = 'uuid'
 
@@ -803,14 +813,8 @@ class CustomerCountersView(viewsets.GenericViewSet):
             'shared': self.shared
         })
 
-    def get_count(self, url, params):
-        response = request_api(self.request, url, method='HEAD', params=params)
-        if response.success:
-            return response.total
-        return 0
 
-
-class ProjectCountersView(viewsets.GenericViewSet):
+class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
     queryset = models.Project.objects.all()
     lookup_field = 'uuid'
 
@@ -883,12 +887,6 @@ class ProjectCountersView(viewsets.GenericViewSet):
         return self.get_count('premium-support-contract-list', {
             'project_uuid': self.project_uuid
         })
-
-    def get_count(self, url, params):
-        response = request_api(self.request, url, method='HEAD', params=params)
-        if response.success:
-            return response.total
-        return 0
 
 
 class UpdateOnlyByPaidCustomerMixin(object):
