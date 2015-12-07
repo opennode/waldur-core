@@ -14,7 +14,7 @@ from django.contrib.contenttypes.models import ContentType
 from nodeconductor.backup.models import BackupSchedule
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.openstack import models
-from nodeconductor.openstack.cost_tracking import ApplicationTypes, OsTypes, SupportTypes
+from nodeconductor.openstack.cost_tracking import Types
 from nodeconductor.structure.models import Project
 from nodeconductor.template.models import TemplateGroup, Template
 
@@ -41,15 +41,20 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING('\nStep 1: Configure OpenStack Instance'))
         self.stdout.write('\nChoose OS:')
 
+        make_tag = lambda a, b: '{}:{}'.format(a, b)
+
         start = 1
         os_tags = {}
         os_names = {}
-        types = dict(OsTypes.CHOICES)
-        for group, ctypes in OsTypes.CATEGORIES.items():
+        types = dict(Types.Os.CHOICES)
+        for group, ctypes in Types.Os.CATEGORIES.items():
             choices = []
             for idx, key in enumerate(ctypes, start):
                 choices.append('\t[%d] %s' % (idx, types[key]))
-                os_tags[str(idx)] = ['os:%s' % key, 'os_family:%s' % group.lower()]
+                os_tags[str(idx)] = [
+                    make_tag(Types.PriceItems.LICENSE_OS, key),
+                    make_tag('os-family', group.lower()),
+                ]
                 os_names[str(idx)] = types[key].replace(' ', '')
 
             self.stdout.write(group)
@@ -65,13 +70,13 @@ class Command(BaseCommand):
 
         self.stdout.write('\nChoose Application:')
 
-        apps = dict(ApplicationTypes.CHOICES)
+        apps = dict(Types.Applications.CHOICES)
         app_tags = {'None': []}
         app_names = {'None': ''}
         choices = []
         for idx, key in enumerate(apps.keys(), start=1):
             choices.append('\t[%d] %s' % (idx, apps[key]))
-            app_tags[str(idx)] = ['license:%s' % key]
+            app_tags[str(idx)] = [make_tag(Types.PriceItems.LICENSE_APPLICATION, key)]
             app_names[str(idx)] = apps[key]
 
         self.stdout.write(''.join(choices))
@@ -84,7 +89,9 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.NOTICE('\tWrong Application'))
 
         tags = os_tags[os] + app_tags[app]
-        tags.append('type:%s' % (SupportTypes.PAAS if app_names[app] else SupportTypes.IAAS))
+        tags.append(make_tag(
+            Types.PriceItems.SUPPORT,
+            Types.Support.PREMIUM if app_names[app] else Types.Support.BASIC))
 
         self.stdout.write('\nChoose Project:')
 

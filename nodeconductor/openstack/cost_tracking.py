@@ -6,7 +6,7 @@ from nodeconductor.cost_tracking.models import DefaultPriceListItem
 from nodeconductor.openstack import models
 
 
-class PriceItemTypes(object):
+class PriceItemTypes:
     FLAVOR = 'flavor'
     STORAGE = 'storage'
     LICENSE_APPLICATION = 'license-application'
@@ -22,7 +22,7 @@ class PriceItemTypes(object):
     )
 
 
-class OsTypes(object):
+class OsTypes:
     CENTOS6 = 'centos6'
     CENTOS7 = 'centos7'
     UBUNTU = 'ubuntu'
@@ -50,7 +50,7 @@ class OsTypes(object):
     ])
 
 
-class ApplicationTypes(object):
+class ApplicationTypes:
     WORDPRESS = 'wordpress'
     POSTGRESQL = 'postgresql'
     ZIMBRA = 'zimbra'
@@ -62,7 +62,7 @@ class ApplicationTypes(object):
     )
 
 
-class SupportTypes(object):
+class SupportTypes:
     BASIC = 'basic'
     PREMIUM = 'premium'
 
@@ -71,13 +71,12 @@ class SupportTypes(object):
         (PREMIUM, 'Premium'),
     )
 
-    IAAS = 'IaaS'
-    PAAS = 'PaaS'
 
-    MAPPING = {
-        IAAS: BASIC,
-        PAAS: PREMIUM,
-    }
+class Types:
+    PriceItems = PriceItemTypes
+    Applications = ApplicationTypes
+    Support = SupportTypes
+    Os = OsTypes
 
 
 class OpenStackCostTrackingBackend(CostTrackingBackend):
@@ -116,24 +115,27 @@ class OpenStackCostTrackingBackend(CostTrackingBackend):
     @classmethod
     def get_used_items(cls, resource):
         items = []
+        tags = [t.name for t in resource.tags.all()]
+        get_tag = lambda name: [t.split(':')[1] for t in tags if t.startswith('%s:' % name)][0]
 
         # flavor
         if resource.state == resource.States.ONLINE and resource.flavor_name:
             items.append((PriceItemTypes.FLAVOR, resource.flavor_name, 1))
 
         # OS
-        os_type = resource.os
+        os_type = get_tag(PriceItemTypes.LICENSE_OS)
         if os_type:
             items.append((PriceItemTypes.LICENSE_OS, os_type, 1))
 
         # application
-        app_type = resource.license
+        app_type = get_tag(PriceItemTypes.LICENSE_APPLICATION)
         if app_type:
             items.append((PriceItemTypes.LICENSE_APPLICATION, app_type, 1))
 
-        application = resource.template.application_type
-        if application:
-            items.append((PriceItemTypes.LICENSE_APPLICATION, application.slug, 1))
+        # support
+        support = get_tag(PriceItemTypes.SUPPORT)
+        if support:
+            items.append((PriceItemTypes.SUPPORT, support, 1))
 
         # storage
         storage_size = resource.data_volume_size
@@ -141,10 +143,4 @@ class OpenStackCostTrackingBackend(CostTrackingBackend):
                             b.metadata['data_snapshot_size'] for b in resource.backups.get_active())
         items.append((PriceItemTypes.STORAGE, cls.STORAGE_KEY, storage_size))
 
-        # support
-        support = resource.type
-        if support:
-            items.append((PriceItemTypes.SUPPORT, SupportTypes.MAPPING[support], 1))
-
         return items
-

@@ -168,22 +168,6 @@ class Instance(structure_models.Resource,
 
     tracker = FieldTracker()
 
-    def _get_tag(self, name):
-        tag = self.tags.filter(name__startswith="%s:" % name).first()
-        return tag.name.split(':')[1] if tag else None
-
-    @property
-    def license(self):
-        return self._get_tag('license')
-
-    @property
-    def type(self):
-        return self._get_tag('type')
-
-    @property
-    def os(self):
-        return self._get_tag('os')
-
     @property
     def cloud_project_membership(self):
         # Temporary backward compatibility
