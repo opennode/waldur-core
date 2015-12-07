@@ -800,33 +800,6 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
         self.backend = OpenStackBackend()
 
     # get_or_create_tenant tests
-    def test_get_or_create_tenant_creates_tenant_with_proper_arguments(self):
-        created_tenant = object()
-
-        self.keystone_client.tenants.create.return_value = created_tenant
-        tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
-
-        self.keystone_client.tenants.create.assert_called_once_with(
-            tenant_name='project_name-a739',
-            description='project_description',
-        )
-
-        self.assertEquals(tenant, created_tenant, 'Created tenant not returned')
-
-    def test_get_or_create_tenant_looks_up_existing_tenant_if_creation_fails_due_to_conflict(self):
-        existing_tenant = object()
-
-        self.keystone_client.tenants.create.side_effect = keystone_exceptions.Conflict
-        self.keystone_client.tenants.find.return_value = existing_tenant
-
-        tenant = self.backend.get_or_create_tenant(self.membership, self.keystone_client)
-
-        self.keystone_client.tenants.find.assert_called_once_with(
-            name='project_name-a739',
-        )
-
-        self.assertEquals(tenant, existing_tenant, 'Looked up tenant not returned')
-
     def test_get_or_create_tenant_raises_if_both_creation_and_lookup_failed(self):
         self.keystone_client.tenants.create.side_effect = keystone_exceptions.Conflict
         self.keystone_client.tenants.find.side_effect = keystone_exceptions.NotFound
