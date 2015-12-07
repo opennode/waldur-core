@@ -914,7 +914,10 @@ def safe_operation(valid_state=None):
                         raise PermissionDenied(
                             "Only project administrator or staff allowed to perform this action.")
 
-                    if valid_state and resource.state != valid_state:
+                    if not isinstance(valid_state, (list, tuple)):
+                        valid_state = [valid_state]
+
+                    if valid_state and resource.state not in valid_state:
                         raise core_exceptions.IncorrectStateException(message % operation_name)
 
                     # Important! We are passing back the instance from current transaction to a view
@@ -1009,20 +1012,23 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def perform_provision(self, serializer):
         raise NotImplementedError
 
-    def perform_managed_resource_destroy(self, resource):
+    def perform_managed_resource_destroy(self, resource, force=False):
         if resource.backend_id:
             backend = resource.get_backend()
-            backend.destroy(resource)
+            backend.destroy(resource, force=force)
         else:
             self.perform_destroy(resource)
 
-    @safe_operation(valid_state=models.Resource.States.OFFLINE)
+    @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
     def destroy(self, request, resource, uuid=None):
-        self.perform_managed_resource_destroy(resource)
+        self.perform_managed_resource_destroy(
+            resource, force=resource.state == models.Resource.States.ERRED)
 
     @detail_route(methods=['post'])
     @safe_operation()
     def unlink(self, request, resource, uuid=None):
+        # XXX: add special attribute to an instance in order to be tracked by signal handler
+        setattr(resource, 'PERFORM_UNLINK', True)
         self.perform_destroy(resource)
 
     @detail_route(methods=['post'])
