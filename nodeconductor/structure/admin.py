@@ -284,11 +284,16 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     sync.short_description = "Sync selected service settings with backend"
 
     def recover(self, request, queryset):
+        selected_settings = queryset.count()
         queryset = queryset.filter(state=SynchronizationStates.ERRED)
         service_uuids = list(queryset.values_list('uuid', flat=True))
         send_task('structure', 'recover_service_settings')(service_uuids)
 
         tasks_scheduled = queryset.count()
+        if selected_settings != tasks_scheduled:
+            message = 'Only erred service settings can be recovered'
+            self.message_user(request, message, level=messages.WARNING)
+
         message = ungettext(
             'One service settings record scheduled for recover',
             '%(tasks_scheduled)d service settings records scheduled for recover',
