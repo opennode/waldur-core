@@ -1027,6 +1027,8 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     @detail_route(methods=['post'])
     @safe_operation()
     def unlink(self, request, resource, uuid=None):
+        # XXX: add special attribute to an instance in order to be tracked by signal handler
+        setattr(resource, 'PERFORM_UNLINK', True)
         self.perform_destroy(resource)
 
     @detail_route(methods=['post'])
