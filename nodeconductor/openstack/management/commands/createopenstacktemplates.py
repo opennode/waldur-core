@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 import json
 import socket
 
-from croniter import croniter
 from collections import OrderedDict
+from croniter import croniter
 from datetime import datetime
 from dateutil.tz import tzlocal
 from django.core.management.base import BaseCommand
@@ -14,17 +14,9 @@ from django.contrib.contenttypes.models import ContentType
 from nodeconductor.backup.models import BackupSchedule
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.openstack import models
+from nodeconductor.openstack.cost_tracking import ApplicationTypes, OsTypes, SupportTypes
 from nodeconductor.structure.models import Project
 from nodeconductor.template.models import TemplateGroup, Template
-
-
-class Types:
-    App = ['PostgreSQL', 'WordPress', 'Zimbra']
-    Os = OrderedDict([
-        ('Linux', ['Centos 6', 'Centos 7', 'RedHat 6', 'RedHat 7', 'Ubuntu']),
-        ('Windows', ['Windows']),
-        ('Other', ['FreeBSD', 'Other']),
-    ])
 
 
 class Command(BaseCommand):
@@ -52,16 +44,17 @@ class Command(BaseCommand):
         start = 1
         os_tags = {}
         os_names = {}
-        for group, types in Types.Os.items():
+        types = dict(OsTypes.CHOICES)
+        for group, ctypes in OsTypes.CATEGORIES.items():
             choices = []
-            for idx, val in enumerate(types, start):
-                choices.append('\t[%d] %s' % (idx, val))
-                os_tags[str(idx)] = ['os:%s' % val.replace(' ', '').lower(), 'os_family:%s' % group.lower()]
-                os_names[str(idx)] = val.replace(' ', '')
+            for idx, key in enumerate(ctypes, start):
+                choices.append('\t[%d] %s' % (idx, types[key]))
+                os_tags[str(idx)] = ['os:%s' % key, 'os_family:%s' % group.lower()]
+                os_names[str(idx)] = types[key].replace(' ', '')
 
             self.stdout.write(group)
             self.stdout.write(''.join(choices))
-            start += len(types)
+            start += len(ctypes)
 
         while True:
             os = (raw_input(self.style.WARNING('Desired OS [1]: ')) or '1')
@@ -72,13 +65,14 @@ class Command(BaseCommand):
 
         self.stdout.write('\nChoose Application:')
 
+        apps = dict(ApplicationTypes.CHOICES)
         app_tags = {'None': []}
         app_names = {'None': ''}
         choices = []
-        for idx, val in enumerate(Types.App, start=1):
-            choices.append('\t[%d] %s' % (idx, val))
-            app_tags[str(idx)] = ['application:%s' % val.lower()]
-            app_names[str(idx)] = val
+        for idx, key in enumerate(apps.keys(), start=1):
+            choices.append('\t[%d] %s' % (idx, apps[key]))
+            app_tags[str(idx)] = ['license:%s' % key]
+            app_names[str(idx)] = apps[key]
 
         self.stdout.write(''.join(choices))
 
@@ -90,16 +84,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.NOTICE('\tWrong Application'))
 
         tags = os_tags[os] + app_tags[app]
-        tags.append('type:%s' % ('PaaS' if app_names[app] else 'IaaS'))
-
-        while True:
-            license = (raw_input(self.style.WARNING('Add license []: ')) or '')
-            if license:
-                tag = 'license:%s' % license.replace(' ', '').lower()
-                if tag not in tags:
-                    tags.append(tag)
-            else:
-                break
+        tags.append('type:%s' % (SupportTypes.IAAS if app_names[app] else SupportTypes.PAAS))
 
         self.stdout.write('\nChoose Project:')
 
