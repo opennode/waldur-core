@@ -66,3 +66,9 @@ class BaseTemplateSerializer(serializers.Serializer):
         lookup_field='uuid',
         required=False,
     )
+    service_settings = serializers.HyperlinkedRelatedField(
+        view_name='servicesettings-detail',
+        queryset=structure_models.ServiceSettings.objects.all(),
+        lookup_field='uuid',
+        required=False,
+    )
