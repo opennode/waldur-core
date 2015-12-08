@@ -174,7 +174,7 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
         unique_together = ('key', 'content_type', 'object_id')
 
 
-# XXX: this model has to be moved to OpenStack application
+# XXX: remove it when iaas app is gone
 @python_2_unicode_compatible
 class ApplicationType(core_models.NameMixin, models.Model):
     slug = models.CharField(max_length=150, unique=True)

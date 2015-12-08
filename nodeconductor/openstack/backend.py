@@ -143,6 +143,7 @@ class OpenStackBackend(ServiceBackend):
             instance.key_name = ssh_key.name
             instance.key_fingerprint = ssh_key.fingerprint
 
+        instance.flavor_name = flavor.name
         instance.cores = flavor.cores
         instance.ram = flavor.ram
         instance.disk = instance.system_volume_size + instance.data_volume_size

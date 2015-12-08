@@ -832,7 +832,7 @@ class Resource(core_models.UuidMixin,
 
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
-    tags = TaggableManager(related_name='+')
+    tags = TaggableManager(related_name='+', blank=True)
 
     start_time = models.DateTimeField(blank=True, null=True)
     state = FSMIntegerField(
