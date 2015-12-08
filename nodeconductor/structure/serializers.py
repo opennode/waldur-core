@@ -164,10 +164,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
     )
 
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
-    # These fields exist for backward compatibility
-    resource_quota = serializers.SerializerMethodField('get_resource_quotas')
-    resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
-
     services = serializers.SerializerMethodField()
     app_count = serializers.SerializerMethodField()
     vm_count = serializers.SerializerMethodField()
@@ -182,7 +178,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'description',
             'quotas',
             'services',
-            'resource_quota', 'resource_quota_usage',
             'created',
             'app_count', 'vm_count'
         )
@@ -201,51 +196,19 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
         return project
 
-    @lru_cache(maxsize=1)
-    def get_quotas_map(self):
-        query = {
-            'content_type': ContentType.objects.get_for_model(models.Project),
-            'name__in': ['ram', 'storage', 'max_instances', 'vcpu']
-        }
-        if isinstance(self.instance, list):
-            query['object_id__in'] = [instance.id for instance in self.instance]
-        else:
-            query['object_id'] = self.instance.id
-
-        quotas = Quota.objects.filter(**query)
-        limits = defaultdict(dict)
-        usages = defaultdict(dict)
-
-        for quota in quotas:
-            limits[quota.object_id][quota.name] = quota.limit
-            usages[quota.object_id][quota.name.replace('_usage', '')] = quota.usage
-
-        return {
-            'limits': limits,
-            'usages': usages
-        }
-
-    def get_resource_quotas(self, project):
-        return self.get_quotas_map()['limits'][project.pk]
-
-    def get_resource_quotas_usage(self, project):
-        return self.get_quotas_map()['usages'][project.pk]
-
     def get_filtered_field_names(self):
         return 'customer',
 
     def get_app_count(self, project):
         if 'app_count' not in self.context:
-            app_models = [model for model in SupportedServices.get_resource_models().values()
-                          if not issubclass(model, models.VirtualMachineMixin)]
+            app_models = models.Resource.get_app_models()
             self.context['app_count'] = self.get_resources_count(app_models)
 
         return self.context['app_count'][project.pk]
 
     def get_vm_count(self,  project):
         if 'vm_count' not in self.context:
-            vm_models = [model for model in SupportedServices.get_resource_models().values()
-                         if issubclass(model, models.VirtualMachineMixin)]
+            vm_models = models.Resource.get_vm_models()
             self.context['vm_count'] = self.get_resources_count(vm_models)
 
         return self.context['vm_count'][project.pk]
@@ -1153,6 +1116,8 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     created = serializers.DateTimeField(read_only=True)
     resource_type = serializers.SerializerMethodField()
 
+    tags = serializers.SerializerMethodField()
+
     class Meta(object):
         model = NotImplemented
         view_name = NotImplemented
@@ -1161,7 +1126,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'service', 'service_name', 'service_uuid',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'project_groups', 'error_message',
+            'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link',
         )
         protected_fields = ('service', 'service_project_link')
@@ -1175,6 +1140,9 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_resource_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
+
+    def get_tags(self, obj):
+        return [t.name for t in obj.tags.all()]
 
     def to_representation(self, instance):
         # We need this hook, because ips have to be represented as list

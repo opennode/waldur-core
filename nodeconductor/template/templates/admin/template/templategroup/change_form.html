@@ -8,5 +8,12 @@
         referenced in the template using the following method:
         <code>{% templatetag openvariable %} response.field {% templatetag closevariable %}</code> </p>
     </div>
+    {% if change %}
+        {% if not adminform.form.instance.get_head_template or adminform.form.instance.get_head_template.order_number != 1 %}
+        <div><strong>Error! Template group should have template with order number 1 to work properly.</strong></div>
+        {% endif %}
+    {% else %}
+        <div><strong>Notice! Template group will work properly only if template with order number 1 is defined</strong></div>
+    {% endif %}
 </div>
 {% endblock %}

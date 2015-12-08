@@ -3,6 +3,7 @@ from django.contrib.contenttypes import models as ct_models
 from django.db import models, transaction
 from django.db.models import Sum
 from django.utils.encoding import python_2_unicode_compatible
+from model_utils import FieldTracker
 
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import exceptions, managers
@@ -29,6 +30,7 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     scope = ct_fields.GenericForeignKey('content_type', 'object_id')
 
     objects = managers.QuotaManager('scope')
+    tracker = FieldTracker()
 
     def is_exceeded(self, delta=None, threshold=None):
         """

@@ -2253,14 +2253,21 @@ class OpenStackBackend(OpenStackClient):
         return ''.join([c for c in project.name if ord(c) < 128])
 
     def get_tenant_name(self, membership):
-        return '%(project_name)s-%(project_uuid)s' % {
-            'project_name': self._get_project_ascii_name(membership.project)[:15],
-            'project_uuid': membership.project.uuid.hex[:4]
-        }
+        return 'nc-{0}'.format(membership.project.uuid.hex)
 
     def get_tenant_internal_network_name(self, membership):
-        tenant_name = self.get_tenant_name(membership)
-        return '{0}-int-net'.format(tenant_name)
+        return 'nc-{0}'.format(membership.project.uuid.hex)
+
+    # TODO: Use human-readable names, but make sure that OpenStack will not create new tenant on project rename. (NC-985)
+    # def get_tenant_name(self, membership):
+    #     return '%(project_name)s-%(project_uuid)s' % {
+    #         'project_name': self._get_project_ascii_name(membership.project)[:15],
+    #         'project_uuid': membership.project.uuid.hex[:4]
+    #     }
+
+    # def get_tenant_internal_network_name(self, membership):
+    #     tenant_name = self.get_tenant_name(membership)
+    #     return '{0}-int-net'.format(tenant_name)
 
     def create_backend_name(self):
         return 'nc-{0}'.format(uuid.uuid4().hex)

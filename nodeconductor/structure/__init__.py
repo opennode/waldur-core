@@ -319,7 +319,10 @@ class SupportedServices(object):
 
     @classmethod
     def get_name_for_type(cls, service_type):
-        return cls._registry[service_type]['name']
+        try:
+            return cls._registry[service_type]['name']
+        except KeyError:
+            return service_type
 
 
 class ServiceBackendError(Exception):
@@ -355,7 +358,7 @@ class ServiceBackend(object):
     def provision(self, resource, *args, **kwargs):
         raise ServiceBackendNotImplemented
 
-    def destroy(self, resource):
+    def destroy(self, resource, force=False):
         raise ServiceBackendNotImplemented
 
     def stop(self, resource):

@@ -238,7 +238,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
     list_filter = (ServiceTypeFilter, 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
-    actions = ['sync']
+    actions = ['sync', 'recover']
     form = ServiceSettingsAdminForm
 
     def get_type_display(self, obj):
@@ -282,6 +282,27 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         self.message_user(request, message)
 
     sync.short_description = "Sync selected service settings with backend"
+
+    def recover(self, request, queryset):
+        selected_settings = queryset.count()
+        queryset = queryset.filter(state=SynchronizationStates.ERRED)
+        service_uuids = list(queryset.values_list('uuid', flat=True))
+        send_task('structure', 'recover_service_settings')(service_uuids)
+
+        tasks_scheduled = queryset.count()
+        if selected_settings != tasks_scheduled:
+            message = 'Only erred service settings can be recovered'
+            self.message_user(request, message, level=messages.WARNING)
+
+        message = ungettext(
+            'One service settings record scheduled for recover',
+            '%(tasks_scheduled)d service settings records scheduled for recover',
+            tasks_scheduled)
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    recover.short_description = "Recover selected service settings"
 
 
 class ServiceAdmin(admin.ModelAdmin):

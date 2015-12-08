@@ -13,6 +13,7 @@ from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
+from taggit.managers import TaggableManager
 from model_utils.fields import AutoCreatedField
 from model_utils.models import TimeStampedModel
 from model_utils import FieldTracker
@@ -814,6 +815,7 @@ class Resource(core_models.UuidMixin,
 
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
+    tags = TaggableManager(related_name='+')
 
     start_time = models.DateTimeField(blank=True, null=True)
     state = FSMIntegerField(
@@ -833,6 +835,18 @@ class Resource(core_models.UuidMixin,
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_vm_models(cls):
+        return [resource for resource in cls.get_all_models()
+                if issubclass(resource, VirtualMachineMixin)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_app_models(cls):
+        return [resource for resource in cls.get_all_models()
+                if not issubclass(resource, VirtualMachineMixin)]
 
     @classmethod
     @lru_cache(maxsize=1)
