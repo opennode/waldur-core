@@ -164,6 +164,8 @@ class Instance(structure_models.Resource,
     data_volume_size = models.PositiveIntegerField(
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
 
+    flavor_name = models.CharField(max_length=255, blank=True)
+
     tracker = FieldTracker()
 
     @property

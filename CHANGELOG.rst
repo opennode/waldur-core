@@ -5,6 +5,11 @@ Release NEXT
 ------------
 <Nothing yet>
 
+
+Release 0.83.1
+--------------
+- Fix dependencies.
+
 Release 0.83.0
 --------------
 - Added project filter to template groups.
