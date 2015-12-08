@@ -69,10 +69,6 @@ class Cloud(core_models.UuidMixin, core_models.NameMixin, LoggableMixin,
     projects = models.ManyToManyField(
         structure_models.Project, related_name='clouds', through='CloudProjectMembership')
 
-    # Emulate backend operations for dummy clouds
-    # See nodeconductor.iaas.backend.dummy.KeystoneClient for test credentials
-    dummy = models.BooleanField(default=False)
-
     # OpenStack backend specific fields
     # Consider replacing it with credentials FK
     auth_url = models.CharField(max_length=200, help_text='Keystone endpoint url',
@@ -81,12 +77,16 @@ class Cloud(core_models.UuidMixin, core_models.NameMixin, LoggableMixin,
     def get_backend(self):
         # TODO: Support different clouds instead of hard-coding
         # Importing here to avoid circular imports hell
-        from nodeconductor.iaas.backend.openstack import OpenStackBackend
+        from nodeconductor.iaas.backend import OpenStackBackend
 
-        return OpenStackBackend(dummy=self.dummy)
+        return OpenStackBackend()
 
     def get_statistics(self):
         return {s.key: s.value for s in self.stats.all()}
+
+    @classmethod
+    def get_url_name(cls):
+        return 'cloud'
 
     def __str__(self):
         return self.name

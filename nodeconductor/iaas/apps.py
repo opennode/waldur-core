@@ -6,13 +6,15 @@ from django.db.models import signals
 from nodeconductor.core import handlers as core_handlers
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import CostTrackingRegister
+from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.models import Project
 from nodeconductor.quotas import handlers as quotas_handlers
 
 
 class IaasConfig(AppConfig):
     name = 'nodeconductor.iaas'
-    verbose_name = "NodeConductor IaaS"
+    verbose_name = 'NodeConductor IaaS'
+    service_name = 'IaaS'
 
     # See, https://docs.djangoproject.com/en/1.7/ref/applications/#django.apps.AppConfig.ready
     def ready(self):
@@ -24,6 +26,11 @@ class IaasConfig(AppConfig):
         from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
 
         CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
+
+        from nodeconductor.iaas.backend import OpenStackBackend
+        SupportedServices.register_backend(OpenStackBackend)
+        SupportedServices.register_service(Cloud)
+        SupportedServices.register_resource(Instance)
 
         pre_serializer_fields.connect(
             handlers.add_clouds_to_related_model,

@@ -52,6 +52,7 @@ Filtering of services list is supported through HTTP query parameters, the follo
 - ?name - case insensitive matching of a service name
 - ?customer=<customer uuid>
 - ?project_uuid=<project uuid>
+- ?shared=<True|False>
 
 Sorting can be done by specifying field name as a parameter to **?o=<field_name>**
 

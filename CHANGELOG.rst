@@ -3,7 +3,14 @@ CHANGELOG
 
 Release NEXT
 ------------
-<nothing yet>
+<Nothing yet>
+
+Release 0.83.0
+--------------
+- Added project filter to template groups.
+- Added recovery transition from ERRED to SYNCING state for services.
+- Cleanup dummy backends.
+- Bugfixes.
 
 Release 0.82.0
 --------------

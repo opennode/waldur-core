@@ -207,14 +207,17 @@ class URLFilter(django_filters.CharFilter):
         self.view_name = view_name
         self.lookup_field = lookup_field
 
-    def filter(self, qs, value):
+    def get_uuid(self, value):
         uuid = ''
         path = urlparse(value).path
         if path.startswith('/'):
             match = resolve(path)
             if match.url_name == self.view_name:
                 uuid = match.kwargs.get(self.lookup_field)
+        return uuid
 
+    def filter(self, qs, value):
+        uuid = self.get_uuid(value)
         return super(URLFilter, self).filter(qs, uuid)
 
 

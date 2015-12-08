@@ -1,14 +1,15 @@
 from django.contrib import admin, messages
+from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import models as django_models
-from django.forms import ModelForm, ModelMultipleChoiceField
+from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
 
 from nodeconductor.core.models import SynchronizationStates, User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models
+from nodeconductor.structure import models, SupportedServices
 
 
 class ChangeReadonlyMixin(object):
@@ -212,12 +213,37 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
     change_readonly_fields = ['customer']
 
 
+class ServiceSettingsAdminForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
+        self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices())
+
+
+class ServiceTypeFilter(SimpleListFilter):
+    title = 'type'
+    parameter_name = 'type'
+
+    def lookups(self, request, model_admin):
+        return SupportedServices.get_choices()
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(type=self.value())
+        else:
+            return queryset
+
+
 class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'customer', 'type', 'shared', 'state', 'error_message')
-    list_filter = ('type', 'state', 'shared')
+    list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
+    list_filter = (ServiceTypeFilter, 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
-    actions = ['sync']
+    actions = ['sync', 'recover']
+    form = ServiceSettingsAdminForm
+
+    def get_type_display(self, obj):
+        return obj.get_type_display()
+    get_type_display.short_description = 'Type'
 
     def add_view(self, *args, **kwargs):
         self.exclude = getattr(self, 'add_exclude', ())
@@ -256,6 +282,27 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         self.message_user(request, message)
 
     sync.short_description = "Sync selected service settings with backend"
+
+    def recover(self, request, queryset):
+        selected_settings = queryset.count()
+        queryset = queryset.filter(state=SynchronizationStates.ERRED)
+        service_uuids = list(queryset.values_list('uuid', flat=True))
+        send_task('structure', 'recover_service_settings')(service_uuids)
+
+        tasks_scheduled = queryset.count()
+        if selected_settings != tasks_scheduled:
+            message = 'Only erred service settings can be recovered'
+            self.message_user(request, message, level=messages.WARNING)
+
+        message = ungettext(
+            'One service settings record scheduled for recover',
+            '%(tasks_scheduled)d service settings records scheduled for recover',
+            tasks_scheduled)
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    recover.short_description = "Recover selected service settings"
 
 
 class ServiceAdmin(admin.ModelAdmin):

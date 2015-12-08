@@ -13,6 +13,7 @@ from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import FSMIntegerField
 from django_fsm import transition
+from taggit.managers import TaggableManager
 from model_utils.fields import AutoCreatedField
 from model_utils.models import TimeStampedModel
 from model_utils import FieldTracker
@@ -27,6 +28,12 @@ from nodeconductor.structure.signals import structure_role_granted, structure_ro
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
+
+
+def validate_service_type(service_type):
+    from django.core.exceptions import ValidationError
+    if not SupportedServices.has_service_type(service_type):
+        raise ValidationError('Invalid service type')
 
 
 def set_permissions_for_model(model, **kwargs):
@@ -510,11 +517,12 @@ class ServiceSettings(core_models.UuidMixin,
     password = models.CharField(max_length=100, blank=True, null=True)
     token = models.CharField(max_length=255, blank=True, null=True)
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
-    type = models.SmallIntegerField(choices=SupportedServices.Types.CHOICES)
+    type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
 
     options = JSONField(blank=True, help_text='Extra options')
 
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    # TODO: Implement demo mode instead of dummy mode (NC-900)
     dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
 
     def get_backend(self, **kwargs):
@@ -530,6 +538,9 @@ class ServiceSettings(core_models.UuidMixin,
         context = super(ServiceSettings, self)._get_log_context(entity_name)
         context['service_settings_type'] = self.get_type_display()
         return context
+
+    def get_type_display(self):
+        return SupportedServices.get_name_for_type(self.type)
 
 
 @python_2_unicode_compatible
@@ -803,6 +814,7 @@ class Resource(core_models.UuidMixin,
 
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
+    tags = TaggableManager(related_name='+')
 
     start_time = models.DateTimeField(blank=True, null=True)
     state = FSMIntegerField(
@@ -822,6 +834,18 @@ class Resource(core_models.UuidMixin,
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_vm_models(cls):
+        return [resource for resource in cls.get_all_models()
+                if issubclass(resource, VirtualMachineMixin)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_app_models(cls):
+        return [resource for resource in cls.get_all_models()
+                if not issubclass(resource, VirtualMachineMixin)]
 
     @classmethod
     @lru_cache(maxsize=1)

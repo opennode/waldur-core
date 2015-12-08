@@ -13,8 +13,8 @@ from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import ServiceBackend, ServiceBackendError
-from nodeconductor.iaas.backend.openstack import OpenStackClient, CloudBackendError
-from nodeconductor.iaas.backend.openstack import OpenStackBackend as OldOpenStackBackend
+from nodeconductor.iaas.backend import OpenStackClient, CloudBackendError
+from nodeconductor.iaas.backend import OpenStackBackend as OldOpenStackBackend
 from nodeconductor.openstack import models
 
 
@@ -34,7 +34,7 @@ class OpenStackBackend(ServiceBackend):
         self.tenant_id = tenant_id
 
         # TODO: Get rid of it (NC-646)
-        self._old_backend = OldOpenStackBackend(dummy=self.settings.dummy)
+        self._old_backend = OldOpenStackBackend()
 
     def _get_session(self, admin=False):
         credentials = {
@@ -55,7 +55,7 @@ class OpenStackBackend(ServiceBackend):
             credentials['tenant_name'] = self.DEFAULT_TENANT
 
         try:
-            return OpenStackClient(dummy=self.settings.dummy).create_tenant_session(credentials)
+            return OpenStackClient().create_tenant_session(credentials)
         except CloudBackendError as e:
             six.reraise(OpenStackBackendError, e)
 
@@ -155,10 +155,10 @@ class OpenStackBackend(ServiceBackend):
             skip_external_ip_assignment=skip_external_ip_assignment
         )
 
-    def destroy(self, instance):
+    def destroy(self, instance, force=False):
         instance.schedule_deletion()
         instance.save()
-        send_task('openstack', 'destroy')(instance.uuid.hex)
+        send_task('openstack', 'destroy')(instance.uuid.hex, force=force)
 
     def start(self, instance):
         instance.schedule_starting()
@@ -576,6 +576,18 @@ class OpenStackBackend(ServiceBackend):
         logger.info("Deleting tenant %s", self.tenant_id)
         if not dryrun:
             keystone.tenants.delete(self.tenant_id)
+
+    def cleanup_instance(self, backend_id=None, external_ips=None, internal_ips=None,
+                         system_volume_id=None, data_volume_id=None):
+
+        # instance
+        nova = self.nova_client
+        nova.servers.delete(backend_id)
+
+        # volumes
+        cinder = self.cinder_client
+        cinder.volumes.delete(system_volume_id)
+        cinder.volumes.delete(data_volume_id)
 
     @reraise_exceptions
     def create_security_group(self, security_group):

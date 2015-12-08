@@ -6,6 +6,7 @@ To get a list of all template groups, issue GET request against **/api/templates
 Supported filters are:
 
  - tag=<template group tag>, can be list.
+ - project=<project_url> filter all template groups that could be provisioned with given project.
 
 
 Example of response:
@@ -18,6 +19,8 @@ Example of response:
             "url": "http://example.com/api/templates-groups/5a587c00ac1647ae9f9325423368a243/",
             "uuid": "5a587c00ac1647ae9f9325423368a243",
             "name": "templates group test",
+            "icon_url": "",
+            "description": "Some description",
             "templates": [
                 // this template will be executed first because its order number is one.
                 {
@@ -31,6 +34,7 @@ Example of response:
                         "system_volume_size": 10240
                     },
                     "resource_type": "OpenStack.Instance",
+                    "resource_provision_url": "http://example.com/api/openstack-instances/",
                     "order_number": 1
                 },
                 {
@@ -42,6 +46,7 @@ Example of response:
                         "service": "http://example.com/api/zabbix/0923177a994742dd97257d004d3afae3/"
                     },
                     "resource_type": "Zabbix.Host",
+                    "resource_provision_url": "http://example.com/api/zabbix-hosts/",
                     "order_number": 2
                 }
             ],
