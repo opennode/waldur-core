@@ -207,6 +207,36 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
+        for index, model in enumerate(Resource.get_vm_models()):
+            signals.post_save.connect(
+                handlers.change_project_nc_vm_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_vm_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.change_project_nc_vm_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_vm_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+        for index, model in enumerate(Resource.get_app_models()):
+            signals.post_save.connect(
+                handlers.change_project_nc_app_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_app_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+            signals.post_delete.connect(
+                handlers.change_project_nc_app_quota,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_app_quota_{}_{}'.format(
+                    model.__name__, index),
+            )
+
         for model in ServiceProjectLink.get_all_models():
             name = 'propagate_ssh_keys_for_%s' % model.__name__
             signals.post_save.connect(

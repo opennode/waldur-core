@@ -165,8 +165,8 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
-    app_count = serializers.SerializerMethodField()
-    vm_count = serializers.SerializerMethodField()
+    app_count = serializers.ReadOnlyField(source='get_app_count')
+    vm_count = serializers.ReadOnlyField(source='get_vm_count')
 
     class Meta(object):
         model = models.Project
@@ -198,34 +198,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'customer',
-
-    def get_app_count(self, project):
-        if 'app_count' not in self.context:
-            app_models = models.Resource.get_app_models()
-            self.context['app_count'] = self.get_resources_count(app_models)
-
-        return self.context['app_count'][project.pk]
-
-    def get_vm_count(self,  project):
-        if 'vm_count' not in self.context:
-            vm_models = models.Resource.get_vm_models()
-            self.context['vm_count'] = self.get_resources_count(vm_models)
-
-        return self.context['vm_count'][project.pk]
-
-    def get_resources_count(self, resource_models):
-        counts = defaultdict(lambda: 0)
-        for model in resource_models:
-            project_path = model.Permissions.project_path
-            if isinstance(self.instance, list):
-                query = {project_path + '__in': self.instance}
-            else:
-                query = {project_path: self.instance}
-            rows = model.objects.filter(**query).values(project_path).annotate(count=django_models.Count('id'))
-            for row in rows:
-                project_id = row[project_path]
-                counts[project_id] += row['count']
-        return counts
 
     def get_services(self, project):
         if 'services' not in self.context:

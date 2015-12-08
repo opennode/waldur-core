@@ -862,22 +862,10 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_vm_models())
-
-        return self.get_count('resource-list', {
-            'project': self.project_uuid,
-            'resource_type': types
-        })
+        return self.project.get_vm_count()
 
     def get_apps(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_app_models())
-
-        return self.get_count('resource-list', {
-            'project': self.project_uuid,
-            'resource_type': types
-        })
+        return self.project.get_app_count()
 
     def get_users(self):
         return self.get_count('user-list', {
