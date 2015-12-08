@@ -24,6 +24,7 @@ from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
@@ -724,6 +725,206 @@ class ServicesViewSet(BaseSummaryView):
 
     def get_urls(self, request):
         return SupportedServices.get_services(request).values()
+
+
+class CounterMixin(object):
+    def get_count(self, url, params):
+        response = request_api(self.request, url, method='HEAD', params=params)
+        if response.success:
+            return response.total
+        else:
+            logger.warning('Unable to execute API request with URL %s and error %s', url, response.data)
+        return 0
+
+
+class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
+    queryset = models.Customer.objects.all()
+    lookup_field = 'uuid'
+
+    def list(self, request, uuid):
+        """
+        Count number of entities related to customer
+        {
+            "alerts": 12,
+            "events": 0,
+            "vms": 1,
+            "apps": 0,
+            "services": 1,
+            "projects": 1
+        }
+        """
+        self.request = request
+
+        self.customer = self.get_object()
+        self.customer_uuid = self.customer.uuid.hex
+        self.customer_url = reverse('customer-detail', kwargs={'uuid': self.customer_uuid})
+
+        self.exclude_features = request.query_params.getlist('exclude_features')
+        self.shared = request.query_params.get('shared', 'True')
+
+        return Response({
+            'events': self.get_events(),
+            'alerts': self.get_alerts(),
+            'vms': self.get_vms(),
+            'apps': self.get_apps(),
+            'projects': self.get_projects(),
+            'services': self.get_services()
+        })
+
+    def get_events(self):
+        return self.get_count('event-list', {
+            'scope': self.customer_url,
+            'exclude_features': self.exclude_features
+        })
+
+    def get_alerts(self):
+        return self.get_count('alert-list', {
+            'aggregate': 'customer',
+            'uuid': self.customer_uuid,
+            'exclude_features': self.exclude_features
+        })
+
+    def get_vms(self):
+        types = map(SupportedServices.get_name_for_model,
+                    models.Resource.get_vm_models())
+
+        return self.get_count('resource-list', {
+            'customer': self.customer_uuid,
+            'resource_type': types
+        })
+
+    def get_apps(self):
+        types = map(SupportedServices.get_name_for_model,
+                    models.Resource.get_app_models())
+
+        return self.get_count('resource-list', {
+            'customer': self.customer_uuid,
+            'resource_type': types
+        })
+
+    def get_projects(self):
+        return self.get_count('project-list', {
+            'customer': self.customer_uuid
+        })
+
+    def get_services(self):
+        return self.get_count('service_items-list', {
+            'customer': self.customer_uuid,
+            'shared': self.shared
+        })
+
+
+class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
+    queryset = models.Project.objects.all()
+    lookup_field = 'uuid'
+
+    def list(self, request, uuid):
+        """
+        Count number of entities related to project
+        {
+            "users": 0,
+            "alerts": 2,
+            "apps": 0,
+            "vms": 1,
+            "premium_support_contracts": 0,
+            "events": 0
+        }
+        """
+        self.request = request
+
+        self.project = self.get_object()
+        self.project_uuid = self.project.uuid.hex
+        self.project_url = reverse('project-detail', kwargs={'uuid': self.project_uuid})
+
+        self.exclude_features = request.query_params.getlist('exclude_features')
+
+        return Response({
+            'events': self.get_events(),
+            'alerts': self.get_alerts(),
+            'vms': self.get_vms(),
+            'apps': self.get_apps(),
+            'users': self.get_users(),
+            'premium_support_contracts': self.get_premium_support_contracts()
+        })
+
+    def get_events(self):
+        return self.get_count('event-list', {
+            'scope': self.project_url,
+            'exclude_features': self.exclude_features
+        })
+
+    def get_alerts(self):
+        return self.get_count('alert-list', {
+            'aggregate': 'project',
+            'uuid': self.project_uuid,
+            'exclude_features': self.exclude_features
+        })
+
+    def get_vms(self):
+        types = map(SupportedServices.get_name_for_model,
+                    models.Resource.get_vm_models())
+
+        return self.get_count('resource-list', {
+            'project': self.project_uuid,
+            'resource_type': types
+        })
+
+    def get_apps(self):
+        types = map(SupportedServices.get_name_for_model,
+                    models.Resource.get_app_models())
+
+        return self.get_count('resource-list', {
+            'project': self.project_uuid,
+            'resource_type': types
+        })
+
+    def get_users(self):
+        return self.get_count('user-list', {
+            'project': self.project_uuid
+        })
+
+    def get_premium_support_contracts(self):
+        return self.get_count('premium-support-contract-list', {
+            'project_uuid': self.project_uuid
+        })
+
+
+class UserCountersView(CounterMixin, viewsets.GenericViewSet):
+    def list(self, request):
+        """
+        Count number of entities related to current user
+        {
+            "events": 2,
+            "keys": 1,
+            "hooks": 1
+        }
+        """
+        self.request = request
+
+        self.user_uuid = self.request.user.uuid.hex
+        self.user_url = reverse('user-detail', kwargs={'uuid': self.user_uuid})
+
+        self.exclude_features = request.query_params.getlist('exclude_features')
+
+        return Response({
+            'events': self.get_events(),
+            'keys': self.get_keys(),
+            'hooks': self.get_hooks()
+        })
+
+    def get_events(self):
+        return self.get_count('event-list', {
+            'scope': self.user_url,
+            'exclude_features': self.exclude_features
+        })
+
+    def get_keys(self):
+        return self.get_count('sshpublickey-list', {
+            'user_uuid': self.user_uuid
+        })
+
+    def get_hooks(self):
+        return self.get_count('hooks-list', {})
 
 
 class UpdateOnlyByPaidCustomerMixin(object):
