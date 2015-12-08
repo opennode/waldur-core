@@ -1,0 +1,25 @@
+{% extends 'admin/change_form.html' %}
+{% block form_top %}
+<div class="module">
+    <h3>Supported tags for billing</h3>
+    <dl>
+        <dt>Os</dt>
+        <dd>
+            <code>license-os:centos6</code>, <code>license-os:centos7</code>, <code>license-os:ubuntu</code>,
+            <code>license-os:rhel6</code>, <code>license-os:rhel7</code>, <code>license-os:freebsd</code>,
+            <code>license-os:windows</code>, <code>license-os:other</code>
+        </dd>
+        <dt>Application</dt>
+        <dd>
+            <code>license-application:wordpress</code>,
+            <code>license-application:postgresql</code>,
+            <code>license-application:zimbra</code>
+        </dd>
+        <dt>Support</dt>
+        <dd>
+            <code>support:basic</code>,
+            <code>support:premium</code>
+        </dd>
+    </dl>
+</div>
+{% endblock %}
