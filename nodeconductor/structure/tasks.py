@@ -95,6 +95,48 @@ def sync_service_settings(settings_uuids=None):
             logger.warning('Cannot sync service settings %s from state %s', obj.name, obj.state)
 
 
+@shared_task
+@transition(models.ServiceSettings, 'begin_recovering')
+@save_error_message
+def begin_recovering_erred_service_settings(settings_uuid, transition_entity=None):
+    settings = models.ServiceSettings.objects.get(uuid=settings_uuid)
+
+    try:
+        backend = settings.get_backend()
+        is_active = backend.ping()
+    except ServiceBackendNotImplemented:
+        is_active = False
+
+    if is_active:
+        settings.set_in_sync()
+        settings.error_message = ''
+        settings.save()
+        logger.info('Service settings %s successfully recovered.' % settings.name)
+    else:
+        settings.set_erred()
+        settings.error_message = 'Failed to ping service settings %s' % settings.name
+        settings.save()
+        logger.info('Failed to recover service settings %s.' % settings.name)
+
+
+@shared_task(name='nodeconductor.structure.recover_service_settings')
+def recover_erred_service_settings(settings_uuids=None):
+    settings_list = models.ServiceSettings.objects.all()
+    if settings_uuids:
+        if not isinstance(settings_uuids, (list, tuple)):
+            settings_uuids = [settings_uuids]
+        settings_list = settings_list.filter(uuid__in=settings_uuids)
+    else:
+        settings_list = settings_list.filter(state=SynchronizationStates.ERRED)
+
+    for settings in settings_list:
+        if settings.state == SynchronizationStates.ERRED:
+            settings_uuid = settings.uuid.hex
+            begin_recovering_erred_service_settings.delay(settings_uuid)
+        else:
+            logger.warning('Cannot recover service settings %s from state %s', settings.name, settings.state)
+
+
 @shared_task(name='nodeconductor.structure.sync_service_project_links', max_retries=120, default_retry_delay=5)
 @retry_if_false
 def sync_service_project_links(service_project_links=None, quotas=None, initial=False):

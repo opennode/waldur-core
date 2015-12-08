@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
- - Add project filter to template groups
+- Add project filter to template groups
+- Added recovery transition from ERRED to SYNCING state
 
 Release 0.82.0
 --------------
