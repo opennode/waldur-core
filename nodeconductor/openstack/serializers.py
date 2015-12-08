@@ -7,14 +7,12 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers
-from nodeconductor.structure import SupportedServices
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack import models
 
 
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
-    SERVICE_TYPE = SupportedServices.Types.OpenStack
     SERVICE_ACCOUNT_FIELDS = {
         'backend_url': 'Keystone auth URL (e.g. http://keystone.example.com:5000/v2.0)',
         'username': 'Administrative user',
@@ -34,8 +32,6 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
 
 class FlavorSerializer(structure_serializers.BasePropertySerializer):
 
-    SERVICE_TYPE = SupportedServices.Types.OpenStack
-
     class Meta(object):
         model = models.Flavor
         view_name = 'openstack-flavor-detail'
@@ -46,8 +42,6 @@ class FlavorSerializer(structure_serializers.BasePropertySerializer):
 
 
 class ImageSerializer(structure_serializers.BasePropertySerializer):
-
-    SERVICE_TYPE = SupportedServices.Types.OpenStack
 
     class Meta(object):
         model = models.Image
@@ -209,8 +203,6 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
 
 class SecurityGroupSerializer(core_serializers.AugmentedSerializerMixin,
                               structure_serializers.BasePropertySerializer):
-
-    SERVICE_TYPE = SupportedServices.Types.OpenStack
 
     state = MappedChoiceField(
         choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],

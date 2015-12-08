@@ -12,20 +12,15 @@ class SupportClient(object):
 
     def __new__(cls):
         base_config = settings.NODECONDUCTOR.get('JIRA_SUPPORT', {})
-        dummy = base_config.get('dummy', False)
 
-        if dummy:
-            project = 'TST'
-            jira_settings = ServiceSettings(dummy=True)
-        else:
-            try:
-                project = base_config['project']
-                jira_settings = ServiceSettings(
-                    backend_url=base_config['server'],
-                    username=base_config['username'],
-                    password=base_config['password'])
-            except (KeyError, AttributeError):
-                raise JiraBackendError("Missed JIRA_SUPPORT settings or improperly configured")
+        try:
+            project = base_config['project']
+            jira_settings = ServiceSettings(
+                backend_url=base_config['server'],
+                username=base_config['username'],
+                password=base_config['password'])
+        except (KeyError, AttributeError):
+            raise JiraBackendError("Missed JIRA_SUPPORT settings or improperly configured")
 
         return JiraBackend(
             jira_settings,

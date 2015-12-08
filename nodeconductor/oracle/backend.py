@@ -11,16 +11,6 @@ class OracleBackendError(ServiceBackendError):
     pass
 
 
-class OracleBackend(object):
-
-    def __init__(self, settings):
-        backend_class = OracleDummyBackend if settings.dummy else OracleRealBackend
-        self.backend = backend_class(settings)
-
-    def __getattr__(self, name):
-        return getattr(self.backend, name)
-
-
 class OracleBaseBackend(ServiceBackend):
 
     def __init__(self, settings):
@@ -156,7 +146,7 @@ class EMConnection(object):
         return self.request(self.URI.DBINSTANCE % database_id)
 
 
-class OracleRealBackend(OracleBaseBackend):
+class OracleBackend(OracleBaseBackend):
     """ NodeConductor interface to Oracle EM API. """
 
     def __init__(self, settings):
@@ -231,7 +221,3 @@ class OracleRealBackend(OracleBaseBackend):
             method='POST',
             mime_type=self.manager.MimeType.DBINSTANCE,
             params={'operation': operation})
-
-
-class OracleDummyBackend(OracleBaseBackend):
-    pass

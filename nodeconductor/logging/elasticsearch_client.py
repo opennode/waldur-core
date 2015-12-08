@@ -28,17 +28,7 @@ class ElasticsearchResultList(object):
     """ List of results acceptable by django pagination """
 
     def __init__(self):
-        self.client = self._get_client()
-
-    def _get_client(self):
-        if settings.NODECONDUCTOR.get('ELASTICSEARCH_DUMMY', False):
-            # to avoid circular dependencies
-            from nodeconductor.logging.elasticsearch_dummy_client import ElasticsearchDummyClient
-            logger.warn(
-                'Dummy client for elasticsearch is used, set ELASTICSEARCH_DUMMY to False to disable dummy client')
-            return ElasticsearchDummyClient()
-        else:
-            return ElasticsearchClient()
+        self.client = ElasticsearchClient()
 
     def filter(self, should_terms=None, must_terms=None, must_not_terms=None, search_text='', start=None, end=None):
         setattr(self, 'total', None)
@@ -266,7 +256,7 @@ class ElasticsearchClient(object):
         except (KeyError, AttributeError):
             raise ElasticsearchClientError(
                 'Can not get elasticsearch settings. ELASTICSEARCH item in settings.NODECONDUCTOR has '
-                'to be defined. Or enable dummy elasticsearch mode.')
+                'to be defined.')
 
     def _get_client(self):
         elasticsearch_settings = self._get_elastisearch_settings()

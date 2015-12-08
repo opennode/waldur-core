@@ -9,7 +9,8 @@ from nodeconductor.structure import SupportedServices
 
 class OpenStackConfig(AppConfig):
     name = 'nodeconductor.openstack'
-    verbose_name = "NodeConductor OpenStack"
+    verbose_name = 'NodeConductor OpenStack'
+    service_name = 'OpenStack'
 
     def ready(self):
         OpenStackService = self.get_model('OpenStackService')
@@ -19,7 +20,7 @@ class OpenStackConfig(AppConfig):
 
         # structure
         from nodeconductor.openstack.backend import OpenStackBackend
-        SupportedServices.register_backend(OpenStackService, OpenStackBackend)
+        SupportedServices.register_backend(OpenStackBackend)
 
         # cost tracking
         from nodeconductor.openstack.cost_tracking import OpenStackCostTrackingBackend

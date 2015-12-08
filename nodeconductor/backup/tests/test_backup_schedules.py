@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import datetime
+import mock
 
 from croniter import croniter
 from pytz import timezone
@@ -120,19 +121,16 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
             self.assertEqual(getattr(next_backup, k), v, 'Must be 2:00am')
 
     def test_daily_backup_schedule_next_trigger_at_is_correct(self):
-        schedule = factories.BackupScheduleFactory(schedule='0 2 * * *')
+        schedule = '0 2 * * *'
+        tzinfo = timezone(settings.TIME_ZONE)
 
-        cron = croniter('0 2 * * *', datetime.datetime.now(tz=timezone(settings.TIME_ZONE)))
-        schedule = models.BackupSchedule.objects.get(pk=schedule.pk)
-        next_backup = schedule.next_trigger_at
-        self.assertEqual(next_backup, cron.get_next(datetime.datetime))
+        today = datetime.datetime.now(tz=timezone(settings.TIME_ZONE))
+        expected = croniter(schedule, today).get_next(datetime.datetime)
 
-        time = datetime.time(2, 0, 0, tzinfo=timezone(settings.TIME_ZONE))
-        date = datetime.date.today()
-        if datetime.datetime.now(tz=timezone(settings.TIME_ZONE)).time().hour > 2:
-            date += datetime.timedelta(days=1)
-
-        self.assertEqual(datetime.datetime.combine(date, time), next_backup, "Must be 2:00am every day")
+        with mock.patch('nodeconductor.backup.models.django_timezone') as mock_django_timezone:
+            mock_django_timezone.now.return_value = today
+            self.assertEqual(expected,
+                factories.BackupScheduleFactory(schedule=schedule).next_trigger_at)
 
     def test_schedule_activation_and_deactivation(self):
         schedule = factories.BackupScheduleFactory(is_active=False)

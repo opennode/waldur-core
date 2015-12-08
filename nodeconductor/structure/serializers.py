@@ -216,16 +216,12 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         return 'customer',
 
     def get_app_count(self, project):
-        resources = models.Resource.get_all_models()
         return sum(resource.objects.filter(project=project).count()
-                   for resource in resources
-                   if not issubclass(resource, models.VirtualMachineMixin))
+                   for resource in models.Resource.get_app_models())
 
     def get_vm_count(self,  project):
-        resources = models.Resource.get_all_models()
         return sum(resource.objects.filter(project=project).count()
-                   for resource in resources
-                   if issubclass(resource, models.VirtualMachineMixin))
+                   for resource in models.Resource.get_vm_models())
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:
@@ -806,9 +802,10 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         return fields
 
     def get_service_serializer(self):
+        service = SupportedServices.get_service_models()[self.instance.type]['service']
         # Find service serializer by service type of settings object
         return next(cls for cls in BaseServiceSerializer.__subclasses__()
-                    if cls.SERVICE_TYPE == self.instance.type)
+                    if cls.Meta.model == service)
 
 
 class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
@@ -816,8 +813,7 @@ class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
         See SupportedServices for details.
     """
     def __new__(cls, name, bases, args):
-        service_type = args.get('SERVICE_TYPE', NotImplemented)
-        SupportedServices.register_service(service_type, args['Meta'])
+        SupportedServices.register_service(args['Meta'].model)
         return super(ServiceSerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 
@@ -826,7 +822,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                             core_serializers.AugmentedSerializerMixin,
                             serializers.HyperlinkedModelSerializer)):
 
-    SERVICE_TYPE = NotImplemented
     SERVICE_ACCOUNT_FIELDS = NotImplemented
     SERVICE_ACCOUNT_EXTRA_FIELDS = NotImplemented
 
@@ -882,8 +877,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def get_fields(self):
         fields = super(BaseServiceSerializer, self).get_fields()
-        if self.SERVICE_TYPE is not NotImplemented:
-            fields['settings'].queryset = fields['settings'].queryset.filter(type=self.SERVICE_TYPE)
+
+        if self.Meta.model is not NotImplemented:
+            key = SupportedServices.get_model_key(self.Meta.model)
+            fields['settings'].queryset = fields['settings'].queryset.filter(type=key)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
             for field in self.Meta.settings_fields:
@@ -941,7 +938,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
                 settings = models.ServiceSettings.objects.create(
-                    type=self.SERVICE_TYPE,
+                    type=SupportedServices.get_model_key(self.Meta.model),
                     name=attrs['name'],
                     customer=customer,
                     **args)
@@ -1017,7 +1014,7 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
         See SupportedServices for details.
     """
     def __new__(cls, name, bases, args):
-        SupportedServices.register_resource(args.get('service'), args['Meta'])
+        SupportedServices.register_resource(args['Meta'].model)
         return super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 
@@ -1082,6 +1079,8 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     created = serializers.DateTimeField(read_only=True)
     resource_type = serializers.SerializerMethodField()
 
+    tags = serializers.SerializerMethodField()
+
     class Meta(object):
         model = NotImplemented
         view_name = NotImplemented
@@ -1090,7 +1089,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'service', 'service_name', 'service_uuid',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'project_groups', 'error_message',
+            'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link',
         )
         protected_fields = ('service', 'service_project_link')
@@ -1104,6 +1103,9 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_resource_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
+
+    def get_tags(self, obj):
+        return [t.name for t in obj.tags.all()]
 
     def to_representation(self, instance):
         # We need this hook, because ips have to be represented as list
@@ -1219,15 +1221,12 @@ class PropertySerializerMetaclass(serializers.SerializerMetaclass):
         See SupportedServices for details.
     """
     def __new__(cls, name, bases, args):
-        service_type = args.get('SERVICE_TYPE', NotImplemented)
-        SupportedServices.register_property(service_type, args['Meta'])
+        SupportedServices.register_property(args['Meta'].model)
         return super(PropertySerializerMetaclass, cls).__new__(cls, name, bases, args)
 
 
 class BasePropertySerializer(six.with_metaclass(PropertySerializerMetaclass,
                              serializers.HyperlinkedModelSerializer)):
-
-    SERVICE_TYPE = NotImplemented
 
     class Meta(object):
         model = NotImplemented

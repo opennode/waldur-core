@@ -3,6 +3,8 @@ import json
 from celery import chain
 from django import template as django_template
 from django.contrib.contenttypes.models import ContentType
+from django.core import validators
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from jsonfield import JSONField
@@ -13,6 +15,7 @@ from rest_framework.authtoken.models import Token
 from taggit.managers import TaggableManager
 
 from nodeconductor.core import models as core_models
+from nodeconductor.structure import models as structure_models
 
 
 @python_2_unicode_compatible
@@ -28,14 +31,14 @@ class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, model
 
     def schedule_head_template_provision(self, request, templates_additional_options):
         """ Send request that will schedule group first template provision """
-        first_template = self.templates.order_by('order_number').first()
-        url = first_template.get_provison_url(request)
+        head_template = self.get_head_template()
+        url = head_template.get_provison_url(request)
         token_key = Token.objects.get(user=request.user).key
-        additional_options = templates_additional_options.get(first_template, {})
-        return first_template.schedule_provision(url, token_key, additional_options, ignore_provision_errors=True)
+        additional_options = templates_additional_options.get(head_template, {})
+        return head_template.schedule_provision(url, token_key, additional_options, ignore_provision_errors=True)
 
     def schedule_tail_templates_provision(self, request, templates_additional_options,
-                                          first_template_provision_response):
+                                          head_template_provision_response):
         """ Start provision of group templates and return corresponding template group result.
 
         For head template method create only wait task, because provision has to scheduled previously.
@@ -52,10 +55,10 @@ class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, model
         template_group_result = TemplateGroupResult.objects.create(group=self)
         token_key = Token.objects.get(user=request.user).key
         # Define wait task for head templates
-        first_template = self.templates.order_by('order_number').first()
+        head_template = self.get_head_template()
         wait_task = tasks.wait_for_provision.si(
-            previous_task_data=first_template_provision_response.json(),
-            template_uuid=first_template.uuid.hex,
+            previous_task_data=head_template_provision_response.json(),
+            template_uuid=head_template.uuid.hex,
             token_key=token_key,
             template_group_result_uuid=template_group_result.uuid.hex)
         templates_tasks += [wait_task]
@@ -84,6 +87,9 @@ class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, model
 
         return template_group_result
 
+    def get_head_template(self):
+        return self.templates.order_by('order_number').first()
+
 
 class TemplateActionException(Exception):
     """ Exception that describes action human readable message and details for debugging
@@ -110,6 +116,7 @@ class TemplateActionException(Exception):
             return {'message': str(serialized_exception)}
 
 
+@python_2_unicode_compatible
 class Template(core_models.UuidMixin, models.Model):
     """ Template for application action.
 
@@ -118,11 +125,15 @@ class Template(core_models.UuidMixin, models.Model):
     """
     group = models.ForeignKey(TemplateGroup, related_name='templates')
     options = JSONField(default={}, help_text='Default options for resource provision request.')
+    tags = TaggableManager()
+    service_settings = models.ForeignKey(structure_models.ServiceSettings, related_name='templates', null=True)
     resource_content_type = models.ForeignKey(
         ContentType, help_text='Content type of resource which provision process is described in template.')
     order_number = models.PositiveSmallIntegerField(
-        default=1, help_text='Templates in group are sorted by order number. '
-                             'Template with smaller order number will be executed first.')
+        default=1,
+        help_text='Templates in group are sorted by order number. '
+                  'Template with smaller order number will be executed first.',
+        validators=[validators.MinValueValidator(1)])
     use_previous_resource_project = models.BooleanField(
         default=False, help_text='If True and project is not defined in template - current resource will use the same '
                                  'project as previous created.')
@@ -205,6 +216,9 @@ class Template(core_models.UuidMixin, models.Model):
                       response.request.url, response.status_code, response.content)
             raise TemplateActionException(message, details, response.status_code)
         return response
+
+    def __str__(self):
+        return "%s -> %s" % (self.group.name, self.resource_content_type)
 
 
 class TemplateGroupResult(core_models.UuidMixin, TimeStampedModel):
