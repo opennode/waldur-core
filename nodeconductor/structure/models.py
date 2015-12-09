@@ -96,6 +96,8 @@ class Customer(core_models.UuidMixin,
     QUOTAS_NAMES = [
         'nc_project_count',
         'nc_resource_count',
+        'nc_app_count',
+        'nc_vm_count',
         'nc_user_count',
         'nc_service_project_link_count',
         'nc_service_count'
@@ -216,6 +218,12 @@ class Customer(core_models.UuidMixin,
 
     def get_service_count(self):
         return self.quotas.get(name='nc_service_count').usage
+
+    def get_app_count(self):
+        return self.quotas.get(name='nc_app_count').usage
+
+    def get_vm_count(self):
+        return self.quotas.get(name='nc_vm_count').usage
 
 
 class BalanceHistory(models.Model):

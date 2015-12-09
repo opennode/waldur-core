@@ -387,6 +387,18 @@ change_project_nc_vm_quota = quotas_handlers.quantity_quota_handler_factory(
 )
 
 
+change_customer_nc_app_quota = quotas_handlers.quantity_quota_handler_factory(
+    path_to_quota_scope='service_project_link.project.customer',
+    quota_name='nc_app_count',
+)
+
+
+change_customer_nc_vm_quota = quotas_handlers.quantity_quota_handler_factory(
+    path_to_quota_scope='service_project_link.project.customer',
+    quota_name='nc_vm_count',
+)
+
+
 def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwargs):
     """ Modify nc_user_count quota usage on structure role grant or revoke """
     assert signal in (signals.structure_role_granted, signals.structure_role_revoked), \

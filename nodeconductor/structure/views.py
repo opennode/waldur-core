@@ -789,22 +789,10 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_vm_models())
-
-        return self.get_count('resource-list', {
-            'customer': self.customer_uuid,
-            'resource_type': types
-        })
+        return self.customer.get_vm_count()
 
     def get_apps(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_app_models())
-
-        return self.get_count('resource-list', {
-            'customer': self.customer_uuid,
-            'resource_type': types
-        })
+        return self.customer.get_app_count()
 
     def get_projects(self):
         return self.customer.get_project_count()
