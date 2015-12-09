@@ -54,13 +54,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
     http://nodeconductor.readthedocs.org/en/latest/api/api.html#customer-management
     """
 
-    queryset = models.Customer.objects.all().prefetch_related('quotas')
+    queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.CustomerFilter
+
+    def get_queryset(self):
+        queryset = super(CustomerViewSet, self).get_queryset()
+        return self.get_serializer_class().eager_load(queryset)
 
     def perform_create(self, serializer):
         customer = serializer.save()
@@ -156,8 +160,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 roles__role_type=models.ProjectRole.ADMINISTRATOR,
             )
 
-        queryset = queryset.prefetch_related('quotas', 'project_groups').select_related('customer')
-        return queryset
+        return self.get_serializer_class().eager_load(queryset)
 
     def perform_create(self, serializer):
         customer = serializer.validated_data['customer']
@@ -804,15 +807,10 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_projects(self):
-        return self.get_count('project-list', {
-            'customer': self.customer_uuid
-        })
+        return self.customer.get_project_count()
 
     def get_services(self):
-        return self.get_count('service_items-list', {
-            'customer': self.customer_uuid,
-            'shared': self.shared
-        })
+        return self.customer.get_service_count()
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -980,8 +978,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     lookup_field = 'uuid'
 
     def get_queryset(self, *args, **kwargs):
-        return super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)\
-            .prefetch_related('customer', 'settings', 'projects')
+        queryset = super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)
+        return self.get_serializer_class().eager_load(queryset)
 
     def _can_import(self):
         return self.import_serializer_class is not NotImplemented

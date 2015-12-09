@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from collections import OrderedDict, defaultdict
 
 from django.contrib import auth
-from django.contrib.contenttypes.models import ContentType
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
 from django.conf import settings
@@ -18,7 +17,6 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
-from nodeconductor.quotas.models import Quota
 from nodeconductor.structure import models, SupportedServices
 from nodeconductor.structure.managers import filter_queryset_for_user
 
@@ -165,8 +163,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
-    app_count = serializers.ReadOnlyField(source='get_app_count')
-    vm_count = serializers.ReadOnlyField(source='get_vm_count')
 
     class Meta(object):
         model = models.Project
@@ -179,7 +175,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'quotas',
             'services',
             'created',
-            'app_count', 'vm_count'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -188,6 +183,21 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
+
+    @staticmethod
+    def eager_load(queryset):
+        related_fields = (
+            'uuid',
+            'name',
+            'created',
+            'description',
+            'customer__uuid',
+            'customer__name',
+            'customer__native_name',
+            'customer__abbreviation'
+        )
+        return queryset.select_related('customer').only(*related_fields) \
+            .prefetch_related('quotas', 'project_groups')
 
     def create(self, validated_data):
         project_groups = validated_data.pop('project_groups')
@@ -201,25 +211,40 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     def get_services(self, project):
         if 'services' not in self.context:
-            services = defaultdict(list)
-            for service in SupportedServices.get_service_models().values():
-                links = service['service_project_link'].objects.all()\
-                        .select_related('service', 'service__settings')
-                if isinstance(self.instance, list):
-                    links = links.filter(project__in=self.instance)
-                else:
-                    links = links.filter(project=self.instance)
-                for link in links:
-                    services[link.project_id].append(link)
-            self.context['services'] = services
-
+            self.context['services'] = self.get_services_map()
         services = self.context['services'][project.pk]
+
         serializer = NestedServiceProjectLinkSerializer(
             services,
             many=True,
             read_only=True,
             context={'request': self.context['request']})
         return serializer.data
+
+    def get_services_map(self):
+        services = defaultdict(list)
+        related_fields = (
+            'id',
+            'state',
+            'project_id',
+            'service__uuid',
+            'service__name',
+            'service__settings__uuid',
+            'service__settings__shared'
+        )
+        for service in SupportedServices.get_service_models().values():
+            link_model = service['service_project_link']
+            links = link_model.objects.all()
+            if not hasattr(link_model, 'cloud'):
+                links = links.select_related('service', 'service__settings') \
+                             .only(*related_fields)
+            if isinstance(self.instance, list):
+                links = links.filter(project__in=self.instance)
+            else:
+                links = links.filter(project=self.instance)
+            for link in links:
+                services[link.project_id].append(link)
+        return services
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:
@@ -272,21 +297,25 @@ class CustomerSerializer(core_serializers.DynamicSerializer,
         # Balance should be modified by nodeconductor_paypal app
         read_only_fields = ('balance', )
 
+    @staticmethod
+    def eager_load(queryset):
+        return queryset.prefetch_related('quotas', 'projects', 'project_groups')
+
     def _get_filtered_data(self, objects, serializer):
         try:
             user = self.context['request'].user
             queryset = filter_queryset_for_user(objects, user)
         except (KeyError, AttributeError):
-            queryset = objects.all()
+            pass
 
         serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
     def get_projects(self, obj):
-        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
+        return self._get_filtered_data(obj.projects, BasicProjectSerializer)
 
     def get_project_groups(self, obj):
-        return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
+        return self._get_filtered_data(obj.project_groups, BasicProjectGroupSerializer)
 
 
 class BalanceHistorySerializer(serializers.ModelSerializer):
@@ -869,6 +898,24 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             cls.Meta.fields += tuple(cls.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
             cls.Meta.protected_fields += tuple(cls.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
         return super(BaseServiceSerializer, cls).__new__(cls, *args, **kwargs)
+
+    @staticmethod
+    def eager_load(queryset):
+        related_fields = (
+            'uuid',
+            'name',
+            'customer__uuid',
+            'customer__name',
+            'customer__native_name',
+            'settings__state',
+            'settings__uuid',
+            'settings__type',
+            'settings__shared',
+            'settings__error_message'
+        )
+        queryset = queryset.select_related('customer', 'settings').only(*related_fields)
+        projects = models.Project.objects.all().only('uuid', 'name')
+        return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
 
     def get_filtered_field_names(self):
         return 'customer',

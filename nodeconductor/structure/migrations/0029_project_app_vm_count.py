@@ -30,19 +30,18 @@ def create_quotas(apps, schema_editor):
     project_vms = get_resources_count(Resource.get_vm_models())
     project_apps = get_resources_count(Resource.get_app_models())
 
-    for project_id, vms in project_vms.items():
+    for project in Project.objects.all():
         Quota.objects.create(uuid=uuid4().hex,
                              name='nc_vm_count',
                              content_type_id=project_ct.id,
-                             object_id=project_id,
-                             usage=vms)
+                             object_id=project.id,
+                             usage=project_vms.get(project.id, 0))
 
-    for project_id, apps in project_apps.items():
         Quota.objects.create(uuid=uuid4().hex,
                              name='nc_app_count',
                              content_type_id=project_ct.id,
-                             object_id=project_id,
-                             usage=apps)
+                             object_id=project.id,
+                             usage=project_apps.get(project.id, 0))
 
 
 class Migration(migrations.Migration):
