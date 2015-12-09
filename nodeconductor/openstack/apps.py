@@ -5,6 +5,7 @@ from nodeconductor.cost_tracking import CostTrackingRegister
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.openstack import handlers
 from nodeconductor.structure import SupportedServices
+from nodeconductor.structure.models import Project
 
 
 class OpenStackConfig(AppConfig):
@@ -65,4 +66,9 @@ class OpenStackConfig(AppConfig):
             handlers.change_floating_ip_quota_on_status_change,
             sender=FloatingIP,
             dispatch_uid='nodeconductor.openstack.handlers.change_floating_ip_quota_on_status_change',
+        )
+        signals.post_save.connect(
+            handlers.check_project_name_update,
+            sender=Project,
+            dispatch_uid='nodeconductor.openstack.handlers.check_project_name_update',
         )
