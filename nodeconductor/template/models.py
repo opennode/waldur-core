@@ -168,7 +168,7 @@ class Template(core_models.UuidMixin, models.Model):
             project_services = self._get_project_services(project_url, headers)
             try:
                 service_url = next((s['url'] for s in project_services
-                                    if self._is_urls_equal(s['settings'], service_settings_url)))
+                                    if self._are_urls_equal(s['settings'], service_settings_url)))
             except StopIteration:
                 details = 'There is no service connected to project "%s" based on service settings "%s"' % (
                     project_url, service_settings_url)
@@ -182,7 +182,7 @@ class Template(core_models.UuidMixin, models.Model):
             project_services = self._get_project_services(project_url, headers)
             try:
                 spl_url = next((s['service_project_link_url'] for s in project_services
-                                if self._is_urls_equal(s['url'], service_url)))
+                                if self._are_urls_equal(s['url'], service_url)))
             except StopIteration:
                 details = 'Failed to find connection between project "%s" and service "%s" ' % (
                           project_url, service_url)
@@ -201,8 +201,8 @@ class Template(core_models.UuidMixin, models.Model):
 
         return response
 
-    def _is_urls_equal(self, first_url, second_url):
-        """ Compare URLs without based on path """
+    def _are_urls_equal(self, first_url, second_url):
+        """ Compare URLs based on their paths. """
         first_path = urlparse.urlparse(first_url).path
         second_path = urlparse.urlparse(second_url).path
         return first_path == second_path
