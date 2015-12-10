@@ -8,6 +8,7 @@ from model_utils import FieldTracker
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
 from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
+from nodeconductor.openstack.managers import BackupManager
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
@@ -258,6 +259,8 @@ class Backup(core_models.UuidMixin,
         blank=True,
         help_text='Additional information about backup, can be used for backup restoration or deletion',
     )
+
+    objects = BackupManager()
 
     def get_backend(self):
         return BackupBackend(self)

@@ -145,6 +145,9 @@ class BackupFilter(django_filters.FilterSet):
     description = django_filters.CharFilter(
         lookup_type='icontains',
     )
+    instance = django_filters.CharFilter(
+        name='instance__uuid',
+    )
     project = django_filters.CharFilter(
         name='instance__service_project_link__project__uuid',
     )
@@ -153,5 +156,6 @@ class BackupFilter(django_filters.FilterSet):
         model = models.Backup
         fields = (
             'description',
+            'instance',
             'project',
         )

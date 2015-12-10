@@ -5,6 +5,7 @@ from rest_framework import filters as rf_filters
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
@@ -196,9 +197,31 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
 
+    def perform_create(self, serializer):
+        if not has_user_permission_for_instance(self.request.user, serializer.validated_data['instance']):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+        super(BackupScheduleViewSet, self).perform_create(serializer)
+
+    def perform_update(self, serializer):
+        instance = self.get_object().instance
+        if not has_user_permission_for_instance(self.request.user, instance):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+        super(BackupScheduleViewSet, self).perform_update(serializer)
+
+    def perform_destroy(self, schedule):
+        if not has_user_permission_for_instance(self.request.user, schedule.instance):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+        super(BackupScheduleViewSet, self).perform_destroy(schedule)
+
+    def get_backup_schedule(self):
+        schedule = self.get_object()
+        if not has_user_permission_for_instance(self.request.user, schedule.instance):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+        return schedule
+
     @decorators.detail_route(methods=['post'])
     def activate(self, request, uuid):
-        schedule = self.get_object()
+        schedule = self.get_backup_schedule()
         if schedule.is_active:
             return response.Response(
                 {'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
@@ -208,7 +231,7 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
 
     @decorators.detail_route(methods=['post'])
     def deactivate(self, request, uuid):
-        schedule = self.get_object()
+        schedule = self.get_backup_schedule()
         if not schedule.is_active:
             return response.Response(
                 {'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
@@ -230,6 +253,9 @@ class BackupViewSet(mixins.CreateModelMixin,
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
 
     def perform_create(self, serializer):
+        if not has_user_permission_for_instance(self.request.user, serializer.validated_data['instance']):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+
         # Check that instance is in stable state.
         instance = serializer.validated_data.get('instance')
         state = getattr(instance, 'state')
@@ -241,9 +267,15 @@ class BackupViewSet(mixins.CreateModelMixin,
         backend = backup.get_backend()
         backend.start_backup()
 
+    def get_backup(self):
+        backup = self.get_object()
+        if not has_user_permission_for_instance(self.request.user, backup.instance):
+            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+        return backup
+
     @decorators.detail_route(methods=['post'])
     def restore(self, request, uuid):
-        backup = self.get_object()
+        backup = self.get_backup()
         if backup.state != models.Backup.States.READY:
             return response.Response(
                 {'detail': 'Cannot restore a backup in state \'%s\'' % backup.get_state_display()},
@@ -255,7 +287,7 @@ class BackupViewSet(mixins.CreateModelMixin,
         if not errors:
             try:
                 backend = backup.get_backend()
-                backend.start_restoration(instance.uuid, user_input=user_input, snapshot_ids=snapshot_ids)
+                backend.start_restoration(instance.uuid.hex, user_input=user_input, snapshot_ids=snapshot_ids)
             except BackupError:
                 # this should never be hit as the check is done on function entry
                 return response.Response(
@@ -267,7 +299,7 @@ class BackupViewSet(mixins.CreateModelMixin,
 
     @decorators.detail_route(methods=['post'])
     def delete(self, request, uuid):
-        backup = self.get_object()
+        backup = self.get_backup()
         backend = backup.get_backend()
         backend.start_deletion()
         return response.Response({'status': 'Backup deletion was started'})

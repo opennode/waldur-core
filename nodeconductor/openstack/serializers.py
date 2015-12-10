@@ -316,6 +316,11 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
     instance_name = serializers.ReadOnlyField(source='instance.name')
     timezone = serializers.ChoiceField(choices=[(t, t) for t in pytz.all_timezones],
                                        default=timezone.get_current_timezone_name)
+    instance = serializers.HyperlinkedRelatedField(
+        lookup_field='uuid',
+        view_name='openstack-instance-detail',
+        queryset=models.Instance.objects.all(),
+    )
 
     class Meta(object):
         model = models.BackupSchedule
@@ -332,8 +337,13 @@ class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
 
 class BackupSerializer(serializers.HyperlinkedModelSerializer):
     state = serializers.ReadOnlyField(source='get_state_display')
-    instance_name = serializers.ReadOnlyField(source='instance.name')
     metadata = JsonField(read_only=True)
+    instance_name = serializers.ReadOnlyField(source='instance.name')
+    instance = serializers.HyperlinkedRelatedField(
+        lookup_field='uuid',
+        view_name='openstack-instance-detail',
+        queryset=models.Instance.objects.all(),
+    )
 
     class Meta(object):
         model = models.Backup
@@ -439,8 +449,8 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
     security_groups = InstanceSecurityGroupSerializer(
         many=True, required=False, read_only=False)
 
-    backups = BackupSerializer(many=True)
-    backup_schedules = BackupScheduleSerializer(many=True)
+    backups = BackupSerializer(many=True, read_only=True)
+    backup_schedules = BackupScheduleSerializer(many=True, read_only=True)
 
     skip_external_ip_assignment = serializers.BooleanField(write_only=True, default=False)
 

@@ -64,8 +64,8 @@ class BackupScheduleBackend(object):
         """
         self.create_backup()
         self.delete_extra_backups()
-        self.schedule._update_next_trigger_at()
-        self.save()
+        self.schedule.update_next_trigger_at()
+        self.schedule.save()
 
 
 class BackupBackend(object):
@@ -80,7 +80,8 @@ class BackupBackend(object):
         send_task('openstack', 'backup_start_delete')(self.backup.uuid.hex)
 
     def start_restoration(self, instance_uuid, user_input, snapshot_ids):
-        send_task('openstack', 'backup_start_delete')(instance_uuid, user_input, snapshot_ids)
+        send_task('openstack', 'backup_start_restore')(
+            self.backup.uuid.hex, instance_uuid, user_input, snapshot_ids)
 
     def get_metadata(self):
         # populate backup metadata
@@ -140,7 +141,7 @@ class BackupBackend(object):
             six.reraise(BackupError, e)
 
     def restore(self, instance_uuid, user_input, snapshot_ids):
-        instance = self.backup.instance.objects.get(uuid=instance_uuid)
+        instance = self.backup.instance.__class__.objects.get(uuid=instance_uuid)
         backend = instance.get_backend()
 
         # create a copy of the volumes to be used by a new VM
@@ -193,12 +194,12 @@ class BackupBackend(object):
             except (KeyError, IndexError):
                 return None, None, None, 'Missing system_snapshot_id or data_snapshot_id in metadata'
 
-            instance = serializer.save()
             # all user_input should be json serializable
             user_input = {
-                'flavor_uuid': serializer.validated_data['flavor'].uuid.hex,
-                'image_uuid': serializer.validated_data['image'].uuid.hex,
+                'flavor_uuid': serializer.validated_data.pop('flavor').uuid.hex,
+                'image_uuid': serializer.validated_data.pop('image').uuid.hex,
             }
+            instance = serializer.save()
             # note that root/system volumes of a backup will be linked to the volumes belonging to a backup
             return instance, user_input, [system_volume_snapshot_id, data_volume_snapshot_id], None
 

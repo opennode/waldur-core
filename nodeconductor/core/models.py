@@ -5,6 +5,7 @@ import pytz
 import logging
 
 from croniter.croniter import croniter
+from datetime import datetime
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
@@ -89,9 +90,9 @@ class ScheduleMixin(models.Model):
     timezone = models.CharField(max_length=50, default=django_timezone.get_current_timezone_name)
     is_active = models.BooleanField(default=False)
 
-    def _update_next_trigger_at(self):
+    def update_next_trigger_at(self):
         base_time = django_timezone.now().replace(tzinfo=pytz.timezone(self.timezone))
-        self.next_trigger_at = croniter(self.schedule, base_time).get_next(django_timezone.datetime)
+        self.next_trigger_at = croniter(self.schedule, base_time).get_next(datetime)
 
     def save(self, *args, **kwargs):
         """
@@ -101,13 +102,13 @@ class ScheduleMixin(models.Model):
          - instance is new
         """
         try:
-            prev_instance = self.objects.get(pk=self.pk)
+            prev_instance = self.__class__.objects.get(pk=self.pk)
         except self.DoesNotExist:
             prev_instance = None
 
         if prev_instance is None or (not prev_instance.is_active and self.is_active or
                                      self.schedule != prev_instance.schedule):
-            self._update_next_trigger_at()
+            self.update_next_trigger_at()
 
         super(ScheduleMixin, self).save(*args, **kwargs)
 
