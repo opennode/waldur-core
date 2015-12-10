@@ -138,7 +138,7 @@ class OpenStackBackend(ServiceBackend):
         self.push_quotas(service_project_link, quotas)
         self.pull_quotas(service_project_link)
 
-    def provision(self, instance, flavor=None, image=None, ssh_key=None, skip_external_ip_assignment=False):
+    def provision(self, instance, flavor=None, image=None, ssh_key=None, **kwargs):
         if ssh_key:
             instance.key_name = ssh_key.name
             instance.key_fingerprint = ssh_key.fingerprint
@@ -153,8 +153,7 @@ class OpenStackBackend(ServiceBackend):
             instance.uuid.hex,
             backend_flavor_id=flavor.backend_id,
             backend_image_id=image.backend_id,
-            skip_external_ip_assignment=skip_external_ip_assignment
-        )
+            **kwargs)
 
     def destroy(self, instance, force=False):
         instance.schedule_deletion()
@@ -337,6 +336,7 @@ class OpenStackBackend(ServiceBackend):
             return []
 
     def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None,
+                           system_volume_id=None, data_volume_id=None,
                            skip_external_ip_assignment=False):
         logger.info('About to provision instance %s', instance.uuid)
         try:
@@ -398,20 +398,24 @@ class OpenStackBackend(ServiceBackend):
             else:
                 backend_public_key = None
 
-            system_volume_name = '{0}-system'.format(instance.name)
-            logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
-            system_volume = cinder.volumes.create(
-                size=self.mb2gb(instance.system_volume_size),
-                display_name=system_volume_name,
-                display_description='',
-                imageRef=backend_image_id)
+            if not system_volume_id:
+                system_volume_name = '{0}-system'.format(instance.name)
+                logger.info('Creating volume %s for instance %s', system_volume_name, instance.uuid)
+                system_volume = cinder.volumes.create(
+                    size=self.mb2gb(instance.system_volume_size),
+                    display_name=system_volume_name,
+                    display_description='',
+                    imageRef=backend_image_id)
+                system_volume_id = system_volume.id
 
-            data_volume_name = '{0}-data'.format(instance.name)
-            logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
-            data_volume = cinder.volumes.create(
-                size=self.mb2gb(instance.data_volume_size),
-                display_name=data_volume_name,
-                display_description='')
+            if not data_volume_id:
+                data_volume_name = '{0}-data'.format(instance.name)
+                logger.info('Creating volume %s for instance %s', data_volume_name, instance.uuid)
+                data_volume = cinder.volumes.create(
+                    size=self.mb2gb(instance.data_volume_size),
+                    display_name=data_volume_name,
+                    display_description='')
+                data_volume_id = data_volume.id
 
             if not self._old_backend._wait_for_volume_status(system_volume.id, cinder, 'available', 'error'):
                 logger.error(
@@ -439,14 +443,14 @@ class OpenStackBackend(ServiceBackend):
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
-                        'uuid': system_volume.id,
+                        'uuid': system_volume_id,
                         'delete_on_termination': True,
                     },
                     {
                         'destination_type': 'volume',
                         'device_type': 'disk',
                         'source_type': 'volume',
-                        'uuid': data_volume.id,
+                        'uuid': data_volume_id,
                         'delete_on_termination': True,
                     },
                 ],
@@ -665,3 +669,15 @@ class OpenStackBackend(ServiceBackend):
         (models.FloatingIP.objects
             .filter(service_project_link=instance.service_project_link, address=instance.external_ips)
             .update(status='DOWN'))
+
+    @reraise_exceptions
+    def create_snapshots(self, service_project_link, volume_ids, prefix='Cloned volume'):
+        self._old_backend.create_snapshots(service_project_link, volume_ids, prefix)
+
+    @reraise_exceptions
+    def delete_snapshots(self, service_project_link, snapshot_ids):
+        self._old_backend.delete_snapshots(service_project_link, snapshot_ids)
+
+    @reraise_exceptions
+    def promote_snapshots_to_volumes(self, service_project_link, snapshot_ids, prefix='Promoted volume'):
+        self._old_backend.promote_snapshots_to_volumes(service_project_link, snapshot_ids, prefix)

@@ -1,5 +1,5 @@
 from django.conf import settings
-from rest_framework import viewsets, decorators, exceptions, response, permissions, status
+from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
 
 from nodeconductor.core import mixins as core_mixins
@@ -8,6 +8,7 @@ from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.openstack.backup import BackupError
 from nodeconductor.openstack import models, filters, serializers
 
 
@@ -185,3 +186,88 @@ class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.FloatingIPFilter
     filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+
+
+class BackupScheduleViewSet(viewsets.ModelViewSet):
+    queryset = models.BackupSchedule.objects.all()
+    serializer_class = serializers.BackupScheduleSerializer
+    lookup_field = 'uuid'
+    filter_class = filters.BackupScheduleFilter
+    filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+
+    @decorators.detail_route(methods=['post'])
+    def activate(self, request, uuid):
+        schedule = self.get_object()
+        if schedule.is_active:
+            return response.Response(
+                {'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
+        schedule.is_active = True
+        schedule.save()
+        return response.Response({'status': 'BackupSchedule was activated'})
+
+    @decorators.detail_route(methods=['post'])
+    def deactivate(self, request, uuid):
+        schedule = self.get_object()
+        if not schedule.is_active:
+            return response.Response(
+                {'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
+        schedule.is_active = False
+        schedule.save()
+        return response.Response({'status': 'BackupSchedule was deactivated'})
+
+
+class BackupViewSet(mixins.CreateModelMixin,
+                    mixins.RetrieveModelMixin,
+                    mixins.ListModelMixin,
+                    viewsets.GenericViewSet):
+
+    queryset = models.Backup.objects.all()
+    serializer_class = serializers.BackupSerializer
+    lookup_field = 'uuid'
+    filter_class = filters.BackupFilter
+    filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+
+    def perform_create(self, serializer):
+        # Check that instance is in stable state.
+        instance = serializer.validated_data.get('instance')
+        state = getattr(instance, 'state')
+
+        if state not in instance.States.STABLE_STATES:
+            raise IncorrectStateException('Instance should be in stable state.')
+
+        backup = serializer.save()
+        backend = backup.get_backend()
+        backend.start_backup()
+
+    @decorators.detail_route(methods=['post'])
+    def restore(self, request, uuid):
+        backup = self.get_object()
+        if backup.state != models.Backup.States.READY:
+            return response.Response(
+                {'detail': 'Cannot restore a backup in state \'%s\'' % backup.get_state_display()},
+                status=status.HTTP_409_CONFLICT)
+
+        backend = backup.get_backend()
+        instance, user_input, snapshot_ids, errors = backend.deserialize(request.data)
+
+        if not errors:
+            try:
+                backend = backup.get_backend()
+                backend.start_restoration(instance.uuid, user_input=user_input, snapshot_ids=snapshot_ids)
+            except BackupError:
+                # this should never be hit as the check is done on function entry
+                return response.Response(
+                    {'detail': 'Cannot restore a backup in state \'%s\'' % backup.get_state_display()},
+                    status=status.HTTP_409_CONFLICT)
+            return response.Response({'status': 'Backup restoration process was started'})
+
+        return response.Response({'detail': errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    @decorators.detail_route(methods=['post'])
+    def delete(self, request, uuid):
+        backup = self.get_object()
+        backend = backup.get_backend()
+        backend.start_deletion()
+        return response.Response({'status': 'Backup deletion was started'})

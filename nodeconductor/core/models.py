@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
 import re
+import pytz
 import logging
 
+from croniter.croniter import croniter
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
@@ -10,13 +12,14 @@ from django.core import validators
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
 from django.db import models
-from django.utils import timezone
+from django.utils import timezone as django_timezone
 from django.utils.encoding import force_text, python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from uuidfield import UUIDField
 import reversion
 
+from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.logging.log import LoggableMixin
 
 
@@ -74,6 +77,41 @@ class ErrorMessageMixin(models.Model):
     error_message = models.TextField(blank=True)
 
 
+class ScheduleMixin(models.Model):
+    """
+    Mixin to add a standardized "schedule" fields.
+    """
+    class Meta(object):
+        abstract = True
+
+    schedule = CronScheduleField(max_length=15)
+    next_trigger_at = models.DateTimeField(null=True)
+    timezone = models.CharField(max_length=50, default=django_timezone.get_current_timezone_name)
+    is_active = models.BooleanField(default=False)
+
+    def _update_next_trigger_at(self):
+        base_time = django_timezone.now().replace(tzinfo=pytz.timezone(self.timezone))
+        self.next_trigger_at = croniter(self.schedule, base_time).get_next(django_timezone.datetime)
+
+    def save(self, *args, **kwargs):
+        """
+        Updates next_trigger_at field if:
+         - instance become active
+         - instance.schedule changed
+         - instance is new
+        """
+        try:
+            prev_instance = self.objects.get(pk=self.pk)
+        except self.DoesNotExist:
+            prev_instance = None
+
+        if prev_instance is None or (not prev_instance.is_active and self.is_active or
+                                     self.schedule != prev_instance.schedule):
+            self._update_next_trigger_at()
+
+        super(ScheduleMixin, self).save(*args, **kwargs)
+
+
 class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
     username = models.CharField(
         _('username'), max_length=30, unique=True,
@@ -100,7 +138,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     is_active = models.BooleanField(_('active'), default=True,
                                     help_text=_('Designates whether this user should be treated as '
                                                 'active. Unselect this instead of deleting accounts.'))
-    date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
+    date_joined = models.DateTimeField(_('date joined'), default=django_timezone.now)
 
     objects = UserManager()
 
