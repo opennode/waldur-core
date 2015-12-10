@@ -1090,7 +1090,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
-            'resource_type', 'state', 'created', 'service_project_link',
+            'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message')

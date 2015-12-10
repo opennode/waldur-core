@@ -33,7 +33,7 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
                 return Response(response.json(), status=response.status_code)
             except JSONDecodeError:
                 return Response(
-                    {'Error message': 'cannot schedule head template provision'}, status=response.status_code)
+                    {'Error message': 'cannot schedule head template provision %s' % response.content}, status=response.status_code)
         # schedule tasks for other templates provision
         result = group.schedule_tail_templates_provision(request, templates_additional_options, response)
         result_url = reverse.reverse('template-result-detail', args=(result.uuid.hex, ), request=request)
