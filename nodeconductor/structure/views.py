@@ -62,6 +62,10 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.CustomerFilter
 
+    def get_queryset(self):
+        queryset = super(CustomerViewSet, self).get_queryset()
+        return self.get_serializer_class().eager_load(queryset)
+
     def perform_create(self, serializer):
         customer = serializer.save()
         if not self.request.user.is_staff:
@@ -156,7 +160,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 roles__role_type=models.ProjectRole.ADMINISTRATOR,
             )
 
-        return queryset
+        return self.get_serializer_class().eager_load(queryset)
 
     def perform_create(self, serializer):
         customer = serializer.validated_data['customer']
@@ -785,33 +789,16 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_vm_models())
-
-        return self.get_count('resource-list', {
-            'customer': self.customer_uuid,
-            'resource_type': types
-        })
+        return self.customer.get_vm_count()
 
     def get_apps(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_app_models())
-
-        return self.get_count('resource-list', {
-            'customer': self.customer_uuid,
-            'resource_type': types
-        })
+        return self.customer.get_app_count()
 
     def get_projects(self):
-        return self.get_count('project-list', {
-            'customer': self.customer_uuid
-        })
+        return self.customer.get_project_count()
 
     def get_services(self):
-        return self.get_count('service_items-list', {
-            'customer': self.customer_uuid,
-            'shared': self.shared
-        })
+        return self.customer.get_service_count()
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -861,22 +848,10 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_vm_models())
-
-        return self.get_count('resource-list', {
-            'project': self.project_uuid,
-            'resource_type': types
-        })
+        return self.project.get_vm_count()
 
     def get_apps(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_app_models())
-
-        return self.get_count('resource-list', {
-            'project': self.project_uuid,
-            'resource_type': types
-        })
+        return self.project.get_app_count()
 
     def get_users(self):
         return self.get_count('user-list', {
@@ -989,6 +964,10 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
+
+    def get_queryset(self, *args, **kwargs):
+        queryset = super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)
+        return self.get_serializer_class().eager_load(queryset)
 
     def _can_import(self):
         return self.import_serializer_class is not NotImplemented

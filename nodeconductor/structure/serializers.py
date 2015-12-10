@@ -1,19 +1,20 @@
 from __future__ import unicode_literals
 
-from collections import OrderedDict
-from django.core.validators import RegexValidator, MaxLengthValidator
+from collections import OrderedDict, defaultdict
+
 from django.contrib import auth
+from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
 from django.conf import settings
 from django.utils import six
 from django.utils.encoding import force_text
+from django.utils.lru_cache import lru_cache
 from rest_framework import exceptions, metadata, serializers
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.tasks import send_task
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices
@@ -101,7 +102,6 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     name = serializers.ReadOnlyField(source='service.name')
     type = serializers.SerializerMethodField()
     state = serializers.ReadOnlyField(source='get_state_display')
-    resources_count = serializers.SerializerMethodField(source='get_resources_count')
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
@@ -161,15 +161,8 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         default=(),
     )
 
-    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
-    # These fields exist for backward compatibility
-    resource_quota = serializers.SerializerMethodField('get_resource_quotas')
-    resource_quota_usage = serializers.SerializerMethodField('get_resource_quotas_usage')
-
-    services = NestedServiceProjectLinkSerializer(source='get_links', many=True, read_only=True)
-
-    app_count = serializers.SerializerMethodField()
-    vm_count = serializers.SerializerMethodField()
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
+    services = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.Project
@@ -181,9 +174,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'description',
             'quotas',
             'services',
-            'resource_quota', 'resource_quota_usage',
             'created',
-            'app_count', 'vm_count'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -193,6 +184,21 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
 
+    @staticmethod
+    def eager_load(queryset):
+        related_fields = (
+            'uuid',
+            'name',
+            'created',
+            'description',
+            'customer__uuid',
+            'customer__name',
+            'customer__native_name',
+            'customer__abbreviation'
+        )
+        return queryset.select_related('customer').only(*related_fields) \
+            .prefetch_related('quotas', 'project_groups')
+
     def create(self, validated_data):
         project_groups = validated_data.pop('project_groups')
         project = super(ProjectSerializer, self).create(validated_data)
@@ -200,28 +206,45 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
         return project
 
-    def get_resource_quotas(self, obj):
-        return models.Project.get_sum_of_quotas_as_dict(
-            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['limit'])
-
-    def get_resource_quotas_usage(self, obj):
-        quota_values = models.Project.get_sum_of_quotas_as_dict(
-            [obj], ['ram', 'storage', 'max_instances', 'vcpu'], fields=['usage'])
-        # No need for '_usage' suffix in quotas names
-        return {
-            key[:-6]: value for key, value in quota_values.iteritems()
-        }
-
     def get_filtered_field_names(self):
         return 'customer',
 
-    def get_app_count(self, project):
-        return sum(resource.objects.filter(project=project).count()
-                   for resource in models.Resource.get_app_models())
+    def get_services(self, project):
+        if 'services' not in self.context:
+            self.context['services'] = self.get_services_map()
+        services = self.context['services'][project.pk]
 
-    def get_vm_count(self,  project):
-        return sum(resource.objects.filter(project=project).count()
-                   for resource in models.Resource.get_vm_models())
+        serializer = NestedServiceProjectLinkSerializer(
+            services,
+            many=True,
+            read_only=True,
+            context={'request': self.context['request']})
+        return serializer.data
+
+    def get_services_map(self):
+        services = defaultdict(list)
+        related_fields = (
+            'id',
+            'state',
+            'project_id',
+            'service__uuid',
+            'service__name',
+            'service__settings__uuid',
+            'service__settings__shared'
+        )
+        for service in SupportedServices.get_service_models().values():
+            link_model = service['service_project_link']
+            links = link_model.objects.all()
+            if not hasattr(link_model, 'cloud'):
+                links = links.select_related('service', 'service__settings') \
+                             .only(*related_fields)
+            if isinstance(self.instance, list):
+                links = links.filter(project__in=self.instance)
+            else:
+                links = links.filter(project=self.instance)
+            for link in links:
+                services[link.project_id].append(link)
+        return services
 
     def update(self, instance, validated_data):
         if 'project_groups' in validated_data:
@@ -254,7 +277,7 @@ class CustomerSerializer(core_serializers.DynamicSerializer,
     project_groups = serializers.SerializerMethodField()
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     image = DefaultImageField(required=False, read_only=True)
-    quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.Customer
@@ -274,21 +297,25 @@ class CustomerSerializer(core_serializers.DynamicSerializer,
         # Balance should be modified by nodeconductor_paypal app
         read_only_fields = ('balance', )
 
+    @staticmethod
+    def eager_load(queryset):
+        return queryset.prefetch_related('quotas', 'projects', 'project_groups')
+
     def _get_filtered_data(self, objects, serializer):
         try:
             user = self.context['request'].user
             queryset = filter_queryset_for_user(objects, user)
         except (KeyError, AttributeError):
-            queryset = objects.all()
+            pass
 
         serializer_instance = serializer(queryset, many=True, context=self.context)
         return serializer_instance.data
 
     def get_projects(self, obj):
-        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
+        return self._get_filtered_data(obj.projects, BasicProjectSerializer)
 
     def get_project_groups(self, obj):
-        return self._get_filtered_data(obj.project_groups.all(), BasicProjectGroupSerializer)
+        return self._get_filtered_data(obj.project_groups, BasicProjectGroupSerializer)
 
 
 class BalanceHistorySerializer(serializers.ModelSerializer):
@@ -872,6 +899,24 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             cls.Meta.protected_fields += tuple(cls.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
         return super(BaseServiceSerializer, cls).__new__(cls, *args, **kwargs)
 
+    @staticmethod
+    def eager_load(queryset):
+        related_fields = (
+            'uuid',
+            'name',
+            'customer__uuid',
+            'customer__name',
+            'customer__native_name',
+            'settings__state',
+            'settings__uuid',
+            'settings__type',
+            'settings__shared',
+            'settings__error_message'
+        )
+        queryset = queryset.select_related('customer', 'settings').only(*related_fields)
+        projects = models.Project.objects.all().only('uuid', 'name')
+        return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
+
     def get_filtered_field_names(self):
         return 'customer',
 
@@ -950,14 +995,25 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
         return attrs
 
-    def get_resources_count(self, obj):
-        resources_count = 0
-        resource_models = SupportedServices.get_service_resources(obj)
-        for resource_model in resource_models:
-            # Format query path to service project link
-            query = {resource_model.Permissions.project_path.split('__')[0] + '__service': obj}
-            resources_count += resource_model.objects.filter(**query).count()
-        return resources_count
+    def get_resources_count(self, service):
+        return self.get_resources_count_map()[service.pk]
+
+    @lru_cache(maxsize=1)
+    def get_resources_count_map(self):
+        resource_models = SupportedServices.get_service_resources(self.Meta.model)
+        counts = defaultdict(lambda: 0)
+        for model in resource_models:
+            service_path = model.Permissions.service_path
+            if isinstance(self.instance, list):
+                query = {service_path + '__in': self.instance}
+            else:
+                query = {service_path: self.instance}
+            rows = model.objects.filter(**query).values(service_path)\
+                .annotate(count=django_models.Count('id'))
+            for row in rows:
+                service_id = row[service_path]
+                counts[service_id] += row['count']
+        return counts
 
     def get_service_type(self, obj):
         return SupportedServices.get_name_for_model(obj)

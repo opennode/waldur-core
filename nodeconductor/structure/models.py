@@ -96,6 +96,8 @@ class Customer(core_models.UuidMixin,
     QUOTAS_NAMES = [
         'nc_project_count',
         'nc_resource_count',
+        'nc_app_count',
+        'nc_vm_count',
         'nc_user_count',
         'nc_service_project_link_count',
         'nc_service_count'
@@ -211,6 +213,18 @@ class Customer(core_models.UuidMixin,
             'abbreviation': self.abbreviation
         }
 
+    def get_project_count(self):
+        return self.quotas.get(name='nc_project_count').usage
+
+    def get_service_count(self):
+        return self.quotas.get(name='nc_service_count').usage
+
+    def get_app_count(self):
+        return self.quotas.get(name='nc_app_count').usage
+
+    def get_vm_count(self):
+        return self.quotas.get(name='nc_vm_count').usage
+
 
 class BalanceHistory(models.Model):
     customer = models.ForeignKey(Customer)
@@ -278,7 +292,12 @@ class Project(core_models.DescribableMixin,
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = ['nc_resource_count', 'nc_service_project_link_count']
+    QUOTAS_NAMES = [
+        'nc_resource_count',
+        'nc_app_count',
+        'nc_vm_count',
+        'nc_service_project_link_count'
+    ]
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
@@ -386,6 +405,12 @@ class Project(core_models.DescribableMixin,
         """
         return [link for model in SupportedServices.get_service_models().values()
                      for link in model['service_project_link'].objects.filter(project=self)]
+
+    def get_app_count(self):
+        return self.quotas.get(name='nc_app_count').usage
+
+    def get_vm_count(self):
+        return self.quotas.get(name='nc_vm_count').usage
 
 
 @python_2_unicode_compatible
@@ -811,6 +836,7 @@ class Resource(core_models.UuidMixin,
         customer_path = 'service_project_link__project__customer'
         project_path = 'service_project_link__project'
         project_group_path = 'service_project_link__project__project_groups'
+        service_path = 'service_project_link__service'
 
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
