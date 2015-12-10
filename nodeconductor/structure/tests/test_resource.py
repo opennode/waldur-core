@@ -1,6 +1,6 @@
 import factory
 
-from rest_framework import test
+from rest_framework import test, status
 
 from nodeconductor.iaas.models import OpenStackSettings
 from nodeconductor.core.models import SynchronizationStates
@@ -72,3 +72,16 @@ class ResourceQuotasTest(test.APITransactionTestCase):
                 self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, 0)
                 self.assertEqual(service_project_link.quotas.get(name='ram').usage, 0)
                 self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)
+
+
+class ResourceUnlinkingTest(test.APITransactionTestCase):
+    def setUp(self):
+        from nodeconductor.openstack.tests.factories import InstanceFactory
+        self.user = factories.UserFactory(is_staff=True)
+        self.vm = InstanceFactory()
+        self.url = InstanceFactory.get_url(self.vm)
+
+    def test_vm_can_be_unlinked_in_erred_state(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.url + 'unlink/')
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
