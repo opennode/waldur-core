@@ -967,7 +967,10 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def get_queryset(self, *args, **kwargs):
         queryset = super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)
-        return self.get_serializer_class().eager_load(queryset)
+        serializer_class = self.get_serializer_class()
+        if hasattr(serializer_class, 'eager_load'):
+            return serializer_class.eager_load(queryset)
+        return queryset
 
     def _can_import(self):
         return self.import_serializer_class is not NotImplemented
