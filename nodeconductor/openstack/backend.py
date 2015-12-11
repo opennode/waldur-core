@@ -649,7 +649,8 @@ class OpenStackBackend(ServiceBackend):
     def connect_link_to_external_network(self, service_project_link):
         neutron = self.neutron_admin_client
         settings = service_project_link.service.settings
-        if 'external_network_id' in settings.options:
+        external_network_id = settings.options.get('external_network_id')
+        if external_network_id:
             self._old_backend.connect_membership_to_external_network(
                 service_project_link, settings.options['external_network_id'], neutron)
             connected = True

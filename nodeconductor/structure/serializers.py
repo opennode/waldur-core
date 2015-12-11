@@ -1256,7 +1256,9 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         write_only=True)
 
     class Meta(BaseResourceSerializer.Meta):
-        read_only_fields = ('start_time', 'cores', 'ram', 'disk', 'external_ips', 'internal_ips')
+        read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
+            'cores', 'ram', 'disk', 'external_ips', 'internal_ips'
+        )
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
             'user_data', 'ssh_public_key'
         )
