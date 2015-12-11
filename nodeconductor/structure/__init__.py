@@ -52,7 +52,6 @@ class SupportedServices(object):
         def get_reverse_filter_mapping(cls):
             return {name: code for code, name in SupportedServices.get_choices()}
 
-
     _registry = collections.defaultdict(lambda: {
         'backend': None,
         'resources': {},
