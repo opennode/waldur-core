@@ -7,7 +7,7 @@ from nodeconductor.structure import models as structure_models
 from nodeconductor.template import models
 
 
-class ProjectFilter(core_filters.URLFilter):
+class AbstractProjectFilter(django_filters.Filter):
     """ Filter template groups by project where it can be provisioned.
 
         Template group can be provisioned in a particular project, if services settings
@@ -18,26 +18,46 @@ class ProjectFilter(core_filters.URLFilter):
     """
 
     def get_project(self, value):
+        """ Return Project model instance based on inputed value """
+        raise NotImplementedError
+
+    def filter(self, qs, value):
+        if not value:
+            return qs
+        project = self.get_project(value)
+        # for consistency with other filters - return empty list if filtered project does not exists
+        if project is None:
+            return qs.none()
+
+        project_head_templates = (
+            models.Template.objects
+            .filter(order_number=1)
+            .filter(
+                Q(service_settings__isnull=True) |
+                Q(service_settings__shared=True) |
+                Q(service_settings__customer__projects=project)
+            )
+        )
+        return qs.filter(templates=project_head_templates)
+
+
+class URLProjectFilter(AbstractProjectFilter, core_filters.URLFilter):
+
+    def get_project(self, value):
         uuid = self.get_uuid(value)
         try:
             return structure_models.Project.objects.get(uuid=uuid)
         except structure_models.Project.DoesNotExist:
-            pass
+            return
 
-    def filter(self, qs, value):
-        project = self.get_project(value)
-        if project is not None:
-            project_head_templates = (
-                models.Template.objects
-                .filter(order_number=1)
-                .filter(
-                    Q(service_settings__isnull=True) |
-                    Q(service_settings__shared=True) |
-                    Q(service_settings__customer__projects=project)
-                )
-            )
-            return qs.filter(templates=project_head_templates)
-        return qs
+
+class UUIDProjectFilter(AbstractProjectFilter):
+
+    def get_project(self, value):
+        try:
+            return structure_models.Project.objects.get(uuid=value)
+        except structure_models.Project.DoesNotExist:
+            return
 
 
 class TemplateGroupFilter(django_filters.FilterSet):
@@ -48,8 +68,11 @@ class TemplateGroupFilter(django_filters.FilterSet):
         queryset=taggit.models.Tag.objects.all(),
         conjoined=True,
     )
-    project = ProjectFilter(view_name='project-detail')
+    project = URLProjectFilter(view_name='project-detail')
+    project_uuid = UUIDProjectFilter()
+    name = django_filters.CharFilter(lookup_type='icontains')
 
     class Meta(object):
         model = models.TemplateGroup
-        fields = ['tag', 'project']
+        fields = ['tag', 'name', 'project', 'project_uuid']
+        order_by = ['name', '-name']
