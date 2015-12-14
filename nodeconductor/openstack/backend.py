@@ -417,18 +417,18 @@ class OpenStackBackend(ServiceBackend):
                     display_description='')
                 data_volume_id = data_volume.id
 
-            if not self._old_backend._wait_for_volume_status(system_volume.id, cinder, 'available', 'error'):
+            if not self._old_backend._wait_for_volume_status(system_volume_id, cinder, 'available', 'error'):
                 logger.error(
                     "Failed to provision instance %s: timed out waiting "
                     "for system volume %s to become available",
-                    instance.uuid, system_volume.id)
+                    instance.uuid, system_volume_id)
                 raise OpenStackBackendError("Timed out waiting for instance %s to provision" % instance.uuid)
 
-            if not self._old_backend._wait_for_volume_status(data_volume.id, cinder, 'available', 'error'):
+            if not self._old_backend._wait_for_volume_status(data_volume_id, cinder, 'available', 'error'):
                 logger.error(
                     "Failed to provision instance %s: timed out waiting "
                     "for data volume %s to become available",
-                    instance.uuid, data_volume.id)
+                    instance.uuid, data_volume_id)
                 raise OpenStackBackendError("Timed out waiting for instance %s to provision" % instance.uuid)
 
             security_group_ids = instance.security_groups.values_list('security_group__backend_id', flat=True)
@@ -469,8 +469,8 @@ class OpenStackBackend(ServiceBackend):
             server = nova.servers.create(**server_create_parameters)
 
             instance.backend_id = server.id
-            instance.system_volume_id = system_volume.id
-            instance.data_volume_id = data_volume.id
+            instance.system_volume_id = system_volume_id
+            instance.data_volume_id = data_volume_id
             instance.save()
 
             if not self._old_backend._wait_for_instance_status(server.id, nova, 'ACTIVE'):
