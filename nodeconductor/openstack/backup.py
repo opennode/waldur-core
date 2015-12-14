@@ -164,7 +164,8 @@ class BackupBackend(object):
             flavor=flavor,
             image=image,
             system_volume_id=cloned_volumes_ids[0],
-            data_volume_id=cloned_volumes_ids[1])
+            data_volume_id=cloned_volumes_ids[1],
+            skip_external_ip_assignment=True)
 
     def deserialize(self, user_raw_input):
         metadata = self.backup.metadata
