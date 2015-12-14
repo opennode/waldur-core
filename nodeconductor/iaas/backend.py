@@ -158,7 +158,11 @@ class OpenStackClient(object):
         return self.session
 
     def create_tenant_session(self, credentials):
-        self.session = self.Session(self, **credentials)
+        try:
+            self.session = self.Session(self, **credentials)
+        except AttributeError as e:
+            logger.error('Failed to create OpenStack session.')
+            six.reraise(CloudBackendError, e)
         return self.session
 
     @classmethod
@@ -1810,8 +1814,7 @@ class OpenStackBackend(OpenStackClient):
 
             usage = nova.usage.get(tenant_id=membership.tenant_id, start=start_date, end=end_date)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to get %s usage for cloud project membership with id %s',
-                             membership.pk)
+            logger.error('Failed to get usage for cloud project membership with id %s', membership.pk)
             six.reraise(CloudBackendError, e)
         else:
             return {

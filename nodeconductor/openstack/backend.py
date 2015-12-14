@@ -656,7 +656,7 @@ class OpenStackBackend(ServiceBackend):
             connected = True
         else:
             logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
-                           ' option is not defined in settings {} option', settings.name)
+                           ' option is not defined in settings %s option', settings.name)
             connected = False
         return connected
 

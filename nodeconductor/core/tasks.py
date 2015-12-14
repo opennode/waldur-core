@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import functools
 import logging
+import sys
 
 from django.db import transaction, IntegrityError, DatabaseError
 from django.conf import settings
@@ -356,7 +357,7 @@ def save_error_message(func):
             if message:
                 transition_entity.error_message = message
                 transition_entity.save(update_fields=['error_message'])
-            raise exception
+            six.reraise(*sys.exc_info())
     return wrapped
 
 

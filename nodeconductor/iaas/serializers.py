@@ -279,7 +279,7 @@ class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
         if 'id' in data:
             try:
                 return models.SecurityGroupRule.objects.get(id=data['id'])
-            except models.SecurityGroup:
+            except models.SecurityGroup.DoesNotExist:
                 raise serializers.ValidationError('Security group with id %s does not exist' % data['id'])
         else:
             internal_data = super(NestedSecurityGroupRuleSerializer, self).to_internal_value(data)
@@ -338,7 +338,7 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
             if rule.id is not None and self.instance is None:
                 raise serializers.ValidationError('Cannot add existed rule with id %s to new security group' % rule.id)
             elif rule.id is not None and self.instance is not None and rule.group != self.instance:
-                raise serializers.ValidationError('Cannot add rule with id {} to group {} - it already belongs to '
+                raise serializers.ValidationError('Cannot add rule with id %s to group %s - it already belongs to '
                                                   'other group' % (rule.id, self.isntance.name))
         return value
 

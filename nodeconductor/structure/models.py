@@ -544,7 +544,7 @@ class ServiceSettings(core_models.UuidMixin,
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
 
-    options = JSONField(blank=True, help_text='Extra options')
+    options = JSONField(default={}, help_text='Extra options')
 
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     # TODO: Implement demo mode instead of dummy mode (NC-900)
