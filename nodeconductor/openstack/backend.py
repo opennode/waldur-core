@@ -666,3 +666,8 @@ class OpenStackBackend(ServiceBackend):
         (models.FloatingIP.objects
             .filter(service_project_link=instance.service_project_link, address=instance.external_ips)
             .update(status='DOWN'))
+
+    @reraise_exceptions
+    def update_tenant_name(self, service_project_link):
+        keystone = self.keystone_admin_client
+        self._old_backend.update_tenant_name(service_project_link, keystone)
