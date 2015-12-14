@@ -46,8 +46,7 @@ class BackupUsageTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data['detail'], 'Instance should be in stable state.')
 
-    @patch('celery.app.base.Celery.send_task')
-    def test_backup_restore(self, mocked_task):
+    def test_backup_restore(self):
         backup = factories.BackupFactory()
         url = factories.BackupFactory.get_url(backup, action='restore')
         settings = backup.instance.service_project_link.service.settings
