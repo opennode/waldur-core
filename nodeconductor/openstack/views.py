@@ -1,4 +1,5 @@
 from django.conf import settings
+from django_fsm import TransitionNotAllowed
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
 
@@ -300,6 +301,9 @@ class BackupViewSet(mixins.CreateModelMixin,
     @decorators.detail_route(methods=['post'])
     def delete(self, request, uuid):
         backup = self.get_backup()
+        if backup.state != models.Backup.States.READY:
+            return response.Response({'detail': 'Cannot delete a backup in state \'%s\'' % backup.get_state_display()},
+                            status=status.HTTP_409_CONFLICT)
         backend = backup.get_backend()
         backend.start_deletion()
         return response.Response({'status': 'Backup deletion was started'})

@@ -429,3 +429,9 @@ def backup_restoration_complete(backup_uuid, transition_entity=None):
 @transition(Backup, 'set_erred')
 def backup_failed(backup_uuid, transition_entity=None):
     pass
+
+@shared_task
+def openstack_update_tenant_name(service_project_link_str):
+    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
+    backend = service_project_link.get_backend()
+    backend.update_tenant_name(service_project_link)

@@ -653,13 +653,14 @@ class OpenStackBackend(ServiceBackend):
     def connect_link_to_external_network(self, service_project_link):
         neutron = self.neutron_admin_client
         settings = service_project_link.service.settings
-        if 'external_network_id' in settings.options:
+        external_network_id = settings.options.get('external_network_id')
+        if external_network_id:
             self._old_backend.connect_membership_to_external_network(
                 service_project_link, settings.options['external_network_id'], neutron)
             connected = True
         else:
             logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
-                           ' option is not defined in settings {} option', settings.name)
+                           ' option is not defined in settings %s option', settings.name)
             connected = False
         return connected
 
@@ -672,7 +673,7 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def create_snapshots(self, service_project_link, volume_ids, prefix='Cloned volume'):
-        self._old_backend.create_snapshots(service_project_link, volume_ids, prefix)
+        return self._old_backend.create_snapshots(service_project_link, volume_ids, prefix)
 
     @reraise_exceptions
     def delete_snapshots(self, service_project_link, snapshot_ids):
@@ -680,4 +681,8 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def promote_snapshots_to_volumes(self, service_project_link, snapshot_ids, prefix='Promoted volume'):
-        self._old_backend.promote_snapshots_to_volumes(service_project_link, snapshot_ids, prefix)
+        return self._old_backend.promote_snapshots_to_volumes(service_project_link, snapshot_ids, prefix)
+
+    def update_tenant_name(self, service_project_link):
+        keystone = self.keystone_admin_client
+        self._old_backend.update_tenant_name(service_project_link, keystone)

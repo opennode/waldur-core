@@ -23,26 +23,12 @@ class IaasConfig(AppConfig):
         CloudProjectMembership = self.get_model('CloudProjectMembership')
 
         from nodeconductor.iaas import handlers, cost_tracking
-        from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
-
         CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
 
         from nodeconductor.iaas.backend import OpenStackBackend
         SupportedServices.register_backend(OpenStackBackend)
         SupportedServices.register_service(Cloud)
         SupportedServices.register_resource(Instance)
-
-        pre_serializer_fields.connect(
-            handlers.add_clouds_to_related_model,
-            sender=CustomerSerializer,
-            dispatch_uid='nodeconductor.iaas.handlers.add_clouds_to_customer',
-        )
-
-        pre_serializer_fields.connect(
-            handlers.add_clouds_to_related_model,
-            sender=ProjectSerializer,
-            dispatch_uid='nodeconductor.iaas.handlers.add_clouds_to_project',
-        )
 
         signals.post_save.connect(
             quotas_handlers.add_quotas_to_scope,
