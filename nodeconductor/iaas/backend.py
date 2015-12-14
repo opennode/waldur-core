@@ -1157,7 +1157,7 @@ class OpenStackBackend(OpenStackClient):
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
-                    'Failed to boot instance %s: timed out waiting for instance to become online',
+                    'Failed to boot instance %s: timed out while waiting for instance to become online',
                     instance.uuid,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
