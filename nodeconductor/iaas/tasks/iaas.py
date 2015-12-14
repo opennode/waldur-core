@@ -398,3 +398,17 @@ def assign_floating_ip(floating_ip_uuid, instance_uuid):
         backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
     except CloudBackendError:
         logger.warning('Failed to assign floating IP to the instance with id %s.', instance_uuid)
+
+
+@shared_task
+def update_cloud_project_membership_tenant_name(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        session = backend.create_session(keystone_url=membership.cloud.auth_url)
+        keystone = backend.create_keystone_client(session)
+
+        backend.update_tenant_name(membership, keystone)
+    except CloudBackendError:
+        logger.warning('Failed to update tenant name for cloud project membership with id %s.', membership_pk)

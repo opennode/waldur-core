@@ -6,8 +6,14 @@ To get a list of all template groups, issue GET request against **/api/templates
 Supported filters are:
 
  - tag=<template group tag>, can be list.
+ - name=<template group name>.
  - project=<project_url> filter all template groups that could be provisioned with given project.
+ - project_uuid=<project_uuid> filter all template groups that could be provisioned with given project.
 
+Supported ordering are:
+
+ - ?o=name
+ - ?o=-name
 
 Example of response:
 

@@ -4,7 +4,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
-from nodeconductor.openstack.models import SecurityGroup, SecurityGroupRule
+from nodeconductor.openstack.models import SecurityGroup, SecurityGroupRule, OpenStackServiceProjectLink
 
 
 logger = logging.getLogger(__name__)
@@ -83,3 +83,17 @@ def change_floating_ip_quota_on_status_change(sender, instance, created=False, *
         floating_ip.service_project_link.add_quota_usage('floating_ip_count', 1)
     if floating_ip.status == 'DOWN' and not created and floating_ip.tracker.previous('status') != 'DOWN':
         floating_ip.service_project_link.add_quota_usage('floating_ip_count', -1)
+
+
+def check_project_name_update(sender, instance=None, created=False, **kwargs):
+    if created:
+        return
+
+    old_name = instance.tracker.previous('name')
+    if old_name != instance.name:
+        links = OpenStackServiceProjectLink.objects.filter(project__uuid=instance.uuid)
+        if links.exists():
+            from nodeconductor.openstack.tasks import openstack_update_tenant_name
+
+            for link in links:
+                openstack_update_tenant_name.delay(link.to_string())

@@ -304,6 +304,7 @@ class Instance(structure_models.Resource,
         customer_path = 'cloud_project_membership__project__customer'
         project_path = 'cloud_project_membership__project'
         project_group_path = 'cloud_project_membership__project__project_groups'
+        service_path = 'cloud_project_membership__cloud'
 
     class Services(object):
         IAAS = 'IaaS'
