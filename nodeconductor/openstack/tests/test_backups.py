@@ -95,7 +95,6 @@ class BackupListPermissionsTest(helpers.ListPermissionsTest):
         ]
 
 
-@patch('celery.app.base.Celery.send_task')
 class BackupPermissionsTest(helpers.PermissionsTest):
 
     def setUp(self):

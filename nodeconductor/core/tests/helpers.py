@@ -65,7 +65,7 @@ class PermissionsTest(test.APITransactionTestCase):
         """
         raise NotImplementedError()
 
-    def test_permissions(self, *args, **kwargs):
+    def test_permissions(self):
         """
         Go through all url configs ands checks that user with permissions
         can request them and users without - can't

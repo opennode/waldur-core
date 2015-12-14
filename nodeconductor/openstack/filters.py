@@ -2,7 +2,6 @@ import django_filters
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.structure import filters as structure_filters
-from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.openstack import models
 
 
