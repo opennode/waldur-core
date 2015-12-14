@@ -314,3 +314,10 @@ def openstack_delete_security_group(security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.service_project_link.get_backend()
     backend.delete_security_group(security_group)
+
+
+@shared_task
+def openstack_update_tenant_name(service_project_link_str):
+    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
+    backend = service_project_link.get_backend()
+    backend.update_tenant_name(service_project_link)
