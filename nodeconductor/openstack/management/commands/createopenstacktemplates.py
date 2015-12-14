@@ -11,7 +11,6 @@ from django.core.management.base import BaseCommand
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.backup.models import BackupSchedule
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.openstack import models
 from nodeconductor.openstack.cost_tracking import Types
@@ -248,7 +247,7 @@ class Command(BaseCommand):
                 self.style.WARNING('Maximal number of backups []: ')) or '')
 
             self.templates.append(Template(
-                resource_content_type=ContentType.objects.get_for_model(BackupSchedule),
+                resource_content_type=ContentType.objects.get_for_model(models.BackupSchedule),
                 options=options,
             ))
 

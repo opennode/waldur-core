@@ -17,3 +17,4 @@ API
 .. toctree::
     service
     resource
+    backup

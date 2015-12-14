@@ -2447,17 +2447,22 @@ class OpenStackBackend(OpenStackClient):
                         instance.external_ips, instance.uuid)
 
     def allocate_floating_ip_address(self, neutron, membership):
-        data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
-        ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
-
-        membership.floating_ips.create(
-            status='DOWN',
-            address=ip_address['floating_ip_address'],
-            backend_id=ip_address['id'],
-            backend_network_id=ip_address['floating_network_id']
-        )
-        logger.info('Floating IP %s for external network with id %s has been created.',
-                    ip_address['floating_ip_address'], membership.external_network_id)
+        try:
+            data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
+            ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('Unable to allocate floating IP address in external network %s',
+                             membership.external_network_id)
+            six.reraise(CloudBackendError, e)
+        else:
+            membership.floating_ips.create(
+                status='DOWN',
+                address=ip_address['floating_ip_address'],
+                backend_id=ip_address['id'],
+                backend_network_id=ip_address['floating_network_id']
+            )
+            logger.info('Floating IP %s for external network with id %s has been created.',
+                        ip_address['floating_ip_address'], membership.external_network_id)
 
     def assign_floating_ip_to_instance(self, nova, instance, floating_ip):
         nova.servers.add_floating_ip(server=instance.backend_id, address=floating_ip.address)

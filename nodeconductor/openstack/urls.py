@@ -9,3 +9,5 @@ def register_in(router):
     router.register(r'openstack-service-project-link', views.OpenStackServiceProjectLinkViewSet, base_name='openstack-spl')
     router.register(r'openstack-security-groups', views.SecurityGroupViewSet, base_name='openstack-sgp')
     router.register(r'openstack-floating-ips', views.FloatingIPViewSet, base_name='openstack-fip')
+    router.register(r'openstack-backup-schedules', views.BackupScheduleViewSet, base_name='openstack-schedule')
+    router.register(r'openstack-backups', views.BackupViewSet, base_name='openstack-backup')

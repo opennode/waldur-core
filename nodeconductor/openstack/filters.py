@@ -126,3 +126,35 @@ class FlavorFilter(structure_filters.ServicePropertySettingsFilter):
             'disk',
             '-disk',
         ]
+
+
+class BackupScheduleFilter(django_filters.FilterSet):
+    description = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = models.BackupSchedule
+        fields = (
+            'description',
+        )
+
+
+class BackupFilter(django_filters.FilterSet):
+    description = django_filters.CharFilter(
+        lookup_type='icontains',
+    )
+    instance = django_filters.CharFilter(
+        name='instance__uuid',
+    )
+    project = django_filters.CharFilter(
+        name='instance__service_project_link__project__uuid',
+    )
+
+    class Meta(object):
+        model = models.Backup
+        fields = (
+            'description',
+            'instance',
+            'project',
+        )
