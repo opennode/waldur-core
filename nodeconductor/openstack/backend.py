@@ -672,7 +672,7 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def create_snapshots(self, service_project_link, volume_ids, prefix='Cloned volume'):
-        self._old_backend.create_snapshots(service_project_link, volume_ids, prefix)
+        return self._old_backend.create_snapshots(service_project_link, volume_ids, prefix)
 
     @reraise_exceptions
     def delete_snapshots(self, service_project_link, snapshot_ids):
@@ -680,4 +680,4 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def promote_snapshots_to_volumes(self, service_project_link, snapshot_ids, prefix='Promoted volume'):
-        self._old_backend.promote_snapshots_to_volumes(service_project_link, snapshot_ids, prefix)
+        return self._old_backend.promote_snapshots_to_volumes(service_project_link, snapshot_ids, prefix)
