@@ -18,7 +18,7 @@ class AbstractProjectFilter(django_filters.Filter):
     """
 
     def get_project(self, value):
-        """ Return Project model instance based on inputed value """
+        """ Return Project model instance based on input value """
         raise NotImplementedError
 
     def filter(self, qs, value):
