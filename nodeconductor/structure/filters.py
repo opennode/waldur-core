@@ -537,7 +537,7 @@ class BaseResourceFilter(django_filters.FilterSet):
         choices=[(representation, representation) for db_value, representation in models.Resource.States.CHOICES],
         choice_mappings={representation: db_value for db_value, representation in models.Resource.States.CHOICES},
     )
-    uuid = django_filters.CharFilter(lookup_type='icontains')
+    uuid = django_filters.CharFilter(lookup_type='exact')
 
     class Meta(object):
         model = models.Resource
