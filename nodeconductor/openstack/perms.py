@@ -51,6 +51,38 @@ PERMISSION_LOGICS = (
         ],
         any_permission=True,
     )),
+    ('openstack.BackupSchedule', FilteredCollaboratorsPermissionLogic(
+        collaborators_query=[
+            'instance__service_project_link__service__customer__roles__permission_group__user',
+            'instance__service_project_link__project__roles__permission_group__user',
+            'instance__service_project_link__project__project_groups__roles__permission_group__user',
+        ],
+        collaborators_filter=[
+            {'instance__service_project_link__service__customer__roles__role_type':
+             structure_models.CustomerRole.OWNER},
+            {'instance__service_project_link__project__roles__role_type':
+             structure_models.ProjectRole.ADMINISTRATOR},
+            {'instance__service_project_link__project__project_groups__roles__permission_group__user':
+             structure_models.ProjectGroupRole.MANAGER},
+        ],
+        any_permission=True,
+    )),
+    ('openstack.Backup', FilteredCollaboratorsPermissionLogic(
+        collaborators_query=[
+            'instance__service_project_link__service__customer__roles__permission_group__user',
+            'instance__service_project_link__project__roles__permission_group__user',
+            'instance__service_project_link__project__project_groups__roles__permission_group__user',
+        ],
+        collaborators_filter=[
+            {'instance__service_project_link__service__customer__roles__role_type':
+             structure_models.CustomerRole.OWNER},
+            {'instance__service_project_link__project__roles__role_type':
+             structure_models.ProjectRole.ADMINISTRATOR},
+            {'instance__service_project_link__project__project_groups__roles__permission_group__user':
+             structure_models.ProjectGroupRole.MANAGER},
+        ],
+        any_permission=True,
+    )),
     ('openstack.Instance', structure_perms.resource_permission_logic),
     ('openstack.Flavor', StaffPermissionLogic(any_permission=True)),
     ('openstack.Image', StaffPermissionLogic(any_permission=True)),
