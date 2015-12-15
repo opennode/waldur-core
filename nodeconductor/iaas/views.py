@@ -178,6 +178,7 @@ class InstanceFilter(django_filters.FilterSet):
     description = django_filters.CharFilter(
         lookup_type='icontains',
     )
+    uuid = django_filters.CharFilter(lookup_type='exact')
 
     # In order to return results when an invalid value is specified
     strict = False
@@ -205,6 +206,7 @@ class InstanceFilter(django_filters.FilterSet):
             'created',
             'type',
             'backend_id',
+            'uuid',
         ]
         order_by = [
             'name',
