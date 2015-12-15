@@ -138,13 +138,13 @@ class BackupPermissionsTest(helpers.PermissionsTest):
         if method == 'GET':
             return [self.staff, self.project_admin, self.project_group_manager, self.customer_owner]
         else:
-            return [self.staff, self.project_admin]
+            return [self.staff, self.project_admin, self.customer_owner]
 
     def get_users_without_permissions(self, url, method):
         if method == 'GET':
             return [self.regular_user]
         else:
-            return [self.project_group_manager, self.customer_owner]
+            return [self.project_group_manager]
 
     def get_urls_configs(self):
         yield {'url': _backup_url(self.backup), 'method': 'GET'}
