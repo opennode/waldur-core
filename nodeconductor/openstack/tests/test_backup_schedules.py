@@ -202,13 +202,13 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
         if method == 'GET':
             return [self.staff, self.project_admin, self.project_group_manager, self.customer_owner]
         else:
-            return [self.staff, self.project_admin]
+            return [self.staff, self.project_admin, self.customer_owner]
 
     def get_users_without_permissions(self, url, method):
         if method == 'GET':
             return [self.regular_user]
         else:
-            return [self.project_group_manager, self.customer_owner]
+            return [self.project_group_manager]
 
     def get_urls_configs(self):
         yield {'url': backup_schedule_url(self.schedule), 'method': 'GET'}
@@ -239,12 +239,12 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-    def test_owner_cannot_delete_schedule(self):
+    def test_owner_can_delete_schedule(self):
         self.client.force_authenticate(self.customer_owner)
 
         url = backup_schedule_url(self.schedule)
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_group_manager_cannot_delete_schedule(self):
         self.client.force_authenticate(self.project_group_manager)

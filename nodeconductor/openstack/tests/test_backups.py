@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-from mock import patch
-
 from rest_framework import status
 from rest_framework import test
 
@@ -27,7 +25,7 @@ class BackupUsageTest(test.APITransactionTestCase):
         url = factories.BackupFactory.get_list_url()
         response = self.client.post(url, data=backup_data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        backup = models.Backup.objects.get(instance_id=backupable.id)
+        models.Backup.objects.get(instance_id=backupable.id)
         # fail:
         backup_data = {
             'instance': 'some_random_url',
@@ -119,15 +117,15 @@ class BackupPermissionsTest(helpers.PermissionsTest):
 
     def get_users_with_permission(self, url, method):
         if method == 'GET':
-            return [self.staff, self.project_admin, self.project_group_manager, self.customer_owner]
+            return [self.staff, self.project_admin, self.project_group_manager]
         else:
-            return [self.staff, self.project_admin]
+            return [self.staff, self.project_admin, self.customer_owner]
 
     def get_users_without_permissions(self, url, method):
         if method == 'GET':
             return [self.regular_user]
         else:
-            return [self.project_group_manager, self.customer_owner]
+            return [self.project_group_manager]
 
     def get_urls_configs(self):
         yield {'url': factories.BackupFactory.get_url(self.backup), 'method': 'GET'}
@@ -147,11 +145,11 @@ class BackupSourceFilterTest(test.APITransactionTestCase):
         user = structure_factories.UserFactory.create(is_staff=True)
 
         instance1 = factories.InstanceFactory()
-        backup1 = factories.BackupFactory(instance=instance1)
-        backup2 = factories.BackupFactory(instance=instance1)
+        factories.BackupFactory(instance=instance1)
+        factories.BackupFactory(instance=instance1)
 
         instance2 = factories.InstanceFactory()
-        backup3 = factories.BackupFactory(instance=instance2)
+        factories.BackupFactory(instance=instance2)
 
         self.client.force_authenticate(user=user)
         response = self.client.get(factories.BackupFactory.get_list_url())

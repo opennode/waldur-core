@@ -122,14 +122,13 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
 
     def test_daily_backup_schedule_next_trigger_at_is_correct(self):
         schedule = '0 2 * * *'
-        tzinfo = timezone(settings.TIME_ZONE)
-
         today = datetime.datetime.now(tz=timezone(settings.TIME_ZONE))
         expected = croniter(schedule, today).get_next(datetime.datetime)
 
         with mock.patch('nodeconductor.backup.models.django_timezone') as mock_django_timezone:
             mock_django_timezone.now.return_value = today
-            self.assertEqual(expected,
+            self.assertEqual(
+                expected,
                 factories.BackupScheduleFactory(schedule=schedule).next_trigger_at)
 
     def test_schedule_activation_and_deactivation(self):
@@ -212,13 +211,13 @@ class BackupSchedulePermissionsTest(helpers.PermissionsTest):
         if method == 'GET':
             return [self.staff, self.project_admin, self.project_group_manager, self.customer_owner]
         else:
-            return [self.staff, self.project_admin]
+            return [self.staff, self.project_admin, self.customer_owner]
 
     def get_users_without_permissions(self, url, method):
         if method == 'GET':
             return [self.regular_user]
         else:
-            return [self.project_group_manager, self.customer_owner]
+            return [self.project_group_manager]
 
     def get_urls_configs(self):
         yield {'url': _backup_schedule_url(self.schedule), 'method': 'GET'}
