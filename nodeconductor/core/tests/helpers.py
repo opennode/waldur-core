@@ -85,8 +85,9 @@ class PermissionsTest(test.APITransactionTestCase):
             for user in self.get_users_without_permissions(url, method):
                 self.client.force_authenticate(user=user)
                 response = getattr(self.client, method.lower())(url, data=data)
+                unreachable_statuses = (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND, status.HTTP_409_CONFLICT)
                 self.assertTrue(
-                    response.status_code in (status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND),
+                    response.status_code in unreachable_statuses,
                     'Error. User %s can reach url: %s (method:%s). (Response status code %s, data %s)'
                     % (user, url, method, response.status_code, response.data))
 
