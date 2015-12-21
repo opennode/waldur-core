@@ -97,9 +97,10 @@ class ListPermissionsTest(test.APITransactionTestCase):
     Abstract class that tests what objects user receive in list.
 
     Method `get_users_and_expected_results` has to be overridden.
-    Field `url` have to be defined as class attribute or property.
+    Method `get_url` have to be defined.
     """
-    url = None
+    def get_url(self):
+        return None
 
     def get_users_and_expected_results(self):
         """
@@ -116,7 +117,7 @@ class ListPermissionsTest(test.APITransactionTestCase):
             expected_results = user_and_expected_result['expected_results']
 
             self.client.force_authenticate(user=user)
-            response = self.client.get(self.url)
+            response = self.client.get(self.get_url())
             self.assertEqual(
                 len(expected_results), len(response.data),
                 'User %s receive wrong number of objects. Expected: %s, received %s'

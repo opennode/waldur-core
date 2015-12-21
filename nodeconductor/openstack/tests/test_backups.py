@@ -64,7 +64,8 @@ class BackupUsageTest(test.APITransactionTestCase):
 
 class BackupListPermissionsTest(helpers.ListPermissionsTest):
 
-    url = factories.BackupFactory.get_list_url()
+    def get_url(self):
+        return factories.BackupFactory.get_list_url()
 
     def get_users_and_expected_results(self):
         models.Backup.objects.all().delete()
