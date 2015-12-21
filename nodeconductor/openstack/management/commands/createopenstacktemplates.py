@@ -12,8 +12,7 @@ from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.core.models import SshPublicKey
-from nodeconductor.openstack import models
-from nodeconductor.openstack.cost_tracking import Types
+from nodeconductor.openstack import Types, models
 from nodeconductor.structure.models import Project
 from nodeconductor.template.models import TemplateGroup, Template
 

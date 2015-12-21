@@ -1,7 +1,10 @@
 from django.conf import settings
-from django_fsm import TransitionNotAllowed
+from django.contrib.contenttypes.models import ContentType
+from django.http import Http404
+from django.db.models import Count
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
+from taggit.models import Tag
 
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core.exceptions import IncorrectStateException
@@ -10,8 +13,10 @@ from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure.managers import filter_queryset_for_user
+from nodeconductor.structure.models import Project
 from nodeconductor.openstack.backup import BackupError
-from nodeconductor.openstack import models, filters, serializers
+from nodeconductor.openstack import Types, models, filters, serializers
 
 
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
@@ -302,8 +307,96 @@ class BackupViewSet(mixins.CreateModelMixin,
     def delete(self, request, uuid):
         backup = self.get_backup()
         if backup.state != models.Backup.States.READY:
-            return response.Response({'detail': 'Cannot delete a backup in state \'%s\'' % backup.get_state_display()},
-                            status=status.HTTP_409_CONFLICT)
+            return response.Response(
+                {'detail': 'Cannot delete a backup in state \'%s\'' % backup.get_state_display()},
+                status=status.HTTP_409_CONFLICT)
         backend = backup.get_backend()
         backend.start_deletion()
         return response.Response({'status': 'Backup deletion was started'})
+
+
+class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = serializers.LicenseSerializer
+    queryset = Tag.objects.filter(
+        taggit_taggeditem_items__content_type=ContentType.objects.get_for_model(models.Instance),
+        name__regex='^(%s):' % '|'.join([
+            Types.PriceItems.LICENSE_APPLICATION,
+            Types.PriceItems.LICENSE_OS]))
+
+    def initial(self, request, *args, **kwargs):
+        super(LicenseViewSet, self).initial(request, *args, **kwargs)
+        if self.action != 'stats' and not self.request.user.is_staff:
+            raise Http404
+
+    @decorators.list_route()
+    def stats(self, request):
+        queryset = filter_queryset_for_user(models.Instance.objects.all(), request.user)
+        if 'customer' in self.request.query_params:
+            queryset = queryset.filter(customer__uuid=self.request.query_params['customer'])
+
+        ids = [instance.id for instance in queryset]
+        tags = self.queryset.filter(taggit_taggeditem_items__object_id__in=ids)
+
+        tags_map = {
+            Types.PriceItems.LICENSE_OS: dict(Types.Os.CHOICES),
+            Types.PriceItems.LICENSE_APPLICATION: dict(Types.Applications.CHOICES),
+        }
+
+        aggregates = self.request.query_params.getlist('aggregate', ['name'])
+        filter_name = self.request.query_params.get('name')
+        filter_type = self.request.query_params.get('type')
+
+        valid_aggregates = 'name', 'type', 'customer', 'project', 'project_group'
+        for arg in aggregates:
+            if arg not in valid_aggregates:
+                return response.Response(
+                    "Licenses statistics can not be aggregated by %s" % arg,
+                    status=status.HTTP_400_BAD_REQUEST)
+
+        tags_aggregate = {}
+
+        for tag in tags:
+            opts = tag.name.split(':')
+            if opts[0] not in tags_map:
+                continue
+
+            tag_dict = {
+                'type': opts[1],
+                'name': opts[2] if len(opts) == 3 else tags_map[opts[0]][opts[1]],
+            }
+
+            if filter_name and filter_name != tag_dict['name']:
+                continue
+            if filter_type and filter_type != tag_dict['type']:
+                continue
+
+            instance = tag.taggit_taggeditem_items.filter(tag=tag).first().content_object
+            tag_dict.update({
+                'customer_uuid': instance.customer.uuid.hex,
+                'customer_name': instance.customer.name,
+                'customer_abbreviation': instance.customer.abbreviation,
+                'project_uuid': instance.project.uuid.hex,
+                'project_name': instance.project.name,
+            })
+
+            if instance.project.project_group is not None:
+                tag_dict.update({
+                    'project_group_uuid': instance.project.project_group.uuid.hex,
+                    'project_group_name': instance.project.project_group.name,
+                })
+
+            key = '-'.join([tag_dict.get(arg) or tag_dict.get('%s_uuid' % arg) for arg in aggregates])
+            tags_aggregate.setdefault(key, [])
+            tags_aggregate[key].append(tag_dict)
+
+        results = []
+        for group in tags_aggregate.values():
+            tag = {'count': len(group)}
+            for agr in aggregates:
+                for opt, val in group[0].items():
+                    if opt.startswith(agr):
+                        tag[opt] = val
+
+            results.append(tag)
+
+        return response.Response(results)

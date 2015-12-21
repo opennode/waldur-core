@@ -22,9 +22,8 @@ backup_schedule_url = lambda *a, **kw: factories.BackupScheduleFactory.get_url(*
 
 class BackupScheduleUsageTest(test.APISimpleTestCase):
 
-    url = factories.BackupScheduleFactory.get_list_url()
-
     def setUp(self):
+        self.url = factories.BackupScheduleFactory.get_list_url()
         self.user = structure_factories.UserFactory.create(is_staff=True)
         self.client.force_authenticate(user=self.user)
         backupable = factories.InstanceFactory()
@@ -152,7 +151,8 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
 
 class BackupScheduleListPermissionsTest(helpers.ListPermissionsTest):
 
-    url = factories.BackupScheduleFactory.get_list_url()
+    def get_url(self):
+        return factories.BackupScheduleFactory.get_list_url()
 
     def get_users_and_expected_results(self):
         instance = factories.InstanceFactory()

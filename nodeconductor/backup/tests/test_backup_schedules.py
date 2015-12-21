@@ -161,7 +161,8 @@ class BackupScheduleUsageTest(test.APISimpleTestCase):
 
 class BackupScheduleListPermissionsTest(helpers.ListPermissionsTest):
 
-    url = _backup_schedule_list_url()
+    def get_url(self):
+        return _backup_schedule_list_url()
 
     def get_users_and_expected_results(self):
         instance = iaas_factories.InstanceFactory()

@@ -1,0 +1,33 @@
+import pytz
+
+from django.core.exceptions import ValidationError
+from django.forms import ModelForm
+
+from nodeconductor.openstack.models import Instance
+from nodeconductor.openstack.widgets import LicenseWidget
+
+
+class BackupScheduleForm(ModelForm):
+    def clean_timezone(self):
+        tz = self.cleaned_data['timezone']
+        if tz not in pytz.all_timezones:
+            raise ValidationError('Invalid timezone', code='invalid')
+
+        return self.cleaned_data['timezone']
+
+
+class InstanceForm(ModelForm):
+    class Meta:
+        model = Instance
+        widgets = {
+            'tags': LicenseWidget(),
+        }
+
+    def clean_tags(self):
+        tags = self.cleaned_data['tags']
+        for tag in 'os', 'application', 'support':
+            opts = self.data.getlist("tags_%s" % tag)
+            if opts[1]:
+                tags.append(':'.join(opts))
+
+        return tags

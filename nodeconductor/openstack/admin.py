@@ -1,13 +1,10 @@
-import pytz
-
 from django.contrib import admin
-from django.core.exceptions import ValidationError
-from django.forms import ModelForm
 from django.utils.translation import ungettext
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure import admin as structure_admin
+from nodeconductor.openstack.forms import BackupScheduleForm, InstanceForm
 from nodeconductor.openstack.models import OpenStackService, OpenStackServiceProjectLink, Instance, \
                                            Backup, BackupSchedule
 
@@ -63,18 +60,9 @@ class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
 
 
 class BackupAdmin(admin.ModelAdmin):
-    readonly_fields = ('created_at', 'kept_until',)
+    readonly_fields = ('created_at', 'kept_until')
     list_filter = ('uuid', 'state')
     list_display = ('uuid', 'instance', 'state')
-
-
-class BackupScheduleForm(ModelForm):
-    def clean_timezone(self):
-        tz = self.cleaned_data['timezone']
-        if tz not in pytz.all_timezones:
-            raise ValidationError('Invalid timezone', code='invalid')
-
-        return self.cleaned_data['timezone']
 
 
 class BackupScheduleAdmin(admin.ModelAdmin):
@@ -84,7 +72,11 @@ class BackupScheduleAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'next_trigger_at', 'is_active', 'instance', 'timezone')
 
 
-admin.site.register(Instance, structure_admin.ResourceAdmin)
+class InstanceAdmin(structure_admin.ResourceAdmin):
+    form = InstanceForm
+
+
+admin.site.register(Instance, InstanceAdmin)
 admin.site.register(OpenStackService, structure_admin.ServiceAdmin)
 admin.site.register(OpenStackServiceProjectLink, ServiceProjectLinkAdmin)
 admin.site.register(Backup, BackupAdmin)

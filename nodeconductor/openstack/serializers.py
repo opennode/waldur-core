@@ -3,7 +3,8 @@ import pytz
 from django.db import transaction
 from django.utils import timezone
 from netaddr import IPNetwork
-from rest_framework import serializers
+from rest_framework import serializers, reverse
+from taggit.models import Tag
 
 from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.core import models as core_models
@@ -577,3 +578,39 @@ class InstanceImportSerializer(structure_serializers.BaseResourceImportSerialize
             instance.security_groups.create(security_group=sg)
 
         return instance
+
+
+class LicenseSerializer(serializers.ModelSerializer):
+
+    instance = serializers.SerializerMethodField()
+    group = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tag
+        fields = ('instance', 'group', 'type', 'name')
+
+    def get_instance(self, obj):
+        instance = obj.taggit_taggeditem_items.filter(tag=obj).first().content_object
+        url_name = instance.get_url_name() + '-detail'
+        return reverse.reverse(
+            url_name, request=self.context['request'], kwargs={'uuid': instance.uuid.hex})
+
+    def get_group(self, obj):
+        try:
+            return obj.name.split(':')[0]
+        except IndexError:
+            return ''
+
+    def get_type(self, obj):
+        try:
+            return obj.name.split(':')[1]
+        except IndexError:
+            return ''
+
+    def get_name(self, obj):
+        try:
+            return obj.name.split(':')[2]
+        except IndexError:
+            return ''
