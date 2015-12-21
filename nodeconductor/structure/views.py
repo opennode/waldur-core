@@ -458,11 +458,13 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 
     def perform_create(self, serializer):
         affected_project = serializer.validated_data['project']
+        affected_user = serializer.validated_data['user']
 
         if not self.can_manage_roles_for(affected_project):
             raise PermissionDenied('You do not have permission to perform this action.')
 
-        affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+        if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
+            affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         super(ProjectPermissionViewSet, self).perform_create(serializer)
 
@@ -522,11 +524,13 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 
     def perform_create(self, serializer):
         affected_project_group = serializer.validated_data['project_group']
+        affected_user = serializer.validated_data['user']
 
         if not self.can_manage_roles_for(affected_project_group):
             raise PermissionDenied('You do not have permission to perform this action.')
 
-        affected_project_group.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+        if not affected_project_group.customer.get_users().filter(pk=affected_user.pk).exists():
+            affected_project_group.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         super(ProjectGroupPermissionViewSet, self).perform_create(serializer)
 
@@ -587,11 +591,13 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
     # and revocation are kept in one place - the view.
     def perform_create(self, serializer):
         affected_customer = serializer.validated_data['customer']
+        affected_user = serializer.validated_data['user']
 
         if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')
 
-        affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+        if not affected_customer.get_users().filter(pk=affected_user.pk).exists():
+            affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         # It would be nice to put customer.add_user() logic here as well.
         # But it is pushed down to serializer.create() because otherwise
