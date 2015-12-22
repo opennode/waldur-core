@@ -178,7 +178,7 @@ class QuotaModelMixin(models.Model):
         """
         Return True if user has permission to update quota
         """
-        return False
+        return user.is_staff
 
     @classmethod
     def get_sum_of_quotas_as_dict(cls, scopes, quota_names=None, fields=['usage', 'limit']):
