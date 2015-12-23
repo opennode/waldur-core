@@ -21,7 +21,7 @@ from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.tasks import send_task
-from nodeconductor.quotas import models as quotas_models
+from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
@@ -93,16 +93,21 @@ class Customer(core_models.UuidMixin,
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
-    QUOTAS_NAMES = [
-        'nc_project_count',
-        'nc_resource_count',
-        'nc_app_count',
-        'nc_vm_count',
-        'nc_user_count',
-        'nc_service_project_link_count',
-        'nc_service_count'
-    ]
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
+
+    class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        nc_project_count = quotas_fields.CountQuotaField(
+            target_models=lambda: [Project],
+            path_to_scope='customer',
+        )
+        nc_service_count = quotas_fields.CountQuotaField(
+            target_models=lambda: Service.get_all_models(),
+            path_to_scope='customer',
+        )
+        nc_user_count = quotas_fields.QuotaField()
+        nc_resource_count = quotas_fields.QuotaField()
+        nc_app_count = quotas_fields.QuotaField()
+        nc_service_project_link_count = quotas_fields.QuotaField()
 
     def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
@@ -292,13 +297,25 @@ class Project(core_models.DescribableMixin,
         project_path = 'self'
         project_group_path = 'project_groups'
 
-    QUOTAS_NAMES = [
-        'nc_resource_count',
-        'nc_app_count',
-        'nc_vm_count',
-        'nc_service_project_link_count'
-    ]
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
+
+    class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        nc_resource_count = quotas_fields.CountQuotaField(
+            target_models=lambda: Resource.get_all_models(),
+            path_to_scope='service_project_link.project',
+        )
+        nc_app_count = quotas_fields.CountQuotaField(
+            target_models=lambda: Resource.get_app_models(),
+            path_to_scope='service_project_link.project',
+        )
+        nc_vm_count = quotas_fields.CountQuotaField(
+            target_models=lambda: Resource.get_vm_models(),
+            path_to_scope='service_project_link.project',
+        )
+        nc_service_project_link_count = quotas_fields.CountQuotaField(
+            target_models=lambda: ServiceProjectLink.get_all_models(),
+            path_to_scope='project',
+        )
 
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()

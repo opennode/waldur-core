@@ -1,12 +1,15 @@
+import inspect
+
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models, transaction
 from django.db.models import Sum
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
 
 from nodeconductor.logging.log import LoggableMixin
-from nodeconductor.quotas import exceptions, managers
+from nodeconductor.quotas import exceptions, managers, fields
 from nodeconductor.core.models import UuidMixin, ReversionMixin, DescendantMixin
 
 
@@ -32,6 +35,9 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     objects = managers.QuotaManager('scope')
     tracker = FieldTracker()
 
+    def __str__(self):
+        return '%s quota for %s' % (self.name, self.scope)
+
     def is_exceeded(self, delta=None, threshold=None):
         """
         Check is quota exceeded
@@ -51,9 +57,6 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
             limit = threshold * limit
 
         return usage > limit
-
-    def __str__(self):
-        return '%s quota for %s' % (self.name, self.scope)
 
     def get_log_fields(self):
         return ('uuid', 'name', 'limit', 'usage', 'scope')
@@ -76,7 +79,10 @@ class QuotaModelMixin(models.Model):
 
     Other useful methods: validate_quota_change, get_sum_of_quotas_as_dict. Please check their docstrings for more details.
     """
-    QUOTAS_NAMES = []  # this list has to be overridden
+    QUOTAS_NAMES = []  # this list has to be overridden. Deprecated use class Quotas instead
+
+    class Quotas(six.with_metaclass(fields.FieldsContainerMeta)):
+        pass  # register model quota fields here
 
     class Meta:
         abstract = True
@@ -227,3 +233,11 @@ class QuotaModelMixin(models.Model):
                     result[name] = -1
 
         return result
+
+    @classmethod
+    def get_quotas_fields(cls, field_class=None):
+        if not hasattr(cls, '_quota_fields'):
+            cls._quota_fields = dict(inspect.getmembers(cls.Quotas, lambda m: isinstance(m, fields.QuotaField))).values()
+        if field_class is not None:
+            return [v for v in cls._quota_fields if isinstance(v, field_class)]
+        return cls._quota_fields

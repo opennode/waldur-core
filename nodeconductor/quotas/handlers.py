@@ -104,6 +104,7 @@ def reset_quota_values_to_zeros_before_delete(sender, instance=None, **kwargs):
         quotas_scope.set_quota_usage(name, 0)
 
 
+# XXX: rewrite global quotas
 def create_global_quotas(**kwargs):
     for model in utils.get_models_with_quotas():
         if hasattr(model, 'GLOBAL_COUNT_QUOTA_NAME'):
@@ -126,3 +127,24 @@ def decrease_global_quota(sender, **kwargs):
                 name=getattr(sender, 'GLOBAL_COUNT_QUOTA_NAME'))
             global_quota.usage -= 1
             global_quota.save()
+
+
+# new quotas
+
+def init_quotas(sender, instance, created=False, **kwargs):
+    """ Initialize new instances quotas """
+    if not created:
+        return
+    for field in sender.get_quotas_fields():
+        field.get_or_create_quota(scope=instance)
+
+
+def count_quota_handler_factory(count_quota_field):
+    """ Creates handler that will recalculate count_quota on creation/deletion """
+
+    def recalculate_count_quota(sender, instance, **kwargs):
+        signal = kwargs['signal']
+        if signal == signals.post_save and kwargs.get('created') or signal == signals.post_delete:
+            count_quota_field.recalculate(instance)
+
+    return recalculate_count_quota
