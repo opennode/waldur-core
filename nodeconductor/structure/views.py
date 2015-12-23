@@ -64,7 +64,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super(CustomerViewSet, self).get_queryset()
-        return self.get_serializer_class().eager_load(queryset)
+        if self.action in ('list', 'retrieve'):
+            queryset = self.get_serializer_class().eager_load(queryset)
+        return queryset
 
     def perform_create(self, serializer):
         customer = serializer.save()
@@ -160,7 +162,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 roles__role_type=models.ProjectRole.ADMINISTRATOR,
             )
 
-        return self.get_serializer_class().eager_load(queryset)
+        if self.action in ('list', 'retrieve'):
+            queryset = self.get_serializer_class().eager_load(queryset)
+        return queryset
 
     def perform_create(self, serializer):
         customer = serializer.validated_data['customer']
@@ -973,9 +977,10 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def get_queryset(self, *args, **kwargs):
         queryset = super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)
-        serializer_class = self.get_serializer_class()
-        if hasattr(serializer_class, 'eager_load'):
-            return serializer_class.eager_load(queryset)
+        if self.action in ('list', 'retrieve'):
+            serializer_class = self.get_serializer_class()
+            if hasattr(serializer_class, 'eager_load'):
+                return serializer_class.eager_load(queryset)
         return queryset
 
     def _can_import(self):
