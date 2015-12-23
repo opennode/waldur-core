@@ -564,31 +564,39 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         self.assert_quota_usage('nc_project_count', 0)
 
     def test_customer_services_quota_increases_on_service_creation(self):
-        from nodeconductor.iaas.tests import factories as iaas_factories
-        service = iaas_factories.CloudFactory(customer=self.customer)
+        from nodeconductor.openstack.tests import factories as openstack_factories
+        openstack_factories.OpenStackServiceFactory(customer=self.customer)
         self.assert_quota_usage('nc_service_count', 1)
 
     def test_customer_services_quota_decreases_on_service_deletion(self):
-        from nodeconductor.iaas.tests import factories as iaas_factories
-        service = iaas_factories.CloudFactory(customer=self.customer)
+        from nodeconductor.openstack.tests import factories as openstack_factories
+        service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
         service.delete()
         self.assert_quota_usage('nc_service_count', 0)
 
     def test_customer_and_project_service_project_link_quota_updated(self):
-        from nodeconductor.iaas.tests import factories as iaas_factories
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
+        from nodeconductor.openstack.tests import factories as openstack_factories
+
+        self.assert_quota_usage('nc_service_project_link_count', 0)
+        service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
 
         project1 = factories.ProjectFactory(customer=self.customer)
-        cpm1 = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project1)
+        openstack_factories.OpenStackServiceProjectLinkFactory(service=service, project=project1)
 
         project2 = factories.ProjectFactory(customer=self.customer)
-        cpm2 = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project2)
+        openstack_factories.OpenStackServiceProjectLinkFactory(service=service, project=project2)
 
         self.assertEqual(project1.quotas.get(name='nc_service_project_link_count').usage, 1)
         self.assertEqual(project2.quotas.get(name='nc_service_project_link_count').usage, 1)
 
         self.assert_quota_usage('nc_service_project_link_count', 2)
         self.assert_quota_usage('nc_service_count', 1)
+
+        project2.delete()
+        project1.delete()
+
+        self.assert_quota_usage('nc_service_count', 1)
+        self.assert_quota_usage('nc_service_project_link_count', 0)
 
     # XXX: this test should be rewritten after instances will become part of general services
     def test_customer_instances_quota_increases_on_instance_creation(self):

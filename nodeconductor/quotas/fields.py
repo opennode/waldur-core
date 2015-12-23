@@ -75,9 +75,9 @@ class CounterQuotaField(QuotaField):
         current_usage = self.get_current_usage(self.target_models, scope)
         scope.set_quota_usage(self.name, current_usage)
 
-    def add_usage(self, target_instance, delta):
+    def add_usage(self, target_instance, delta, fail_silently=False):
         scope = self._get_scope(target_instance)
-        scope.add_quota_usage(self.name, delta)
+        scope.add_quota_usage(self.name, delta, fail_silently=fail_silently)
 
     def _get_scope(self, target_instance):
         return reduce(getattr, self.path_to_scope.split('.'), target_instance)

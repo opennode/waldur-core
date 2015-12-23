@@ -140,7 +140,10 @@ class QuotaModelMixin(models.Model):
             else:
                 # Django's F() expressions makes quota.is_exceeded() unusable in signals
                 # wrap update into a safe transaction instead (may not work with sqlite)
-                setattr(original_quota, field, getattr(original_quota, field) + delta)
+                old_value = getattr(original_quota, field)
+                # make sure that quota usage is not lower then 0 - it can become lower on cascade deletion
+                new_value = max(old_value + delta, 0)
+                setattr(original_quota, field, new_value)
                 original_quota.save(update_fields=[field])
                 self._add_delta_to_ancestors(field, quota_name, delta)
 

@@ -97,6 +97,6 @@ def count_quota_handler_factory(count_quota_field):
         if signal == signals.post_save and kwargs.get('created'):
             count_quota_field.add_usage(instance, delta=1)
         elif signal == signals.post_delete:
-            count_quota_field.add_usage(instance, delta=-1)
+            count_quota_field.add_usage(instance, delta=-1, fail_silently=True)
 
     return recalculate_count_quota
