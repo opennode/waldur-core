@@ -6,7 +6,6 @@ from django.db.models import signals
 from django_fsm import signals as fsm_signals
 
 from nodeconductor.core.models import SshPublicKey
-from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
@@ -94,14 +93,6 @@ class StructureConfig(AppConfig):
         set_permissions_for_model(
             ProjectGroup.projects.through,
             customer_path='projectgroup__customer',
-        )
-
-        # quotas creation
-
-        signals.post_save.connect(
-            quotas_handlers.add_quotas_to_scope,
-            sender=Customer,
-            dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_customer',
         )
 
         # increase nc_user_count quota usage on adding user to customer

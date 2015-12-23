@@ -56,8 +56,10 @@ class QuotasConfig(AppConfig):
             )
 
             # counter quota signals
-            # TODO: add explanation how this signals works
-            for count_field in model.get_quotas_fields(field_class=fields.CountQuotaField):
+            # How it works:
+            # Each counter quota field has list of target models. Change of target model should increase or decrease
+            # counter quota. So we connect generated handler to each of target models.
+            for count_field in model.get_quotas_fields(field_class=fields.CounterQuotaField):
 
                 for target_model_index, target_model in enumerate(count_field.target_models):
                     signals.post_save.connect(

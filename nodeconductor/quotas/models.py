@@ -64,20 +64,31 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
 
 class QuotaModelMixin(models.Model):
     """
-    Add general fields and methods to model for quotas usage. Model with quotas have inherit this mixin.
+    Add general fields and methods to model for quotas usage.
 
+    Model with quotas have inherit this mixin.
     For quotas implementation such methods and fields have to be defined:
-      - QUOTAS_NAMES - list of names for object quotas
-      - can_user_update_quotas(self, user) - return True if user has permission to update quotas of this object
+      - class Quota(QuotaModelMixin) - class with quotas fields as attributes.
+      - can_user_update_quotas(self, user) - Return True if user has permission to update quotas of this object.
+      - QUOTAS_NAMES - List of names for object quotas. Deprecated, define quotas as fields in Quotas class instead.
+      - GLOBAL_COUNT_QUOTA_NAME - Name of global count quota. It presents - global quota will be automatically created
+                                  for model. Optional attribute.
 
-    Additional optional fields:
-      - GLOBAL_COUNT_QUOTA_NAME - name of global count quota. It presents - global quota will be automatically created
-                                  for model
+    Example:
+        Customer(models.Model):
+            ...
+            Quotas(quotas_models.QuotaModelMixin.Quotas):
+                nc_user_count = quotas_fields.QuotaField()  # define user count quota for customers
+
+            def can_user_update_quotas(self, user):
+                # only staff user can edit Customer quotas
+                return user.is_staff
 
     Use such methods to change objects quotas:
       set_quota_limit, set_quota_usage, add_quota_usage.
 
-    Other useful methods: validate_quota_change, get_sum_of_quotas_as_dict. Please check their docstrings for more details.
+    Helper methods validate_quota_change and get_sum_of_quotas_as_dict provide common operations with objects quotas.
+    Check methods docstrings for more details.
     """
     QUOTAS_NAMES = []  # this list has to be overridden. Deprecated use class Quotas instead
 

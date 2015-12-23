@@ -96,18 +96,24 @@ class Customer(core_models.UuidMixin,
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
-        nc_project_count = quotas_fields.CountQuotaField(
+        nc_project_count = quotas_fields.CounterQuotaField(
             target_models=lambda: [Project],
             path_to_scope='customer',
         )
-        nc_service_count = quotas_fields.CountQuotaField(
+        nc_service_count = quotas_fields.CounterQuotaField(
             target_models=lambda: Service.get_all_models(),
             path_to_scope='customer',
         )
         nc_user_count = quotas_fields.QuotaField()
-        nc_resource_count = quotas_fields.QuotaField()
-        nc_app_count = quotas_fields.QuotaField()
-        nc_service_project_link_count = quotas_fields.QuotaField()
+        nc_resource_count = quotas_fields.AggregatorQuotaField(
+            get_children=lambda customer: customer.projects.all(),
+        )
+        nc_app_count = quotas_fields.AggregatorQuotaField(
+            get_children=lambda customer: customer.projects.all(),
+        )
+        nc_service_project_link_count = quotas_fields.AggregatorQuotaField(
+            get_children=lambda customer: customer.projects.all(),
+        )
 
     def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
@@ -300,19 +306,19 @@ class Project(core_models.DescribableMixin,
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
-        nc_resource_count = quotas_fields.CountQuotaField(
+        nc_resource_count = quotas_fields.CounterQuotaField(
             target_models=lambda: Resource.get_all_models(),
-            path_to_scope='service_project_link.project',
+            path_to_scope='project',
         )
-        nc_app_count = quotas_fields.CountQuotaField(
+        nc_app_count = quotas_fields.CounterQuotaField(
             target_models=lambda: Resource.get_app_models(),
-            path_to_scope='service_project_link.project',
+            path_to_scope='project',
         )
-        nc_vm_count = quotas_fields.CountQuotaField(
+        nc_vm_count = quotas_fields.CounterQuotaField(
             target_models=lambda: Resource.get_vm_models(),
-            path_to_scope='service_project_link.project',
+            path_to_scope='project',
         )
-        nc_service_project_link_count = quotas_fields.CountQuotaField(
+        nc_service_project_link_count = quotas_fields.CounterQuotaField(
             target_models=lambda: ServiceProjectLink.get_all_models(),
             path_to_scope='project',
         )
