@@ -11,4 +11,4 @@ def register_in(router):
     router.register(r'openstack-floating-ips', views.FloatingIPViewSet, base_name='openstack-fip')
     router.register(r'openstack-backup-schedules', views.BackupScheduleViewSet, base_name='openstack-schedule')
     router.register(r'openstack-backups', views.BackupViewSet, base_name='openstack-backup')
-    router.register(r'openstack-licenses', views.LicenseViewSet)
+    router.register(r'openstack-licenses', views.LicenseViewSet, base_name='openstack-license')
