@@ -151,7 +151,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         verbose_name_plural = _('users')
 
     def get_log_fields(self):
-        return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD)
+        return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD, 'is_staff')
 
     def get_full_name(self):
         # This method is used in django-reversion as name of revision creator.
