@@ -317,11 +317,13 @@ class BackupViewSet(mixins.CreateModelMixin,
 
 class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = serializers.LicenseSerializer
-    queryset = Tag.objects.filter(
-        taggit_taggeditem_items__content_type=ContentType.objects.get_for_model(models.Instance),
-        name__regex='^(%s):' % '|'.join([
-            Types.PriceItems.LICENSE_APPLICATION,
-            Types.PriceItems.LICENSE_OS]))
+
+    def get_queryset(self):
+        pattern = '^(%s):' % '|'.join([Types.PriceItems.LICENSE_APPLICATION,
+                                       Types.PriceItems.LICENSE_OS])
+        instance_ct = ContentType.objects.get_for_model(models.Instance)
+        return Tag.objects.filter(taggit_taggeditem_items__content_type=instance_ct,
+                                  name__regex=pattern)
 
     def initial(self, request, *args, **kwargs):
         super(LicenseViewSet, self).initial(request, *args, **kwargs)
