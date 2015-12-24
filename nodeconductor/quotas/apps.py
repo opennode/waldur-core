@@ -19,8 +19,6 @@ class QuotasConfig(AppConfig):
             dispatch_uid='nodeconductor.quotas.handlers.check_quota_threshold_breach',
         )
 
-        from nodeconductor.quotas import fields
-
         for index, model in enumerate(utils.get_models_with_quotas()):
             signals.pre_delete.connect(
                 handlers.reset_quota_values_to_zeros_before_delete,
@@ -41,13 +39,20 @@ class QuotasConfig(AppConfig):
                 dispatch_uid='nodeconductor.quotas.handlers.decrease_global_quota_%s_%s' % (model.__name__, index)
             )
 
-            ## new quotas ##
+        signals.post_migrate.connect(
+            handlers.create_global_quotas,
+            dispatch_uid="nodeconductor.quotas.handlers.create_global_quotas",
+        )
 
+        # new quotas
+        from nodeconductor.quotas import fields
+
+        for model_index, model in enumerate(utils.get_models_with_quotas()):
             # quota initialization
             signals.post_save.connect(
                 handlers.init_quotas,
                 sender=model,
-                dispatch_uid='nodeconductor.quotas.init_quotas_%s_%s' % (model.__name__, index)
+                dispatch_uid='nodeconductor.quotas.init_quotas_%s_%s' % (model.__name__, model_index)
             )
 
             # counter quota signals
@@ -62,7 +67,7 @@ class QuotasConfig(AppConfig):
                         sender=target_model,
                         weak=False,  # saves handler from garbage collector
                         dispatch_uid='nodeconductor.quotas.increase_counter_quota_%s_%s_%s_%s_%s' % (
-                            model.__name__, index, count_field.name, target_model.__name__, target_model_index)
+                            model.__name__, model_index, count_field.name, target_model.__name__, target_model_index)
                     )
 
                     signals.post_delete.connect(
@@ -70,10 +75,5 @@ class QuotasConfig(AppConfig):
                         sender=target_model,
                         weak=False,  # saves handler from garbage collector
                         dispatch_uid='nodeconductor.quotas.decrease_counter_quota_%s_%s_%s_%s_%s' % (
-                            model.__name__, index, count_field.name, target_model.__name__, target_model_index)
+                            model.__name__, model_index, count_field.name, target_model.__name__, target_model_index)
                     )
-
-        signals.post_migrate.connect(
-            handlers.create_global_quotas,
-            dispatch_uid="nodeconductor.quotas.handlers.create_global_quotas",
-        )
