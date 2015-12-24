@@ -111,6 +111,9 @@ class Customer(core_models.UuidMixin,
         nc_app_count = quotas_fields.AggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
+        nc_vm_count = quotas_fields.AggregatorQuotaField(
+            get_children=lambda customer: customer.projects.all(),
+        )
         nc_service_project_link_count = quotas_fields.AggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
