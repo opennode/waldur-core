@@ -122,9 +122,3 @@ def check_project_name_update(sender, instance=None, created=False, **kwargs):
             for cpm in cpms:
                 zabbix_update_host_visible_name.delay(cpm.pk, is_tenant=True)
                 update_cloud_project_membership_tenant_name.delay(cpm.pk)
-
-
-change_customer_nc_service_quota = quotas_handlers.quantity_quota_handler_factory(
-    path_to_quota_scope='customer',
-    quota_name='nc_service_count',
-)

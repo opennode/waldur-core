@@ -6,7 +6,6 @@ from django.db.models import signals
 from django_fsm import signals as fsm_signals
 
 from nodeconductor.core.models import SshPublicKey
-from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
@@ -96,33 +95,6 @@ class StructureConfig(AppConfig):
             customer_path='projectgroup__customer',
         )
 
-        # quotas creation
-        signals.post_save.connect(
-            quotas_handlers.add_quotas_to_scope,
-            sender=Project,
-            dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_project',
-        )
-
-        signals.post_save.connect(
-            quotas_handlers.add_quotas_to_scope,
-            sender=Customer,
-            dispatch_uid='nodeconductor.structure.handlers.add_quotas_to_customer',
-        )
-
-        # increase nc_project_count quota usage on project creation
-        signals.post_save.connect(
-            handlers.change_customer_nc_projects_quota,
-            sender=Project,
-            dispatch_uid='nodeconductor.structure.handlers.increase_customer_nc_projects_quota',
-        )
-
-        # decrease nc_project_count quota usage on project deletion
-        signals.post_delete.connect(
-            handlers.change_customer_nc_projects_quota,
-            sender=Project,
-            dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_projects_quota',
-        )
-
         # increase nc_user_count quota usage on adding user to customer
         structure_models_with_roles = (Customer, Project, ProjectGroup)
         for model in structure_models_with_roles:
@@ -180,20 +152,6 @@ class StructureConfig(AppConfig):
 
         for index, model in enumerate(Resource.get_all_models()):
             signals.post_save.connect(
-                handlers.change_project_nc_resource_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_resource_quota_{}_{}'.format(
-                    model.__name__, index),
-            )
-
-            signals.post_delete.connect(
-                handlers.change_project_nc_resource_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_resource_quota_{}_{}'.format(
-                    model.__name__, index),
-            )
-
-            signals.post_save.connect(
                 handlers.log_resource_created,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.log_resource_created_{}_{}'.format(
@@ -204,36 +162,6 @@ class StructureConfig(AppConfig):
                 handlers.log_resource_deleted,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.log_resource_deleted_{}_{}'.format(
-                    model.__name__, index),
-            )
-
-        for index, model in enumerate(Resource.get_vm_models()):
-            signals.post_save.connect(
-                handlers.change_project_nc_vm_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_vm_quota_{}_{}'.format(
-                    model.__name__, index),
-            )
-
-            signals.post_delete.connect(
-                handlers.change_project_nc_vm_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_vm_quota_{}_{}'.format(
-                    model.__name__, index),
-            )
-
-        for index, model in enumerate(Resource.get_app_models()):
-            signals.post_save.connect(
-                handlers.change_project_nc_app_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_app_quota_{}_{}'.format(
-                    model.__name__, index),
-            )
-
-            signals.post_delete.connect(
-                handlers.change_project_nc_app_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_app_quota_{}_{}'.format(
                     model.__name__, index),
             )
 
@@ -263,18 +191,6 @@ class StructureConfig(AppConfig):
                 handlers.sync_service_project_link_with_backend,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.sync_service_project_link_with_backend_%s' % model.__name__,
-            )
-
-            signals.post_save.connect(
-                handlers.change_project_nc_service_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_project_nc_service_quota_%s' % model.__name__,
-            )
-
-            signals.post_delete.connect(
-                handlers.change_project_nc_service_quota,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_project_nc_service_quota_%s' % model.__name__,
             )
 
             signals.post_delete.connect(
@@ -373,20 +289,6 @@ class StructureConfig(AppConfig):
                 sender=service_model,
                 dispatch_uid='nodeconductor.structure.handlers.'
                              'connect_service_{}_to_all_projects_if_it_is_available_for_all_{}'.format(
-                                service_model.__name__, index),
-            )
-
-            signals.post_save.connect(
-                handlers.change_customer_nc_service_quota,
-                sender=service_model,
-                dispatch_uid='nodeconductor.structure.handlers.increase_customer_nc_service_quota_{}_{}'.format(
-                                service_model.__name__, index),
-            )
-
-            signals.post_delete.connect(
-                handlers.change_customer_nc_service_quota,
-                sender=service_model,
-                dispatch_uid='nodeconductor.structure.handlers.decrease_customer_nc_service_quota_{}_{}'.format(
                                 service_model.__name__, index),
             )
 

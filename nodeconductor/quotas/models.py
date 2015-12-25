@@ -1,12 +1,15 @@
+import inspect
+
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models, transaction
 from django.db.models import Sum
+from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
 
 from nodeconductor.logging.log import LoggableMixin
-from nodeconductor.quotas import exceptions, managers
+from nodeconductor.quotas import exceptions, managers, fields
 from nodeconductor.core.models import UuidMixin, ReversionMixin, DescendantMixin
 
 
@@ -32,6 +35,9 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     objects = managers.QuotaManager('scope')
     tracker = FieldTracker()
 
+    def __str__(self):
+        return '%s quota for %s' % (self.name, self.scope)
+
     def is_exceeded(self, delta=None, threshold=None):
         """
         Check is quota exceeded
@@ -52,31 +58,42 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
 
         return usage > limit
 
-    def __str__(self):
-        return '%s quota for %s' % (self.name, self.scope)
-
     def get_log_fields(self):
         return ('uuid', 'name', 'limit', 'usage', 'scope')
 
 
 class QuotaModelMixin(models.Model):
     """
-    Add general fields and methods to model for quotas usage. Model with quotas have inherit this mixin.
+    Add general fields and methods to model for quotas usage.
 
+    Model with quotas have inherit this mixin.
     For quotas implementation such methods and fields have to be defined:
-      - QUOTAS_NAMES - list of names for object quotas
-      - can_user_update_quotas(self, user) - return True if user has permission to update quotas of this object
+      - class Quota(QuotaModelMixin) - class with quotas fields as attributes.
+      - can_user_update_quotas(self, user) - Return True if user has permission to update quotas of this object.
+      - QUOTAS_NAMES - List of names for object quotas. Deprecated, define quotas as fields in Quotas class instead.
+      - GLOBAL_COUNT_QUOTA_NAME - Name of global count quota. It presents - global quota will be automatically created
+                                  for model. Optional attribute.
 
-    Additional optional fields:
-      - GLOBAL_COUNT_QUOTA_NAME - name of global count quota. It presents - global quota will be automatically created
-                                  for model
+    Example:
+        Customer(models.Model):
+            ...
+            Quotas(quotas_models.QuotaModelMixin.Quotas):
+                nc_user_count = quotas_fields.QuotaField()  # define user count quota for customers
+
+            def can_user_update_quotas(self, user):
+                # only staff user can edit Customer quotas
+                return user.is_staff
 
     Use such methods to change objects quotas:
       set_quota_limit, set_quota_usage, add_quota_usage.
 
-    Other useful methods: validate_quota_change, get_sum_of_quotas_as_dict. Please check their docstrings for more details.
+    Helper methods validate_quota_change and get_sum_of_quotas_as_dict provide common operations with objects quotas.
+    Check methods docstrings for more details.
     """
-    QUOTAS_NAMES = []  # this list has to be overridden
+    QUOTAS_NAMES = []  # this list has to be overridden. Deprecated use class Quotas instead
+
+    class Quotas(six.with_metaclass(fields.FieldsContainerMeta)):
+        pass  # register model quota fields here
 
     class Meta:
         abstract = True
@@ -123,7 +140,10 @@ class QuotaModelMixin(models.Model):
             else:
                 # Django's F() expressions makes quota.is_exceeded() unusable in signals
                 # wrap update into a safe transaction instead (may not work with sqlite)
-                setattr(original_quota, field, getattr(original_quota, field) + delta)
+                old_value = getattr(original_quota, field)
+                # make sure that quota usage is not lower then 0 - it can become lower on cascade deletion
+                new_value = max(old_value + delta, 0)
+                setattr(original_quota, field, new_value)
                 original_quota.save(update_fields=[field])
                 self._add_delta_to_ancestors(field, quota_name, delta)
 
@@ -227,3 +247,11 @@ class QuotaModelMixin(models.Model):
                     result[name] = -1
 
         return result
+
+    @classmethod
+    def get_quotas_fields(cls, field_class=None):
+        if not hasattr(cls, '_quota_fields'):
+            cls._quota_fields = dict(inspect.getmembers(cls.Quotas, lambda m: isinstance(m, fields.QuotaField))).values()
+        if field_class is not None:
+            return [v for v in cls._quota_fields if isinstance(v, field_class)]
+        return cls._quota_fields
