@@ -14,13 +14,13 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='defaultpricelistitem',
             name='value',
-            field=models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=5),
+            field=models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=11, decimal_places=5),
             preserve_default=True,
         ),
         migrations.AlterField(
             model_name='pricelistitem',
             name='value',
-            field=models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=5),
+            field=models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=11, decimal_places=5),
             preserve_default=True,
         ),
     ]
