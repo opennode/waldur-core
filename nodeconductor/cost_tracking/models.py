@@ -143,7 +143,7 @@ class AbstractPriceListItem(models.Model):
         abstract = True
 
     key = models.CharField(max_length=255)
-    value = models.DecimalField("Hourly rate", default=0, max_digits=9, decimal_places=2)
+    value = models.DecimalField("Hourly rate", default=0, max_digits=9, decimal_places=5)
     units = models.CharField(max_length=255, blank=True)
     item_type = models.CharField(max_length=255)
 
