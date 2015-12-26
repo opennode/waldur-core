@@ -143,6 +143,7 @@ class QuotaModelMixin(models.Model):
                 old_value = getattr(original_quota, field)
                 # make sure that quota usage is not lower then 0 - it can become lower on cascade deletion
                 new_value = max(old_value + delta, 0)
+                delta = new_value - old_value
                 setattr(original_quota, field, new_value)
                 original_quota.save(update_fields=[field])
                 self._add_delta_to_ancestors(field, quota_name, delta)
