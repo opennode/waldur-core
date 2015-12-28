@@ -114,8 +114,7 @@ def log_backup_schedule_save(sender, instance, created=False, **kwargs):
 
 
 def log_backup_schedule_delete(sender, instance, **kwargs):
-    if instance.backup_source:
-        event_logger.openstack_backup.info(
-            'Backup schedule for {resource_name} has been deleted.',
-            event_type='resource_backup_schedule_deletion_succeeded',
-            event_context={'resource': instance.instance})
+    event_logger.openstack_backup.info(
+        'Backup schedule for {resource_name} has been deleted.',
+        event_type='resource_backup_schedule_deletion_succeeded',
+        event_context={'resource': instance.instance})
