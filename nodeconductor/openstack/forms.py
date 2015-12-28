@@ -5,6 +5,7 @@ from django.forms import ModelForm
 
 from nodeconductor.openstack.models import Instance
 from nodeconductor.openstack.widgets import LicenseWidget
+from nodeconductor.structure.log import event_logger
 
 
 class BackupScheduleForm(ModelForm):
@@ -29,5 +30,15 @@ class InstanceForm(ModelForm):
             opts = self.data.getlist("tags_%s" % tag)
             if opts[1]:
                 tags.append(':'.join(opts))
+
+                event_logger.licenses.info(
+                    'License added to resource with name {resource_name}.',
+                    event_type='resource_license_added',
+                    event_context={
+                        'resource': self.instance,
+                        'license_name': opts[-1],
+                        'license_type': 'IaaS' if tag == 'os' else 'PaaS',
+                    }
+                )
 
         return tags
