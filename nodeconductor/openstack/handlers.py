@@ -105,12 +105,12 @@ def log_backup_schedule_save(sender, instance, created=False, **kwargs):
         event_logger.openstack_backup.info(
             'Backup schedule for {resource_name} has been created.',
             event_type='resource_backup_schedule_creation_succeeded',
-            event_context=extract_event_context(instance))
+            event_context={'resource': instance})
     else:
         event_logger.openstack_backup.info(
             'Backup schedule for {resource_name} has been updated.',
             event_type='resource_backup_schedule_update_succeeded',
-            event_context=extract_event_context(instance))
+            event_context={'resource': instance})
 
 
 def log_backup_schedule_delete(sender, instance, **kwargs):
@@ -118,4 +118,4 @@ def log_backup_schedule_delete(sender, instance, **kwargs):
         event_logger.openstack_backup.info(
             'Backup schedule for {resource_name} has been deleted.',
             event_type='resource_backup_schedule_deletion_succeeded',
-            event_context=extract_event_context(instance))
+            event_context={'resource': instance})
