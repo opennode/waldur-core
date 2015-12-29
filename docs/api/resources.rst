@@ -10,6 +10,7 @@ Supported filters are:
 - ?state=<resource state>. Possible values: Provisioning Scheduled, Provisioning, Online, Offline, Starting Scheduled,
                            Starting, Stopping Scheduled, Stopping, Erred, Deletion Scheduled, Deleting,
                            Resizing Scheduled, Resizing, Restarting Scheduled, Restarting
+- ?uuid - exact math of a resource UUID
 - ?description=<resource description>
 - ?customer=<customer uuid> (deprecated, please use customer_uuid instead)
 - ?customer_uuid=<customer uuid>

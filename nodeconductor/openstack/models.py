@@ -1,10 +1,14 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.encoding import python_2_unicode_compatible
+from django_fsm import transition, FSMIntegerField
+from jsonfield import JSONField
 from model_utils import FieldTracker
 
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
+from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
+from nodeconductor.openstack.managers import BackupManager
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
@@ -181,9 +185,114 @@ class Instance(structure_models.Resource,
 
 
 class InstanceSecurityGroup(models.Model):
+
     class Permissions(object):
         project_path = 'instance__project'
         project_group_path = 'instance__project__project_groups'
 
     instance = models.ForeignKey(Instance, related_name='security_groups')
     security_group = models.ForeignKey(SecurityGroup, related_name='instance_groups')
+
+
+class BackupSchedule(core_models.UuidMixin,
+                     core_models.DescribableMixin,
+                     core_models.ScheduleMixin,
+                     LoggableMixin):
+
+    class Permissions(object):
+        customer_path = 'instance__service_project_link__project__customer'
+        project_path = 'instance__service_project_link__project'
+        project_group_path = 'instance__service_project_link__project__project_groups'
+
+    instance = models.ForeignKey(Instance, related_name='backup_schedules')
+    retention_time = models.PositiveIntegerField(
+        help_text='Retention time in days')  # if 0 - backup will be kept forever
+    maximal_number_of_backups = models.PositiveSmallIntegerField()
+
+    @classmethod
+    def get_url_name(cls):
+        return 'openstack-backup-schedule'
+
+    def get_backend(self):
+        return BackupScheduleBackend(self)
+
+
+class Backup(core_models.UuidMixin,
+             core_models.DescribableMixin,
+             LoggableMixin):
+
+    class Permissions(object):
+        customer_path = 'instance__service_project_link__project__customer'
+        project_path = 'instance__service_project_link__project'
+        project_group_path = 'instance__service_project_link__project__project_groups'
+
+    class States(object):
+        READY = 1
+        BACKING_UP = 2
+        RESTORING = 3
+        DELETING = 4
+        ERRED = 5
+        DELETED = 6
+
+        CHOICES = (
+            (READY, 'Ready'),
+            (BACKING_UP, 'Backing up'),
+            (RESTORING, 'Restoring'),
+            (DELETING, 'Deleting'),
+            (ERRED, 'Erred'),
+            (DELETED, 'Deleted'),
+        )
+
+    instance = models.ForeignKey(Instance, related_name='backups')
+    backup_schedule = models.ForeignKey(BackupSchedule, blank=True, null=True,
+                                        on_delete=models.SET_NULL,
+                                        related_name='backups')
+    kept_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Guaranteed time of backup retention. If null - keep forever.')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    state = FSMIntegerField(default=States.READY, choices=States.CHOICES)
+    metadata = JSONField(
+        blank=True,
+        help_text='Additional information about backup, can be used for backup restoration or deletion',
+    )
+
+    objects = BackupManager()
+
+    def get_backend(self):
+        return BackupBackend(self)
+
+    @classmethod
+    def get_url_name(cls):
+        return 'openstack-backup'
+
+    @transition(field=state, source=States.READY, target=States.BACKING_UP)
+    def starting_backup(self):
+        pass
+
+    @transition(field=state, source=States.BACKING_UP, target=States.READY)
+    def confirm_backup(self):
+        pass
+
+    @transition(field=state, source=States.READY, target=States.RESTORING)
+    def starting_restoration(self):
+        pass
+
+    @transition(field=state, source=States.RESTORING, target=States.READY)
+    def confirm_restoration(self):
+        pass
+
+    @transition(field=state, source=States.READY, target=States.DELETING)
+    def starting_deletion(self):
+        pass
+
+    @transition(field=state, source=States.DELETING, target=States.DELETED)
+    def confirm_deletion(self):
+        pass
+
+    @transition(field=state, source='*', target=States.ERRED)
+    def set_erred(self):
+        pass

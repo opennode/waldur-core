@@ -12,8 +12,8 @@ class BaseTemplateInline(admin.StackedInline):
         self.form.set_request(request)
         return super(BaseTemplateInline, self).get_formset(request, obj, **kwargs)
 
-    def queryset(self, request):
-        qs = super(BaseTemplateInline, self).queryset(request)
+    def get_queryset(self, request):
+        qs = super(BaseTemplateInline, self).get_queryset(request)
         return qs.filter(resource_content_type=self.form.get_resource_content_type())
 
 

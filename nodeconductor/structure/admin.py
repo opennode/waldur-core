@@ -80,6 +80,7 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     readonly_fields = ['balance']
     actions = ['update_projected_estimate']
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
+    inlines = [QuotaInline]
 
     def update_projected_estimate(self, request, queryset):
         customers_without_backend_id = []

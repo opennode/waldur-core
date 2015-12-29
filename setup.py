@@ -21,7 +21,6 @@ install_requires = [
     'croniter>=0.3.4,<0.3.6',
     'Django>=1.7.1,<1.8',
     'django-admin-tools==0.7.0',
-    'django-auth-ldap==1.2.0',
     'django-filter==0.10',
     'django-fluent-dashboard==0.5.1',
     'django-fsm==2.2.0',
@@ -70,7 +69,7 @@ else:
 
 setup(
     name='nodeconductor',
-    version='0.83.1',
+    version='0.84.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

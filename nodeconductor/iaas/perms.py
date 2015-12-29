@@ -15,10 +15,10 @@ PERMISSION_LOGICS = (
             'cloud_project_membership__project__roles__permission_group__user',
             'cloud_project_membership__project__customer__roles__permission_group__user',
         ],
-        collaborators_filter={
-            'cloud_project_membership__project__roles__role_type': structure_models.ProjectRole.ADMINISTRATOR,
-            'cloud_project_membership__project__customer__roles__role_type': structure_models.CustomerRole.OWNER,
-        },
+        collaborators_filter=[
+            {'cloud_project_membership__project__roles__role_type': structure_models.ProjectRole.ADMINISTRATOR},
+            {'cloud_project_membership__project__customer__roles__role_type': structure_models.CustomerRole.OWNER},
+        ],
 
         any_permission=True,
     )),

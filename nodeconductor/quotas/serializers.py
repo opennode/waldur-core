@@ -14,3 +14,16 @@ class QuotaSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+
+class BasicQuotaSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    It does not expose scope in order to reduce number of queries
+    """
+    class Meta(object):
+        model = models.Quota
+        fields = ('url', 'uuid', 'name', 'limit', 'usage')
+        read_only_fields = ('uuid', 'name', 'usage')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }

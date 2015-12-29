@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from collections import defaultdict
 from datetime import timedelta
 import logging
 
@@ -22,9 +23,61 @@ from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import serializers as structure_serializers, models as structure_models
 from nodeconductor.structure.managers import filter_queryset_for_user
+from nodeconductor.structure.serializers import ProjectSerializer, CustomerSerializer
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_clouds_for_project(serializer, project):
+    request = serializer.context['request']
+
+    if 'clouds' not in serializer.context:
+        links = models.CloudProjectMembership.objects.all().select_related('cloud')
+        links = filter_queryset_for_user(links, request.user)
+
+        if isinstance(serializer.instance, list):
+            links = links.filter(project__in=serializer.instance)
+        else:
+            links = links.filter(project=serializer.instance)
+
+        clouds_for_project = defaultdict(list)
+        for link in links:
+            clouds_for_project[link.project_id].append(link.cloud)
+        serializer.context['clouds'] = clouds_for_project
+
+    clouds = serializer.context['clouds'][project.id]
+    serializer_instance = BasicCloudSerializer(clouds, many=True, context={'request': request})
+    return serializer_instance.data
+
+
+def get_clouds_for_customer(serializer, customer):
+    request = serializer.context['request']
+
+    if 'clouds' not in serializer.context:
+        clouds = models.Cloud.objects.all()
+        clouds = filter_queryset_for_user(clouds, request.user)
+
+        if isinstance(serializer.instance, list):
+            clouds = clouds.filter(customer__in=serializer.instance)
+        else:
+            clouds = clouds.filter(customer=serializer.instance)
+
+        clouds_for_customer = defaultdict(list)
+        for cloud in clouds:
+            clouds_for_customer[cloud.customer_id].append(cloud)
+        serializer.context['clouds'] = clouds_for_customer
+
+    clouds = serializer.context['clouds'][customer.id]
+    serializer_instance = BasicCloudSerializer(clouds, many=True, context={'request': request})
+    return serializer_instance.data
+
+
+ProjectSerializer.add_field('clouds', serializers.SerializerMethodField)
+ProjectSerializer.add_to_class('get_clouds', get_clouds_for_project)
+
+CustomerSerializer.add_field('clouds', serializers.SerializerMethodField)
+CustomerSerializer.add_to_class('get_clouds', get_clouds_for_customer)
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):
@@ -226,7 +279,7 @@ class NestedSecurityGroupRuleSerializer(serializers.ModelSerializer):
         if 'id' in data:
             try:
                 return models.SecurityGroupRule.objects.get(id=data['id'])
-            except models.SecurityGroup:
+            except models.SecurityGroup.DoesNotExist:
                 raise serializers.ValidationError('Security group with id %s does not exist' % data['id'])
         else:
             internal_data = super(NestedSecurityGroupRuleSerializer, self).to_internal_value(data)
@@ -285,7 +338,7 @@ class SecurityGroupSerializer(serializers.HyperlinkedModelSerializer):
             if rule.id is not None and self.instance is None:
                 raise serializers.ValidationError('Cannot add existed rule with id %s to new security group' % rule.id)
             elif rule.id is not None and self.instance is not None and rule.group != self.instance:
-                raise serializers.ValidationError('Cannot add rule with id {} to group {} - it already belongs to '
+                raise serializers.ValidationError('Cannot add rule with id %s to group %s - it already belongs to '
                                                   'other group' % (rule.id, self.isntance.name))
         return value
 

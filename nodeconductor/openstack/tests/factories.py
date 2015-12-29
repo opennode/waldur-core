@@ -163,3 +163,73 @@ class FloatingIPFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(self):
         return 'http://testserver' + reverse('openstack-fip-list')
+
+
+class BackupScheduleFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.BackupSchedule
+
+    instance = factory.SubFactory(InstanceFactory)
+    retention_time = 10
+    is_active = True
+    maximal_number_of_backups = 3
+    schedule = '*/5 * * * *'
+
+    @classmethod
+    def get_url(self, schedule, action=None):
+        if schedule is None:
+            schedule = BackupScheduleFactory()
+        url = 'http://testserver' + reverse('openstack-schedule-detail', kwargs={'uuid': schedule.uuid})
+        return url if action is None else url + action + '/'
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('openstack-schedule-list')
+
+
+class BackupFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.Backup
+
+    backup_schedule = factory.SubFactory(BackupScheduleFactory)
+    instance = factory.LazyAttribute(lambda b: b.backup_schedule.instance)
+
+    @factory.post_generation
+    def metadata(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        self.metadata = {}
+        settings = self.instance.service_project_link.service.settings
+
+        # check if flavor/image for this settings already exists, otherwise link them
+        if not models.Flavor.objects.filter(settings=settings).exists():
+            FlavorFactory(settings=settings)
+        if not models.Image.objects.filter(settings=settings).exists():
+            ImageFactory(settings=settings)
+
+        self.metadata.update(
+            {
+                'service_project_link': self.instance.service_project_link.pk,
+                'name': 'original.vm.name',
+                'system_snapshot_id': self.instance.system_volume_id,
+                'system_snapshot_size': self.instance.system_volume_size,
+                'data_snapshot_id': self.instance.data_volume_id,
+                'data_snapshot_size': self.instance.data_volume_size,
+                'key_name': self.instance.key_name,
+                'key_fingerprint': self.instance.key_name,
+            }
+        )
+        if extracted:
+            self.metadata.update(extracted)
+
+    @classmethod
+    def get_url(self, backup, action=None):
+        if backup is None:
+            backup = BackupFactory()
+        url = 'http://testserver' + reverse('openstack-backup-detail', kwargs={'uuid': backup.uuid})
+        return url if action is None else url + action + '/'
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('openstack-backup-list')

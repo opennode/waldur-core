@@ -47,7 +47,6 @@ INSTALLED_APPS = (
     # 'nodeconductor.oracle',
     'nodeconductor.iaas',
     'nodeconductor.support',
-    'nodeconductor.ldapsync',
 
     'rest_framework',
     'rest_framework.authtoken',
@@ -211,14 +210,26 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
-    'execute-backup-schedules': {
+    'execute-backup-schedules-old': {
         'task': 'nodeconductor.backup.tasks.execute_schedules',
         'schedule': timedelta(minutes=10),
         'args': (),
     },
 
-    'delete-expired-backups': {
+    'delete-expired-backups-old': {
         'task': 'nodeconductor.backup.tasks.delete_expired_backups',
+        'schedule': timedelta(minutes=10),
+        'args': (),
+    },
+
+    'openstack-schedule-backups': {
+        'task': 'nodeconductor.openstack.schedule_backups',
+        'schedule': timedelta(minutes=10),
+        'args': (),
+    },
+
+    'openstack-delete-expired-backups': {
+        'task': 'nodeconductor.openstack.delete_expired_backups',
         'schedule': timedelta(minutes=10),
         'args': (),
     },

@@ -158,7 +158,11 @@ class OpenStackClient(object):
         return self.session
 
     def create_tenant_session(self, credentials):
-        self.session = self.Session(self, **credentials)
+        try:
+            self.session = self.Session(self, **credentials)
+        except AttributeError as e:
+            logger.error('Failed to create OpenStack session.')
+            six.reraise(CloudBackendError, e)
         return self.session
 
     @classmethod
@@ -1153,7 +1157,7 @@ class OpenStackBackend(OpenStackClient):
 
             if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
                 logger.error(
-                    'Failed to boot instance %s: timed out waiting for instance to become online',
+                    'Failed to boot instance %s: timed out while waiting for instance to become online',
                     instance.uuid,
                 )
                 raise CloudBackendError('Timed out waiting for instance %s to boot' % instance.uuid)
@@ -1810,8 +1814,7 @@ class OpenStackBackend(OpenStackClient):
 
             usage = nova.usage.get(tenant_id=membership.tenant_id, start=start_date, end=end_date)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to get %s usage for cloud project membership with id %s',
-                             membership.pk)
+            logger.error('Failed to get usage for cloud project membership with id %s', membership.pk)
             six.reraise(CloudBackendError, e)
         else:
             return {
@@ -1821,6 +1824,22 @@ class OpenStackBackend(OpenStackClient):
                 'servers': len(getattr(usage, "server_usages", [])),
                 'server_usages': getattr(usage, "server_usages", []),
             }
+
+    def update_tenant_name(self, membership, keystone):
+        tenant_name = self.get_tenant_name(membership)
+
+        if membership.tenant_id:
+            logger.info('Trying to update name for tenant with id %s', membership.tenant_id)
+            try:
+                keystone.tenants.update(membership.tenant_id, name=tenant_name)
+                logger.info("Successfully updated name for tenant with id %s. Tenant's new name is %s",
+                            membership.tenant_id, tenant_name)
+            except keystone_exceptions.NotFound as e:
+                logger.warning('Tenant with id %s does not exist', membership.tenant_id)
+                six.reraise(CloudBackendError, e)
+        else:
+            logger.warning('Cannot update tenant name for cloud project membership %s without tenant ID',
+                        membership)
 
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
@@ -1979,9 +1998,14 @@ class OpenStackBackend(OpenStackClient):
     def get_or_create_tenant(self, membership, keystone):
         tenant_name = self.get_tenant_name(membership)
 
-        # First try to create a tenant
-        logger.info('Creating tenant %s', tenant_name)
+        if membership.tenant_id:
+            logger.info('Trying to get connected tenant with id %s', membership.tenant_id)
+            try:
+                return keystone.tenants.get(membership.tenant_id)
+            except keystone_exceptions.NotFound:
+                logger.warning('Tenant with id %s does not exist', membership.tenant_id)
 
+        logger.info('Creating tenant %s', tenant_name)
         try:
             return keystone.tenants.create(
                 tenant_name=tenant_name,
@@ -2253,21 +2277,14 @@ class OpenStackBackend(OpenStackClient):
         return ''.join([c for c in project.name if ord(c) < 128])
 
     def get_tenant_name(self, membership):
-        return 'nc-{0}'.format(membership.project.uuid.hex)
+        return '%(project_name)s-%(project_uuid)s' % {
+            'project_name': self._get_project_ascii_name(membership.project)[:15],
+            'project_uuid': membership.project.uuid.hex[:4]
+        }
 
     def get_tenant_internal_network_name(self, membership):
-        return 'nc-{0}'.format(membership.project.uuid.hex)
-
-    # TODO: Use human-readable names, but make sure that OpenStack will not create new tenant on project rename. (NC-985)
-    # def get_tenant_name(self, membership):
-    #     return '%(project_name)s-%(project_uuid)s' % {
-    #         'project_name': self._get_project_ascii_name(membership.project)[:15],
-    #         'project_uuid': membership.project.uuid.hex[:4]
-    #     }
-
-    # def get_tenant_internal_network_name(self, membership):
-    #     tenant_name = self.get_tenant_name(membership)
-    #     return '{0}-int-net'.format(tenant_name)
+        tenant_name = self.get_tenant_name(membership)
+        return '{0}-int-net'.format(tenant_name)
 
     def create_backend_name(self):
         return 'nc-{0}'.format(uuid.uuid4().hex)
@@ -2430,17 +2447,22 @@ class OpenStackBackend(OpenStackClient):
                         instance.external_ips, instance.uuid)
 
     def allocate_floating_ip_address(self, neutron, membership):
-        data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
-        ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
-
-        membership.floating_ips.create(
-            status='DOWN',
-            address=ip_address['floating_ip_address'],
-            backend_id=ip_address['id'],
-            backend_network_id=ip_address['floating_network_id']
-        )
-        logger.info('Floating IP %s for external network with id %s has been created.',
-                    ip_address['floating_ip_address'], membership.external_network_id)
+        try:
+            data = {'floating_network_id': membership.external_network_id, 'tenant_id': membership.tenant_id}
+            ip_address = neutron.create_floatingip({'floatingip': data})['floatingip']
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('Unable to allocate floating IP address in external network %s',
+                             membership.external_network_id)
+            six.reraise(CloudBackendError, e)
+        else:
+            membership.floating_ips.create(
+                status='DOWN',
+                address=ip_address['floating_ip_address'],
+                backend_id=ip_address['id'],
+                backend_network_id=ip_address['floating_network_id']
+            )
+            logger.info('Floating IP %s for external network with id %s has been created.',
+                        ip_address['floating_ip_address'], membership.external_network_id)
 
     def assign_floating_ip_to_instance(self, nova, instance, floating_ip):
         nova.servers.add_floating_ip(server=instance.backend_id, address=floating_ip.address)
