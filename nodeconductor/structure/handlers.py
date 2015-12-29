@@ -533,7 +533,8 @@ def log_service_project_link_recovered(sender, instance, name, source, target, *
         event_logger.service_project_link.info(
             'Service project link has been recovered.',
             event_type='service_project_link_recovered',
-            event_context={'service_project_link': service_project_link}
+            event_context={'service_project_link': service_project_link,
+                           'error_message': ''}
         )
 
 
