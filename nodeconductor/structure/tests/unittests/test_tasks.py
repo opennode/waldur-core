@@ -150,5 +150,9 @@ class TestServiceSynchronizationTask(TestCase):
         mock_event_logger.service_project_link.info.assert_called_once_with(
             'Service project link has been recovered.',
             event_type='service_project_link_recovered',
-            event_context={'service_project_link': self.link}
+            event_context={
+                'service_project_link': self.link,
+                'error_message': '',
+            }
         )
+
