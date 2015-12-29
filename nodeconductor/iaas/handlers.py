@@ -7,33 +7,12 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from nodeconductor.core.serializers import UnboundSerializerMethodField
 from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule, CloudProjectMembership
 from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)
-
-
-def filter_clouds(clouds, request):
-    related_clouds = clouds.all()
-
-    try:
-        user = request.user
-        related_clouds = filter_queryset_for_user(related_clouds, user)
-    except AttributeError:
-        pass
-
-    from nodeconductor.iaas.serializers import BasicCloudSerializer
-
-    serializer_instance = BasicCloudSerializer(related_clouds, many=True, context={'request': request})
-
-    return serializer_instance.data
-
-
-def add_clouds_to_related_model(sender, fields, **kwargs):
-    fields['clouds'] = UnboundSerializerMethodField(filter_clouds)
 
 
 def create_initial_security_groups(sender, instance=None, created=False, **kwargs):
@@ -138,12 +117,8 @@ def check_project_name_update(sender, instance=None, created=False, **kwargs):
         cpms = CloudProjectMembership.objects.filter(project__uuid=instance.uuid)
         if cpms.exists():
             from nodeconductor.iaas.tasks.zabbix import zabbix_update_host_visible_name
+            from nodeconductor.iaas.tasks.iaas import update_cloud_project_membership_tenant_name
 
             for cpm in cpms:
                 zabbix_update_host_visible_name.delay(cpm.pk, is_tenant=True)
-
-
-change_customer_nc_service_quota = quotas_handlers.quantity_quota_handler_factory(
-    path_to_quota_scope='customer',
-    quota_name='nc_service_count',
-)
+                update_cloud_project_membership_tenant_name.delay(cpm.pk)

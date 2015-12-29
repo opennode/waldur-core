@@ -62,6 +62,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.CustomerFilter
 
+    def get_queryset(self):
+        queryset = super(CustomerViewSet, self).get_queryset()
+        if self.action in ('list', 'retrieve'):
+            queryset = self.get_serializer_class().eager_load(queryset)
+        return queryset
+
     def perform_create(self, serializer):
         customer = serializer.save()
         if not self.request.user.is_staff:
@@ -156,6 +162,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 roles__role_type=models.ProjectRole.ADMINISTRATOR,
             )
 
+        if self.action in ('list', 'retrieve'):
+            queryset = self.get_serializer_class().eager_load(queryset)
         return queryset
 
     def perform_create(self, serializer):
@@ -454,11 +462,13 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 
     def perform_create(self, serializer):
         affected_project = serializer.validated_data['project']
+        affected_user = serializer.validated_data['user']
 
         if not self.can_manage_roles_for(affected_project):
             raise PermissionDenied('You do not have permission to perform this action.')
 
-        affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+        if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
+            affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         super(ProjectPermissionViewSet, self).perform_create(serializer)
 
@@ -518,11 +528,13 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 
     def perform_create(self, serializer):
         affected_project_group = serializer.validated_data['project_group']
+        affected_user = serializer.validated_data['user']
 
         if not self.can_manage_roles_for(affected_project_group):
             raise PermissionDenied('You do not have permission to perform this action.')
 
-        affected_project_group.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+        if not affected_project_group.customer.get_users().filter(pk=affected_user.pk).exists():
+            affected_project_group.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         super(ProjectGroupPermissionViewSet, self).perform_create(serializer)
 
@@ -583,11 +595,13 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
     # and revocation are kept in one place - the view.
     def perform_create(self, serializer):
         affected_customer = serializer.validated_data['customer']
+        affected_user = serializer.validated_data['user']
 
         if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')
 
-        affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+        if not affected_customer.get_users().filter(pk=affected_user.pk).exists():
+            affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
 
         # It would be nice to put customer.add_user() logic here as well.
         # But it is pushed down to serializer.create() because otherwise
@@ -785,33 +799,16 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_vm_models())
-
-        return self.get_count('resource-list', {
-            'customer': self.customer_uuid,
-            'resource_type': types
-        })
+        return self.customer.get_vm_count()
 
     def get_apps(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_app_models())
-
-        return self.get_count('resource-list', {
-            'customer': self.customer_uuid,
-            'resource_type': types
-        })
+        return self.customer.get_app_count()
 
     def get_projects(self):
-        return self.get_count('project-list', {
-            'customer': self.customer_uuid
-        })
+        return self.customer.get_project_count()
 
     def get_services(self):
-        return self.get_count('service_items-list', {
-            'customer': self.customer_uuid,
-            'shared': self.shared
-        })
+        return self.customer.get_service_count()
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -861,22 +858,10 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_vm_models())
-
-        return self.get_count('resource-list', {
-            'project': self.project_uuid,
-            'resource_type': types
-        })
+        return self.project.get_vm_count()
 
     def get_apps(self):
-        types = map(SupportedServices.get_name_for_model,
-                    models.Resource.get_app_models())
-
-        return self.get_count('resource-list', {
-            'project': self.project_uuid,
-            'resource_type': types
-        })
+        return self.project.get_app_count()
 
     def get_users(self):
         return self.get_count('user-list', {
@@ -989,6 +974,14 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
+
+    def get_queryset(self, *args, **kwargs):
+        queryset = super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)
+        if self.action in ('list', 'retrieve'):
+            serializer_class = self.get_serializer_class()
+            if hasattr(serializer_class, 'eager_load'):
+                return serializer_class.eager_load(queryset)
+        return queryset
 
     def _can_import(self):
         return self.import_serializer_class is not NotImplemented
@@ -1115,9 +1108,10 @@ def safe_operation(valid_state=None):
                         raise PermissionDenied(
                             "Only project administrator or staff allowed to perform this action.")
 
-                    state = valid_state if isinstance(valid_state, (list, tuple)) else [valid_state]
-                    if state and resource.state not in state:
-                        raise core_exceptions.IncorrectStateException(message % operation_name)
+                    if valid_state is not None:
+                        state = valid_state if isinstance(valid_state, (list, tuple)) else [valid_state]
+                        if state and resource.state not in state:
+                            raise core_exceptions.IncorrectStateException(message % operation_name)
 
                     # Important! We are passing back the instance from current transaction to a view
                     try:
@@ -1252,11 +1246,12 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
 class BaseOnlineResourceViewSet(BaseResourceViewSet):
 
     # User can only create and delete those resourse. He cannot stop them.
-    @safe_operation(valid_state=models.Resource.States.ONLINE)
+    @safe_operation(valid_state=[models.Resource.States.ONLINE, models.Resource.States.ERRED])
     def destroy(self, request, resource, uuid=None):
-        resource.state = resource.States.OFFLINE
-        resource.save()
-        self.perform_managed_resource_destroy(resource)
+        if resource.state == models.Resource.States.ONLINE:
+            resource.state = resource.States.OFFLINE
+            resource.save()
+        self.perform_managed_resource_destroy(resource, force=resource.state == models.Resource.States.ERRED)
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):

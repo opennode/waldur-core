@@ -63,7 +63,7 @@ def recover_erred_services(service_project_links=None):
             erred_spls = service['service_project_link'].objects.filter(query)
 
     for spl in erred_spls:
-        recover_erred_service.delay(spl.to_string(), is_iaas=is_iaas)
+        recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')

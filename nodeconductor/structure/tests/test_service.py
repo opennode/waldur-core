@@ -128,4 +128,4 @@ class SuspendServiceTest(test.APITransactionTestCase):
                         SupportedServices.get_detail_view_for_model(resource_model), uuid=resource.uuid.hex)
 
                     response = self.client.post(resource_url + 'start/')
-                    self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+                    self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)

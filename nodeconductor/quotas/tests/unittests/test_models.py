@@ -8,7 +8,8 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 
 class QuotaModelMixinTest(TestCase):
-    def test_all_values_are_positive(self):
+
+    def test_quotas_sum_calculation_if_all_values_are_positive(self):
         # we have 3 memberships:
         memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
 
@@ -30,7 +31,7 @@ class QuotaModelMixinTest(TestCase):
 
         self.assertEqual(expected_sum_of_quotas, sum_of_quotas)
 
-    def test_some_limit_is_negative(self):
+    def test_quotas_sum_calculation_if_some_limit_is_negative(self):
         memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
         memberships[0].set_quota_limit('vcpu', -1)
         memberships[1].set_quota_limit('vcpu', 10)
@@ -40,7 +41,7 @@ class QuotaModelMixinTest(TestCase):
             memberships, quota_names=['vcpu'], fields=['limit'])
         self.assertEqual({'vcpu': 40}, sum_of_quotas)
 
-    def test_all_limits_are_negative(self):
+    def test_quotas_sum_calculation_if_all_limits_are_negative(self):
         memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)
         memberships[0].set_quota_limit('vcpu', -1)
         memberships[1].set_quota_limit('vcpu', -1)
@@ -50,18 +51,22 @@ class QuotaModelMixinTest(TestCase):
             memberships, quota_names=['vcpu'], fields=['limit'])
         self.assertEqual({'vcpu': -1}, sum_of_quotas)
 
-    def test_child_quotas_are_not_created_for_parents(self):
+    def test_child_quotas_are_not_created_for_parent_if_they_are_not_defined_in_parents(self):
         membership = iaas_factories.CloudProjectMembershipFactory()
 
         self.assertFalse(membership.project.quotas.filter(name='vcpu').exists())
 
-    def test_quotas_are_reseted_on_scope_delete(self):
+    def test_quotas_of_parents_change_on_child_quota_change(self):
         customer = structure_factories.CustomerFactory()
         project1 = structure_factories.ProjectFactory(customer=customer)
         project2 = structure_factories.ProjectFactory(customer=customer)
 
-        project1.add_quota_usage('nc_resource_count', 50)
-        project2.add_quota_usage('nc_resource_count', 20)
-        project1.delete()
+        project1.set_quota_usage('nc_resource_count', 1)
+        project2.set_quota_usage('nc_resource_count', 2)
 
-        self.assertEqual(customer.quotas.get(name='nc_resource_count').usage, 20)
+        self.assertEqual(customer.quotas.get(name='nc_resource_count').usage, 3)
+
+        project1.add_quota_usage('nc_resource_count', 1)
+        project2.add_quota_usage('nc_resource_count', -2)
+
+        self.assertEqual(customer.quotas.get(name='nc_resource_count').usage, 2)

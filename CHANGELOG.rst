@@ -6,6 +6,12 @@ Release NEXT
 <Nothing yet>
 
 
+Release 0.84.0
+--------------
+
+- Port OpenStack cost-tracking to using tags.
+- Extract ldapsync application into a plugin.
+
 Release 0.83.1
 --------------
 - Fix dependencies.

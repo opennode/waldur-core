@@ -1,8 +1,12 @@
-from django.db import transaction
-from netaddr import IPNetwork
-from rest_framework import serializers
+import pytz
 
-from nodeconductor.core.fields import MappedChoiceField
+from django.db import transaction
+from django.utils import timezone
+from netaddr import IPNetwork
+from rest_framework import serializers, reverse
+from taggit.models import Tag
+
+from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.quotas import serializers as quotas_serializers
@@ -62,7 +66,9 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + (
             'quotas', 'tenant_id', 'external_network_id', 'internal_network_id'
         )
-        read_only_fields = ('tenant_id', 'external_network_id', 'internal_network_id')
+        read_only_fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.read_only_fields +(
+            'tenant_id', 'external_network_id', 'internal_network_id'
+        )
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
         }
@@ -182,7 +188,7 @@ class AssignFloatingIpSerializer(serializers.Serializer):
 
         if floating_ip.status == 'ACTIVE':
             raise serializers.ValidationError("Floating IP status must be DOWN.")
-        elif floating_ip.cloud_project_membership != self.assigned_instance.cloud_project_membership:
+        elif floating_ip.service_project_link != self.assigned_instance.service_project_link:
             raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
 
         return attrs
@@ -309,6 +315,115 @@ class InstanceSecurityGroupSerializer(serializers.ModelSerializer):
         view_name = 'openstack-sgp-detail'
 
 
+class BackupScheduleSerializer(serializers.HyperlinkedModelSerializer):
+    instance_name = serializers.ReadOnlyField(source='instance.name')
+    timezone = serializers.ChoiceField(choices=[(t, t) for t in pytz.all_timezones],
+                                       default=timezone.get_current_timezone_name)
+    instance = serializers.HyperlinkedRelatedField(
+        lookup_field='uuid',
+        view_name='openstack-instance-detail',
+        queryset=models.Instance.objects.all(),
+    )
+
+    class Meta(object):
+        model = models.BackupSchedule
+        view_name = 'openstack-schedule-detail'
+        fields = ('url', 'uuid', 'description', 'backups', 'retention_time', 'timezone',
+                  'instance', 'maximal_number_of_backups', 'schedule', 'is_active', 'instance_name')
+        read_only_fields = ('is_active', 'backups')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'instance': {'lookup_field': 'uuid'},
+            'backups': {'lookup_field': 'uuid'},
+        }
+
+
+class BackupSerializer(serializers.HyperlinkedModelSerializer):
+    state = serializers.ReadOnlyField(source='get_state_display')
+    metadata = JsonField(read_only=True)
+    instance_name = serializers.ReadOnlyField(source='instance.name')
+    instance = serializers.HyperlinkedRelatedField(
+        lookup_field='uuid',
+        view_name='openstack-instance-detail',
+        queryset=models.Instance.objects.all(),
+    )
+
+    class Meta(object):
+        model = models.Backup
+        view_name = 'openstack-backup-detail'
+        fields = ('url', 'uuid', 'description', 'created_at', 'kept_until', 'instance', 'state', 'backup_schedule',
+                  'metadata', 'instance_name')
+        read_only_fields = ('created_at', 'kept_until', 'backup_schedule')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+            'instance': {'lookup_field': 'uuid'},
+            'backup_schedule': {'lookup_field': 'uuid'},
+        }
+
+
+class BackupRestorationSerializer(serializers.ModelSerializer):
+    service_project_link = serializers.PrimaryKeyRelatedField(
+        queryset=models.OpenStackServiceProjectLink.objects.all())
+
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='openstack-flavor-detail',
+        lookup_field='uuid',
+        queryset=models.Flavor.objects.all().select_related('settings'),
+        write_only=True)
+
+    image = serializers.HyperlinkedRelatedField(
+        view_name='openstack-image-detail',
+        lookup_field='uuid',
+        queryset=models.Image.objects.all().select_related('settings'),
+        write_only=True)
+
+    system_volume_id = serializers.CharField(required=False)
+    system_volume_size = serializers.IntegerField(required=False, min_value=0)
+    data_volume_id = serializers.CharField(required=False)
+    data_volume_size = serializers.IntegerField(required=False, min_value=0)
+
+    class Meta(object):
+        model = models.Instance
+        fields = (
+            'name', 'description',
+            'service_project_link',
+            'flavor', 'image',
+            'key_name', 'key_fingerprint',
+            'system_volume_id', 'system_volume_size',
+            'data_volume_id', 'data_volume_size',
+            'user_data',
+        )
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def validate(self, attrs):
+        image = attrs['image']
+        flavor = attrs['flavor']
+        spl = attrs['service_project_link']
+
+        if image.settings != spl.service.settings:
+            raise serializers.ValidationError({'image': "Image is not within services' settings."})
+
+        if flavor.settings != spl.service.settings:
+            raise serializers.ValidationError({'flavor': "Flavor is not within services' settings."})
+
+        system_volume_size = attrs['system_volume_size']
+        data_volume_size = attrs.get('data_volume_size', models.Instance.DEFAULT_DATA_VOLUME_SIZE)
+        quota_usage = {
+            'storage': system_volume_size + data_volume_size,
+            'vcpu': flavor.cores,
+            'ram': flavor.ram,
+        }
+
+        quota_errors = spl.validate_quota_change(quota_usage)
+        if quota_errors:
+            raise serializers.ValidationError(
+                'One or more quotas are over limit: \n' + '\n'.join(quota_errors))
+
+        return attrs
+
+
 class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service = serializers.HyperlinkedRelatedField(
@@ -337,6 +452,9 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
     security_groups = InstanceSecurityGroupSerializer(
         many=True, required=False, read_only=False)
 
+    backups = BackupSerializer(many=True, read_only=True)
+    backup_schedules = BackupScheduleSerializer(many=True, read_only=True)
+
     skip_external_ip_assignment = serializers.BooleanField(write_only=True, default=False)
 
     class Meta(structure_serializers.VirtualMachineSerializer.Meta):
@@ -344,7 +462,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips',
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules'
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
@@ -460,3 +578,39 @@ class InstanceImportSerializer(structure_serializers.BaseResourceImportSerialize
             instance.security_groups.create(security_group=sg)
 
         return instance
+
+
+class LicenseSerializer(serializers.ModelSerializer):
+
+    instance = serializers.SerializerMethodField()
+    group = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tag
+        fields = ('instance', 'group', 'type', 'name')
+
+    def get_instance(self, obj):
+        instance = obj.taggit_taggeditem_items.filter(tag=obj).first().content_object
+        url_name = instance.get_url_name() + '-detail'
+        return reverse.reverse(
+            url_name, request=self.context['request'], kwargs={'uuid': instance.uuid.hex})
+
+    def get_group(self, obj):
+        try:
+            return obj.name.split(':')[0]
+        except IndexError:
+            return ''
+
+    def get_type(self, obj):
+        try:
+            return obj.name.split(':')[1]
+        except IndexError:
+            return ''
+
+    def get_name(self, obj):
+        try:
+            return obj.name.split(':')[2]
+        except IndexError:
+            return ''

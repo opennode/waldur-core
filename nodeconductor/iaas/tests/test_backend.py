@@ -801,6 +801,7 @@ class OpenStackBackendHelperApiTest(unittest.TestCase):
 
     # get_or_create_tenant tests
     def test_get_or_create_tenant_raises_if_both_creation_and_lookup_failed(self):
+        self.keystone_client.tenants.get.side_effect = keystone_exceptions.NotFound
         self.keystone_client.tenants.create.side_effect = keystone_exceptions.Conflict
         self.keystone_client.tenants.find.side_effect = keystone_exceptions.NotFound
 

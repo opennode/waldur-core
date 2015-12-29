@@ -4,7 +4,6 @@ from django.apps import AppConfig
 from django.db.models import signals
 
 from nodeconductor.core import handlers as core_handlers
-from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import CostTrackingRegister
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.models import Project
@@ -23,26 +22,12 @@ class IaasConfig(AppConfig):
         CloudProjectMembership = self.get_model('CloudProjectMembership')
 
         from nodeconductor.iaas import handlers, cost_tracking
-        from nodeconductor.structure.serializers import CustomerSerializer, ProjectSerializer
-
         CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
 
         from nodeconductor.iaas.backend import OpenStackBackend
         SupportedServices.register_backend(OpenStackBackend)
         SupportedServices.register_service(Cloud)
         SupportedServices.register_resource(Instance)
-
-        pre_serializer_fields.connect(
-            handlers.add_clouds_to_related_model,
-            sender=CustomerSerializer,
-            dispatch_uid='nodeconductor.iaas.handlers.add_clouds_to_customer',
-        )
-
-        pre_serializer_fields.connect(
-            handlers.add_clouds_to_related_model,
-            sender=ProjectSerializer,
-            dispatch_uid='nodeconductor.iaas.handlers.add_clouds_to_project',
-        )
 
         signals.post_save.connect(
             quotas_handlers.add_quotas_to_scope,
@@ -93,18 +78,6 @@ class IaasConfig(AppConfig):
             handlers.decrease_quotas_usage_on_instances_deletion,
             sender=Instance,
             dispatch_uid='nodeconductor.iaas.handlers.decrease_quotas_usage_on_instances_deletion',
-        )
-
-        signals.post_save.connect(
-            handlers.change_customer_nc_service_quota,
-            sender=Cloud,
-            dispatch_uid='nodeconductor.iaas.handlers.increase_customer_nc_service_quota'
-        )
-
-        signals.post_delete.connect(
-            handlers.change_customer_nc_service_quota,
-            sender=Cloud,
-            dispatch_uid='nodeconductor.iaas.handlers.decrease_customer_nc_service_quota'
         )
 
         signals.post_save.connect(

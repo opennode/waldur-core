@@ -52,7 +52,6 @@ class SupportedServices(object):
         def get_reverse_filter_mapping(cls):
             return {name: code for code, name in SupportedServices.get_choices()}
 
-
     _registry = collections.defaultdict(lambda: {
         'backend': None,
         'resources': {},
@@ -61,8 +60,6 @@ class SupportedServices(object):
 
     @classmethod
     def register_backend(cls, backend_class):
-        from django.apps import apps
-
         if not cls._is_active_model(backend_class):
             return
 
@@ -205,6 +202,7 @@ class SupportedServices(object):
                 'service': service_model,
                 'service_project_link': service_project_link,
                 'resources': [apps.get_model(r) for r in service['resources'].keys()],
+                'properties': [apps.get_model(r) for r in service['properties'].keys() if '.' in r],
             }
 
         return data
