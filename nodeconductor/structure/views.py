@@ -1050,6 +1050,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             except ServiceBackendError as e:
                 raise APIException(e)
 
+            event_logger.resource.info(
+                'Resource {resource_name} has been imported.',
+                event_type='resource_import_succeeded',
+                event_context={'resource': resource})
+
             send_task('cost_tracking', 'update_projected_estimate')(
                 resource_uuid=resource.uuid.hex)
 
@@ -1194,13 +1199,30 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         except ServiceBackendError as e:
             raise APIException(e)
 
+        event_logger.resource.info(
+            'Resource {resource_name} creation has been scheduled.',
+            event_type='resource_creation_scheduled',
+            event_context={'resource': serializer.instance})
+
     def perform_update(self, serializer):
         spl = self.get_object().service_project_link
         if spl.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify resource if its service project link is in erred state.')
 
-        serializer.save()
+        resource = serializer.save()
+
+        event_logger.resource.info(
+            'Resource {resource_name} has been updated.',
+            event_type='resource_update_succeeded',
+            event_context={'resource': resource})
+
+    def perform_destroy(self, resource):
+        resource.delete()
+        event_logger.resource.info(
+            'Resource {resource_name} has been deleted.',
+            event_type='resource_deletion_succeeded',
+            event_context={'resource': resource})
 
     def perform_provision(self, serializer):
         raise NotImplementedError
@@ -1209,6 +1231,10 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         if resource.backend_id:
             backend = resource.get_backend()
             backend.destroy(resource, force=force)
+            event_logger.resource.info(
+                'Resource {resource_name} has been scheduled to deletion.',
+                event_type='resource_deletion_scheduled',
+                event_context={'resource': resource})
         else:
             self.perform_destroy(resource)
 
@@ -1229,18 +1255,30 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def start(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.start(resource)
+        event_logger.resource.info(
+            'Resource {resource_name} has been scheduled to start.',
+            event_type='resource_start_scheduled',
+            event_context={'resource': resource})
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.ONLINE)
     def stop(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.stop(resource)
+        event_logger.resource.info(
+            'Resource {resource_name} has been scheduled to stop.',
+            event_type='resource_stop_scheduled',
+            event_context={'resource': resource})
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.ONLINE)
     def restart(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.restart(resource)
+        event_logger.resource.info(
+            'Resource {resource_name} has been scheduled to restart.',
+            event_type='resource_restart_scheduled',
+            event_context={'resource': resource})
 
 
 class BaseOnlineResourceViewSet(BaseResourceViewSet):

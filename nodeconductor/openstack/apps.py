@@ -18,6 +18,7 @@ class OpenStackConfig(AppConfig):
         OpenStackServiceProjectLink = self.get_model('OpenStackServiceProjectLink')
         Instance = self.get_model('Instance')
         FloatingIP = self.get_model('FloatingIP')
+        BackupSchedule = self.get_model('BackupSchedule')
 
         # structure
         from nodeconductor.openstack.backend import OpenStackBackend
@@ -71,4 +72,16 @@ class OpenStackConfig(AppConfig):
             handlers.check_project_name_update,
             sender=Project,
             dispatch_uid='nodeconductor.openstack.handlers.check_project_name_update',
+        )
+
+        signals.post_save.connect(
+            handlers.log_backup_schedule_save,
+            sender=BackupSchedule,
+            dispatch_uid='nodeconductor.openstack.handlers.log_backup_schedule_save',
+        )
+
+        signals.post_delete.connect(
+            handlers.log_backup_schedule_delete,
+            sender=BackupSchedule,
+            dispatch_uid='nodeconductor.openstack.handlers.log_backup_schedule_delete',
         )

@@ -1,6 +1,6 @@
 from django.utils import six
 
-from nodeconductor.core.models import User, SshPublicKey
+from nodeconductor.core.models import User
 from nodeconductor.logging.log import EventLogger, event_logger
 from nodeconductor.structure import models
 
@@ -84,6 +84,15 @@ class ProjectGroupMembershipEventLogger(EventLogger):
         event_types = 'project_added_to_project_group', 'project_removed_from_project_group'
 
 
+class LicensesEventLogger(EventLogger):
+    resource = models.Resource
+    license_name = six.text_type
+    license_type = six.text_type
+
+    class Meta:
+        event_types = 'resource_license_added',
+
+
 class UserOrganizationEventLogger(EventLogger):
     affected_user = User
     affected_organization = six.text_type
@@ -99,9 +108,30 @@ class ResourceEventLogger(EventLogger):
     resource = models.Resource
 
     class Meta:
-        event_types = ('resource_imported',
-                       'resource_created',
-                       'resource_deleted')
+        event_types = (
+            'resource_start_scheduled',
+            'resource_start_succeeded',
+            'resource_start_failed',
+
+            'resource_stop_scheduled',
+            'resource_stop_succeeded',
+            'resource_stop_failed',
+
+            'resource_restart_scheduled',
+            'resource_restart_succeeded',
+            'resource_restart_failed',
+
+            'resource_creation_scheduled',
+            'resource_creation_succeeded',
+            'resource_creation_failed',
+
+            'resource_import_succeeded',
+            'resource_update_succeeded',
+
+            'resource_deletion_scheduled',
+            'resource_deletion_succeeded',
+            'resource_deletion_failed',
+        )
 
 
 class ServiceSettingsEventLogger(EventLogger):
@@ -131,6 +161,7 @@ event_logger.register('user_organization', UserOrganizationEventLogger)
 event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
 event_logger.register('project_group', ProjectGroupEventLogger)
+event_logger.register('licenses', LicensesEventLogger)
 event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)
 event_logger.register('service_settings', ServiceSettingsEventLogger)

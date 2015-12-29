@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
-from django.db.models import Count
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
 from taggit.models import Tag
@@ -14,8 +13,8 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.managers import filter_queryset_for_user
-from nodeconductor.structure.models import Project
 from nodeconductor.openstack.backup import BackupError
+from nodeconductor.openstack.log import event_logger
 from nodeconductor.openstack import Types, models, filters, serializers
 
 
@@ -233,6 +232,12 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
                 {'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = True
         schedule.save()
+
+        event_logger.openstack_backup.info(
+            'Backup schedule for {resource_name} has been activated.',
+            event_type='resource_backup_schedule_activated',
+            event_context={'resource': schedule.instance})
+
         return response.Response({'status': 'BackupSchedule was activated'})
 
     @decorators.detail_route(methods=['post'])
@@ -243,6 +248,12 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
                 {'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = False
         schedule.save()
+
+        event_logger.openstack_backup.info(
+            'Backup schedule for {resource_name} has been deactivated.',
+            event_type='resource_backup_schedule_deactivated',
+            event_context={'resource': schedule.instance})
+
         return response.Response({'status': 'BackupSchedule was deactivated'})
 
 

@@ -1,7 +1,8 @@
 import logging
+import sys
 
 from celery import shared_task, chain
-from django.utils import timezone
+from django.utils import six, timezone
 
 from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.core.models import SynchronizationStates
@@ -10,6 +11,7 @@ from nodeconductor.openstack.backup import BackupError
 from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, FloatingIP, SecurityGroup
 from nodeconductor.openstack.models import BackupSchedule, Backup
 from nodeconductor.structure.models import ServiceSettings
+from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.tasks import (
     begin_syncing_service_project_links, sync_service_project_link_succeeded, sync_service_project_link_failed)
 
@@ -181,7 +183,19 @@ def provision_instance(instance_uuid, transition_entity=None, **kwargs):
     instance = transition_entity
     with throttle(key=instance.service_project_link.service.settings.backend_url):
         backend = instance.get_backend()
-        backend.provision_instance(instance, **kwargs)
+        try:
+            backend.provision_instance(instance, **kwargs)
+        except:
+            event_logger.resource.error(
+                'Resource {resource_name} creation has failed.',
+                event_type='resource_creation_failed',
+                event_context={'resource': instance})
+            six.reraise(*sys.exc_info())
+        else:
+            event_logger.resource.info(
+                'Resource {resource_name} has been created.',
+                event_type='resource_creation_succeeded',
+                event_context={'resource': instance})
 
 
 @shared_task
@@ -190,7 +204,19 @@ def provision_instance(instance_uuid, transition_entity=None, **kwargs):
 def start_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
-    backend._old_backend.start_instance(instance)
+    try:
+        backend._old_backend.start_instance(instance)
+    except:
+        event_logger.resource.error(
+            'Resource {resource_name} start has failed.',
+            event_type='resource_start_failed',
+            event_context={'resource': instance})
+        six.reraise(*sys.exc_info())
+    else:
+        event_logger.resource.info(
+            'Resource {resource_name} has been started.',
+            event_type='resource_start_succeeded',
+            event_context={'resource': instance})
 
 
 @shared_task
@@ -199,7 +225,19 @@ def start_instance(instance_uuid, transition_entity=None):
 def stop_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
-    backend._old_backend.stop_instance(instance)
+    try:
+        backend._old_backend.stop_instance(instance)
+    except:
+        event_logger.resource.error(
+            'Resource {resource_name} stop has failed.',
+            event_type='resource_stop_failed',
+            event_context={'resource': instance})
+        six.reraise(*sys.exc_info())
+    else:
+        event_logger.resource.info(
+            'Resource {resource_name} has been stopped.',
+            event_type='resource_stop_succeeded',
+            event_context={'resource': instance})
 
 
 @shared_task
@@ -208,7 +246,19 @@ def stop_instance(instance_uuid, transition_entity=None):
 def restart_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
-    backend._old_backend.restart_instance(instance)
+    try:
+        backend._old_backend.restart_instance(instance)
+    except:
+        event_logger.resource.error(
+            'Resource {resource_name} restart has failed.',
+            event_type='resource_restart_failed',
+            event_context={'resource': instance})
+        six.reraise(*sys.exc_info())
+    else:
+        event_logger.resource.info(
+            'Resource {resource_name} has been restarted.',
+            event_type='resource_restart_succeeded',
+            event_context={'resource': instance})
 
 
 @shared_task
@@ -365,6 +415,11 @@ def backup_create(backup_uuid):
     backup = Backup.objects.get(uuid=backup_uuid)
 
     logger.debug('About to perform backup for instance: %s', backup.instance)
+    event_logger.openstack_backup.info(
+        'Backup for {resource_name} has been scheduled.',
+        event_type='resource_backup_creation_scheduled',
+        event_context={'resource': backup.instance})
+
     try:
         backend = backup.get_backend()
         backup.metadata = backend.create()
@@ -375,8 +430,23 @@ def backup_create(backup_uuid):
         if schedule:
             schedule.is_active = False
             schedule.save()
+
+            event_logger.openstack_backup.info(
+                'Backup schedule for {resource_name} has been deactivated.',
+                event_type='resource_backup_schedule_deactivated',
+                event_context={'resource': backup.instance})
+
+        event_logger.openstack_backup.error(
+            'Backup creation for {resource_name} has failed.',
+            event_type='resource_backup_creation_failed',
+            event_context={'resource': backup.instance})
+
     else:
         logger.info('Successfully performed backup for instance: %s', backup.instance)
+        event_logger.openstack_backup.info(
+            'Backup for {resource_name} has been created.',
+            event_type='resource_backup_creation_succeeded',
+            event_context={'resource': backup.instance})
 
 
 @shared_task
@@ -384,13 +454,26 @@ def backup_delete(backup_uuid):
     backup = Backup.objects.get(uuid=backup_uuid)
 
     logger.debug('About to delete backup for instance: %s', backup.instance)
+    event_logger.openstack_backup.info(
+        'Backup deletion for {resource_name} has been scheduled.',
+        event_type='resource_backup_deletion_scheduled',
+        event_context={'resource': backup.instance})
+
     try:
         backend = backup.get_backend()
         backend.delete()
     except BackupError:
         logger.exception('Failed to delete backup for instance: %s', backup.instance)
+        event_logger.openstack_backup.error(
+            'Backup deletion for {resource_name} has failed.',
+            event_type='resource_backup_deletion_failed',
+            event_context={'resource': backup.instance})
     else:
         logger.info('Successfully deleted backup for instance: %s', backup.instance)
+        event_logger.openstack_backup.info(
+            'Backup for {resource_name} has been deleted.',
+            event_type='resource_backup_deletion_succeeded',
+            event_context={'resource': backup.instance})
 
 
 @shared_task
@@ -398,13 +481,26 @@ def backup_restore(backup_uuid, instance_uuid, user_input, snapshot_ids):
     backup = Backup.objects.get(uuid=backup_uuid)
 
     logger.debug('About to restore backup for instance: %s', backup.instance)
+    event_logger.openstack_backup.info(
+        'Backup restoration for {resource_name} has been scheduled.',
+        event_type='resource_backup_restoration_scheduled',
+        event_context={'resource': backup.instance})
+
     try:
         backend = backup.get_backend()
         backend.restore(instance_uuid, user_input, snapshot_ids)
     except BackupError:
         logger.exception('Failed to restore backup for instance: %s', backup.instance)
+        event_logger.openstack_backup.error(
+            'Backup restoration for {resource_name} has failed.',
+            event_type='resource_backup_restoration_failed',
+            event_context={'resource': backup.instance})
     else:
         logger.info('Successfully restored backup for instance: %s', backup.instance)
+        event_logger.openstack_backup.info(
+            'Backup for {resource_name} has been restored.',
+            event_type='resource_backup_restoration_succeeded',
+            event_context={'resource': backup.instance})
 
 
 @shared_task
@@ -429,6 +525,7 @@ def backup_restoration_complete(backup_uuid, transition_entity=None):
 @transition(Backup, 'set_erred')
 def backup_failed(backup_uuid, transition_entity=None):
     pass
+
 
 @shared_task
 def openstack_update_tenant_name(service_project_link_str):
