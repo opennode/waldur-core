@@ -890,14 +890,18 @@ class Resource(core_models.UuidMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_vm_models(cls):
+        # TODO: remove once iaas has been deprecated
+        from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
-                if issubclass(resource, VirtualMachineMixin)]
+                if issubclass(resource, VirtualMachineMixin) or issubclass(resource, Instance)]
 
     @classmethod
     @lru_cache(maxsize=1)
     def get_app_models(cls):
+        # TODO: remove once iaas has been deprecated
+        from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
-                if not issubclass(resource, VirtualMachineMixin)]
+                if not issubclass(resource, VirtualMachineMixin) and not issubclass(resource, Instance)]
 
     @classmethod
     @lru_cache(maxsize=1)
