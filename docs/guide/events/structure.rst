@@ -75,7 +75,9 @@ Structure events
 .. glossary::
 
    **resource_creation_scheduled**
+
    **resource_creation_succeeded**
+
    **resource_creation_failed**
 
       Resource creation events. Emitted on creation of all events, i.e. both VMs and applications.
@@ -85,21 +87,29 @@ Structure events
       Resource update has been updated.
 
    **resource_deletion_scheduled**
+
    **resource_deletion_succeeded**
+
    **resource_deletion_failed**
 
       Resource deletion events.
 
    **resource_start_scheduled**
+
    **resource_start_succeeded**
+
    **resource_start_failed**
 
    **resource_stop_scheduled**
+
    **resource_stop_succeeded**
+
    **resource_stop_failed**
 
    **resource_restart_scheduled**
+
    **resource_restart_succeeded**
+
    **resource_restart_failed**
 
       Events for resources that can change state from online to offline, i.e. virtual machines.
