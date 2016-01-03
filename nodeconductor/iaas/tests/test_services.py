@@ -175,9 +175,9 @@ class ServiceEventsTest(test.APISimpleTestCase):
                                                                period='%s-%s' % (today.year, today.month))
 
     def test_service_without_sla_returns_404(self):
-        month_ago = timezone.now() - relativedelta(month=+1)
+        month_ahead = timezone.now() + relativedelta(month=+2)
         response = self.client.get(self._get_service_events_url(self.instance),
-                                   data={'period': '%s-%s' % (month_ago.year, month_ago.month)})
+                                   data={'period': '%s-%s' % (month_ahead.year, month_ahead.month)})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_service_with_events_returns_events_list(self):
