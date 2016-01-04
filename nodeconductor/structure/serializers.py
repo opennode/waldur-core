@@ -101,7 +101,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     service_project_link_url = serializers.SerializerMethodField()
     name = serializers.ReadOnlyField(source='service.name')
     type = serializers.SerializerMethodField()
-    state = serializers.ReadOnlyField(source='get_state_display')
+    state = serializers.SerializerMethodField()
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
@@ -130,6 +130,11 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
 
     def get_type(self, link):
         return SupportedServices.get_name_for_model(link.service)
+
+    # XXX: SPL is intended to become stateless. For backward compatiblity we are returning here state from connected
+    # service settings. To be removed once SPL becomes stateless.
+    def get_state(self, link):
+        return link.service.settings.get_state_display()
 
     def get_shared(self, link):
         # XXX: Backward compatibility with IAAS Cloud
@@ -225,7 +230,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         services = defaultdict(list)
         related_fields = (
             'id',
-            'state',
+            'service__settings__state',
             'project_id',
             'service__uuid',
             'service__name',
