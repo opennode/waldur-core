@@ -40,6 +40,20 @@ class ProtectedModelMixin(object):
             return response
 
 
+class ResourceCounterFormMixin(object):
+
+    def get_vm_count(self, obj):
+        return obj.get_vm_count()
+
+    get_vm_count.short_description = 'VM count'
+
+    def get_app_count(self, obj):
+        return obj.get_app_count()
+
+    get_app_count.short_description = 'Application count'
+
+
+
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                       widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
@@ -73,7 +87,7 @@ class CustomerAdminForm(ModelForm):
         return customer
 
 
-class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
+class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'billing_backend_id', 'balance', 'owners')
@@ -81,17 +95,6 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
     actions = ['update_projected_estimate']
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count']
     inlines = [QuotaInline]
-
-    def get_vm_count(self, obj):
-        return obj.get_vm_count()
-
-    get_vm_count.short_description = 'VM count'
-
-    def get_app_count(self, obj):
-        return obj.get_app_count()
-
-    get_app_count.short_description = 'Application count'
-
 
     def update_projected_estimate(self, request, queryset):
         customers_without_backend_id = []
@@ -172,7 +175,7 @@ class ProjectAdminForm(ModelForm):
         return project
 
 
-class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
     form = ProjectAdminForm
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')
@@ -181,16 +184,6 @@ class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
-
-    def get_vm_count(self, obj):
-        return obj.get_vm_count()
-
-    get_vm_count.short_description = 'VM count'
-
-    def get_app_count(self, obj):
-        return obj.get_app_count()
-
-    get_app_count.short_description = 'Application count'
 
 
 class ProjectGroupAdminForm(ModelForm):

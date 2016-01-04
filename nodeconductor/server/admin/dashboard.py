@@ -14,7 +14,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
     def _get_installed_plugin_info(self):
         result = [
             {
-                'title': _('NodeConductor v%s' % __version__),
+                'title': _('NodeConductor %s' % __version__),
                 'url': 'http://nodeconductor.readthedocs.org/en/stable/',
                 'external': True,
             },
@@ -30,7 +30,8 @@ class CustomIndexDashboard(FluentIndexDashboard):
         for ext in NodeConductorExtension.get_extensions():
             base_name = ext.__module__.split('.')[0]
             module = __import__(base_name)
-            plugins.add((base_name, getattr(module, '__version__', 'N/A'), module.__doc__))
+            name = 'NodeConductor %s' % ' '.join(base_name.split('_')[1:]).title()
+            plugins.add((name, getattr(module, '__version__', 'N/A'), module.__doc__))
 
         for plugin, version, description in sorted(plugins):
             result.append(
