@@ -134,7 +134,11 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     # XXX: SPL is intended to become stateless. For backward compatiblity we are returning here state from connected
     # service settings. To be removed once SPL becomes stateless.
     def get_state(self, link):
-        return link.service.settings.get_state_display()
+        try:
+            return link.service.settings.get_state_display()
+        except AttributeError:
+            # XXX: remove once IaaS Cloud is gone
+            return 'In Sync'  # arbitrary value
 
     def get_shared(self, link):
         # XXX: Backward compatibility with IAAS Cloud
