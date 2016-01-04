@@ -48,6 +48,7 @@ class CustomMenu(Menu):
     APPLICATION_PROVIDERS = (
         'nodeconductor_sugarcrm.*',
         'nodeconductor_saltstack.*',
+        'nodeconductor_zabbix.*',
         'nodeconductor_plus.gitlab.*',
     )
 

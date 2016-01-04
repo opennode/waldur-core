@@ -1,15 +1,49 @@
 from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
-from fluent_dashboard.modules import AppIconList
+from fluent_dashboard.modules import AppIconList, PersonalModule
 
 from nodeconductor.core import NodeConductorExtension
-
+from nodeconductor import __version__
 
 class CustomIndexDashboard(FluentIndexDashboard):
     """
     Custom index dashboard for admin site.
     """
     title = 'NodeConductor administration'
+
+    def _get_installed_plugin_info(self):
+        result = [
+            {
+                'title': _('NodeConductor v%s' % __version__),
+                'url': 'http://nodeconductor.readthedocs.org/en/stable/',
+                'external': True,
+            },
+        ]
+
+        documentation = {
+            'nodeconductor_organization': 'http://nodeconductor-organization.readthedocs.org/en/latest/',
+            'nodeconductor_saltstack': 'http://nodeconductor-saltstack.readthedocs.org/',
+            'nodeconductor_sugarcrm': 'http://nodeconductor-sugarcrm.readthedocs.org/',
+
+        }
+        plugins = set()
+        for ext in NodeConductorExtension.get_extensions():
+            base_name = ext.__module__.split('.')[0]
+            module = __import__(base_name)
+            plugins.add((base_name, getattr(module, '__version__', 'N/A'), module.__doc__))
+
+        for plugin, version, description in sorted(plugins):
+            result.append(
+                {
+                    'title': '%s %s' % (plugin, version),
+                    'url': documentation.get(plugin,
+                                             'http://nodeconductor.readthedocs.org/en/latest/#nodeconductor-plugins'),
+                    'description': description,
+                    'external': True
+                }
+            )
+
+        return result
 
     def __init__(self, **kwargs):
         FluentIndexDashboard.__init__(self, **kwargs)
@@ -56,15 +90,12 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def init_with_context(self, context):
         self.children.append(modules.LinkList(
-            _('Quick links'),
-            layout='inline',
-            draggable=False,
-            deletable=False,
-            collapsible=False,
-            children=[
-                [_('API'), '/api/'],
-                [_('Documentation'), 'http://nodeconductor.readthedocs.org/en/stable/'],
-            ]
+            _('Installed components'),
+            layout='stacked',
+            draggable=True,
+            deletable=True,
+            collapsible=True,
+            children=self._get_installed_plugin_info()
         ))
 
 
