@@ -72,6 +72,10 @@ Structure events
 
 ------------
 
+Resource events are generic and contain a field **resource_type** that can be used for discriminating what has been
+affected. Possible values depend on the plugins enabled, for example OpenStack.Instance or SaltStack.ExchangeTenant.
+
+
 .. glossary::
 
    **resource_creation_scheduled**
@@ -117,9 +121,6 @@ Structure events
    **resource_import_succeeded**
 
       Resource has been imported.
-
-   Resource events are generic and contain a field **resource_type** that can be used for discriminating what has been
-   affected. Possible values depend on the plugins enabled, for example OpenStack.Instance or SaltStack.ExchangeTenant.
 
 ------------
 
