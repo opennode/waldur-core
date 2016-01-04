@@ -5,6 +5,7 @@ Release NEXT
 ------------
 - Updated documentation for resource lifecycle events.
 
+- Improve /admin interface, expose installed plugins and versions.
 
 Release 0.84.0
 --------------

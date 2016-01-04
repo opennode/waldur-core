@@ -40,6 +40,20 @@ class ProtectedModelMixin(object):
             return response
 
 
+class ResourceCounterFormMixin(object):
+
+    def get_vm_count(self, obj):
+        return obj.get_vm_count()
+
+    get_vm_count.short_description = 'VM count'
+
+    def get_app_count(self, obj):
+        return obj.get_app_count()
+
+    get_app_count.short_description = 'Application count'
+
+
+
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                       widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
@@ -73,13 +87,13 @@ class CustomerAdminForm(ModelForm):
         return customer
 
 
-class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
+class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'billing_backend_id', 'balance', 'owners')
     readonly_fields = ['balance']
     actions = ['update_projected_estimate']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count']
     inlines = [QuotaInline]
 
     def update_projected_estimate(self, request, queryset):
@@ -161,12 +175,12 @@ class ProjectAdminForm(ModelForm):
         return project
 
 
-class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
     form = ProjectAdminForm
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')
 
-    list_display = ['name', 'uuid', 'customer', 'created']
+    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
@@ -374,9 +388,20 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
 
 class ResourceAdmin(admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'backend_id', 'state')
+    list_display = ('name', 'backend_id', 'state', 'get_service', 'get_project', 'error_message')
     list_filter = ('state',)
 
+    def get_service(self, obj):
+        return obj.service_project_link.service
+
+    get_service.short_description = 'Service'
+    get_service.admin_order_field = 'service_project_link__service__name'
+
+    def get_project(self, obj):
+        return obj.service_project_link.project
+
+    get_project.short_description = 'Project'
+    get_project.admin_order_field = 'service_project_link__project__name'
 
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
