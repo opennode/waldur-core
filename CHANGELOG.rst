@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Updated documentation for events emitted when a generic resource is created or managed.
+- Updated documentation for resource lifecycle events.
 
 
 Release 0.84.0
