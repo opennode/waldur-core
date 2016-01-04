@@ -100,6 +100,15 @@ class QuotaModelMixin(models.Model):
 
     quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
 
+    def get_quota_usage(self, quota_name, default=0):
+        """
+        Get quota usage by quota_name if it exists or return default value.
+        """
+        try:
+            return self.quotas.get(name=quota_name).usage
+        except Quota.DoesNotExist:
+            return default
+
     def set_quota_limit(self, quota_name, limit):
         self.quotas.filter(name=quota_name).update(limit=limit)
 
