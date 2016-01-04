@@ -112,6 +112,14 @@ def begin_recovering_erred_service_settings(settings_uuid, transition_entity=Non
         settings.error_message = ''
         settings.save()
         logger.info('Service settings %s successfully recovered.' % settings.name)
+
+        try:
+            spl_model = SupportedServices.get_service_models()[settings.type]['service_project_link']
+            erred_spls = spl_model.objects.filter(service__settings=settings,
+                                                  state=SynchronizationStates.ERRED)
+            recover_erred_services.delay([spl.to_string() for spl in erred_spls])
+        except KeyError:
+            logger.warning('Failed to recover service project links for settings %s', settings)
     else:
         settings.set_erred()
         settings.error_message = 'Failed to ping service settings %s' % settings.name
