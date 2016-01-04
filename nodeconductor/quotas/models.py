@@ -104,6 +104,8 @@ class QuotaModelMixin(models.Model):
         """
         Get quota usage by quota_name if it exists or return default value.
         """
+        if quota_name not in self.Quotas.__dict__:
+            raise ValueError('Invalid quota name {}'.format(quota_name))
         try:
             return self.quotas.get(name=quota_name).usage
         except Quota.DoesNotExist:
