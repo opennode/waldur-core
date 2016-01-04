@@ -18,13 +18,6 @@ class CustomIndexDashboard(FluentIndexDashboard):
             display="tabs",
             children=[
                 modules.ModelList(
-                    title='Network',
-                    models=('nodeconductor.iaas.models.FloatingIP',
-                            'nodeconductor.iaas.models.IpMapping',
-                            'nodeconductor.iaas.models.SecurityGroup',
-                            )
-                ),
-                modules.ModelList(
                     title='Virtual Machine',
                     models=('nodeconductor.iaas.models.Instance',
                             'nodeconductor.iaas.models.InstanceSlaHistory',
@@ -38,7 +31,14 @@ class CustomIndexDashboard(FluentIndexDashboard):
                             'nodeconductor.iaas.models.CloudProjectMembership',
                             'nodeconductor.iaas.models.OpenStackSettings',
                             )
-                )
+                ),
+                modules.ModelList(
+                    title='Network',
+                    models=('nodeconductor.iaas.models.FloatingIP',
+                            'nodeconductor.iaas.models.IpMapping',
+                            'nodeconductor.iaas.models.SecurityGroup',
+                            )
+                ),
             ]
         ))
 
@@ -49,8 +49,10 @@ class CustomIndexDashboard(FluentIndexDashboard):
             billing_models.append('nodeconductor_paypal.models.Payment')
 
         self.children.append(AppIconList(_('Billing'), models=billing_models))
-        self.children.append(AppIconList(_('Structure'), models=('nodeconductor.structure.*',)))
-        self.children.append(AppIconList(_('Backup'), models=('nodeconductor.backup.*',)))
+        self.children.append(AppIconList(_('Structure'), models=(
+            'nodeconductor.structure.*',
+            'nodeconductor.core.models.User',
+        )))
 
     def init_with_context(self, context):
         self.children.append(modules.LinkList(

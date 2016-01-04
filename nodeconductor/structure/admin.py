@@ -374,9 +374,20 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
 
 class ResourceAdmin(admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'backend_id', 'state')
+    list_display = ('name', 'backend_id', 'state', 'get_service', 'get_project', 'error_message')
     list_filter = ('state',)
 
+    def get_service(self, obj):
+        return obj.service_project_link.service
+
+    get_service.short_description = 'Service'
+    get_service.admin_order_field = 'service_project_link__service__name'
+
+    def get_project(self, obj):
+        return obj.service_project_link.project
+
+    get_project.short_description = 'Project'
+    get_project.admin_order_field = 'service_project_link__project__name'
 
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
