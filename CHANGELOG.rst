@@ -5,6 +5,7 @@ Release NEXT
 ------------
 <Nothing yet>
 
+- Improve /admin interface, expose installed plugins and versions.
 
 Release 0.84.0
 --------------
