@@ -79,8 +79,19 @@ class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
               'billing_backend_id', 'balance', 'owners')
     readonly_fields = ['balance']
     actions = ['update_projected_estimate']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count']
     inlines = [QuotaInline]
+
+    def get_vm_count(self, obj):
+        return obj.get_vm_count()
+
+    get_vm_count.short_description = 'VM count'
+
+    def get_app_count(self, obj):
+        return obj.get_app_count()
+
+    get_app_count.short_description = 'Application count'
+
 
     def update_projected_estimate(self, request, queryset):
         customers_without_backend_id = []
@@ -166,10 +177,20 @@ class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')
 
-    list_display = ['name', 'uuid', 'customer', 'created']
+    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
+
+    def get_vm_count(self, obj):
+        return obj.get_vm_count()
+
+    get_vm_count.short_description = 'VM count'
+
+    def get_app_count(self, obj):
+        return obj.get_app_count()
+
+    get_app_count.short_description = 'Application count'
 
 
 class ProjectGroupAdminForm(ModelForm):
