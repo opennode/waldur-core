@@ -228,16 +228,16 @@ class Customer(core_models.UuidMixin,
         }
 
     def get_project_count(self):
-        return self.quotas.get(name='nc_project_count').usage
+        return self.get_quota_usage('nc_project_count')
 
     def get_service_count(self):
-        return self.quotas.get(name='nc_service_count').usage
+        return self.get_quota_usage('nc_service_count')
 
     def get_app_count(self):
-        return self.quotas.get(name='nc_app_count').usage
+        return self.get_quota_usage('nc_app_count')
 
     def get_vm_count(self):
-        return self.quotas.get(name='nc_vm_count').usage
+        return self.get_quota_usage('nc_vm_count')
 
 
 class BalanceHistory(models.Model):
@@ -433,10 +433,10 @@ class Project(core_models.DescribableMixin,
                      for link in model['service_project_link'].objects.filter(project=self)]
 
     def get_app_count(self):
-        return self.quotas.get(name='nc_app_count').usage
+        return self.get_quota_usage('nc_app_count')
 
     def get_vm_count(self):
-        return self.quotas.get(name='nc_vm_count').usage
+        return self.get_quota_usage('nc_vm_count')
 
 
 @python_2_unicode_compatible
