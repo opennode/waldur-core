@@ -74,7 +74,7 @@ License management
 .. include:: licenses.rst
 
 Oracle management
-================
+=================
 
 .. include:: oracle.rst
 

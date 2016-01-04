@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-<Nothing yet>
+- Updated documentation for resource lifecycle events.
 
 
 Release 0.84.0
