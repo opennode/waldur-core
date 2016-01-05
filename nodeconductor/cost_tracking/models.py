@@ -158,6 +158,9 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
 
     tracker = FieldTracker()
 
+    def __str__(self):
+        return 'Price list item %s: %s = %s for %s' % (self.name, self.key, self.value, self.resource_content_type)
+
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
     # Generic key to service
