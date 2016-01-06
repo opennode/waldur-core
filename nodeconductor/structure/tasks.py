@@ -49,6 +49,9 @@ def stop_customer_resources(customer_uuid):
 def recover_erred_services(service_project_links=None):
     if service_project_links is not None:
         erred_spls = models.ServiceProjectLink.from_string(service_project_links)
+
+        for spl in erred_spls:
+            recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
     else:
         for service_type, service in SupportedServices.get_service_models().items():
             # TODO: Remove IaaS support (NC-645)
@@ -62,8 +65,8 @@ def recover_erred_services(service_project_links=None):
 
             erred_spls = service['service_project_link'].objects.filter(query)
 
-    for spl in erred_spls:
-        recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
+            for spl in erred_spls:
+                recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')
