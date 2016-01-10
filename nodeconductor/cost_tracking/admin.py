@@ -56,6 +56,7 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         return my_urls + super(DefaultPriceListItemAdmin, self).get_urls()
 
     def sync(self, request):
+        # XXX: This code provides circular dependency between nodeconductor and nodeconductor-killbill
         if NodeConductorExtension.is_installed('nodeconductor_killbill'):
             send_task('killbill', 'sync_pricelist')()
             self.message_user(request, "Price lists scheduled for sync")
