@@ -61,6 +61,13 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     def get_log_fields(self):
         return ('uuid', 'name', 'limit', 'usage', 'scope')
 
+    def get_field(self):
+        fields = self.scope.get_quotas_fields()
+        try:
+            return next(f for f in fields if f.name == self.name)
+        except StopIteration:
+            return
+
 
 class QuotaModelMixin(models.Model):
     """
