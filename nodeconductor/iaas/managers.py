@@ -9,11 +9,9 @@ class InstanceQueryset(StructureQueryset):
     def filter(self, *args, **kwargs):
         kwargs = kwargs.copy()
         for key in kwargs:
-            if 'service_project_link' in key:
-                kwargs[key.replace('service_project_link', 'cloud_project_membership')] = kwargs.pop(key)
-        for key in kwargs:
-            if 'service' in key:
-                kwargs[key.replace('service', 'cloud')] = kwargs.pop(key)
+            new_key = key.replace('service_project_link', 'cloud_project_membership')
+            new_key = new_key.replace('service', 'cloud')
+            kwargs[new_key] = kwargs.pop(key)
         return super(InstanceQueryset, self).filter(*args, **kwargs)
 
     def order_by(self, *keys):
