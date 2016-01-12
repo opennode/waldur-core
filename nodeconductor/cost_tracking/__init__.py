@@ -56,6 +56,7 @@ class CostTrackingRegister(object):
 class CostTrackingBackend(object):
     """ Cost tracking interface for NC plugin """
 
+    # A list of numerical <item type>'s like storage or users count
     NUMERICAL = []
 
     @classmethod

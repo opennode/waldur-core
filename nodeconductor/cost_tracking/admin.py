@@ -72,7 +72,7 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
             erred_resources = []
             subscribed_resources = []
             for model in structure_models.PaidResource.get_all_models():
-                for resource in model.objects.filter(state=model.States.ONLINE):
+                for resource in model.objects.exclude(state=model.States.ERRED):
                     try:
                         backend = KillBillBackend(resource.customer)
                         backend.subscribe(resource)
