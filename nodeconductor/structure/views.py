@@ -39,6 +39,7 @@ from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
+from nodeconductor.structure import managers
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 
@@ -690,19 +691,21 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
         return Response(SupportedServices.get_services_with_resources(request))
 
 
-class ResourceViewSet(BaseSummaryView):
-    """ The summary list of all user resources. """
+class ResourceViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
+    serializer_class = serializers.SummaryResourceSerializer
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_class = filters.BaseResourceFilter
 
-    params = filters.BaseResourceFilter.Meta.fields
+    def get_queryset(self):
+        types = self.request.query_params.getlist('resource_type', None)
+        resource_models = SupportedServices.get_resource_models()
+        if types:
+            resource_models = {k: v for k, v in resource_models.items() if k in types}
+        return managers.SummaryQuerySet(resource_models.values())
 
-    def get_urls(self, request):
-        types = request.query_params.getlist('resource_type', [])
-        resources = SupportedServices.get_resources(request).items()
-        if types != []:
-            return [url for (type, url) in resources if type in types]
-        else:
-            return [url for (type, url) in resources]
-
+    # TODO: rewrite count based on SummaryQuerySet
     @list_route()
     def count(self, request):
         """
@@ -1150,7 +1153,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     filter_class = filters.BaseResourceFilter
     metadata_class = serializers.ResourceProvisioningMetadata
 
