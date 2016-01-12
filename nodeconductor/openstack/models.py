@@ -158,9 +158,6 @@ class Instance(structure_models.Resource,
     service_project_link = models.ForeignKey(
         OpenStackServiceProjectLink, related_name='instances', on_delete=models.PROTECT)
 
-    external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-    internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-
     # OpenStack backend specific fields
     system_volume_id = models.CharField(max_length=255, blank=True)
     system_volume_size = models.PositiveIntegerField(default=0, help_text='Root disk size in MiB')

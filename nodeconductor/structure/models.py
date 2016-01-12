@@ -763,6 +763,9 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
     ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
     disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
 
+    external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
+    internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
+
     class Meta(object):
         abstract = True
 
