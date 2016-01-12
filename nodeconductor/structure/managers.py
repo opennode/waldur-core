@@ -221,7 +221,7 @@ class SummaryQuerySet(object):
         if reverse:
             compared_attr = compared_attr[1:]
 
-        # prepare a priority queue whose items are
+        # prepare a heap whose items are
         # (compared, current-value, iterator), one each per (non-empty) subsequence
         # <compared> is used for model instances comparison based on given attribute
         heap = []
@@ -229,11 +229,10 @@ class SummaryQuerySet(object):
             iterator = iter(subseq)
             for current_value in iterator:
                 # subseq is not empty, therefore add this subseq's item to the list
-                heap.append((Compared(current_value, compared_attr, reverse=reverse), current_value, iterator))
+                heapq.heappush(
+                    heap, (Compared(current_value, compared_attr, reverse=reverse), current_value, iterator))
                 break
 
-        # make the priority queue into a heap
-        heapq.heapify(heap)
         while heap:
             # get and yield lowest current value (and corresponding iterator)
             _, current_value, iterator = heap[0]
