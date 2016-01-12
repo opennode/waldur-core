@@ -3,7 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
-from django.utils.translation import ungettext
+from django.utils.translation import ungettext, gettext
 
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.tasks import send_task
@@ -29,7 +29,6 @@ class PriceListItemAdmin(admin.ModelAdmin):
 
 class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('full_name', 'item_type', 'key', 'value', 'monthly_rate', 'product_name')
-    list_filter = ['item_type', 'key']
     fields = ('name', ('value', 'monthly_rate'), 'resource_content_type', ('item_type', 'key'))
     readonly_fields = ('monthly_rate',)
     change_readonly_fields = ('resource_content_type', 'item_type', 'key')
@@ -50,6 +49,7 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         my_urls = patterns(
             '',
             url(r'^sync/$', self.admin_site.admin_view(self.sync)),
+            url(r'^subscribe_resources/$', self.admin_site.admin_view(self.subscribe_resources)),
             url(r'^init_from_registered_applications/$',
                 self.admin_site.admin_view(self.init_from_registered_applications)),
         )
@@ -60,6 +60,42 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         if NodeConductorExtension.is_installed('nodeconductor_killbill'):
             send_task('killbill', 'sync_pricelist')()
             self.message_user(request, "Price lists scheduled for sync")
+        else:
+            self.message_user(request, "Unknown billing backend. Can't sync", level=messages.ERROR)
+
+        return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
+
+    def subscribe_resources(self, request):
+        if NodeConductorExtension.is_installed('nodeconductor_killbill'):
+            from nodeconductor_killbill.backend import KillBillBackend, KillBillError
+
+            erred_resources = []
+            subscribed_resources = []
+            for model in structure_models.PaidResource.get_all_models():
+                for resource in model.objects.filter(state=model.States.ONLINE):
+                    try:
+                        backend = KillBillBackend(resource.customer)
+                        backend.subscribe(resource)
+                    except KillBillError:
+                        erred_resources.append(resource)
+                    else:
+                        subscribed_resources.append(resource)
+
+            if subscribed_resources:
+                subscribed_resources_count = len(subscribed_resources)
+                message = ungettext(
+                    'One resource subscribed',
+                    '%(subscribed_resources_count)d resources subscribed',
+                    subscribed_resources_count
+                )
+                message = message % {'subscribed_resources_count': subscribed_resources_count}
+                self.message_user(request, message)
+
+            if erred_resources:
+                message = gettext('Failed to subscribe resources: %(erred_resources)s')
+                message = message % {'erred_resources': ', '.join([i.name for i in erred_resources])}
+                self.message_user(request, message, level=messages.ERROR)
+
         else:
             self.message_user(request, "Unknown billing backend. Can't sync", level=messages.ERROR)
 

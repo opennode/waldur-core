@@ -56,6 +56,8 @@ class CostTrackingRegister(object):
 class CostTrackingBackend(object):
     """ Cost tracking interface for NC plugin """
 
+    NUMERICAL = []
+
     @classmethod
     def get_used_items(cls, resource):
         """ Return list of items that are currently used by resource

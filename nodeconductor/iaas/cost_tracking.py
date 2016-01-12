@@ -33,7 +33,7 @@ class SupportTypes(object):
 
 
 class IaaSCostTrackingBackend(CostTrackingBackend):
-
+    NUMERICAL = [PriceItemTypes.STORAGE]
     STORAGE_KEY = '1 GB'
 
     @classmethod
