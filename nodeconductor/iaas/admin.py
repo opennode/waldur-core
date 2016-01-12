@@ -1,9 +1,8 @@
 from django import forms
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.utils.translation import ungettext, gettext
 from django.utils.translation import ugettext_lazy as _
 
-from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
 from nodeconductor.monitoring.zabbix.errors import ZabbixError
@@ -217,7 +216,7 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
     search_fields = ['name', 'uuid']
     list_filter = ['state', 'cloud_project_membership__project', 'template']
 
-    actions = ['pull_installation_state', 'subscribe']
+    actions = ['pull_installation_state']
 
     fieldsets = (
         (_('General'), {'fields': ('name', 'description', 'cloud_project_membership')}),
@@ -229,13 +228,6 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         (_('Deployment settings'), {'fields': ('template', 'type', 'agreed_sla', 'user_data')}),
         (_('Billing'), {'fields': ('billing_backend_id',)}),
     )
-
-    def get_actions(self, request):
-        actions = super(InstanceAdmin, self).get_actions(request)
-        if not NodeConductorExtension.is_installed('nodeconductor_killbill'):
-            if 'subscribe' in actions:
-                del actions['subscribe']
-        return actions
 
     def get_project_name(self, obj):
         return obj.cloud_project_membership.project.name
@@ -265,37 +257,6 @@ class InstanceAdmin(ProtectedModelMixin, admin.ModelAdmin):
         self.message_user(request, message)
 
     pull_installation_state.short_description = "Pull Installation state"
-
-    def subscribe(self, request, queryset):
-        from nodeconductor_killbill.backend import KillBillBackend, KillBillError
-
-        erred_instances = []
-        subscribed_instances = []
-        for instance in queryset:
-            try:
-                backend = KillBillBackend(instance.customer)
-                backend.subscribe(instance)
-            except KillBillError:
-                erred_instances.append(instance)
-            else:
-                subscribed_instances.append(instance)
-
-        if subscribed_instances:
-            subscribed_instances_count = len(subscribed_instances)
-            message = ungettext(
-                'One instance subscribed',
-                '%(subscribed_instances_count)d instances subscribed',
-                subscribed_instances_count
-            )
-            message = message % {'subscribed_instances_count': subscribed_instances_count}
-            self.message_user(request, message)
-
-        if erred_instances:
-            message = gettext('Failed to subscribe instances: %(erred_instances)s')
-            message = message % {'erred_instances': ', '.join([i.name for i in erred_instances])}
-            self.message_user(request, message, level=messages.ERROR)
-
-    subscribe.short_description = "Subscribe to billing backend"
 
 
 class ImageInline(ReadonlyInlineMixin, admin.TabularInline):

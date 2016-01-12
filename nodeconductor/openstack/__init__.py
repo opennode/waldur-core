@@ -1,10 +1,11 @@
 from collections import OrderedDict
+from nodeconductor.cost_tracking import CostTrackingBackend
 
 default_app_config = 'nodeconductor.openstack.apps.OpenStackConfig'
 
 
 class PriceItemTypes:
-    FLAVOR = 'flavor'
+    FLAVOR = CostTrackingBackend.VM_SIZE_ITEM_TYPE
     STORAGE = 'storage'
     LICENSE_APPLICATION = 'license-application'
     LICENSE_OS = 'license-os'

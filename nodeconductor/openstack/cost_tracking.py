@@ -6,7 +6,7 @@ from nodeconductor.openstack import models, Types
 
 
 class OpenStackCostTrackingBackend(CostTrackingBackend):
-
+    NUMERICAL = [Types.PriceItems.STORAGE]
     STORAGE_KEY = '1 GB'
 
     @classmethod
@@ -42,7 +42,12 @@ class OpenStackCostTrackingBackend(CostTrackingBackend):
     def get_used_items(cls, resource):
         items = []
         tags = [t.name for t in resource.tags.all()]
-        get_tag = lambda name: [t.split(':')[1] for t in tags if t.startswith('%s:' % name)][0]
+
+        def get_tag(name):
+            try:
+                return [t.split(':')[1] for t in tags if t.startswith('%s:' % name)][0]
+            except IndexError:
+                return None
 
         # flavor
         if resource.state == resource.States.ONLINE and resource.flavor_name:
