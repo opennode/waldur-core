@@ -1099,6 +1099,45 @@ class BasicResourceSerializer(serializers.Serializer):
         return SupportedServices.get_name_for_model(resource)
 
 
+class SummaryResourceSerializer(BasicResourceSerializer):
+    state = serializers.ReadOnlyField(source='get_state_display')
+
+    project_groups = BasicProjectGroupSerializer(
+        source='service_project_link.project.project_groups', many=True, read_only=True)
+
+    project = serializers.HyperlinkedRelatedField(
+        source='service_project_link.project',
+        view_name='project-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    customer = serializers.HyperlinkedRelatedField(
+        source='service_project_link.project.customer',
+        view_name='customer-detail',
+        read_only=True,
+        lookup_field='uuid')
+    customer_abbreviation = serializers.ReadOnlyField(source='service_project_link.project.customer.abbreviation')
+    customer_native_name = serializers.ReadOnlyField(source='service_project_link.project.customer.native_name')
+
+    service_project_link = serializers.SerializerMethodField()
+
+    service = serializers.SerializerMethodField()
+
+    created = serializers.DateTimeField(read_only=True)
+    tags = serializers.SerializerMethodField()
+
+    def get_tags(self, obj):
+        return [t.name for t in obj.tags.all()]
+
+    def get_service_project_link(self, obj):
+        return reverse(obj.service_project_link.get_url_name() + '-detail',
+                       kwargs={'pk': obj.service_project_link.pk}, request=self.context['request'])
+
+    def get_service(self, obj):
+        return reverse(obj.service_project_link.service.get_url_name() + '-detail',
+                       kwargs={'uuid': obj.service_project_link.service.uuid}, request=self.context['request'])
+
+
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,

@@ -1,3 +1,6 @@
+import functools
+import itertools
+import heapq
 from operator import or_
 
 from django.db import models
@@ -137,3 +140,108 @@ class StructureQueryset(models.QuerySet):
 
 
 StructureManager = models.Manager.from_queryset(StructureQueryset)
+
+
+class SummaryQuerySet(object):
+    """ Fake queryset that emulates union of different models querysets """
+
+    def __init__(self, summary_models):
+        self.querysets = [model.objects.all() for model in summary_models]
+        self._order_by = None
+
+    # Hack for permissions
+    @property
+    def model(self):
+        try:
+            return self.querysets[0].model
+        except IndexError:
+            return
+
+    def filter(self, **kwargs):
+        self.querysets = [qs.filter(**kwargs) for qs in self.querysets]
+        return self
+
+    def order_by(self, order_by):
+        self._order_by = order_by
+        self.querysets = [qs.order_by(order_by) for qs in self.querysets]
+        return self
+
+    def all(self):
+        return self
+
+    def none(self):
+        try:
+            return self.querysets[0].none()
+        except IndexError:
+            return
+
+    def __getitem__(self, val):
+        chained_querysets = self._get_chained_querysets()
+        if isinstance(val, slice):
+            return list(itertools.islice(chained_querysets, val.start, val.stop))
+        else:
+            try:
+                return itertools.islice(chained_querysets, val, val+1).next()
+            except StopIteration:
+                raise IndexError
+
+    def __len__(self):
+        return sum([q.count() for q in self.querysets])
+
+    def _get_chained_querysets(self):
+        if self._order_by:
+            return self._merge([qs.iterator() for qs in self.querysets], compared_attr=self._order_by)
+        else:
+            return itertools.chain(*[qs.iterator() for qs in self.querysets])
+
+    def _merge(self, subsequences, compared_attr='pk'):
+
+        @functools.total_ordering
+        class Compared(object):
+            """ Order objects by their attributes, reverse ordering if <reverse> is True """
+            def __init__(self, obj, attr, reverse=False):
+                self.attr = reduce(Compared.get_obj_attr, attr.split("__"), obj)
+                self.reverse = reverse
+
+            @staticmethod
+            def get_obj_attr(obj, attr):
+                # for m2m relationship support - get first instance of manager.
+                # for example: get first project group if resource has to be ordered by project groups.
+                if isinstance(obj, models.Manager):
+                    obj = obj.first()
+                return getattr(obj, attr) if obj else None
+
+            def __eq__(self, other):
+                return self.attr == other.attr
+
+            def __le__(self, other):
+                return self.attr < other.attr if not self.reverse else self.attr >= other.attr
+
+        reverse = compared_attr.startswith('-')
+        if reverse:
+            compared_attr = compared_attr[1:]
+
+        # prepare a heap whose items are
+        # (compared, current-value, iterator), one each per (non-empty) subsequence
+        # <compared> is used for model instances comparison based on given attribute
+        heap = []
+        for subseq in subsequences:
+            iterator = iter(subseq)
+            for current_value in iterator:
+                # subseq is not empty, therefore add this subseq's item to the list
+                heapq.heappush(
+                    heap, (Compared(current_value, compared_attr, reverse=reverse), current_value, iterator))
+                break
+
+        while heap:
+            # get and yield lowest current value (and corresponding iterator)
+            _, current_value, iterator = heap[0]
+            yield current_value
+            for current_value in iterator:
+                # subseq is not finished, therefore add this subseq's item back into the priority queue
+                heapq.heapreplace(
+                    heap, (Compared(current_value, compared_attr, reverse=reverse), current_value, iterator))
+                break
+            else:
+                # subseq has been exhausted, therefore remove it from the queue
+                heapq.heappop(heap)
