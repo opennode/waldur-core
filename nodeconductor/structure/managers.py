@@ -205,6 +205,8 @@ class SummaryQuerySet(object):
 
             @staticmethod
             def get_obj_attr(obj, attr):
+                # for m2m relationship support - get first instance of manager.
+                # for example: get first project group if resource has to be ordered by project groups.
                 if isinstance(obj, models.Manager):
                     obj = obj.first()
                 return getattr(obj, attr) if obj else None
