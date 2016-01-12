@@ -1,7 +1,9 @@
 from django.db import models
 
+from nodeconductor.structure.managers import StructureQueryset
 
-class InstanceQueryset(models.QuerySet):
+
+class InstanceQueryset(StructureQueryset):
     """ Hack that allow to filter iaas instances based on service_project_links and services """
 
     def filter(self, *args, **kwargs):
