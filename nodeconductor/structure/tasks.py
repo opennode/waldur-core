@@ -14,7 +14,6 @@ from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -462,3 +461,24 @@ def remove_user(user_data, service_project_link_str):
             user.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
+
+
+@shared_task(name='nodeconductor.structure.detect_vm_coordinates_batch')
+def detect_vm_coordinates_batch(virtual_machines):
+    for vm in models.Resource.from_string(virtual_machines):
+        detect_vm_coordinates.delay(vm.to_string())
+
+
+@shared_task(name='nodeconductor.structure.detect_vm_coordinates')
+def detect_vm_coordinates(vm_str):
+    try:
+        vm = next(models.Resource.from_string(vm_str))
+    except StopIteration:
+        logger.warning('Missing virtual machine %s.', vm_str)
+        return True
+
+    coordinates = vm.detect_coordinates()
+    if coordinates:
+        vm.latitude = coordinates.latitude
+        vm.longitude = coordinates.longitude
+        vm.save(update_fields=['latitude', 'longitude'])

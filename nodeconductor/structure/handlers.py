@@ -9,7 +9,6 @@ from django.contrib.auth import get_user_model
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
-from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -377,6 +376,11 @@ def log_resource_deleted(sender, instance, **kwargs):
         'Resource {resource_name} has been deleted.',
         event_type='resource_deletion_succeeded',
         event_context={'resource': instance})
+
+
+def detect_vm_coordinates(sender, instance=None, created=False, **kwargs):
+    if created or instance.tracker.has_changed('external_ips'):
+        send_task('structure', 'detect_vm_coordinates')(instance.to_string())
 
 
 def connect_customer_to_shared_service_settings(sender, instance, created=False, **kwargs):

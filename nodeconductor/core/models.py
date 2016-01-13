@@ -17,6 +17,7 @@ from django.utils import timezone as django_timezone
 from django.utils.encoding import force_text, python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
+from model_utils import FieldTracker
 from uuidfield import UUIDField
 import reversion
 
@@ -76,6 +77,17 @@ class ErrorMessageMixin(models.Model):
         abstract = True
 
     error_message = models.TextField(blank=True)
+
+
+class CoordinatesMixin(models.Model):
+    """
+    Mixin to add a latitude and longitude fields
+    """
+    class Meta(object):
+        abstract = True
+
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
 
 class ScheduleMixin(models.Model):
@@ -377,3 +389,15 @@ class DescendantMixin(object):
                 if (parent.__class__, parent.id) not in ancestor_unique_attributes:
                     ancestors.append(parent)
         return ancestors
+
+
+class AbstractFieldTracker(FieldTracker):
+    """
+    Workaround for abstract models
+    https://gist.github.com/sbnoemi/7618916
+    """
+    def finalize_class(self, sender, name, **kwargs):
+        self.name = name
+        self.attname = '_%s' % name
+        if not hasattr(sender, name):
+            super(AbstractFieldTracker, self).finalize_class(sender, **kwargs)
