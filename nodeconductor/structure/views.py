@@ -693,6 +693,7 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
 
 class ResourceViewSet(mixins.ListModelMixin,
                       viewsets.GenericViewSet):
+    model = models.Resource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
