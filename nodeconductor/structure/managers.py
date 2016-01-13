@@ -157,8 +157,12 @@ class SummaryQuerySet(object):
         except IndexError:
             return
 
-    def filter(self, **kwargs):
-        self.querysets = [qs.filter(**kwargs) for qs in self.querysets]
+    def filter(self, *args, **kwargs):
+        self.querysets = [qs.filter(*args, **kwargs) for qs in self.querysets]
+        return self
+
+    def distinct(self, *args, **kwargs):
+        self.querysets = [qs.distinct(*args, **kwargs) for qs in self.querysets]
         return self
 
     def order_by(self, order_by):
@@ -201,6 +205,8 @@ class SummaryQuerySet(object):
             """ Order objects by their attributes, reverse ordering if <reverse> is True """
             def __init__(self, obj, attr, reverse=False):
                 self.attr = reduce(Compared.get_obj_attr, attr.split("__"), obj)
+                if isinstance(self.attr, basestring):
+                    self.attr = self.attr.lower()
                 self.reverse = reverse
 
             @staticmethod
