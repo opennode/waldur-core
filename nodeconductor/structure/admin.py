@@ -403,6 +403,26 @@ class ResourceAdmin(admin.ModelAdmin):
     get_project.short_description = 'Project'
     get_project.admin_order_field = 'service_project_link__project__name'
 
+
+class VirtualMachineAdmin(ResourceAdmin):
+    actions = ['detect_coordinates']
+
+    def detect_coordinates(self, request, queryset):
+        send_task('structure', 'detect_vm_coordinates_batch')([vm.to_string() for vm in queryset])
+
+        tasks_scheduled = queryset.count()
+        message = ungettext(
+            'Coordinates detection has been scheduled for one virtual machine',
+            'Coordinates detection has been scheduled for %(tasks_scheduled)d virtual machines',
+            tasks_scheduled
+        )
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    detect_coordinates.short_description = "Detect coordinates of virtual machines"
+
+
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectGroup, ProjectGroupAdmin)

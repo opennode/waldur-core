@@ -1305,7 +1305,8 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     class Meta(BaseResourceSerializer.Meta):
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
-            'cores', 'ram', 'disk', 'external_ips', 'internal_ips'
+            'cores', 'ram', 'disk', 'external_ips', 'internal_ips',
+            'latitude', 'longitude'
         )
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
             'user_data', 'ssh_public_key'
@@ -1313,6 +1314,7 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         write_only_fields = ('user_data',)
         fields = BaseResourceSerializer.Meta.fields + (
             'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
+            'latitude', 'longitude'
         )
 
     def get_fields(self):

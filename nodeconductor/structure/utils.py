@@ -1,6 +1,16 @@
+import collections
+
 from django.contrib.auth import get_user_model
+import requests
 
 from nodeconductor.core.models import SshPublicKey
+
+
+Coordinates = collections.namedtuple('Coordinates', ('latitude', 'longitude'))
+
+
+class GeoIpException(Exception):
+    pass
 
 
 def serialize_ssh_key(ssh_key):
@@ -35,3 +45,16 @@ def deserialize_user(data):
         username=data['username'],
         email=data['email']
     )
+
+
+def get_coordinates_by_ip(ip_address):
+    url = 'http://freegeoip.net/json/{}'.format(ip_address)
+
+    response = requests.get(url)
+    if response.ok:
+        data = response.json()
+        return Coordinates(latitude=data['latitude'],
+                           longitude=data['longitude'])
+    else:
+        params = (url, response.status_code, response.text)
+        raise GeoIpException("Request to geoip API %s failed: %s %s" % params)

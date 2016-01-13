@@ -20,6 +20,7 @@ from model_utils import FieldTracker
 from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.log import LoggableMixin
@@ -28,6 +29,7 @@ from nodeconductor.structure.signals import structure_role_granted, structure_ro
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
+from nodeconductor.structure.utils import get_coordinates_by_ip
 
 
 def validate_service_type(service_type):
@@ -757,7 +759,11 @@ class BaseVirtualMachineMixin(models.Model):
         abstract = True
 
 
-class VirtualMachineMixin(BaseVirtualMachineMixin):
+class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
+    def __init__(self, *args, **kwargs):
+        AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
+        super(VirtualMachineMixin, self).__init__(*args, **kwargs)
+
     # This extra class required in order not to get into a mess with current iaas implementation
     cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
@@ -768,6 +774,10 @@ class VirtualMachineMixin(BaseVirtualMachineMixin):
 
     class Meta(object):
         abstract = True
+
+    def detect_coordinates(self):
+        if self.external_ips:
+            return get_coordinates_by_ip(self.external_ips)
 
 
 class PaidResource(models.Model):

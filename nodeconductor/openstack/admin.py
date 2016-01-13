@@ -72,7 +72,7 @@ class BackupScheduleAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'next_trigger_at', 'is_active', 'instance', 'timezone')
 
 
-class InstanceAdmin(structure_admin.ResourceAdmin):
+class InstanceAdmin(structure_admin.VirtualMachineAdmin):
     form = InstanceForm
 
 
