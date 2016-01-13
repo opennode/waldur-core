@@ -31,6 +31,9 @@ class QuotaField(object):
         return scope.quotas.get_or_create(
             name=self.name, defaults={'limit': self.default_limit, 'usage': self.default_usage})
 
+    def __str__(self):
+        return self.name
+
 
 class CounterQuotaField(QuotaField):
     """ Provides limitation on target models instances count.
