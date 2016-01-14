@@ -20,6 +20,10 @@ class QuotaField(object):
 
     Links quota to its scope right after its creation.
     Allows to define quota initial limit and usage.
+
+    Default limit and usage can be defined as callable function.
+    Example:
+        quota_name = QuotaField(default_limit=lambda scope: scope.attr)
     """
 
     def __init__(self, name=None, default_limit=-1, default_usage=0):
@@ -28,8 +32,11 @@ class QuotaField(object):
         self.name = name
 
     def get_or_create_quota(self, scope):
-        return scope.quotas.get_or_create(
-            name=self.name, defaults={'limit': self.default_limit, 'usage': self.default_usage})
+        defaults = {
+            'limit': self.default_limit(scope) if six.callable(self.default_limit) else self.default_limit,
+            'usage': self.default_limit(scope) if six.callable(self.default_usage) else self.default_usage,
+        }
+        return scope.quotas.get_or_create(name=self.name, defaults=defaults)
 
     def __str__(self):
         return self.name
