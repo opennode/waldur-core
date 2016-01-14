@@ -1,3 +1,4 @@
+import copy
 import functools
 import itertools
 import heapq
@@ -158,16 +159,16 @@ class SummaryQuerySet(object):
             return
 
     def filter(self, *args, **kwargs):
-        self.querysets = [qs.filter(*args, **kwargs) for qs in self.querysets]
+        self.querysets = [qs.filter(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
         return self
 
     def distinct(self, *args, **kwargs):
-        self.querysets = [qs.distinct(*args, **kwargs) for qs in self.querysets]
+        self.querysets = [qs.distinct(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
         return self
 
     def order_by(self, order_by):
         self._order_by = order_by
-        self.querysets = [qs.order_by(order_by) for qs in self.querysets]
+        self.querysets = [qs.order_by(copy.deepcopy(order_by)) for qs in self.querysets]
         return self
 
     def all(self):
