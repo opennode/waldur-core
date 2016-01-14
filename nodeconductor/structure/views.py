@@ -706,7 +706,6 @@ class ResourceViewSet(mixins.ListModelMixin,
             resource_models = {k: v for k, v in resource_models.items() if k in types}
         return managers.SummaryQuerySet(resource_models.values())
 
-    # TODO: rewrite count based on SummaryQuerySet
     @list_route()
     def count(self, request):
         """
@@ -721,19 +720,9 @@ class ResourceViewSet(mixins.ListModelMixin,
             "GitLab.Group": 8
         }
         """
-        types = request.query_params.getlist('resource_type', [])
-        params = self.get_params(request)
-        resources = SupportedServices.get_resources(request).items()
-
-        result = {}
-        for (type, url) in resources:
-            if types != [] and type not in types:
-                continue
-            response = request_api(request, url, method='HEAD', params=params)
-            if not response.success:
-                raise APIException(response.data)
-            result[type] = response.total
-        return Response(result)
+        queryset = self.filter_queryset(self.get_queryset())
+        return Response({SupportedServices.get_name_for_model(qs.model): qs.count()
+                         for qs in queryset.querysets})
 
 
 class ServicesViewSet(BaseSummaryView):
