@@ -1126,6 +1126,9 @@ class SummaryResourceSerializer(BasicResourceSerializer):
     created = serializers.DateTimeField(read_only=True)
     tags = serializers.SerializerMethodField()
 
+    latitude = serializers.ReadOnlyField()
+    longitude = serializers.ReadOnlyField()
+
     def get_tags(self, obj):
         return [t.name for t in obj.tags.all()]
 
