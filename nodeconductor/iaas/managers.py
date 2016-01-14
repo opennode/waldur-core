@@ -12,12 +12,12 @@ class InstanceQueryset(StructureQueryset):
         return super(InstanceQueryset, self).order_by(*new_keys)
 
     def exclude(self, *args, **kwargs):
-        return super(StructureQueryset, self).exclude(
+        return super(InstanceQueryset, self).exclude(
             *[self._patch_query_argument(a) for a in args],
             **self._filter_by_custom_fields(**kwargs))
 
     def filter(self, *args, **kwargs):
-        return super(StructureQueryset, self).filter(
+        return super(InstanceQueryset, self).filter(
             *[self._patch_query_argument(a) for a in args],
             **self._filter_by_custom_fields(**kwargs))
 
