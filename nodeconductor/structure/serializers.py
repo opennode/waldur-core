@@ -1122,6 +1122,8 @@ class SummaryResourceSerializer(BasicResourceSerializer):
     service_project_link = serializers.SerializerMethodField()
 
     service = serializers.SerializerMethodField()
+    service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
+    service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
 
     created = serializers.DateTimeField(read_only=True)
     tags = serializers.SerializerMethodField()
