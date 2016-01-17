@@ -34,7 +34,7 @@ class QuotaField(object):
     def get_or_create_quota(self, scope):
         defaults = {
             'limit': self.default_limit(scope) if six.callable(self.default_limit) else self.default_limit,
-            'usage': self.default_limit(scope) if six.callable(self.default_usage) else self.default_usage,
+            'usage': self.default_usage(scope) if six.callable(self.default_usage) else self.default_usage,
         }
         return scope.quotas.get_or_create(name=self.name, defaults=defaults)
 
