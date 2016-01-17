@@ -1100,6 +1100,7 @@ class BasicResourceSerializer(serializers.Serializer):
 
 
 class SummaryResourceSerializer(BasicResourceSerializer):
+    url = serializers.SerializerMethodField()
     state = serializers.ReadOnlyField(source='get_state_display')
 
     project_groups = BasicProjectGroupSerializer(
@@ -1130,6 +1131,10 @@ class SummaryResourceSerializer(BasicResourceSerializer):
 
     latitude = serializers.ReadOnlyField()
     longitude = serializers.ReadOnlyField()
+
+    def get_url(self, obj):
+        return reverse(obj.get_url_name() + '-detail',
+                       kwargs={'uuid': obj.uuid}, request=self.context['request'])
 
     def get_tags(self, obj):
         return [t.name for t in obj.tags.all()]
