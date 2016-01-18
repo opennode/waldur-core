@@ -100,6 +100,7 @@ class PriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
     resource_type = serializers.SerializerMethodField()
+    value = serializers.FloatField()
 
     class Meta:
         model = models.DefaultPriceListItem
