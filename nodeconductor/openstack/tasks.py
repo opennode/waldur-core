@@ -8,7 +8,7 @@ from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack.backup import BackupError
-from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, FloatingIP, SecurityGroup
+from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, Flavor, FloatingIP, SecurityGroup
 from nodeconductor.openstack.models import BackupSchedule, Backup
 from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.structure.log import event_logger
@@ -101,6 +101,22 @@ def remove_tenant(settings_uuid, tenant_id):
     settings = ServiceSettings.objects.get(uuid=settings_uuid)
     backend = settings.get_backend(tenant_id=tenant_id)
     backend.cleanup(dryrun=False)
+
+
+@shared_task(name='nodeconductor.openstack.resize_flavor')
+def resize_flavor(instance_uuid, flavor_uuid):
+    resize_instance_flavor.apply_async(
+        args=(instance_uuid, flavor_uuid),
+        link=flavor_change_succeeded.si(instance_uuid, flavor_uuid),
+        link_error=flavor_change_failed.si(instance_uuid, flavor_uuid))
+
+
+@shared_task(name='nodeconductor.openstack.extend_disk')
+def extend_disk(instance_uuid, disk_size):
+    extend_instance_disk.apply_async(
+        args=(instance_uuid, disk_size),
+        link=disk_extension_succeeded.si(instance_uuid, disk_size),
+        link_error=disk_extension_failed.si(instance_uuid, disk_size))
 
 
 @shared_task(name='nodeconductor.openstack.sync_instance_security_groups')
@@ -271,6 +287,36 @@ def destroy_instance(instance_uuid, transition_entity=None):
 
 
 @shared_task
+@transition(Instance, 'begin_resizing')
+@save_error_message
+def resize_instance_flavor(instance_uuid, flavor_uuid, transition_entity=None):
+    instance = transition_entity
+    flavor = Flavor.objects.get(
+        settings=instance.service_project_link.service.settings,
+        uuid=flavor_uuid)
+
+    instance.ram = flavor.ram
+    instance.cores = flavor.cores
+    instance.flavor_name = flavor.name
+    instance.save(update_fields=['ram', 'cores', 'flavor_name'])
+
+    backend = instance.get_backend()
+    backend.update_flavor(instance, flavor)
+
+
+@shared_task
+@transition(Instance, 'begin_resizing')
+@save_error_message
+def extend_instance_disk(instance_uuid, disk_size, transition_entity=None):
+    instance = transition_entity
+    instance.data_volume_size = disk_size
+    instance.save(update_fields=['data_volume_size'])
+
+    backend = instance.get_backend()
+    backend.extend_disk(instance)
+
+
+@shared_task
 @transition(Instance, 'set_online')
 def set_online(instance_uuid, transition_entity=None):
     pass
@@ -291,6 +337,60 @@ def set_erred(instance_uuid, transition_entity=None):
 @shared_task
 def delete(instance_uuid):
     Instance.objects.get(uuid=instance_uuid).delete()
+
+
+@shared_task
+@transition(Instance, 'set_resized')
+def disk_extension_succeeded(instance_uuid, disk_size, transition_entity=None):
+    instance = transition_entity
+    event_logger.instance_flavor.info(
+        'Virtual machine {resource_name} disk has been extended to {volume_size}.',
+        event_type='resource_volume_extension_succeeded',
+        event_context={'resource': instance, 'volume_size': disk_size}
+    )
+
+
+@shared_task
+@transition(Instance, 'set_erred')
+def disk_extension_failed(instance_uuid, disk_size, transition_entity=None):
+    instance = transition_entity
+    event_logger.instance_flavor.info(
+        'Virtual machine {resource_name} disk has been failed.',
+        event_type='resource_volume_extension_failed',
+        event_context={'resource': instance, 'volume_size': disk_size}
+    )
+
+
+@shared_task
+@transition(Instance, 'set_resized')
+def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
+    instance = transition_entity
+    flavor = Flavor.objects.get(
+        settings=instance.service_project_link.service.settings,
+        uuid=flavor_uuid)
+
+    logger.info('Successfully changed flavor of an instance %s', instance.uuid)
+    event_logger.instance_flavor.info(
+        'Virtual machine {resource_name} flavor has been changed to {flavor_name}.',
+        event_type='resource_flavor_change_succeeded',
+        event_context={'resource': instance, 'flavor': flavor}
+    )
+
+
+@shared_task
+@transition(Instance, 'set_erred')
+def flavor_change_failed(instance_uuid, flavor_uuid, transition_entity=None):
+    instance = transition_entity
+    flavor = Flavor.objects.get(
+        settings=instance.service_project_link.service.settings,
+        uuid=flavor_uuid)
+
+    logger.exception('Failed to change flavor of an instance %s', instance.uuid)
+    event_logger.instance_flavor.error(
+        'Virtual machine {resource_name} flavor change has failed.',
+        event_type='resource_flavor_change_failed',
+        event_context={'resource': instance, 'flavor': flavor}
+    )
 
 
 # Security-group related methods

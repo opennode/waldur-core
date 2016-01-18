@@ -641,6 +641,14 @@ class OpenStackBackend(ServiceBackend):
         cinder.volumes.delete(data_volume_id)
 
     @reraise_exceptions
+    def update_flavor(self, instance, flavor):
+        self._old_backend.update_flavor(instance, flavor)
+
+    @reraise_exceptions
+    def extend_disk(self, instance):
+        self._old_backend.extend_disk(instance)
+
+    @reraise_exceptions
     def create_security_group(self, security_group):
         nova = self.nova_client
         self._old_backend.create_security_group(security_group, nova)

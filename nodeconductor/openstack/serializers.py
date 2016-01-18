@@ -581,6 +581,65 @@ class InstanceImportSerializer(structure_serializers.BaseResourceImportSerialize
         return instance
 
 
+class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMixin,
+                               serializers.Serializer):
+    flavor = serializers.HyperlinkedRelatedField(
+        view_name='openstack-flavor-detail',
+        lookup_field='uuid',
+        queryset=models.Flavor.objects.all(),
+        required=False,
+    )
+    disk_size = serializers.IntegerField(min_value=1, required=False)
+
+    def __init__(self, instance, *args, **kwargs):
+        self.resized_instance = instance
+        super(InstanceResizeSerializer, self).__init__(*args, **kwargs)
+
+    def get_filtered_field_names(self):
+        return 'flavor',
+
+    def validate_flavor(self, value):
+        if value is not None:
+            spl = self.resized_instance.service_project_link
+
+            if value.settings != spl.service.settings:
+                raise serializers.ValidationError(
+                    "New flavor is not within the same service settings")
+
+            quota_errors = spl.validate_quota_change({
+                'vcpu': value.cores - self.resized_instance.cores,
+                'ram': value.ram - self.resized_instance.ram,
+            })
+            if quota_errors:
+                raise serializers.ValidationError(
+                    "One or more quotas are over limit: \n" + "\n".join(quota_errors))
+        return value
+
+    def validate_disk_size(self, value):
+        if value is not None:
+            if value <= self.resized_instance.data_volume_size:
+                raise serializers.ValidationError(
+                    "Disk size must be strictly greater than the current one")
+
+            quota_errors = self.resized_instance.service_project_link.validate_quota_change({
+                'storage': value - self.resized_instance.data_volume_size,
+            })
+            if quota_errors:
+                raise serializers.ValidationError(
+                    "One or more quotas are over limit: \n" + "\n".join(quota_errors))
+        return value
+
+    def validate(self, attrs):
+        flavor = attrs.get('flavor')
+        disk_size = attrs.get('disk_size')
+
+        if flavor is not None and disk_size is not None:
+            raise serializers.ValidationError("Cannot resize both disk size and flavor simultaneously")
+        if flavor is None and disk_size is None:
+            raise serializers.ValidationError("Either disk_size or flavor is required")
+        return attrs
+
+
 class LicenseSerializer(serializers.ModelSerializer):
 
     instance = serializers.SerializerMethodField()

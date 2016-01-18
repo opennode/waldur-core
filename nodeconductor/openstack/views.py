@@ -156,6 +156,36 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             {'detail': 'Assigning floating IP to the instance has been scheduled.'},
             status=status.HTTP_202_ACCEPTED)
 
+    @decorators.detail_route(methods=['post'])
+    @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
+    def resize(self, request, uuid=None):
+        instance = self.get_object()
+
+        serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        flavor = serializer.validated_data.get('flavor')
+        new_size = serializer.validated_data.get('disk_size')
+
+        # Serializer makes sure that exactly one of the branches will match
+        if flavor is not None:
+            send_task('openstack', 'resize_flavor')(instance.uuid.hex, flavor_uuid=flavor.uuid.hex)
+            event_logger.openstack_flavor.info(
+                'Virtual machine {resource_name} has been scheduled to change flavor.',
+                event_type='resource_flavor_change_scheduled',
+                event_context={'resource': instance, 'flavor': flavor}
+            )
+        else:
+            send_task('openstack', 'extend_disk')(instance.uuid.hex, disk_size=new_size)
+            event_logger.openstack_volume.info(
+                'Virtual machine {resource_name} has been scheduled to extend disk.',
+                event_type='resource_volume_extension_scheduled',
+                event_context={'resource': instance, 'volume_size': new_size}
+            )
+
+        return response.Response(
+            {'detail': 'Resizing has been scheduled.'}, status=status.HTTP_202_ACCEPTED)
+
 
 class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
     queryset = models.SecurityGroup.objects.all()
