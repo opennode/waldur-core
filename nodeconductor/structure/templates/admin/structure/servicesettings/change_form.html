@@ -1,6 +1,37 @@
 {% extends 'admin/change_form.html' %}
 {% load nodeconductor_structure %}
 {% block form_top %}
+<style type="text/css">
+    ul#id_type > li {
+        list-style-type: none;
+        display: inline;
+    }
+    ul#id_type label {
+        padding: 7px 12px;
+        background-image: linear-gradient(#fcfcfc, #eee);
+        border: 1px solid #d5d5d5;
+        float: left;
+        cursor: pointer;
+    }
+    ul#id_type label:hover {
+        background-image: linear-gradient(#eee, #ddd);
+    }
+    ul#id_type > li:first-of-type > label {
+        border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+    }
+    ul#id_type > li:last-of-type > label {
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+    ul#id_type input[type=radio] {
+        display: none;
+    }
+    ul#id_type input[type=radio]:checked+label {
+        box-shadow: 0 0 5px rgba(81,167,232,0.5);
+        border-color: #51a7e8;
+    }
+</style>
 <div class="module">
     <a href="#" id="service-settings-toggle">Supported credentials depending on service type</a>
     <p></p>
@@ -14,6 +45,12 @@
     $("#service-settings-toggle").click(function() {
       $("#service-settings-content").slideToggle("slow");
     });
+    $(function() {
+        $('ul#id_type input').each(function() {
+            $(this).parent().before(this);
+        });
+    })
+
 })(django.jQuery);
 </script>
 {% endblock %}

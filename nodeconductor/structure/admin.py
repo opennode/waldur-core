@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import models as django_models
-from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField
+from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, RadioSelect
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
 
@@ -51,7 +51,6 @@ class ResourceCounterFormMixin(object):
         return obj.get_app_count()
 
     get_app_count.short_description = 'Application count'
-
 
 
 class CustomerAdminForm(ModelForm):
@@ -231,7 +230,8 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 class ServiceSettingsAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
-        self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices())
+        self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
+                                          widget=RadioSelect)
 
 
 class ServiceTypeFilter(SimpleListFilter):
@@ -255,6 +255,8 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     change_readonly_fields = ('shared', 'customer')
     actions = ['sync', 'recover']
     form = ServiceSettingsAdminForm
+    fields = ('type', 'name', 'backend_url', 'username', 'password',
+              'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
 
     def get_type_display(self, obj):
         return obj.get_type_display()
