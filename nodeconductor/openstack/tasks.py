@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from celery import shared_task, chain
+from celery import shared_task
 from django.utils import six, timezone
 
 from nodeconductor.core.tasks import save_error_message, transition, throttle
@@ -30,10 +30,8 @@ def provision(instance_uuid, **kwargs):
         begin_syncing_service_project_links.apply_async(
             args=(spl.to_string(),),
             kwargs={'initial': True, 'transition_method': 'begin_creating'},
-            link=chain(sync_service_project_link_succeeded.si(spl.to_string()),
-                       provision.si(instance_uuid, **kwargs)),
-            link_error=chain(sync_service_project_link_failed.si(spl.to_string()),
-                             set_erred.si(instance_uuid)),
+            link=set_spl_in_sync_and_start_provision.si(spl.to_string(), instance_uuid, **kwargs),
+            link_error=set_spl_and_instance_as_erred.si(spl.to_string(), instance_uuid),
         )
     else:
         provision_instance.apply_async(
@@ -42,6 +40,18 @@ def provision(instance_uuid, **kwargs):
             link=set_online.si(instance_uuid),
             link_error=set_erred.si(instance_uuid)
         )
+
+
+@shared_task
+def set_spl_in_sync_and_start_provision(service_project_link_str, instance_uuid, **kwargs):
+    sync_service_project_link_succeeded(service_project_link_str)
+    provision.delay(instance_uuid, **kwargs)
+
+
+@shared_task
+def set_spl_and_instance_as_erred(service_project_link_str, instance_uuid):
+    sync_service_project_link_failed(service_project_link_str)
+    set_erred(instance_uuid)
 
 
 @shared_task(name='nodeconductor.openstack.destroy')
