@@ -21,4 +21,26 @@ class BackupEventLogger(EventLogger):
                        'resource_backup_schedule_deactivated')
 
 
+class InstanceFlavorChangeEventLogger(EventLogger):
+    resource = 'structure.Resource'
+    flavor = 'openstack.Flavor'
+
+    class Meta:
+        event_types = ('resource_flavor_change_scheduled',
+                       'resource_flavor_change_succeeded',
+                       'resource_flavor_change_failed')
+
+
+class InstanceVolumeChangeEventLogger(EventLogger):
+    resource = 'structure.Resource'
+    volume_size = int
+
+    class Meta:
+        event_types = ('resource_volume_extension_scheduled',
+                       'resource_volume_extension_succeeded',
+                       'resource_volume_extension_failed')
+
+
 event_logger.register('openstack_backup', BackupEventLogger)
+event_logger.register('openstack_flavor', InstanceFlavorChangeEventLogger)
+event_logger.register('openstack_volume', InstanceVolumeChangeEventLogger)
