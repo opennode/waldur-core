@@ -1132,6 +1132,8 @@ class SummaryResourceSerializer(BasicResourceSerializer):
     latitude = serializers.ReadOnlyField()
     longitude = serializers.ReadOnlyField()
 
+    access_url = serializers.SerializerMethodField()
+
     def get_url(self, obj):
         return reverse(obj.get_url_name() + '-detail',
                        kwargs={'uuid': obj.uuid}, request=self.context['request'])
@@ -1146,6 +1148,9 @@ class SummaryResourceSerializer(BasicResourceSerializer):
     def get_service(self, obj):
         return reverse(obj.service_project_link.service.get_url_name() + '-detail',
                        kwargs={'uuid': obj.service_project_link.service.uuid}, request=self.context['request'])
+
+    def get_access_url(self, obj):
+        return obj.get_access_url()
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
@@ -1194,6 +1199,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     resource_type = serializers.SerializerMethodField()
 
     tags = serializers.SerializerMethodField()
+    access_url = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -1205,6 +1211,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
+            'access_url'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1231,6 +1238,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_resource_fields(self):
         return self.Meta.model._meta.get_all_field_names()
+
+    # an optional generic URL for accessing a resource
+    def get_access_url(self, obj):
+        return obj.get_access_url()
 
     def create(self, validated_data):
         data = validated_data.copy()
