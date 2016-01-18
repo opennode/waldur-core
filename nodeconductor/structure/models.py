@@ -779,6 +779,13 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
         if self.external_ips:
             return get_coordinates_by_ip(self.external_ips)
 
+    def get_access_url(self):
+        if self.external_ips:
+            return self.external_ips
+        if self.internal_ips:
+            return self.internal_ips
+        return None
+
 
 class PaidResource(models.Model):
     """ Extend Resource model with methods to track usage cost and handle orders """
@@ -894,6 +901,10 @@ class Resource(core_models.UuidMixin,
     def get_cost(self, start_date, end_date):
         raise NotImplementedError(
             "Please refer to nodeconductor.billing.tasks.debit_customers while implementing it")
+
+    def get_access_url(self):
+        # default behaviour. Override in subclasses if applicable
+        return None
 
     @classmethod
     @lru_cache(maxsize=1)
