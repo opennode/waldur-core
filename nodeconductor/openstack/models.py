@@ -151,9 +151,9 @@ class FloatingIP(core_models.UuidMixin):
     tracker = FieldTracker()
 
 
-class Instance(structure_models.Resource,
+class Instance(structure_models.VirtualMachineMixin,
                structure_models.PaidResource,
-               structure_models.VirtualMachineMixin):
+               structure_models.Resource):
 
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
