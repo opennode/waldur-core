@@ -133,9 +133,9 @@ Setting quota limit and usage
 -----------------------------
 
 To set quota limit issue a PUT request against **/api/quotas/<quota uuid>** with limit values.
+
 Please note that if a quota is a cache of a backend quota (e.g. 'storage' size of an OpenStack tenant),
-it will not be propagated to the backend and it will be overwritten on synchronization with backend. If setting
-quotas backend is supported, it is done through a specific project-cloud link command.
+it will be impossible to modify it through **/api/quotas/<quota uuid>** endpoint.
 
 
 .. code-block:: http

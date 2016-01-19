@@ -1,5 +1,6 @@
 from django.conf.urls import patterns, url
 from django.contrib import admin, messages
+from django.contrib.admin import SimpleListFilter
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
@@ -27,8 +28,24 @@ class PriceListItemAdmin(admin.ModelAdmin):
         return super(PriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
 
+class ResourceTypeFilter(SimpleListFilter):
+    title = 'resource_type'
+    parameter_name = 'resource_type'
+
+    def lookups(self, request, model_admin):
+        return [(k, k) for k in SupportedServices.get_resource_models().keys()]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            model = SupportedServices.get_resource_models().get(self.value(), None)
+            if model:
+                return queryset.filter(resource_content_type=ContentType.objects.get_for_model(model))
+        return queryset
+
+
 class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
-    list_display = ('full_name', 'item_type', 'key', 'value', 'monthly_rate', 'product_name')
+    list_display = ('full_name', 'item_type', 'key', 'value', 'monthly_rate', 'resource_type')
+    list_filter = ('item_type', ResourceTypeFilter)
     fields = ('name', ('value', 'monthly_rate'), 'resource_content_type', ('item_type', 'key'))
     readonly_fields = ('monthly_rate',)
     change_readonly_fields = ('resource_content_type', 'item_type', 'key')
@@ -36,9 +53,8 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
     def full_name(self, obj):
         return obj.name or obj.units or obj.uuid
 
-    def product_name(self, obj):
-        return SupportedServices.get_name_for_model(
-            obj.resource_content_type.model_class()).title().replace('.', '')
+    def resource_type(self, obj):
+        return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "resource_content_type":
