@@ -34,7 +34,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
         quota_field = serializer.instance.get_field()
         if quota_field.is_backend:
             raise rf_exceptions.APIException(
-                'It is impossible to modify backend quota through this endpoint. Check resource specific endpoints.',
+                'It is impossible to modify backend quota through this endpoint.',
                 status_code=status.HTTP_409_CONFLICT
             )
 
