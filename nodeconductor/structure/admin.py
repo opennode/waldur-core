@@ -53,7 +53,6 @@ class ResourceCounterFormMixin(object):
     get_app_count.short_description = 'Application count'
 
 
-
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                       widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
