@@ -425,6 +425,10 @@ CELERYBEAT_SCHEDULE.update({
     },
 })
 
+for app in INSTALLED_APPS:
+    if app.startswith('nodeconductor_'):
+        LOGGING['loggers'][app] = LOGGING['loggers']['nodeconductor']
+
 # NodeConductor throttling settings for celery tasks
 CELERY_TASK_THROTTLING = {
     'nodeconductor.iaas.tasks.openstack.openstack_provision_instance': {
