@@ -19,14 +19,15 @@ class QuotaField(object):
     """ Base quota field.
 
     Links quota to its scope right after its creation.
-    Allows to define quota initial limit and usage.
+    Allows to define quota initial limit and usage and is quota related to backend.
+    (It is impossible to modify backend quota).
 
     Default limit and usage can be defined as callable function.
     Example:
         quota_name = QuotaField(default_limit=lambda scope: scope.attr)
     """
 
-    def __init__(self, name=None, default_limit=-1, default_usage=0):
+    def __init__(self, name=None, default_limit=-1, default_usage=0, is_backend=False):
         self.default_limit = default_limit
         self.default_usage = default_usage
         self.name = name
