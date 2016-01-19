@@ -272,12 +272,12 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
             if request.method == 'GET':
                 obj.password = '(hidden)'
             return fields + ('password',)
+        if not obj:
+            return fields + ('state',)
         return fields
 
     def get_form(self, request, obj=None, **kwargs):
         # filter out certain fields from the creation form
-        if not obj:
-            kwargs['exclude'] = ('state',)
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         if 'shared' in form.base_fields:
             form.base_fields['shared'].initial = True
