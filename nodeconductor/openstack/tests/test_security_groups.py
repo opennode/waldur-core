@@ -80,7 +80,7 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
 
             mocked_task.assert_called_once_with(
                 'nodeconductor.openstack.create_security_group',
-                (security_group.uuid.hex), {}, countdown=2)
+                (security_group.uuid.hex,), {}, countdown=2)
 
     def test_security_group_raises_validation_error_on_wrong_membership_in_request(self):
         del self.valid_data['service_project_link']['url']
@@ -187,7 +187,7 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             mocked_task.assert_called_once_with(
                 'nodeconductor.openstack.update_security_group',
-                (self.security_group.uuid.hex), {}, countdown=2)
+                (self.security_group.uuid.hex,), {}, countdown=2)
 
     def test_user_can_remove_rule_from_security_group(self):
         rule1 = factories.SecurityGroupRuleFactory(security_group=self.security_group)
@@ -246,7 +246,7 @@ class SecurityGroupDeleteTest(test.APITransactionTestCase):
 
             mocked_task.assert_called_once_with(
                 'nodeconductor.openstack.delete_security_group',
-                (self.security_group.uuid.hex), {}, countdown=2)
+                (self.security_group.uuid.hex,), {}, countdown=2)
 
     def test_security_group_can_not_be_deleted_in_unstable_state(self):
         self.security_group.state = SynchronizationStates.ERRED
