@@ -48,8 +48,8 @@ A graph of possible state transitions is shown below.
 List OpenStack instances
 ------------------------
 
-To get a list of instances, run GET against **/api/openstack-resources/** as authenticated user. Note that a user can
-only see connected instances:
+To get a list of instances, run GET against **/api/openstack-instances/** as authenticated user.
+Note that a user can only see connected instances:
 
 - instances that belong to a project where a user has a role.
 - instances that belong to a customer that a user owns.
@@ -117,7 +117,7 @@ Example of a valid request:
 
 .. code-block:: http
 
-    POST /api/instances/ HTTP/1.1
+    POST /api/openstack-instances/ HTTP/1.1
     Content-Type: application/json
     Accept: application/json
     Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
