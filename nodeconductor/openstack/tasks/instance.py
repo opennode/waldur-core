@@ -7,7 +7,6 @@ from django.utils import six
 from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack.models import Instance, FloatingIP
-from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.tasks import (
     begin_syncing_service_project_links,
@@ -104,13 +103,6 @@ def restart(instance_uuid):
         args=(instance_uuid,),
         link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid))
-
-
-@shared_task(name='nodeconductor.openstack.remove_tenant')
-def remove_tenant(settings_uuid, tenant_id):
-    settings = ServiceSettings.objects.get(uuid=settings_uuid)
-    backend = settings.get_backend(tenant_id=tenant_id)
-    backend.cleanup(dryrun=False)
 
 
 @shared_task(is_heavy_task=True)
