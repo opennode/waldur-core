@@ -47,12 +47,12 @@ class OpenStackBackendError(ServiceBackendError):
 class OpenStackSession(dict):
     """ Serializable session """
 
-    def __init__(self, ks_session=None, **credentials):
+    def __init__(self, ks_session=None, verify_ssl=True, **credentials):
         self.keystone_session = ks_session
 
         if not self.keystone_session:
             auth_plugin = v2.Password(**credentials)
-            self.keystone_session = keystone_session.Session(auth=auth_plugin)
+            self.keystone_session = keystone_session.Session(auth=auth_plugin, verify=verify_ssl)
 
         try:
             # This will eagerly sign in throwing AuthorizationFailure on bad credentials
@@ -67,7 +67,7 @@ class OpenStackSession(dict):
         return getattr(self.keystone_session, name)
 
     @classmethod
-    def recover(cls, session):
+    def recover(cls, session, verify_ssl=True):
         if not isinstance(session, dict) or not session.get('auth_ref'):
             raise OpenStackBackendError('Invalid OpenStack session')
 
@@ -77,7 +77,7 @@ class OpenStackSession(dict):
         elif session['tenant_name']:
             args['tenant_name'] = session['tenant_name']
 
-        ks_session = keystone_session.Session(auth=v2.Token(**args))
+        ks_session = keystone_session.Session(auth=v2.Token(**args), verify=verify_ssl)
         return cls(
             ks_session=ks_session,
             tenant_id=session['tenant_id'],
@@ -94,17 +94,17 @@ class OpenStackSession(dict):
 class OpenStackClient(object):
     """ Generic OpenStack client. """
 
-    def __init__(self, session=None, **credentials):
+    def __init__(self, session=None, verify_ssl=False, **credentials):
         if session:
             if isinstance(session, dict):
                 logger.info('Trying to recover OpenStack session.')
-                self.session = OpenStackSession.recover(session)
+                self.session = OpenStackSession.recover(session, verify_ssl=verify_ssl)
                 self.session.validate()
             else:
                 self.session = session
         else:
             try:
-                self.session = OpenStackSession(**credentials)
+                self.session = OpenStackSession(verify_ssl=verify_ssl, **credentials)
             except AttributeError as e:
                 logger.error('Failed to create OpenStack session.')
                 six.reraise(OpenStackBackendError, e)
