@@ -1,10 +1,25 @@
+import calendar
+import datetime
+import dateutil.parser
 import functools
 import logging
+import re
 import sys
 
 from django.db import transaction
 from django.utils import six, dateparse, timezone
 from requests import ConnectionError
+
+from keystoneclient.auth.identity import v2
+from keystoneclient.service_catalog import ServiceCatalog
+from keystoneclient import session as keystone_session
+
+from ceilometerclient import client as ceilometer_client
+from cinderclient.v1 import client as cinder_client
+from glanceclient.v1 import client as glance_client
+from keystoneclient.v2_0 import client as keystone_client
+from neutronclient.v2_0 import client as neutron_client
+from novaclient.v1_1 import client as nova_client
 
 from cinderclient import exceptions as cinder_exceptions
 from glanceclient import exc as glance_exceptions
@@ -12,12 +27,14 @@ from keystoneclient import exceptions as keystone_exceptions
 from neutronclient.client import exceptions as neutron_exceptions
 from novaclient import exceptions as nova_exceptions
 
+from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackend, ServiceBackendError
+from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.log import event_logger
-from nodeconductor.iaas.backend import OpenStackClient, CloudBackendError
-from nodeconductor.iaas.backend import OpenStackBackend as OldOpenStackBackend
 from nodeconductor.openstack import models
+
+from nodeconductor.iaas.backend import CloudBackendError
+from nodeconductor.iaas.backend import OpenStackBackend as OldOpenStackBackend
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +42,129 @@ logger = logging.getLogger(__name__)
 
 class OpenStackBackendError(ServiceBackendError):
     pass
+
+
+class OpenStackSession(dict):
+    """ Serializable session """
+
+    def __init__(self, ks_session=None, **credentials):
+        self.keystone_session = ks_session
+
+        if not self.keystone_session:
+            auth_plugin = v2.Password(**credentials)
+            self.keystone_session = keystone_session.Session(auth=auth_plugin)
+
+        try:
+            # This will eagerly sign in throwing AuthorizationFailure on bad credentials
+            self.keystone_session.get_token()
+        except (keystone_exceptions.AuthorizationFailure, keystone_exceptions.ConnectionRefused) as e:
+            six.reraise(OpenStackBackendError, e)
+
+        for opt in ('auth_ref', 'auth_url', 'tenant_id', 'tenant_name'):
+            self[opt] = getattr(self.auth, opt)
+
+    def __getattr__(self, name):
+        return getattr(self.keystone_session, name)
+
+    @classmethod
+    def recover(cls, session):
+        if not isinstance(session, dict) or not session.get('auth_ref'):
+            raise OpenStackBackendError('Invalid OpenStack session')
+
+        args = {'auth_url': session['auth_url'], 'token': session['auth_ref']['token']['id']}
+        if session['tenant_id']:
+            args['tenant_id'] = session['tenant_id']
+        elif session['tenant_name']:
+            args['tenant_name'] = session['tenant_name']
+
+        ks_session = keystone_session.Session(auth=v2.Token(**args))
+        return cls(
+            ks_session=ks_session,
+            tenant_id=session['tenant_id'],
+            tenant_name=session['tenant_name'])
+
+    def validate(self):
+        expiresat = dateutil.parser.parse(self.auth.auth_ref['token']['expires'])
+        if expiresat > timezone.now() + datetime.timedelta(minutes=10):
+            return True
+
+        raise OpenStackBackendError('Invalid OpenStack session')
+
+
+class OpenStackClient(object):
+    """ Generic OpenStack client. """
+
+    def __init__(self, session=None, **credentials):
+        if session:
+            if isinstance(session, dict):
+                logger.info('Trying to recover OpenStack session.')
+                self.session = OpenStackSession.recover(session)
+                self.session.validate()
+            else:
+                self.session = session
+        else:
+            try:
+                self.session = OpenStackSession(**credentials)
+            except AttributeError as e:
+                logger.error('Failed to create OpenStack session.')
+                six.reraise(OpenStackBackendError, e)
+
+    @property
+    def keystone(self):
+        return keystone_client.Client(session=self.session.keystone_session)
+
+    @property
+    def nova(self):
+        try:
+            return nova_client.Client(session=self.session.keystone_session)
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+            logger.exception('Failed to create nova client: %s', e)
+            six.reraise(OpenStackBackendError, e)
+
+    @property
+    def neutron(self):
+        try:
+            return neutron_client.Client(session=self.session.keystone_session)
+        except (neutron_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+            logger.exception('Failed to create neutron client: %s', e)
+            six.reraise(OpenStackBackendError, e)
+
+    @property
+    def cinder(self):
+        try:
+            return cinder_client.Client(session=self.session.keystone_session)
+        except (cinder_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+            logger.exception('Failed to create cinder client: %s', e)
+            six.reraise(OpenStackBackendError, e)
+
+    @property
+    def glance(self):
+        catalog = ServiceCatalog.factory(self.session.auth.auth_ref)
+        endpoint = catalog.url_for(service_type='image')
+
+        kwargs = {
+            'token': self.session.get_token(),
+            'insecure': False,
+            'timeout': 600,
+            'ssl_compression': True,
+        }
+
+        return glance_client.Client(endpoint, **kwargs)
+
+    @property
+    def ceilometer(self):
+        catalog = ServiceCatalog.factory(self.session.auth.auth_ref)
+        endpoint = catalog.url_for(service_type='metering')
+
+        kwargs = {
+            'token': lambda: self.session.get_token(),
+            'endpoint': endpoint,
+            'insecure': False,
+            'timeout': 600,
+            'ssl_compression': True,
+        }
+
+        return ceilometer_client.Client('2', **kwargs)
 
 
 class OpenStackBackend(ServiceBackend):
@@ -38,7 +178,7 @@ class OpenStackBackend(ServiceBackend):
         # TODO: Get rid of it (NC-646)
         self._old_backend = OldOpenStackBackend()
 
-    def _get_session(self, admin=False):
+    def _get_client(self, name=None, admin=False):
         credentials = {
             'auth_url': self.settings.backend_url,
             'username': self.settings.username,
@@ -56,21 +196,20 @@ class OpenStackBackend(ServiceBackend):
         else:
             credentials['tenant_name'] = self.DEFAULT_TENANT
 
-        try:
-            return OpenStackClient().create_tenant_session(credentials)
-        except CloudBackendError as e:
-            six.reraise(OpenStackBackendError, e)
+        client = OpenStackClient(**credentials)
+        if name:
+            return getattr(client, name)
+        else:
+            return client
 
     def __getattr__(self, name):
         clients = 'keystone', 'nova', 'neutron', 'cinder', 'glance', 'ceilometer'
-        method = lambda client: getattr(OpenStackClient, 'create_%s_client' % client)
-
         for client in clients:
             if name == '{}_client'.format(client):
-                return method(client)(self._get_session(admin=False))
+                return self._get_client(client, admin=False)
 
             if name == '{}_admin_client'.format(client):
-                return method(client)(self._get_session(admin=True))
+                return self._get_client(client, admin=True)
 
         raise AttributeError(
             "'%s' object has no attribute '%s'" % (self.__class__.__name__, name))
@@ -177,11 +316,46 @@ class OpenStackBackend(ServiceBackend):
         instance.save()
         send_task('openstack', 'restart')(instance.uuid.hex)
 
+    def get_key_name(self, public_key):
+        # We want names to be human readable in backend.
+        # OpenStack only allows latin letters, digits, dashes, underscores and spaces
+        # as key names, thus we mangle the original name.
+
+        safe_name = self.sanitize_key_name(public_key.name)
+        key_name = '{0}-{1}'.format(public_key.uuid.hex, safe_name)
+        return key_name
+
+    def sanitize_key_name(self, key_name):
+        # Safe key name length must be less than 17 chars due to limit of full key name to 50 chars.
+        return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)[:17]
+
     def add_ssh_key(self, ssh_key, service_project_link):
-        return self._old_backend.add_ssh_key(ssh_key, service_project_link)
+        nova = self.nova_client
+        key_name = self.get_key_name(ssh_key)
+
+        try:
+            nova.keypairs.find(fingerprint=ssh_key.fingerprint)
+        except nova_exceptions.NotFound:
+            # Fine, it's a new key, let's add it
+            logger.info('Propagating ssh public key %s to backend', key_name)
+            nova.keypairs.create(name=key_name, public_key=ssh_key.public_key)
+            logger.info('Successfully propagated ssh public key %s to backend', key_name)
+        else:
+            # Found a key with the same fingerprint, skip adding
+            logger.info('Skipped propagating ssh public key %s to backend', key_name)
 
     def remove_ssh_key(self, ssh_key, service_project_link):
-        return self._old_backend.remove_ssh_key(ssh_key, service_project_link)
+        nova = self.nova_client
+
+        # There could be leftovers of key duplicates: remove them all
+        keys = nova.keypairs.findall(fingerprint=ssh_key.fingerprint)
+        key_name = self.get_key_name(ssh_key)
+        for key in keys:
+            # Remove only keys created with NC
+            if key.name == key_name:
+                nova.keypairs.delete(key)
+
+        logger.info('Deleted ssh public key %s from backend', key_name)
 
     def _get_current_properties(self, model):
         return {p.backend_id: p for p in model.objects.filter(settings=self.settings)}
@@ -357,7 +531,27 @@ class OpenStackBackend(ServiceBackend):
         return instance
 
     def get_monthly_cost_estimate(self, instance):
-        return self._old_backend.get_monthly_cost_estimate(instance)
+        if not NodeConductorExtension.is_installed('nodeconductor_killbill'):
+            raise ServiceBackendNotImplemented
+
+        from nodeconductor_killbill.backend import KillBillBackend, KillBillError
+
+        try:
+            backend = KillBillBackend(instance.customer)
+            invoice = backend.get_invoice_estimate(instance)
+        except KillBillError as e:
+            logger.error("Failed to get cost estimate for instance %s: %s", instance, e)
+            six.reraise(OpenStackBackendError, e)
+
+        today = datetime.date.today()
+        if not invoice['start_date'] <= today <= invoice['end_date']:
+            raise OpenStackBackendError("Wrong invoice estimate for instance %s: %s" % (instance, invoice))
+
+        # prorata monthly cost estimate based on daily usage cost
+        daily_cost = invoice['amount'] / ((today - invoice['start_date']).days + 1)
+        monthly_cost = daily_cost * calendar.monthrange(today.year, today.month)[1]
+
+        return monthly_cost
 
     def get_resources_for_import(self):
         cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)
@@ -411,7 +605,7 @@ class OpenStackBackend(ServiceBackend):
 
             # instance key name and fingerprint are optional
             if instance.key_name:
-                safe_key_name = self._old_backend.sanitize_key_name(instance.key_name)
+                safe_key_name = self.sanitize_key_name(instance.key_name)
 
                 matching_keys = [
                     key
