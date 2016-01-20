@@ -169,7 +169,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
         # Serializer makes sure that exactly one of the branches will match
         if flavor is not None:
-            send_task('openstack', 'resize_flavor')(instance.uuid.hex, flavor_uuid=flavor.uuid.hex)
+            send_task('openstack', 'change_flavor')(instance.uuid.hex, flavor_uuid=flavor.uuid.hex)
             event_logger.openstack_flavor.info(
                 'Virtual machine {resource_name} has been scheduled to change flavor.',
                 event_type='resource_flavor_change_scheduled',
