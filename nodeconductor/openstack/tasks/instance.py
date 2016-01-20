@@ -6,7 +6,7 @@ from django.utils import six
 
 from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.openstack.models import OpenStackServiceProjectLink, Instance, FloatingIP
+from nodeconductor.openstack.models import Instance, FloatingIP
 from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.tasks import (
@@ -52,13 +52,6 @@ def set_spl_in_sync_and_start_provision(service_project_link_str, instance_uuid,
 def set_spl_and_instance_as_erred(service_project_link_str, instance_uuid):
     sync_service_project_link_failed(service_project_link_str)
     set_erred(instance_uuid)
-
-
-@shared_task(name='nodeconductor.openstack.update_tenant_name')
-def update_tenant_name(service_project_link_str):
-    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
-    backend = service_project_link.get_backend()
-    backend.update_tenant_name(service_project_link)
 
 
 @shared_task(name='nodeconductor.openstack.destroy')

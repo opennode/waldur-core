@@ -10,4 +10,5 @@ from .floating_ip import *
 from .instance import *
 from .network import *
 from .security_group import *
+from .tenant import *
 from .volume import *
