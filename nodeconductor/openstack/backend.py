@@ -28,6 +28,7 @@ from neutronclient.client import exceptions as neutron_exceptions
 from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core import NodeConductorExtension
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.log import event_logger
@@ -196,7 +197,15 @@ class OpenStackBackend(ServiceBackend):
         else:
             credentials['tenant_name'] = self.DEFAULT_TENANT
 
-        client = OpenStackClient(**credentials)
+        # Cache session in the object
+        attr_name = 'admin_session' if admin else 'session'
+        client = getattr(self, attr_name, None)
+        if hasattr(self, attr_name):
+            client = getattr(self, attr_name)
+        else:
+            client = OpenStackClient(**credentials)
+            getattr(self, attr_name, client)
+
         if name:
             return getattr(client, name)
         else:
@@ -357,8 +366,36 @@ class OpenStackBackend(ServiceBackend):
 
         logger.info('Deleted ssh public key %s from backend', key_name)
 
+    def _get_tenant_name(self, service_project_link):
+        proj = service_project_link.project
+        return '%(project_name)s-%(project_uuid)s' % {
+            'project_name': ''.join([c for c in proj.name if ord(c) < 128])[:15],
+            'project_uuid': service_project_link.proj.uuid.hex[:4]
+        }
+
     def _get_current_properties(self, model):
         return {p.backend_id: p for p in model.objects.filter(settings=self.settings)}
+
+    def _are_rules_equal(self, backend_rule, nc_rule):
+        if backend_rule['from_port'] != nc_rule.from_port:
+            return False
+        if backend_rule['to_port'] != nc_rule.to_port:
+            return False
+        if backend_rule['ip_protocol'] != nc_rule.protocol:
+            return False
+        if backend_rule['ip_range'].get('cidr', '') != nc_rule.cidr:
+            return False
+        return True
+
+    def _are_security_groups_equal(self, backend_security_group, nc_security_group):
+        if backend_security_group.name != nc_security_group.name:
+            return False
+        if len(backend_security_group.rules) != nc_security_group.rules.count():
+            return False
+        for backend_rule, nc_rule in zip(backend_security_group.rules, nc_security_group.rules.all()):
+            if not self._are_rules_equal(backend_rule, nc_rule):
+                return False
+        return True
 
     def pull_flavors(self):
         nova = self.nova_admin_client
@@ -376,7 +413,7 @@ class OpenStackBackend(ServiceBackend):
                         'disk': self.gb2mb(backend_flavor.disk),
                     })
 
-            map(lambda i: i.delete(), cur_flavors.values())
+            models.Flavor.objects.filter(backend_id__in=cur_flavors.keys()).delete()
 
     def pull_images(self):
         glance = self.glance_admin_client
@@ -394,12 +431,28 @@ class OpenStackBackend(ServiceBackend):
                             'min_disk': self.gb2mb(backend_image.min_disk),
                         })
 
-            map(lambda i: i.delete(), cur_images.values())
+            models.Image.objects.filter(backend_id__in=cur_images.keys()).delete()
 
-    @reraise_exceptions
     def push_quotas(self, service_project_link, quotas):
+        cinder_quotas = {
+            'gigabytes': self.mb2gb(quotas['storage']),
+            'volumes': quotas['volumes'],
+            'snapshots': quotas['snapshots'],
+        }
+        nova_quotas = {
+            'instances': quotas['instances'],
+            'instances': quotas['instances'],
+            'cores': quotas['vcpu'],
+        }
+        neutron_quotas = {
+            'security_group': quotas['security_group_count'],
+            'security_group_rule': quotas['security_group_rule_count'],
+        }
+
         try:
-            self._old_backend.push_membership_quotas(service_project_link, quotas)
+            self.cinder_client.quotas.update(self.tenant_id, **cinder_quotas)
+            self.nova_client.quotas.update(self.tenant_id, **nova_quotas)
+            self.neutron_client.update_quota(self.tenant_id, {'quota': neutron_quotas})
         except Exception as e:
             event_logger.service_project_link.warning(
                 'Failed to push quotas to backend.',
@@ -411,30 +464,119 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
-    @reraise_exceptions
     def pull_quotas(self, service_project_link):
-        self._old_backend.pull_resource_quota(service_project_link)
-        self._old_backend.pull_resource_quota_usage(service_project_link)
-
-        # additional quotas that are not implemented for in iaas application
-        logger.debug('About to get floating ip quota for tenant %s', service_project_link.tenant_id)
+        nova = self.nova_client
         neutron = self.neutron_client
+        cinder = self.cinder_client
+
+        logger.debug('About to get quotas for tenant %s', self.tenant_id)
         try:
-            floating_ip_count = len(self._old_backend.get_floating_ips(
-                tenant_id=service_project_link.tenant_id, neutron=neutron))
-            neutron_quotas = neutron.show_quota(tenant_id=service_project_link.tenant_id)['quota']
-        except neutron_exceptions.NeutronClientException as e:
-            logger.exception('Failed to get floating ip quota for tenant %s', service_project_link.tenant_id)
+            nova_quotas = nova.quotas.get(tenant_id=self.tenant_id)
+            cinder_quotas = cinder.quotas.get(tenant_id=self.tenant_id)
+            neutron_quotas = neutron.show_quota(tenant_id=self.tenant_id)['quota']
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
+            logger.exception('Failed to get quotas for tenant %s', self.tenant_id)
             six.reraise(OpenStackBackendError, e)
         else:
-            logger.info('Successfully got floating ip quota for tenant %s', service_project_link.tenant_id)
-            service_project_link.set_quota_usage('floating_ip_count', floating_ip_count)
-            service_project_link.set_quota_limit('floating_ip_count', neutron_quotas['floatingip'])
+            logger.info('Successfully got quotas for tenant %s', self.tenant_id)
 
-    @reraise_exceptions
-    def pull_floating_ips(self, service_project_link):
+        service_project_link.set_quota_limit('ram', nova_quotas.ram)
+        service_project_link.set_quota_limit('vcpu', nova_quotas.cores)
+        service_project_link.set_quota_limit('storage', self.gb2mb(cinder_quotas.gigabytes))
+        service_project_link.set_quota_limit('instances', nova_quotas.instances)
+        service_project_link.set_quota_limit('security_group_count', neutron_quotas['security_group'])
+        service_project_link.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
+        service_project_link.set_quota_limit('floating_ip_count', neutron_quotas['floatingip'])
+
+        logger.debug('About to get volumes, snapshots, flavors and instances for tenant %s', self.tenant_id)
         try:
-            self._old_backend.pull_floating_ips(service_project_link)
+            volumes = cinder.volumes.list()
+            snapshots = cinder.volume_snapshots.list()
+            instances = nova.servers.list()
+            security_groups = nova.security_groups.list()
+            floating_ips = neutron.list_floatingips(tenant_id=self.tenant_id)
+
+            flavors = {flavor.id: flavor for flavor in nova.flavors.list()}
+
+            ram, vcpu = 0, 0
+            for flavor_id in (instance.flavor['id'] for instance in instances):
+                try:
+                    flavor = flavors.get(flavor_id, nova.flavors.get(flavor_id))
+                except nova_exceptions.NotFound:
+                    logger.warning('Cannot find flavor with id %s', flavor_id)
+                    continue
+
+                ram += getattr(flavor, 'ram', 0)
+                vcpu += getattr(flavor, 'vcpus', 0)
+
+        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
+            logger.exception(
+                'Failed to get volumes, snapshots, flavors, '
+                'instances or security_groups for tenant %s',
+                self.tenant_id)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info(
+                'Successfully got volumes, snapshots, flavors, '
+                'instances or security_groups for tenant %s',
+                self.tenant_id)
+
+        service_project_link.set_quota_usage('ram', ram)
+        service_project_link.set_quota_usage('vcpu', vcpu)
+        service_project_link.set_quota_usage('storage', sum(self.gb2mb(v.size) for v in volumes + snapshots))
+        service_project_link.set_quota_usage('instances', len(instances), fail_silently=True)
+        service_project_link.set_quota_usage('security_group_count', len(security_groups))
+        service_project_link.set_quota_usage('security_group_rule_count', len(sum([sg.rules for sg in security_groups], [])))
+        service_project_link.set_quota_usage('floating_ip_count', len(floating_ips))
+
+    def pull_floating_ips(self, service_project_link):
+        neutron = self.neutron_client
+        logger.debug('Pulling floating ips for tenant %s', self.tenant_id)
+
+        try:
+            nc_floating_ips = {ip.backend_id: ip for ip in service_project_link.floating_ips.all()}
+            try:
+                backend_floating_ips = {
+                    ip['id']: ip
+                    for ip in neutron.list_floatingips(tenant_id=self.tenant_id)['floatingips']
+                    if ip.get('floating_ip_address') and ip.get('status')
+                }
+            except neutron_exceptions.ClientException as e:
+                logger.exception('Failed to get a list of floating IPs')
+                six.reraise(OpenStackBackendError, e)
+
+            backend_ids = set(backend_floating_ips.keys())
+            nc_ids = set(nc_floating_ips.keys())
+
+            with transaction.atomic():
+                for ip_id in nc_ids - backend_ids:
+                    ip = nc_floating_ips[ip_id]
+                    ip.delete()
+                    logger.info('Deleted stale floating IP port %s in database', ip.uuid)
+
+                for ip_id in backend_ids - nc_ids:
+                    ip = backend_floating_ips[ip_id]
+                    created_ip = service_project_link.floating_ips.create(
+                        status=ip['status'],
+                        backend_id=ip['id'],
+                        address=ip['floating_ip_address'],
+                        backend_network_id=ip['floating_network_id']
+                    )
+                    logger.info('Created new floating IP port %s in database', created_ip.uuid)
+
+                for ip_id in nc_ids & backend_ids:
+                    nc_ip = nc_floating_ips[ip_id]
+                    backend_ip = backend_floating_ips[ip_id]
+                    if nc_ip.status != backend_ip['status'] or nc_ip.address != backend_ip['floating_ip_address']\
+                            or nc_ip.backend_network_id != backend_ip['floating_network_id']:
+                        # If key is BOOKED by NodeConductor it can be still DOWN in OpenStack
+                        if not (nc_ip.status == 'BOOKED' and backend_ip['status'] == 'DOWN'):
+                            nc_ip.status = backend_ip['status']
+                        nc_ip.address = backend_ip['floating_ip_address']
+                        nc_ip.backend_network_id = backend_ip['floating_network_id']
+                        nc_ip.save()
+                        logger.debug('Updated existing floating IP port %s in database', nc_ip.uuid)
+
         except Exception as e:
             event_logger.service_project_link.warning(
                 'Failed to pull floating IPs from backend.',
@@ -446,10 +588,60 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
-    @reraise_exceptions
     def push_security_groups(self, service_project_link, is_initial=False):
+        nova = self.nova_client
+        logger.debug('About to push security groups for tenant %s', self.tenant_id)
+
         try:
-            self._old_backend.push_security_groups(service_project_link, is_membership_creation=is_initial)
+            nc_security_groups = service_project_link.security_groups.all()
+            if not is_initial:
+                nc_security_groups = nc_security_groups.filter(
+                    state__in=SynchronizationStates.STABLE_STATES)
+            try:
+                backend_security_groups = {
+                    str(g.id): g for g in nova.security_groups.list() if g.name != 'default'}
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to get openstack security groups for tenant %s', self.tenant_id)
+                six.reraise(OpenStackBackendError, e)
+
+            # list of nc security groups, that do not exist in openstack
+            nonexistent_groups = []
+            # list of nc security groups, that have wrong parameters in in openstack
+            unsynchronized_groups = []
+            # list of os security groups ids, that exist in openstack and do not exist in nc
+            extra_group_ids = backend_security_groups.keys()
+
+            for nc_group in nc_security_groups:
+                if nc_group.backend_id not in backend_security_groups:
+                    nonexistent_groups.append(nc_group)
+                else:
+                    backend_group = backend_security_groups[nc_group.backend_id]
+                    if not self._are_security_groups_equal(backend_group, nc_group):
+                        unsynchronized_groups.append(nc_group)
+                    extra_group_ids.remove(nc_group.backend_id)
+
+            # deleting extra security groups
+            for backend_group_id in extra_group_ids:
+                try:
+                    nova.security_groups.delete(backend_group_id)
+                except nova_exceptions.ClientException as e:
+                    logger.exception(
+                        'Failed to remove openstack security group with id %s in backend', backend_group_id)
+
+            # updating unsynchronized security groups
+            for nc_group in unsynchronized_groups:
+                if nc_group.state in SynchronizationStates.STABLE_STATES:
+                    nc_group.schedule_syncing()
+                    nc_group.save()
+                send_task('openstack', 'update_security_group')(nc_group.uuid.hex)
+
+            # creating nonexistent and unsynchronized security groups
+            for nc_group in nonexistent_groups:
+                if nc_group.state in SynchronizationStates.STABLE_STATES:
+                    nc_group.schedule_syncing()
+                    nc_group.save()
+                send_task('openstack', 'create_security_group')(nc_group.uuid.hex)
+
         except Exception as e:
             event_logger.service_project_link.warning(
                 'Failed to push security groups to backend.',
@@ -461,21 +653,69 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
-    @reraise_exceptions
     def sync_instance_security_groups(self, instance):
-        self._old_backend.push_instance_security_groups(instance)
+        nova = self.nova_client
+        server_id = instance.backend_id
+        backend_ids = set(g.id for g in nova.servers.list_security_group(server_id))
+        nc_ids = set(
+            models.SecurityGroup.objects
+            .filter(instance_groups__instance__backend_id=server_id)
+            .exclude(backend_id='')
+            .values_list('backend_id', flat=True)
+        )
 
-    @reraise_exceptions
+        # remove stale groups
+        for group_id in backend_ids - nc_ids:
+            try:
+                nova.servers.remove_security_group(server_id, group_id)
+            except nova_exceptions.ClientException:
+                logger.exception('Failed to remove security group %s from instance %s',
+                                 group_id, server_id)
+            else:
+                logger.info('Removed security group %s from instance %s',
+                            group_id, server_id)
+
+        # add missing groups
+        for group_id in nc_ids - backend_ids:
+            try:
+                nova.servers.add_security_group(server_id, group_id)
+            except nova_exceptions.ClientException:
+                logger.exception('Failed to add security group %s to instance %s',
+                                 group_id, server_id)
+            else:
+                logger.info('Added security group %s to instance %s',
+                            group_id, server_id)
+
     def push_link(self, service_project_link):
+        keystone = self.keystone_admin_client
         try:
-            keystone = self.keystone_admin_client
-            tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
+            tenant_name = self._get_tenant_name(service_project_link)
+            try:
+                tenant = keystone.tenants.get(service_project_link.tenant_id)
+            except keystone_exceptions.NotFound:
+                try:
+                    tenant = keystone.tenants.create(
+                        tenant_name=tenant_name,
+                        description=service_project_link.project.description)
+                except keystone_exceptions.Conflict:
+                    tenant = keystone.tenants.find(name=tenant_name)
 
             service_project_link.tenant_id = self.tenant_id = tenant.id
             service_project_link.save(update_fields=['tenant_id'])
 
-            self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
+            # Ensure user is tenant admin
+            admin_user = keystone.users.find(name=self.settings.username)
+            admin_role = keystone.roles.find(name='admin')
+            try:
+                keystone.roles.add_user_role(
+                    user=admin_user.id,
+                    role=admin_role.id,
+                    tenant=tenant.id)
+            except keystone_exceptions.Conflict:
+                pass
+
             self.get_or_create_internal_network(service_project_link)
+
         except Exception as e:
             event_logger.service_project_link.warning(
                 'Failed to create service project link on backend.',
