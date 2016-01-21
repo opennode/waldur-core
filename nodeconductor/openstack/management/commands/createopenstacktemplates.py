@@ -159,7 +159,7 @@ class Command(BaseCommand):
 
         self.stdout.write('\nChoose Flavor:')
 
-        flavors = list(models.Flavor.objects.all().order_by('name'))
+        flavors = list(models.Flavor.objects.filter(settings=service.settings).order_by('name'))
         start = 1
         for i in range(0, len(flavors), 3):
             choices = []
@@ -181,7 +181,7 @@ class Command(BaseCommand):
 
         self.stdout.write('\nChoose Image:')
 
-        images = list(models.Image.objects.all().order_by('name'))
+        images = list(models.Image.objects.filter(settings=service.settings).order_by('name'))
         start = 1
         for i in range(0, len(images), 3):
             choices = []
@@ -213,8 +213,9 @@ class Command(BaseCommand):
         ))
 
         tags = {self.templates[0].resource_content_type: tags}
-        name = ' '.join(['OpenStack', os_names[os], app_names[app]]).strip()
-        name += ' (%s)' % service.name.replace(' ', '')
+        default_name = ' '.join(['OpenStack', os_names[os], app_names[app]]).strip()
+        default_name += ' (%s)' % service.name.replace(' ', '')
+        name = raw_input(self.style.WARNING('Enter template group name [%s]:' % default_name)) or default_name
         group = TemplateGroup(name=name)
 
         self.stdout.write(self.style.MIGRATE_HEADING('\nStep 2: Configure Backup'))
@@ -330,9 +331,10 @@ class Command(BaseCommand):
                     tmpl_tags = tags[template.resource_content_type]
                     for tag in tmpl_tags:
                         template.tags.add(tag)
-                    if idx == 1:
-                        itype = next(t.replace('type:', '') for t in tmpl_tags if t.startswith('type:'))
-                        group.tags.add(itype)
+            if app:
+                group.tags.add('PaaS')
+            else:
+                group.tags.add('SaaS')
         except:
             self.stdout.write(self.style.NOTICE('\tError happened -- rollback!'))
             for instance in created_instances:
