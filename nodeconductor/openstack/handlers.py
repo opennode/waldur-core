@@ -4,6 +4,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
+from nodeconductor.core.tasks import send_task
 from nodeconductor.openstack.log import event_logger
 from nodeconductor.openstack.models import SecurityGroup, SecurityGroupRule, OpenStackServiceProjectLink
 
@@ -92,12 +93,8 @@ def check_project_name_update(sender, instance=None, created=False, **kwargs):
 
     old_name = instance.tracker.previous('name')
     if old_name != instance.name:
-        links = OpenStackServiceProjectLink.objects.filter(project__uuid=instance.uuid)
-        if links.exists():
-            from nodeconductor.openstack.tasks import openstack_update_tenant_name
-
-            for link in links:
-                openstack_update_tenant_name.delay(link.to_string())
+        for spl in OpenStackServiceProjectLink.objects.filter(project__uuid=instance.uuid):
+            send_task('openstack', 'update_tenant_name')(spl.to_string())
 
 
 def log_backup_schedule_save(sender, instance, created=False, **kwargs):

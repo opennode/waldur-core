@@ -169,7 +169,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
         # Serializer makes sure that exactly one of the branches will match
         if flavor is not None:
-            send_task('openstack', 'resize_flavor')(instance.uuid.hex, flavor_uuid=flavor.uuid.hex)
+            send_task('openstack', 'change_flavor')(instance.uuid.hex, flavor_uuid=flavor.uuid.hex)
             event_logger.openstack_flavor.info(
                 'Virtual machine {resource_name} has been scheduled to change flavor.',
                 event_type='resource_flavor_change_scheduled',
@@ -197,20 +197,20 @@ class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelView
 
     def perform_create(self, serializer):
         security_group = serializer.save()
-        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'create')
+        send_task('openstack', 'create_security_group')(security_group.uuid.hex)
 
     def perform_update(self, serializer):
         super(SecurityGroupViewSet, self).perform_update(serializer)
         security_group = self.get_object()
         security_group.schedule_syncing()
         security_group.save()
-        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'update')
+        send_task('openstack', 'update_security_group')(security_group.uuid.hex)
 
     def destroy(self, request, *args, **kwargs):
         security_group = self.get_object()
         security_group.schedule_syncing()
         security_group.save()
-        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'delete')
+        send_task('openstack', 'delete_security_group')(security_group.uuid.hex)
         return response.Response(
             {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
 

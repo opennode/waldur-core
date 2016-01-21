@@ -10,7 +10,7 @@ from nodeconductor.openstack.models import Instance
 from nodeconductor.openstack.tests import factories
 
 
-@mock.patch('nodeconductor.openstack.tasks.throttle')
+@mock.patch('nodeconductor.openstack.tasks.instance.throttle')
 @mock.patch('nodeconductor.structure.models.Service.get_backend')
 class ErrorMessageTest(TestCase):
 
