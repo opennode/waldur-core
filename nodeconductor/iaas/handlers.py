@@ -8,8 +8,6 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from nodeconductor.iaas.models import SecurityGroup, SecurityGroupRule, CloudProjectMembership
-from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 logger = logging.getLogger(__name__)
