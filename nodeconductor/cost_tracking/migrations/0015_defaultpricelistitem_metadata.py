@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='defaultpricelistitem',
             name='metadata',
-            field=jsonfield.fields.JSONField(blank=True),
-            preserve_default=True,
+            field=jsonfield.fields.JSONField(blank=True, default='""'),
+            preserve_default=False,
         ),
     ]
