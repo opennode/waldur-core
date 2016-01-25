@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
-import json
+import pprint
 import socket
 
-from collections import OrderedDict
 from croniter import croniter
 from datetime import datetime
 from dateutil.tz import tzlocal
@@ -11,9 +10,9 @@ from django.core.management.base import BaseCommand
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.core.models import SshPublicKey
 from nodeconductor.openstack import Types, models
-from nodeconductor.structure.models import Project
+from nodeconductor.openstack.apps import OpenStackConfig
+from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.template.models import TemplateGroup, Template
 
 
@@ -91,33 +90,13 @@ class Command(BaseCommand):
             Types.PriceItems.SUPPORT,
             Types.Support.PREMIUM if app_names[app] else Types.Support.BASIC))
 
-        self.stdout.write('\nChoose Project:')
+        self.stdout.write('\nChoose OpenStack Service Settings:')
 
-        projects = list(Project.objects.order_by('name'))
+        services_settings = list(ServiceSettings.objects.filter(type=OpenStackConfig.service_name).order_by('name'))
         start = 1
-        for i in range(0, len(projects), 3):
+        for i in range(0, len(services_settings), 3):
             choices = []
-            for idx, val in enumerate(projects[i:i + 3], start):
-                choices.append('\t[{:3}] {:<30}'.format(idx, val))
-            self.stdout.write(''.join(choices))
-            start += 3
-
-        while True:
-            idx = (raw_input(self.style.WARNING('Desired Project [1]: ')) or '1')
-            try:
-                project = projects[int(idx) - 1]
-            except (IndexError, TypeError, ValueError):
-                self.stdout.write(self.style.NOTICE('\tWrong Project'))
-            else:
-                break
-
-        self.stdout.write('\nChoose Service:')
-
-        services = list(models.OpenStackService.objects.filter(project=project).order_by('name'))
-        start = 1
-        for i in range(0, len(services), 3):
-            choices = []
-            for idx, val in enumerate(services[i:i + 3], start):
+            for idx, val in enumerate(services_settings[i:i + 3], start):
                 choices.append('\t[{:3}] {:<30}'.format(idx, val))
             self.stdout.write(''.join(choices))
             start += 3
@@ -125,41 +104,17 @@ class Command(BaseCommand):
         while True:
             idx = (raw_input(self.style.WARNING('Desired Service [1]: ')) or '1')
             try:
-                service = services[int(idx) - 1]
+                service_settings = services_settings[int(idx) - 1]
             except (IndexError, TypeError, ValueError):
                 self.stdout.write(self.style.NOTICE('\tWrong Service'))
             else:
                 break
 
-        spl = models.OpenStackServiceProjectLink.objects.get(service=service, project=project)
-        options = {'service_project_link': self.get_obj_url('openstack-spl-detail', spl)}
-
-        self.stdout.write('\nChoose SSH key:')
-
-        keys = list(SshPublicKey.objects.filter(user__groups__projectrole__project=project))
-        start = 1
-        for i in range(0, len(keys), 3):
-            choices = []
-            for idx, val in enumerate(keys[i:i + 3], start):
-                choices.append('\t[{:3}] {:<30}'.format(idx, val))
-            self.stdout.write(''.join(choices))
-            start += 3
-
-        while True:
-            idx = (raw_input(self.style.WARNING('Desired SSH key [None]: ')) or 'None')
-            if idx == 'None':
-                break
-            try:
-                key = keys[int(idx) - 1]
-            except (IndexError, TypeError, ValueError):
-                self.stdout.write(self.style.NOTICE('\tWrong SSH key'))
-            else:
-                options['ssh_public_key'] = self.get_obj_url('sshpublickey-detail', key)
-                break
+        options = {'service_settings': self.get_obj_url('servicesettings-detail', service_settings)}
 
         self.stdout.write('\nChoose Flavor:')
 
-        flavors = list(models.Flavor.objects.filter(settings=service.settings).order_by('name'))
+        flavors = list(models.Flavor.objects.filter(settings=service_settings).order_by('name'))
         start = 1
         for i in range(0, len(flavors), 3):
             choices = []
@@ -181,7 +136,7 @@ class Command(BaseCommand):
 
         self.stdout.write('\nChoose Image:')
 
-        images = list(models.Image.objects.filter(settings=service.settings).order_by('name'))
+        images = list(models.Image.objects.filter(settings=service_settings).order_by('name'))
         start = 1
         for i in range(0, len(images), 3):
             choices = []
@@ -209,15 +164,17 @@ class Command(BaseCommand):
 
         self.templates.append(Template(
             resource_content_type=ContentType.objects.get_for_model(models.Instance),
+            service_settings=service_settings,
             options=options,
         ))
 
         tags = {self.templates[0].resource_content_type: tags}
         default_name = ' '.join(['OpenStack', os_names[os], app_names[app]]).strip()
-        default_name += ' (%s)' % service.name.replace(' ', '')
+        default_name += ' (%s)' % service_settings.name.replace(' ', '')
         name = raw_input(self.style.WARNING('Enter template group name [%s]:' % default_name)) or default_name
         group = TemplateGroup(name=name)
 
+        # ******** BACKUP ********
         self.stdout.write(self.style.MIGRATE_HEADING('\nStep 2: Configure Backup'))
         timezone = datetime.now(tzlocal()).tzname()
         options = {}
@@ -251,18 +208,20 @@ class Command(BaseCommand):
                 options=options,
             ))
 
+        # ******** ZABBIX ********
         self.stdout.write(self.style.MIGRATE_HEADING('\nStep 3: Configure Monitoring'))
 
         try:
-            from nodeconductor_zabbix.models import ZabbixService, ZabbixServiceProjectLink, Host
+            from nodeconductor_zabbix.models import Host
+            from nodeconductor_zabbix.apps import ZabbixConfig
 
-            self.stdout.write('\nChoose Zabbix Service:')
+            self.stdout.write('\nChoose Zabbix Service settings:')
 
-            services = list(ZabbixService.objects.filter(project=project).order_by('name'))
+            services_settings = list(ServiceSettings.objects.filter(type=ZabbixConfig.service_name).order_by('name'))
             start = 1
-            for i in range(0, len(services), 3):
+            for i in range(0, len(services_settings), 3):
                 choices = []
-                for idx, val in enumerate(services[i:i + 3], start):
+                for idx, val in enumerate(services_settings[i:i + 3], start):
                     choices.append('\t[{:3}] {:<30}'.format(idx, val))
                 self.stdout.write(''.join(choices))
                 start += 3
@@ -270,44 +229,51 @@ class Command(BaseCommand):
             while True:
                 idx = (raw_input(self.style.WARNING('Desired Zabbix Service [None]: ')) or 'None')
                 if idx == 'None':
-                    service = None
+                    service_settings = None
                     break
                 try:
-                    service = services[int(idx) - 1]
+                    service_settings = services_settings[int(idx) - 1]
                 except (IndexError, TypeError, ValueError):
                     self.stdout.write(self.style.NOTICE('\tWrong Zabbix Service'))
                 else:
                     break
 
-            if service:
-                spl = ZabbixServiceProjectLink.objects.get(service=service, project=project)
+            if service_settings:
                 options = {
-                    'name': group.name,
-                    'service_project_link': self.get_obj_url('zabbix-spl-detail', spl)
+                    'service_settings': self.get_obj_url('servicesettings-detail', service_settings),
+                    'name': '{{ response.backend_id }}',
+                    'visible_name': '{{ response.name }}',
+                    'scope': '{{ response.url }}',
                 }
 
                 self.templates.append(Template(
                     resource_content_type=ContentType.objects.get_for_model(Host),
+                    service_settings=service_settings,
                     options=options,
+                    use_previous_resource_project=True,
                 ))
 
         except ImportError:
             self.stdout.write(self.style.NOTICE('SKIP! Zabbix plugin is not installed'))
 
+        # ********* REVIEW *********
         self.stdout.write(self.style.MIGRATE_HEADING('\nStep 4: Review and create'))
         templates = []
         for template in self.templates:
             templates.append({
                 'type': str(template.resource_content_type),
+                'service_settings': service_settings,
                 'options': template.options,
+                'use_previous_resource_project': template.use_previous_resource_project
             })
 
-        final = OrderedDict([
+        final = [
             ('name', group.name),
             ('templates', templates),
-        ])
+        ]
 
-        self.stdout.write(json.dumps(final, indent=4))
+        pp = pprint.PrettyPrinter(depth=6)
+        self.stdout.write(pp.pformat(final))
 
         while True:
             opt = (raw_input(self.style.WARNING('Create? [Y/n]: ')) or 'y').lower()
@@ -317,6 +283,7 @@ class Command(BaseCommand):
             elif opt == 'y':
                 break
 
+        # ******** CREATING TEMPLATES ********
         created_instances = []
         try:
             group.save()
