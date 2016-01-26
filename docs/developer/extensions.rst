@@ -1,8 +1,8 @@
-NodeConductor Extensions
+NodeConductor extensions
 ========================
 
 NodeConductor extensions are developed as auto-configurable plugins.
-One plugin can contain several extensions which is a pure django application by its own.
+One plugin can contain several extensions which is a pure Django application by its own.
 In order to be recognized and automatically connected to NodeConductor
 some additional configuration required.
 
