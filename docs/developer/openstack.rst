@@ -29,7 +29,7 @@ An extensive example provided below.
     auth_url = 'http://keystone.example.com:5000/v2.0'
     cloud = Cloud.objects.create(
         customer=customer,
-        name='Openstack Cloud',
+        name='OpenStack Cloud',
         auth_url=auth_url,
     )
 

@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
-from django.db.models import Count
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
 from taggit.models import Tag
@@ -14,8 +13,8 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.managers import filter_queryset_for_user
-from nodeconductor.structure.models import Project
 from nodeconductor.openstack.backup import BackupError
+from nodeconductor.openstack.log import event_logger
 from nodeconductor.openstack import Types, models, filters, serializers
 
 
@@ -157,6 +156,36 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             {'detail': 'Assigning floating IP to the instance has been scheduled.'},
             status=status.HTTP_202_ACCEPTED)
 
+    @decorators.detail_route(methods=['post'])
+    @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
+    def resize(self, request, uuid=None):
+        instance = self.get_object()
+
+        serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        flavor = serializer.validated_data.get('flavor')
+        new_size = serializer.validated_data.get('disk_size')
+
+        # Serializer makes sure that exactly one of the branches will match
+        if flavor is not None:
+            send_task('openstack', 'change_flavor')(instance.uuid.hex, flavor_uuid=flavor.uuid.hex)
+            event_logger.openstack_flavor.info(
+                'Virtual machine {resource_name} has been scheduled to change flavor.',
+                event_type='resource_flavor_change_scheduled',
+                event_context={'resource': instance, 'flavor': flavor}
+            )
+        else:
+            send_task('openstack', 'extend_disk')(instance.uuid.hex, disk_size=new_size)
+            event_logger.openstack_volume.info(
+                'Virtual machine {resource_name} has been scheduled to extend disk.',
+                event_type='resource_volume_extension_scheduled',
+                event_context={'resource': instance, 'volume_size': new_size}
+            )
+
+        return response.Response(
+            {'detail': 'Resizing has been scheduled.'}, status=status.HTTP_202_ACCEPTED)
+
 
 class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
     queryset = models.SecurityGroup.objects.all()
@@ -168,20 +197,20 @@ class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelView
 
     def perform_create(self, serializer):
         security_group = serializer.save()
-        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'create')
+        send_task('openstack', 'create_security_group')(security_group.uuid.hex)
 
     def perform_update(self, serializer):
         super(SecurityGroupViewSet, self).perform_update(serializer)
         security_group = self.get_object()
         security_group.schedule_syncing()
         security_group.save()
-        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'update')
+        send_task('openstack', 'update_security_group')(security_group.uuid.hex)
 
     def destroy(self, request, *args, **kwargs):
         security_group = self.get_object()
         security_group.schedule_syncing()
         security_group.save()
-        send_task('openstack', 'sync_security_group')(security_group.uuid.hex, 'delete')
+        send_task('openstack', 'delete_security_group')(security_group.uuid.hex)
         return response.Response(
             {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
@@ -233,6 +262,12 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
                 {'status': 'BackupSchedule is already activated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = True
         schedule.save()
+
+        event_logger.openstack_backup.info(
+            'Backup schedule for {resource_name} has been activated.',
+            event_type='resource_backup_schedule_activated',
+            event_context={'resource': schedule.instance})
+
         return response.Response({'status': 'BackupSchedule was activated'})
 
     @decorators.detail_route(methods=['post'])
@@ -243,6 +278,12 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
                 {'status': 'BackupSchedule is already deactivated'}, status=status.HTTP_409_CONFLICT)
         schedule.is_active = False
         schedule.save()
+
+        event_logger.openstack_backup.info(
+            'Backup schedule for {resource_name} has been deactivated.',
+            event_type='resource_backup_schedule_deactivated',
+            event_context={'resource': schedule.instance})
+
         return response.Response({'status': 'BackupSchedule was deactivated'})
 
 

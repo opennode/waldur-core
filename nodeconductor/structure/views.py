@@ -39,6 +39,7 @@ from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
+from nodeconductor.structure import managers
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 
@@ -690,18 +691,20 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
         return Response(SupportedServices.get_services_with_resources(request))
 
 
-class ResourceViewSet(BaseSummaryView):
-    """ The summary list of all user resources. """
+class ResourceViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
+    model = models.Resource  # for permissions definition.
+    serializer_class = serializers.SummaryResourceSerializer
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_class = filters.BaseResourceFilter
 
-    params = filters.BaseResourceFilter.Meta.fields
-
-    def get_urls(self, request):
-        types = request.query_params.getlist('resource_type', [])
-        resources = SupportedServices.get_resources(request).items()
-        if types != []:
-            return [url for (type, url) in resources if type in types]
-        else:
-            return [url for (type, url) in resources]
+    def get_queryset(self):
+        types = self.request.query_params.getlist('resource_type', None)
+        resource_models = SupportedServices.get_resource_models()
+        if types:
+            resource_models = {k: v for k, v in resource_models.items() if k in types}
+        return managers.SummaryQuerySet(resource_models.values())
 
     @list_route()
     def count(self, request):
@@ -717,19 +720,9 @@ class ResourceViewSet(BaseSummaryView):
             "GitLab.Group": 8
         }
         """
-        types = request.query_params.getlist('resource_type', [])
-        params = self.get_params(request)
-        resources = SupportedServices.get_resources(request).items()
-
-        result = {}
-        for (type, url) in resources:
-            if types != [] and type not in types:
-                continue
-            response = request_api(request, url, method='HEAD', params=params)
-            if not response.success:
-                raise APIException(response.data)
-            result[type] = response.total
-        return Response(result)
+        queryset = self.filter_queryset(self.get_queryset())
+        return Response({SupportedServices.get_name_for_model(qs.model): qs.count()
+                         for qs in queryset.querysets})
 
 
 class ServicesViewSet(BaseSummaryView):
@@ -1050,6 +1043,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             except ServiceBackendError as e:
                 raise APIException(e)
 
+            event_logger.resource.info(
+                'Resource {resource_name} has been imported.',
+                event_type='resource_import_succeeded',
+                event_context={'resource': resource})
+
             send_task('cost_tracking', 'update_projected_estimate')(
                 resource_uuid=resource.uuid.hex)
 
@@ -1145,7 +1143,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     filter_class = filters.BaseResourceFilter
     metadata_class = serializers.ResourceProvisioningMetadata
 
@@ -1194,13 +1192,30 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         except ServiceBackendError as e:
             raise APIException(e)
 
+        event_logger.resource.info(
+            'Resource {resource_name} creation has been scheduled.',
+            event_type='resource_creation_scheduled',
+            event_context={'resource': serializer.instance})
+
     def perform_update(self, serializer):
         spl = self.get_object().service_project_link
         if spl.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify resource if its service project link is in erred state.')
 
-        serializer.save()
+        resource = serializer.save()
+
+        event_logger.resource.info(
+            'Resource {resource_name} has been updated.',
+            event_type='resource_update_succeeded',
+            event_context={'resource': resource})
+
+    def perform_destroy(self, resource):
+        resource.delete()
+        event_logger.resource.info(
+            'Resource {resource_name} has been deleted.',
+            event_type='resource_deletion_succeeded',
+            event_context={'resource': resource})
 
     def perform_provision(self, serializer):
         raise NotImplementedError
@@ -1209,6 +1224,10 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         if resource.backend_id:
             backend = resource.get_backend()
             backend.destroy(resource, force=force)
+            event_logger.resource.info(
+                'Resource {resource_name} has been scheduled to deletion.',
+                event_type='resource_deletion_scheduled',
+                event_context={'resource': resource})
         else:
             self.perform_destroy(resource)
 
@@ -1229,18 +1248,30 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def start(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.start(resource)
+        event_logger.resource.info(
+            'Resource {resource_name} has been scheduled to start.',
+            event_type='resource_start_scheduled',
+            event_context={'resource': resource})
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.ONLINE)
     def stop(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.stop(resource)
+        event_logger.resource.info(
+            'Resource {resource_name} has been scheduled to stop.',
+            event_type='resource_stop_scheduled',
+            event_context={'resource': resource})
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.ONLINE)
     def restart(self, request, resource, uuid=None):
         backend = resource.get_backend()
         backend.restart(resource)
+        event_logger.resource.info(
+            'Resource {resource_name} has been scheduled to restart.',
+            event_type='resource_restart_scheduled',
+            event_context={'resource': resource})
 
 
 class BaseOnlineResourceViewSet(BaseResourceViewSet):

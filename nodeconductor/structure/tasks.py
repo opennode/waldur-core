@@ -14,7 +14,6 @@ from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +48,9 @@ def stop_customer_resources(customer_uuid):
 def recover_erred_services(service_project_links=None):
     if service_project_links is not None:
         erred_spls = models.ServiceProjectLink.from_string(service_project_links)
+
+        for spl in erred_spls:
+            recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
     else:
         for service_type, service in SupportedServices.get_service_models().items():
             # TODO: Remove IaaS support (NC-645)
@@ -62,8 +64,8 @@ def recover_erred_services(service_project_links=None):
 
             erred_spls = service['service_project_link'].objects.filter(query)
 
-    for spl in erred_spls:
-        recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
+            for spl in erred_spls:
+                recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings')
@@ -112,6 +114,14 @@ def begin_recovering_erred_service_settings(settings_uuid, transition_entity=Non
         settings.error_message = ''
         settings.save()
         logger.info('Service settings %s successfully recovered.' % settings.name)
+
+        try:
+            spl_model = SupportedServices.get_service_models()[settings.type]['service_project_link']
+            erred_spls = spl_model.objects.filter(service__settings=settings,
+                                                  state=SynchronizationStates.ERRED)
+            recover_erred_services.delay([spl.to_string() for spl in erred_spls])
+        except KeyError:
+            logger.warning('Failed to recover service project links for settings %s', settings)
     else:
         settings.set_erred()
         settings.error_message = 'Failed to ping service settings %s' % settings.name
@@ -451,3 +461,29 @@ def remove_user(user_data, service_project_link_str):
             user.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
+
+
+@shared_task(name='nodeconductor.structure.detect_vm_coordinates_batch')
+def detect_vm_coordinates_batch(virtual_machines):
+    for vm in models.Resource.from_string(virtual_machines):
+        detect_vm_coordinates.delay(vm.to_string())
+
+
+@shared_task(name='nodeconductor.structure.detect_vm_coordinates')
+def detect_vm_coordinates(vm_str):
+    try:
+        vm = next(models.Resource.from_string(vm_str))
+    except StopIteration:
+        logger.warning('Missing virtual machine %s.', vm_str)
+        return
+
+    try:
+        coordinates = vm.detect_coordinates()
+    except GeoIpException as e:
+        logger.warning('Unable to detect coordinates for virtual machines %s: %s.', vm_str, e)
+        return
+
+    if coordinates:
+        vm.latitude = coordinates.latitude
+        vm.longitude = coordinates.longitude
+        vm.save(update_fields=['latitude', 'longitude'])

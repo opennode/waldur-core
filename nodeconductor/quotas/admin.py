@@ -23,17 +23,26 @@ class QuotaScopeClassListFilter(admin.SimpleListFilter):
         return queryset
 
 
-class QuotaAdmin(ReversionAdmin):
+class QuotaFieldTypeLimit(object):
+    readonly_fields = ('quota_field_type',)
+
+    def quota_field_type(self, obj):
+        field = obj.get_field()
+        if field:
+            return field.__class__.__name__
+        return ''
+
+
+class QuotaAdmin(QuotaFieldTypeLimit, ReversionAdmin):
     list_display = ['scope', 'name', 'limit', 'usage']
     list_filter = ['name', QuotaScopeClassListFilter]
 
 
-class QuotaInline(generic.GenericTabularInline):
+class QuotaInline(QuotaFieldTypeLimit, generic.GenericTabularInline):
     model = models.Quota
-    fields = ('name', 'limit', 'usage')
-    readonly_fields = ('name',)
+    fields = ('name', 'limit', 'usage', 'quota_field_type')
+    readonly_fields = ('name', ) + QuotaFieldTypeLimit.readonly_fields
     extra = 0
     can_delete = False
-
 
 admin.site.register(models.Quota, QuotaAdmin)

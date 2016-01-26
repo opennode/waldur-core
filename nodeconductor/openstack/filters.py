@@ -14,23 +14,7 @@ class InstanceFilter(structure_filters.BaseResourceFilter):
     class Meta(object):
         model = models.Instance
         fields = structure_filters.BaseResourceFilter.Meta.fields
-        order_by = [
-            'name',
-            '-name',
-            'state',
-            '-state',
-            'service_project_link__project__customer__name',
-            '-service_project_link__project__customer__name',
-            'service_project_link__project__customer__native_name',
-            '-service_project_link__project__customer__native_name',
-            'service_project_link__project__customer__abbreviation',
-            '-service_project_link__project__customer__abbreviation',
-            'service_project_link__project__name',
-            '-service_project_link__project__name',
-            'service_project_link__project__project_groups__name',
-            '-service_project_link__project__project_groups__name',
-            'created',
-            '-created',
+        order_by = structure_filters.BaseResourceFilter.Meta.order_by + [
             'ram',
             '-ram',
             'cores',
@@ -40,19 +24,14 @@ class InstanceFilter(structure_filters.BaseResourceFilter):
             'data_volume_size',
             '-data_volume_size',
         ]
-        order_by_mapping = {
-            # Proper field naming
-            'customer_name': 'service_project_link__project__customer__name',
-            'customer_native_name': 'service_project_link__project__customer__native_name',
-            'customer_abbreviation': 'service_project_link__project__customer__abbreviation',
-            'project_name': 'service_project_link__project__name',
-            'project_group_name': 'service_project_link__project__project_groups__name',
-
+        order_by_mapping = dict(
             # Backwards compatibility
-            'project__customer__name': 'service_project_link__project__customer__name',
-            'project__name': 'service_project_link__project__name',
-            'project__project_groups__name': 'service_project_link__project__project_groups__name',
-        }
+            project__customer__name='service_project_link__project__customer__name',
+            project__name='service_project_link__project__name',
+            project__project_groups__name='service_project_link__project__project_groups__name',
+
+            **structure_filters.BaseResourceFilter.Meta.order_by_mapping
+        )
 
 
 class SecurityGroupFilter(django_filters.FilterSet):

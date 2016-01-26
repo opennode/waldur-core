@@ -112,7 +112,7 @@ Valid request example (token is user specific):
 Changing password
 -----------------
 
-To change a user password, submit a POST request to the user's RPC url, specifying new password
+To change a user password, submit a POST request to the user's RPC URL, specifying new password
 by staff user or account owner.
 
 Password validation

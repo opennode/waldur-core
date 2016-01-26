@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import models as django_models
-from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField
+from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, RadioSelect
 from django.http import HttpResponseRedirect
 from django.utils.translation import ungettext
 
@@ -40,6 +40,19 @@ class ProtectedModelMixin(object):
             return response
 
 
+class ResourceCounterFormMixin(object):
+
+    def get_vm_count(self, obj):
+        return obj.get_vm_count()
+
+    get_vm_count.short_description = 'VM count'
+
+    def get_app_count(self, obj):
+        return obj.get_app_count()
+
+    get_app_count.short_description = 'Application count'
+
+
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                       widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
@@ -73,13 +86,13 @@ class CustomerAdminForm(ModelForm):
         return customer
 
 
-class CustomerAdmin(ProtectedModelMixin, admin.ModelAdmin):
+class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'billing_backend_id', 'balance', 'owners')
     readonly_fields = ['balance']
     actions = ['update_projected_estimate']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created']
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count']
     inlines = [QuotaInline]
 
     def update_projected_estimate(self, request, queryset):
@@ -161,12 +174,12 @@ class ProjectAdminForm(ModelForm):
         return project
 
 
-class ProjectAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
     form = ProjectAdminForm
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')
 
-    list_display = ['name', 'uuid', 'customer', 'created']
+    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
@@ -217,7 +230,8 @@ class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdm
 class ServiceSettingsAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
-        self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices())
+        self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
+                                          widget=RadioSelect)
 
 
 class ServiceTypeFilter(SimpleListFilter):
@@ -241,6 +255,8 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     change_readonly_fields = ('shared', 'customer')
     actions = ['sync', 'recover']
     form = ServiceSettingsAdminForm
+    fields = ('type', 'name', 'backend_url', 'username', 'password',
+              'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
 
     def get_type_display(self, obj):
         return obj.get_type_display()
@@ -256,12 +272,12 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
             if request.method == 'GET':
                 obj.password = '(hidden)'
             return fields + ('password',)
+        if not obj:
+            return fields + ('state',)
         return fields
 
     def get_form(self, request, obj=None, **kwargs):
         # filter out certain fields from the creation form
-        if not obj:
-            kwargs['exclude'] = ('state',)
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         if 'shared' in form.base_fields:
             form.base_fields['shared'].initial = True
@@ -374,8 +390,39 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
 
 class ResourceAdmin(admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'backend_id', 'state')
+    list_display = ('name', 'backend_id', 'state', 'get_service', 'get_project', 'error_message')
     list_filter = ('state',)
+
+    def get_service(self, obj):
+        return obj.service_project_link.service
+
+    get_service.short_description = 'Service'
+    get_service.admin_order_field = 'service_project_link__service__name'
+
+    def get_project(self, obj):
+        return obj.service_project_link.project
+
+    get_project.short_description = 'Project'
+    get_project.admin_order_field = 'service_project_link__project__name'
+
+
+class VirtualMachineAdmin(ResourceAdmin):
+    actions = ['detect_coordinates']
+
+    def detect_coordinates(self, request, queryset):
+        send_task('structure', 'detect_vm_coordinates_batch')([vm.to_string() for vm in queryset])
+
+        tasks_scheduled = queryset.count()
+        message = ungettext(
+            'Coordinates detection has been scheduled for one virtual machine',
+            'Coordinates detection has been scheduled for %(tasks_scheduled)d virtual machines',
+            tasks_scheduled
+        )
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    detect_coordinates.short_description = "Detect coordinates of virtual machines"
 
 
 admin.site.register(models.Customer, CustomerAdmin)

@@ -72,18 +72,18 @@ class ServicesListRetrieveTest(test.APISimpleTestCase):
         models.Instance.objects.all().delete()
         self.manager_instance = factories.InstanceFactory(
             cloud_project_membership__project=self.manager_project)
-        factories.InstanceSlaHistoryFactory(instance=self.manager_instance, period='2015')
+        factories.InstanceSlaHistoryFactory(instance=self.manager_instance, period='2016')
 
         self.group_manager_instance = factories.InstanceFactory(
             cloud_project_membership__project=self.group_manager_project)
-        factories.InstanceSlaHistoryFactory(instance=self.group_manager_instance, period='2015')
+        factories.InstanceSlaHistoryFactory(instance=self.group_manager_instance, period='2016')
 
         self.other_instance = factories.InstanceFactory()
-        factories.InstanceSlaHistoryFactory(instance=self.other_instance, period='2015')
+        factories.InstanceSlaHistoryFactory(instance=self.other_instance, period='2016')
 
     def test_manager_can_list_only_services_from_his_projects(self):
         self.client.force_authenticate(self.manager)
-        response = self.client.get(_get_service_list_url(), data={'period': '2015'})
+        response = self.client.get(_get_service_list_url(), data={'period': '2016'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1, 'Manager can view more(or less) instances than expected')
         self.assertEqual(
@@ -92,7 +92,7 @@ class ServicesListRetrieveTest(test.APISimpleTestCase):
 
     def test_group_manager_can_list_only_services_from_his_projects(self):
         self.client.force_authenticate(self.group_manager)
-        response = self.client.get(_get_service_list_url(), data={'period': '2015'})
+        response = self.client.get(_get_service_list_url(), data={'period': '2016'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1, 'Group manager can view more(or less) instances than expected')
         self.assertEqual(
@@ -101,9 +101,9 @@ class ServicesListRetrieveTest(test.APISimpleTestCase):
 
     def test_staff_can_list_all_services(self):
         self.client.force_authenticate(self.staff)
-        response = self.client.get(_get_service_list_url(), data={'period': '2015'})
+        response = self.client.get(_get_service_list_url(), data={'period': '2016'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3, 'Manager can view more(or less) instances than expected')
+        self.assertEqual(len(response.data), 3, 'Staff can view more (or less) instances than expected: %s' % response.data)
         self.assertItemsEqual(
             [d['url'] for d in response.data],
             [
@@ -115,7 +115,7 @@ class ServicesListRetrieveTest(test.APISimpleTestCase):
 
     def test_service_api_returns_expected_fields(self):
         self.client.force_authenticate(self.staff)
-        response = self.client.get(_get_service_url(self.manager_instance), data={'period': '2015'})
+        response = self.client.get(_get_service_url(self.manager_instance), data={'period': '2016'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertItemsEqual(
             response.data.keys(), _service_to_dict(self.manager_instance).keys(),
@@ -143,15 +143,15 @@ class PermissionsTest(helpers.PermissionsTest):
 
         models.Instance.objects.all().delete()
         self.instance = factories.InstanceFactory(cloud_project_membership__project=self.project)
-        factories.InstanceSlaHistoryFactory(instance=self.instance, period='2015')
+        factories.InstanceSlaHistoryFactory(instance=self.instance, period='2016')
         self.other_instance = factories.InstanceFactory()
-        factories.InstanceSlaHistoryFactory(instance=self.other_instance, period='2015')
+        factories.InstanceSlaHistoryFactory(instance=self.other_instance, period='2016')
 
     def get_urls_configs(self):
         return [
-            {'url': _get_service_url(self.instance), 'method': 'GET', 'data': {'period': '2015'}},
-            {'url': _get_service_list_url(), 'method': 'GET', 'data': {'period': '2015'}},
-            {'url': _get_service_url(self.other_instance), 'method': 'GET', 'data': {'period': '2015'}}]
+            {'url': _get_service_url(self.instance), 'method': 'GET', 'data': {'period': '2016'}},
+            {'url': _get_service_list_url(), 'method': 'GET', 'data': {'period': '2016'}},
+            {'url': _get_service_url(self.other_instance), 'method': 'GET', 'data': {'period': '2016'}}]
 
     def get_users_with_permission(self, url, method):
         if url == _get_service_url(self.other_instance):
@@ -175,9 +175,9 @@ class ServiceEventsTest(test.APISimpleTestCase):
                                                                period='%s-%s' % (today.year, today.month))
 
     def test_service_without_sla_returns_404(self):
-        month_ago = timezone.now() - relativedelta(month=+1)
+        month_ahead = timezone.now() + relativedelta(month=+2)
         response = self.client.get(self._get_service_events_url(self.instance),
-                                   data={'period': '%s-%s' % (month_ago.year, month_ago.month)})
+                                   data={'period': '%s-%s' % (month_ahead.year, month_ahead.month)})
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_service_with_events_returns_events_list(self):

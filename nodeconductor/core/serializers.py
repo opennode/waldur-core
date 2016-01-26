@@ -20,6 +20,15 @@ class AuthTokenSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 
+# XXX: use JSONField from DRF when upgraded to 3.3+
+class JSONField(serializers.Field):
+    def to_internal_value(self, data):
+        return data
+
+    def to_representation(self, value):
+        return value
+
+
 class Base64Field(serializers.CharField):
     def to_internal_value(self, data):
         value = super(Base64Field, self).to_internal_value(data)
@@ -388,32 +397,3 @@ class HistorySerializer(serializers.Serializer):
                         (self.validated_data['points_count'] - 1))
             return [self.validated_data['start'] + interval * i for i in range(self.validated_data['points_count'])]
 
-
-class DynamicSerializer(serializers.ModelSerializer):
-    """
-    Allows to specify additional fields for serializer.
-    Useful for managing dependencies between applications.
-    """
-
-    @classmethod
-    def add_field(cls, field_name, model_class, options=None):
-        cls.Meta.fields += (field_name,)
-        if not hasattr(cls.Meta, '_additional_fields'):
-            cls.Meta._additional_fields = {}
-        cls.Meta._additional_fields[field_name] = (model_class, options or {})
-
-    def get_fields(self):
-        fields = super(DynamicSerializer, self).get_fields()
-        for name, field in self.Meta._additional_fields.items():
-            model_class, options = field
-            fields[name] = model_class(**options)
-        return fields
-
-    def build_unknown_field(self, field_name, model_class):
-        if field_name in self.Meta._additional_fields:
-            return self.Meta._additional_fields[field_name]
-        return super(DynamicSerializer, self).build_unknown_field(field_name, model_class)
-
-    @classmethod
-    def add_to_class(cls, name, value):
-        setattr(cls, name, value)

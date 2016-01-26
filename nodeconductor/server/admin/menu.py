@@ -37,20 +37,57 @@ class CustomMenu(Menu):
     """
     Custom Menu for admin site.
     """
+
+    IAAS_CLOUDS = (
+        'nodeconductor_plus.azure.*',
+        'nodeconductor_plus.aws.*',
+        'nodeconductor_plus.digitalocean.*',
+        'nodeconductor.openstack.*'
+    )
+
+    APPLICATION_PROVIDERS = (
+        'nodeconductor_sugarcrm.*',
+        'nodeconductor_saltstack.*',
+        'nodeconductor_zabbix.*',
+        'nodeconductor_plus.gitlab.*',
+    )
+
+    SUPPORT_MODULES = (
+        'nodeconductor_plus.plans.*',
+        'nodeconductor_plus.premium_support.*',
+    )
+
     def __init__(self, **kwargs):
         Menu.__init__(self, **kwargs)
         self.children += [
             items.MenuItem(_('Dashboard'), reverse('admin:index')),
-            items.Bookmarks(),
             CustomAppList(
-                _('Applications'),
+                _('Core'),
                 exclude=('django.core.*',
                          'rest_framework.authtoken.*',
                          'nodeconductor.core.*',
-                         )
+                         'nodeconductor.structure.*',
+                         ) + self.IAAS_CLOUDS + self.APPLICATION_PROVIDERS + self.SUPPORT_MODULES
             ),
             items.ModelList(
-                _('User management'),
-                models=('nodeconductor.core.*',)
+                _('Structure'),
+                models=('nodeconductor.core.*',
+                        'nodeconductor_organization.*',
+                        'nodeconductor.structure.*',
+                )
             ),
+            CustomAppList(
+                _('IaaS clouds'),
+                models=self.IAAS_CLOUDS,
+            ),
+            CustomAppList(
+                _('Applications'),
+                models=self.APPLICATION_PROVIDERS,
+            ),
+            CustomAppList(
+                _('Subscriptions and support'),
+                models=self.SUPPORT_MODULES,
+            ),
+
+
         ]

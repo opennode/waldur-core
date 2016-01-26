@@ -108,7 +108,7 @@ class OpenStackClient(object):
 
             if not self.keystone_session:
                 auth_plugin = v2.Password(**credentials)
-                self.keystone_session = keystone_session.Session(auth=auth_plugin)
+                self.keystone_session = keystone_session.Session(auth=auth_plugin, verify=False)
 
             try:
                 # This will eagerly sign in throwing AuthorizationFailure on bad credentials
@@ -239,7 +239,7 @@ class OpenStackClient(object):
 
         kwargs = {
             'token': session.get_token(),
-            'insecure': False,
+            'insecure': True,
             'timeout': 600,
             'ssl_compression': True,
         }
@@ -254,7 +254,7 @@ class OpenStackClient(object):
         kwargs = {
             'token': lambda: session.get_token(),
             'endpoint': endpoint,
-            'insecure': False,
+            'insecure': True,
             'timeout': 600,
             'ssl_compression': True,
         }
