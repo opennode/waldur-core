@@ -786,6 +786,9 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
             return self.internal_ips
         return None
 
+    def get_access_url_name(self):
+        return None
+
 
 class PaidResource(models.Model):
     """ Extend Resource model with methods to track usage cost and handle orders """
