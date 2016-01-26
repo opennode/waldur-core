@@ -30,7 +30,7 @@ API
 
    api/api
 
-NodeConductor Plugins
+NodeConductor plugins
 ---------------------
 
 .. toctree::

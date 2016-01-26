@@ -136,7 +136,7 @@ Services
 
 .. include:: services.rst
 
-Service Settings
+Service settings
 ================
 
 .. include:: service_settings.rst
