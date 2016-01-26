@@ -1149,7 +1149,13 @@ class SummaryResourceSerializer(BasicResourceSerializer):
                        kwargs={'uuid': obj.service_project_link.service.uuid}, request=self.context['request'])
 
     def get_access_url(self, obj):
-        return obj.get_access_url()
+        url = obj.get_access_url()
+        if url:
+            return url
+
+        url_name = obj.get_access_url_name()
+        if url_name:
+            return reverse(url_name, kwargs={'uuid': obj.uuid}, request=self.context['request'])
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
