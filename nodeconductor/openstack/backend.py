@@ -5,8 +5,10 @@ import functools
 import logging
 import re
 import sys
+import uuid
 
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.utils import six, dateparse, timezone
 from requests import ConnectionError
 
@@ -48,7 +50,7 @@ class OpenStackBackendError(ServiceBackendError):
 class OpenStackSession(dict):
     """ Serializable session """
 
-    def __init__(self, ks_session=None, verify_ssl=True, **credentials):
+    def __init__(self, ks_session=None, verify_ssl=False, **credentials):
         self.keystone_session = ks_session
 
         if not self.keystone_session:
@@ -68,7 +70,7 @@ class OpenStackSession(dict):
         return getattr(self.keystone_session, name)
 
     @classmethod
-    def recover(cls, session, verify_ssl=True):
+    def recover(cls, session, verify_ssl=False):
         if not isinstance(session, dict) or not session.get('auth_ref'):
             raise OpenStackBackendError('Invalid OpenStack session')
 
@@ -96,6 +98,7 @@ class OpenStackClient(object):
     """ Generic OpenStack client. """
 
     def __init__(self, session=None, verify_ssl=False, **credentials):
+        self.verify_ssl = verify_ssl
         if session:
             if isinstance(session, dict):
                 logger.info('Trying to recover OpenStack session.')
@@ -145,7 +148,7 @@ class OpenStackClient(object):
 
         kwargs = {
             'token': self.session.get_token(),
-            'insecure': False,
+            'insecure': not self.verify_ssl,
             'timeout': 600,
             'ssl_compression': True,
         }
@@ -160,7 +163,7 @@ class OpenStackClient(object):
         kwargs = {
             'token': lambda: self.session.get_token(),
             'endpoint': endpoint,
-            'insecure': False,
+            'insecure': not self.verify_ssl,
             'timeout': 600,
             'ssl_compression': True,
         }
@@ -396,6 +399,15 @@ class OpenStackBackend(ServiceBackend):
             if not self._are_rules_equal(backend_rule, nc_rule):
                 return False
         return True
+
+    def _normalize_security_group_rule(self, rule):
+        if rule['ip_protocol'] is None:
+            rule['ip_protocol'] = ''
+
+        if 'cidr' not in rule['ip_range']:
+            rule['ip_range']['cidr'] = '0.0.0.0/0'
+
+        return rule
 
     def pull_flavors(self):
         nova = self.nova_admin_client
@@ -1082,75 +1094,426 @@ class OpenStackBackend(ServiceBackend):
     def extend_disk(self, instance):
         self._old_backend.extend_disk(instance)
 
-    @reraise_exceptions
+    def push_security_group_rules(self, security_group):
+        nova = self.nova_client
+        backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
+        backend_rules = {
+            rule['id']: self._normalize_security_group_rule(rule)
+            for rule in backend_security_group.rules
+        }
+
+        # list of nc rules, that do not exist in openstack
+        nonexistent_rules = []
+        # list of nc rules, that have wrong parameters in in openstack
+        unsynchronized_rules = []
+        # list of os rule ids, that exist in openstack and do not exist in nc
+        extra_rule_ids = backend_rules.keys()
+
+        for nc_rule in security_group.rules.all():
+            if nc_rule.backend_id not in backend_rules:
+                nonexistent_rules.append(nc_rule)
+            else:
+                backend_rule = backend_rules[nc_rule.backend_id]
+                if not self._are_rules_equal(backend_rule, nc_rule):
+                    unsynchronized_rules.append(nc_rule)
+                extra_rule_ids.remove(nc_rule.backend_id)
+
+        # deleting extra rules
+        for backend_rule_id in extra_rule_ids:
+            logger.debug('About to delete security group rule with id %s in backend', backend_rule_id)
+            try:
+                nova.security_group_rules.delete(backend_rule_id)
+            except nova_exceptions.ClientException:
+                logger.exception('Failed to remove rule with id %s from security group %s in backend',
+                                 backend_rule_id, security_group)
+            else:
+                logger.info('Security group rule with id %s successfully deleted in backend', backend_rule_id)
+
+        # deleting unsynchronized rules
+        for nc_rule in unsynchronized_rules:
+            logger.debug('About to delete security group rule with id %s', nc_rule.backend_id)
+            try:
+                nova.security_group_rules.delete(nc_rule.backend_id)
+            except nova_exceptions.ClientException:
+                logger.exception('Failed to remove rule with id %s from security group %s in backend',
+                                 nc_rule.backend_id, security_group)
+            else:
+                logger.info('Security group rule with id %s successfully deleted in backend',
+                            nc_rule.backend_id)
+
+        # creating nonexistent and unsynchronized rules
+        for nc_rule in unsynchronized_rules + nonexistent_rules:
+            logger.debug('About to create security group rule with id %s in backend', nc_rule.id)
+            try:
+                # The database has empty strings instead of nulls
+                if nc_rule.protocol == '':
+                    nc_rule_protocol = None
+                else:
+                    nc_rule_protocol = nc_rule.protocol
+
+                nova.security_group_rules.create(
+                    parent_group_id=security_group.backend_id,
+                    ip_protocol=nc_rule_protocol,
+                    from_port=nc_rule.from_port,
+                    to_port=nc_rule.to_port,
+                    cidr=nc_rule.cidr,
+                )
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to create rule %s for security group %s in backend',
+                                 nc_rule, security_group)
+                six.reraise(OpenStackBackendError, e)
+            else:
+                logger.info('Security group rule with id %s successfully created in backend', nc_rule.id)
+
     def create_security_group(self, security_group):
         nova = self.nova_client
-        self._old_backend.create_security_group(security_group, nova)
+        logger.debug('About to create security group %s in backend', security_group.uuid)
+        try:
+            backend_security_group = nova.security_groups.create(name=security_group.name, description='')
+            security_group.backend_id = backend_security_group.id
+            security_group.save()
+            self.push_security_group_rules(security_group, nova)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to create openstack security group with for %s in backend', security_group.uuid)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Security group %s successfully created in backend', security_group.uuid)
 
-    @reraise_exceptions
     def delete_security_group(self, security_group):
         nova = self.nova_client
-        self._old_backend.delete_security_group(security_group.backend_id, nova)
+        logger.debug('About to delete security group %s from backend', security_group.uuid)
+        try:
+            nova.security_groups.delete(security_group.backend_id)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to remove openstack security group %s from backend', security_group.uuid)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Security group %s successfully deleted from backend', security_group.uuid)
 
-    @reraise_exceptions
     def update_security_group(self, security_group):
         nova = self.nova_client
-        self._old_backend.update_security_group(security_group, nova)
+        logger.debug('About to update security group %s in backend', security_group.uuid)
+        try:
+            backend_security_group = nova.security_groups.find(id=security_group.backend_id)
+            if backend_security_group.name != security_group.name:
+                nova.security_groups.update(
+                    backend_security_group, name=security_group.name, description='')
+            self.push_security_group_rules(security_group, nova)
+        except nova_exceptions.ClientException as e:
+            logger.exception('Failed to update security group %s in backend', security_group.uuid)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.debug('Security group %s successfully updated in backend', security_group.uuid)
 
-    @reraise_exceptions
-    def create_external_network(self, service_project_link, **kwargs):
+    def create_external_network(self, service_project_link, neutron, network_ip, network_prefix,
+                                vlan_id=None, vxlan_id=None, ips_count=None):
+
+        if service_project_link.external_network_id:
+            self.connect_link_to_external_network(
+                service_project_link, service_project_link.external_network_id)
+
         neutron = self.neutron_admin_client
-        self._old_backend.get_or_create_external_network(service_project_link, neutron, **kwargs)
 
-    @reraise_exceptions
+        # External network creation
+        network_name = 'nc-{0}-ext-net'.format(uuid.uuid4().hex)
+        network = {
+            'name': network_name,
+            'tenant_id': service_project_link.tenant_id,
+            'router:external': True,
+            # XXX: provider:physical_network should be configurable.
+            'provider:physical_network': 'physnet1'
+        }
+
+        if vlan_id:
+            network['provider:network_type'] = 'vlan'
+            network['provider:segmentation_id'] = vlan_id
+        elif vxlan_id:
+            network['provider:network_type'] = 'vxlan'
+            network['provider:segmentation_id'] = vxlan_id
+        else:
+            raise OpenStackBackendError('VLAN or VXLAN ID should be provided.')
+
+        create_response = neutron.create_network({'networks': [network]})
+        network_id = create_response['networks'][0]['id']
+        logger.info('External network with name %s has been created.', network_name)
+        service_project_link.external_network_id = network_id
+        service_project_link.save()
+
+        # Subnet creation
+        subnet_name = '{0}-sn01'.format(network_name)
+        cidr = '{0}/{1}'.format(network_ip, network_prefix)
+
+        subnet_data = {
+            'network_id': service_project_link.external_network_id,
+            'tenant_id': service_project_link.tenant_id,
+            'cidr': cidr,
+            'name': subnet_name,
+            'ip_version': 4,
+            'enable_dhcp': False,
+        }
+        create_response = neutron.create_subnet({'subnets': [subnet_data]})
+        logger.info('Subnet with name %s has been created.', subnet_name)
+
+        # Router creation
+        self.get_or_create_router(network_name, create_response['subnets'][0]['id'])
+
+        # Floating IPs creation
+        floating_ip = {
+            'floating_network_id': service_project_link.external_network_id,
+        }
+
+        if vlan_id is not None and ips_count is not None:
+            for i in range(ips_count):
+                ip = neutron.create_floatingip({'floatingip': floating_ip})['floatingip']
+                logger.info('Floating ip %s for external network %s has been created.',
+                            ip['floating_ip_address'], network_name)
+
+        return service_project_link.external_network_id
+
     def detect_external_network(self, service_project_link):
         neutron = self.neutron_admin_client
-        self._old_backend.detect_external_network(service_project_link, neutron)
+        routers = neutron.list_routers(tenant_id=service_project_link.tenant_id)['routers']
+        if bool(routers):
+            router = routers[0]
+        else:
+            logger.warning('Service project link %s does not have connected routers.', service_project_link)
+            return
 
-    @reraise_exceptions
+        ext_gw = router.get('external_gateway_info', {})
+        if 'network_id' in ext_gw:
+            service_project_link.external_network_id = ext_gw['network_id']
+            service_project_link.save()
+            logger.info('Found and set external network with id %s', ext_gw['network_id'])
+
     def delete_external_network(self, service_project_link):
         neutron = self.neutron_admin_client
-        self._old_backend.delete_external_network(service_project_link, neutron)
+        floating_ips = neutron.list_floatingips(
+            floating_network_id=service_project_link.external_network_id)['floatingips']
 
-    @reraise_exceptions
+        for ip in floating_ips:
+            neutron.delete_floatingip(ip['id'])
+            logger.info('Floating IP with id %s has been deleted.', ip['id'])
+
+        ports = neutron.list_ports(network_id=service_project_link.external_network_id)['ports']
+        for port in ports:
+            neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+            logger.info('Port with id %s has been deleted.', port['id'])
+
+        subnets = neutron.list_subnets(network_id=service_project_link.external_network_id)['subnets']
+        for subnet in subnets:
+            neutron.delete_subnet(subnet['id'])
+            logger.info('Subnet with id %s has been deleted.', subnet['id'])
+
+        neutron.delete_network(service_project_link.external_network_id)
+        logger.info('External network with id %s has been deleted.', service_project_link.external_network_id)
+        service_project_link.external_network_id = ''
+        service_project_link.save()
+
     def get_or_create_internal_network(self, service_project_link):
         neutron = self.neutron_admin_client
-        self._old_backend.get_or_create_internal_network(service_project_link, neutron)
+        logger.info('Checking internal network of tenant %s', self.tenant_id)
+        if service_project_link.internal_network_id:
+            try:
+                # check if the network actually exists
+                response = neutron.show_network(service_project_link.internal_network_id)
+            except neutron_exceptions.NeutronClientException as e:
+                logger.exception('Internal network with id %s does not exist. Stale data in database?',
+                                 service_project_link.internal_network_id)
+                six.reraise(OpenStackBackendError, e)
+            else:
+                logger.info('Internal network with id %s exists.', service_project_link.internal_network_id)
 
-    @reraise_exceptions
+                network_name = response['network']['name']
+                subnet_id = response['network']['subnets'][0]
+                self.get_or_create_router(network_name, subnet_id)
+
+            return service_project_link.internal_network_id
+
+        network_name = self.get_tenant_internal_network_name(service_project_link)
+        networks = neutron.list_networks(name=network_name)['networks']
+
+        if networks:
+            network = networks[0]
+            service_project_link.internal_network_id = network['id']
+            service_project_link.save()
+            logger.info('Internal network %s for tenant %s already exists.', network_name, self.tenant_id)
+
+            subnet_id = network['subnets'][0]
+            self.get_or_create_router(network_name, subnet_id)
+        else:
+            network = {
+                'name': network_name,
+                'tenant_id': self.tenant_id,
+            }
+
+            # in case nothing fits, create and persist internal network
+            create_response = neutron.create_network({'networks': [network]})
+            network_id = create_response['networks'][0]['id']
+            service_project_link.internal_network_id = network_id
+            service_project_link.save()
+            logger.info('Internal network %s was created for tenant %s.', network_name, self.tenant_id)
+
+            subnet_name = 'nc-{0}-subnet01'.format(network_name)
+
+            logger.info('Creating subnet %s', subnet_name)
+            subnet_data = {
+                'network_id': service_project_link.internal_network_id,
+                'tenant_id': self.tenant_id,
+                'cidr': '192.168.42.0/24',
+                'allocation_pools': [
+                    {
+                        'start': '192.168.42.10',
+                        'end': '192.168.42.250'
+                    }
+                ],
+                'name': subnet_name,
+                'ip_version': 4,
+                'enable_dhcp': True,
+            }
+            create_response = neutron.create_subnet({'subnets': [subnet_data]})
+            self.get_or_create_router(network_name, create_response['subnets'][0]['id'])
+
+        return service_project_link.internal_network_id
+
     def allocate_floating_ip_address(self, service_project_link):
         neutron = self.neutron_admin_client
-        self._old_backend.allocate_floating_ip_address(neutron, service_project_link)
+        try:
+            ip_address = neutron.create_floatingip({
+                'floatingip': {
+                    'floating_network_id': service_project_link.external_network_id,
+                    'tenant_id': self.tenant_id,
+                }
+            })['floatingip']
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('Unable to allocate floating IP address in external network %s',
+                             service_project_link.external_network_id)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            service_project_link.floating_ips.create(
+                status='DOWN',
+                address=ip_address['floating_ip_address'],
+                backend_id=ip_address['id'],
+                backend_network_id=ip_address['floating_network_id']
+            )
+            logger.info('Floating IP %s for external network with id %s has been created.',
+                        ip_address['floating_ip_address'], service_project_link.external_network_id)
 
     def prepare_floating_ip(self, service_project_link):
         """ Allocate new floating_ip to service project link tenant if it does not have any free ips """
         if not service_project_link.floating_ips.filter(status='DOWN').exists():
             self.allocate_floating_ip_address(service_project_link)
 
-    @reraise_exceptions
     def assign_floating_ip_to_instance(self, instance, floating_ip):
         nova = self.nova_admin_client
-        self._old_backend.assign_floating_ip_to_instance(nova, instance, floating_ip)
+        nova.servers.add_floating_ip(server=instance.backend_id, address=floating_ip.address)
 
-    @reraise_exceptions
+        floating_ip.status = 'ACTIVE'
+        floating_ip.save()
+
+        instance.external_ips = floating_ip.address
+        instance.save()
+
+        logger.info('Floating IP %s was successfully assigned to the instance with id %s.',
+                    floating_ip.address, instance.uuid)
+
     def push_floating_ip_to_instance(self, instance, server):
-        nova = self.nova_client
-        self._old_backend.push_floating_ip_to_instance(server, instance, nova)
+        if not instance.external_ips or not instance.internal_ips:
+            return
 
-    @reraise_exceptions
-    def connect_link_to_external_network(self, service_project_link):
+        logger.debug('About to add external ip %s to instance %s',
+                     instance.external_ips, instance.uuid)
+
+        service_project_link = instance.service_project_link
+        try:
+            floating_ip = service_project_link.floating_ips.get(
+                status__in=('BOOKED', 'DOWN'),
+                address=instance.external_ips,
+                backend_network_id=service_project_link.external_network_id
+            )
+            server.add_floating_ip(address=instance.external_ips, fixed_address=instance.internal_ips)
+        except (
+            nova_exceptions.ClientException,
+            ObjectDoesNotExist,
+            MultipleObjectsReturned,
+            KeyError,
+            IndexError,
+        ):
+            logger.exception('Failed to add external ip %s to instance %s',
+                             instance.external_ips, instance.uuid)
+            instance.set_erred()
+            instance.save()
+        else:
+            floating_ip.status = 'ACTIVE'
+            floating_ip.save()
+            logger.info('Successfully added external ip %s to instance %s',
+                        instance.external_ips, instance.uuid)
+
+    def connect_link_to_external_network(self, service_project_link, external_network_id=None):
         neutron = self.neutron_admin_client
-        settings = service_project_link.service.settings
-        external_network_id = settings.options.get('external_network_id')
+
+        if not external_network_id:
+            settings = service_project_link.service.settings
+            external_network_id = settings.options.get('external_network_id')
+
         if external_network_id:
-            self._old_backend.connect_membership_to_external_network(
-                service_project_link, settings.options['external_network_id'], neutron)
-            connected = True
+            try:
+                # check if the network actually exists
+                response = neutron.show_network(external_network_id)
+            except neutron_exceptions.NeutronClientException as e:
+                logger.exception('External network %s does not exist. Stale data in database?', external_network_id)
+                six.reraise(OpenStackBackendError, e)
+
+            network_name = response['network']['name']
+            subnet_id = response['network']['subnets'][0]
+            # XXX: refactor function call, split get_or_create_router into more fine grained
+            self.get_or_create_router(network_name, subnet_id,
+                                      external=True, network_id=response['network']['id'])
+
+            service_project_link.external_network_id = external_network_id
+            service_project_link.save()
+
+            logger.info('Router between external network %s and tenant %s was successfully created',
+                        external_network_id, service_project_link.tenant_id)
+
+            return external_network_id
+
         else:
             logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
                            ' option is not defined in settings %s option', settings.name)
-            connected = False
-        return connected
+            return None
+
+    def get_or_create_router(self, network_name, subnet_id, external=False, network_id=None):
+        neutron = self.neutron_admin_client
+        tenant_id = self.tenant_id
+        router_name = '{0}-router'.format(network_name)
+        routers = neutron.list_routers(tenant_id=tenant_id)['routers']
+
+        if routers:
+            logger.info('Router(s) in tenant with id %s already exist(s).', tenant_id)
+            router = routers[0]
+        else:
+            router = neutron.create_router({'router': {'name': router_name, 'tenant_id': tenant_id}})['router']
+            logger.info('Router %s has been created.', router['name'])
+
+        try:
+            if not external:
+                ports = neutron.list_ports(device_id=router['id'], tenant_id=tenant_id)['ports']
+                if not ports:
+                    neutron.add_interface_router(router['id'], {'subnet_id': subnet_id})
+                    logger.info('Internal subnet %s was connected to the router %s.', subnet_id, router_name)
+                else:
+                    logger.info('Internal subnet %s is already connected to the router %s.', subnet_id, router_name)
+            else:
+                if (not router.get('external_gateway_info') or
+                        router['external_gateway_info'].get('network_id') != network_id):
+                    neutron.add_gateway_router(router['id'], {'network_id': network_id})
+                    logger.info('External network %s was connected to the router %s.', network_id, router_name)
+                else:
+                    logger.info('External network %s is already connected to router %s.', network_id, router_name)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.warning(e)
+
+        return router['id']
 
     @reraise_exceptions
     def delete_instance(self, instance):
