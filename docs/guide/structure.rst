@@ -40,7 +40,7 @@ is below:
       Limited access to project management and billing.
 
     Resource
-      A resource is a provisioned entity of a service, for example, a VM in OpenStack or AWS, a repository in Github
+      A resource is a provisioned entity of a service, for example, a VM in OpenStack or AWS, a repository in GitHub
       or a database in Oracle. Each resource belongs to a particular project.
 
     Project group

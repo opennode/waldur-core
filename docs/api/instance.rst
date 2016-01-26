@@ -264,7 +264,7 @@ If instance is in the state that does not allow this transition, error code will
 Resizing an instance
 --------------------
 
-To resize an instance, submit a POST request to the instance's RPC url, specifying URI of a target flavor.
+To resize an instance, submit a POST request to the instance's RPC URL, specifying URI of a target flavor.
 Example of a valid request:
 
 
@@ -280,7 +280,7 @@ Example of a valid request:
         "flavor": "http://example.com/api/flavors/1ee385bc043249498cfeb8c7e3e079f0/"
     }
 
-To resize data disk of the instance, submit a POST request to the instance's RPC url, specifying size of the disk.
+To resize data disk of the instance, submit a POST request to the instance's RPC URL, specifying size of the disk.
 Additional size of instance cannot be over the storage quota.
 
 Example of a valid request:

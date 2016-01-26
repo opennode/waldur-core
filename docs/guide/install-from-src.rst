@@ -210,7 +210,7 @@ Therefore configuration might look like this:
           Path to Kill Bill driver.
 
         api_url
-          Url of Kill Bill API.
+          URL of Kill Bill API.
 
         username
             Username of Kill Bill admin account.
