@@ -54,7 +54,7 @@ Backup has a state, currently supported states are:
 - Deleting
 - Erred
 
-You can filter backup by description or instance field, which should match object url.
+You can filter backup by description or instance field, which should match object URL.
 It is useful when one resource has several backups and you want to get all backups related to this resource.
 
 Backup actions
@@ -68,8 +68,8 @@ operations:
   will be **409 CONFLICT**.
   Supported inputs for VM Instance:
 
-  - image - url to a image used for restoration. Mandatory.
-  - flavor - url to a flavor used for restoration. Mandatory.
+  - image - URL to a image used for restoration. Mandatory.
+  - flavor - URL to a flavor used for restoration. Mandatory.
   - name - Name of the restored VM. Optional (equals to the name of the original VM by default).
 
 - **/api/openstack-backup/<backup_uuid>/delete/** - delete a specified backup

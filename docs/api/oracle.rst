@@ -47,7 +47,7 @@ For example,
         "service": "http://example.com/api/oracle/b0e8a4cbd47c4f9ca01642b7ec033db4/"
     }
 
-To remove a link, issue DELETE to url of the corresponding connection as stuff user or customer owner.
+To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
 
 Project-service connection list
 -------------------------------

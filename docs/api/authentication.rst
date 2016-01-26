@@ -28,7 +28,7 @@ Supported token backends
 Password-based backend
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Endpoint url: **/api-auth/password/**
+Endpoint URL: **/api-auth/password/**
 
 Valid request example:
 
@@ -85,7 +85,7 @@ Invalid credentials failure response example:
 SAML-based backend
 ^^^^^^^^^^^^^^^^^^
 
-Endpoint url: ``/api-auth/saml2/``
+Endpoint URL: ``/api-auth/saml2/``
 
 Valid request example:
 
