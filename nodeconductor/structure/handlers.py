@@ -9,7 +9,6 @@ from django.contrib.auth import get_user_model
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
-from nodeconductor.quotas import handlers as quotas_handlers
 from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -372,28 +371,16 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
             customer.add_quota_usage('nc_user_count', -1)
 
 
-def log_resource_created(sender, instance, created=False, **kwargs):
-    if not created:
-        return
-
-    if instance.backend_id:
-        # It is assumed that resource is imported if it already has backend id
-        event_logger.resource.info(
-            'Resource {resource_name} has been imported.',
-            event_type='resource_imported',
-            event_context={'resource': instance})
-    else:
-        event_logger.resource.info(
-            'Resource {resource_name} has been created.',
-            event_type='resource_created',
-            event_context={'resource': instance})
-
-
 def log_resource_deleted(sender, instance, **kwargs):
     event_logger.resource.info(
         'Resource {resource_name} has been deleted.',
-        event_type='resource_deleted',
+        event_type='resource_deletion_succeeded',
         event_context={'resource': instance})
+
+
+def detect_vm_coordinates(sender, instance=None, created=False, **kwargs):
+    if created or instance.tracker.has_changed('external_ips'):
+        send_task('structure', 'detect_vm_coordinates')(instance.to_string())
 
 
 def connect_customer_to_shared_service_settings(sender, instance, created=False, **kwargs):

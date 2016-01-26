@@ -11,6 +11,7 @@ from iptools.ipv4 import validate_cidr
 
 from nodeconductor.core import models as core_models
 from nodeconductor.cost_tracking import models as cost_tracking_models
+from nodeconductor.iaas import managers
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
@@ -346,6 +347,8 @@ class Instance(structure_models.Resource,
     agreed_sla = models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     type = models.CharField(max_length=10, choices=SERVICE_TYPES, default=Services.IAAS)
 
+    objects = managers.InstanceManager()
+
     def __str__(self):
         return self.name
 
@@ -396,6 +399,7 @@ class InstanceSlaHistory(models.Model):
     class Meta:
         verbose_name = 'Instance SLA history'
         verbose_name_plural = 'Instance SLA histories'
+        unique_together = ('period', 'instance')
 
     def __str__(self):
         return 'SLA for %s during %s: %s' % (self.instance, self.period, self.value)

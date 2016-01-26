@@ -61,6 +61,13 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     def get_log_fields(self):
         return ('uuid', 'name', 'limit', 'usage', 'scope')
 
+    def get_field(self):
+        fields = self.scope.get_quotas_fields()
+        try:
+            return next(f for f in fields if f.name == self.name)
+        except StopIteration:
+            return
+
 
 class QuotaModelMixin(models.Model):
     """
@@ -99,6 +106,17 @@ class QuotaModelMixin(models.Model):
         abstract = True
 
     quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
+
+    def get_quota_usage(self, quota_name, default=0):
+        """
+        Get quota usage by quota_name if it exists or return default value.
+        """
+        if quota_name not in self.Quotas.__dict__:
+            raise ValueError('Invalid quota name {}'.format(quota_name))
+        try:
+            return self.quotas.get(name=quota_name).usage
+        except Quota.DoesNotExist:
+            return default
 
     def set_quota_limit(self, quota_name, limit):
         self.quotas.filter(name=quota_name).update(limit=limit)

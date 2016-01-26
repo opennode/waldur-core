@@ -56,6 +56,12 @@ class CostTrackingRegister(object):
 class CostTrackingBackend(object):
     """ Cost tracking interface for NC plugin """
 
+    # A list of numerical <item type>'s like storage or users count
+    NUMERICAL = []
+
+    # Should be used as consistent name for different VM types
+    VM_SIZE_ITEM_TYPE = 'flavor'
+
     @classmethod
     def get_used_items(cls, resource):
         """ Return list of items that are currently used by resource

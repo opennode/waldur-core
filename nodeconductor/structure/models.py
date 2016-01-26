@@ -20,6 +20,7 @@ from model_utils import FieldTracker
 from jsonfield import JSONField
 
 from nodeconductor.core import models as core_models
+from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.log import LoggableMixin
@@ -28,6 +29,7 @@ from nodeconductor.structure.signals import structure_role_granted, structure_ro
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
+from nodeconductor.structure.utils import get_coordinates_by_ip
 
 
 def validate_service_type(service_type):
@@ -228,16 +230,16 @@ class Customer(core_models.UuidMixin,
         }
 
     def get_project_count(self):
-        return self.quotas.get(name='nc_project_count').usage
+        return self.get_quota_usage('nc_project_count')
 
     def get_service_count(self):
-        return self.quotas.get(name='nc_service_count').usage
+        return self.get_quota_usage('nc_service_count')
 
     def get_app_count(self):
-        return self.quotas.get(name='nc_app_count').usage
+        return self.get_quota_usage('nc_app_count')
 
     def get_vm_count(self):
-        return self.quotas.get(name='nc_vm_count').usage
+        return self.get_quota_usage('nc_vm_count')
 
 
 class BalanceHistory(models.Model):
@@ -433,10 +435,10 @@ class Project(core_models.DescribableMixin,
                      for link in model['service_project_link'].objects.filter(project=self)]
 
     def get_app_count(self):
-        return self.quotas.get(name='nc_app_count').usage
+        return self.get_quota_usage('nc_app_count')
 
     def get_vm_count(self):
-        return self.quotas.get(name='nc_vm_count').usage
+        return self.get_quota_usage('nc_vm_count')
 
 
 @python_2_unicode_compatible
@@ -570,7 +572,7 @@ class ServiceSettings(core_models.UuidMixin,
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
 
-    options = JSONField(default={}, help_text='Extra options')
+    options = JSONField(default={}, help_text='Extra options', blank=True)
 
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     # TODO: Implement demo mode instead of dummy mode (NC-900)
@@ -757,14 +759,35 @@ class BaseVirtualMachineMixin(models.Model):
         abstract = True
 
 
-class VirtualMachineMixin(BaseVirtualMachineMixin):
+class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
+    def __init__(self, *args, **kwargs):
+        AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
+        super(VirtualMachineMixin, self).__init__(*args, **kwargs)
+
     # This extra class required in order not to get into a mess with current iaas implementation
     cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
     disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
 
+    external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
+    internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
+
     class Meta(object):
         abstract = True
+
+    def detect_coordinates(self):
+        if self.external_ips:
+            return get_coordinates_by_ip(self.external_ips)
+
+    def get_access_url(self):
+        if self.external_ips:
+            return self.external_ips
+        if self.internal_ips:
+            return self.internal_ips
+        return None
+
+    def get_access_url_name(self):
+        return None
 
 
 class PaidResource(models.Model):
@@ -882,6 +905,10 @@ class Resource(core_models.UuidMixin,
         raise NotImplementedError(
             "Please refer to nodeconductor.billing.tasks.debit_customers while implementing it")
 
+    def get_access_url(self):
+        # default behaviour. Override in subclasses if applicable
+        return None
+
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
@@ -890,14 +917,18 @@ class Resource(core_models.UuidMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_vm_models(cls):
+        # TODO: remove once iaas has been deprecated
+        from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
-                if issubclass(resource, VirtualMachineMixin)]
+                if issubclass(resource, VirtualMachineMixin) or issubclass(resource, Instance)]
 
     @classmethod
     @lru_cache(maxsize=1)
     def get_app_models(cls):
+        # TODO: remove once iaas has been deprecated
+        from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
-                if not issubclass(resource, VirtualMachineMixin)]
+                if not issubclass(resource, VirtualMachineMixin) and not issubclass(resource, Instance)]
 
     @classmethod
     @lru_cache(maxsize=1)

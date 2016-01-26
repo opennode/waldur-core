@@ -1,5 +1,6 @@
-import logging
 import functools
+import logging
+import sys
 
 from django.db import transaction
 from django.utils import six, dateparse, timezone
@@ -13,6 +14,7 @@ from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import ServiceBackend, ServiceBackendError
+from nodeconductor.structure.log import event_logger
 from nodeconductor.iaas.backend import OpenStackClient, CloudBackendError
 from nodeconductor.iaas.backend import OpenStackBackend as OldOpenStackBackend
 from nodeconductor.openstack import models
@@ -222,12 +224,24 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def push_quotas(self, service_project_link, quotas):
-        self._old_backend.push_membership_quotas(service_project_link, quotas)
+        try:
+            self._old_backend.push_membership_quotas(service_project_link, quotas)
+        except Exception as e:
+            event_logger.service_project_link.warning(
+                'Failed to push quotas to backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(*sys.exc_info())
 
     @reraise_exceptions
     def pull_quotas(self, service_project_link):
         self._old_backend.pull_resource_quota(service_project_link)
         self._old_backend.pull_resource_quota_usage(service_project_link)
+
         # additional quotas that are not implemented for in iaas application
         logger.debug('About to get floating ip quota for tenant %s', service_project_link.tenant_id)
         neutron = self.neutron_client
@@ -245,12 +259,33 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def pull_floating_ips(self, service_project_link):
-        self._old_backend.pull_floating_ips(service_project_link)
+        try:
+            self._old_backend.pull_floating_ips(service_project_link)
+        except Exception as e:
+            event_logger.service_project_link.warning(
+                'Failed to pull floating IPs from backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(*sys.exc_info())
 
     @reraise_exceptions
     def push_security_groups(self, service_project_link, is_initial=False):
-        self._old_backend.push_security_groups(
-            service_project_link, is_membership_creation=is_initial)
+        try:
+            self._old_backend.push_security_groups(service_project_link, is_membership_creation=is_initial)
+        except Exception as e:
+            event_logger.service_project_link.warning(
+                'Failed to push security groups to backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(*sys.exc_info())
 
     @reraise_exceptions
     def sync_instance_security_groups(self, instance):
@@ -258,14 +293,25 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def push_link(self, service_project_link):
-        keystone = self.keystone_admin_client
-        tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
+        try:
+            keystone = self.keystone_admin_client
+            tenant = self._old_backend.get_or_create_tenant(service_project_link, keystone)
 
-        service_project_link.tenant_id = self.tenant_id = tenant.id
-        service_project_link.save(update_fields=['tenant_id'])
+            service_project_link.tenant_id = self.tenant_id = tenant.id
+            service_project_link.save(update_fields=['tenant_id'])
 
-        self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
-        self.get_or_create_internal_network(service_project_link)
+            self._old_backend.ensure_user_is_tenant_admin(self.settings.username, tenant, keystone)
+            self.get_or_create_internal_network(service_project_link)
+        except Exception as e:
+            event_logger.service_project_link.warning(
+                'Failed to create service project link on backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(*sys.exc_info())
 
     def get_instance(self, instance_id):
         try:
@@ -595,6 +641,14 @@ class OpenStackBackend(ServiceBackend):
         cinder.volumes.delete(data_volume_id)
 
     @reraise_exceptions
+    def update_flavor(self, instance, flavor):
+        self._old_backend.update_flavor(instance, flavor)
+
+    @reraise_exceptions
+    def extend_disk(self, instance):
+        self._old_backend.extend_disk(instance)
+
+    @reraise_exceptions
     def create_security_group(self, security_group):
         nova = self.nova_client
         self._old_backend.create_security_group(security_group, nova)
@@ -653,7 +707,8 @@ class OpenStackBackend(ServiceBackend):
     def connect_link_to_external_network(self, service_project_link):
         neutron = self.neutron_admin_client
         settings = service_project_link.service.settings
-        external_network_id = settings.options.get('external_network_id')
+        options = getattr(settings, 'options', {})
+        external_network_id = options.get('external_network_id')
         if external_network_id:
             self._old_backend.connect_membership_to_external_network(
                 service_project_link, settings.options['external_network_id'], neutron)
@@ -666,10 +721,17 @@ class OpenStackBackend(ServiceBackend):
 
     @reraise_exceptions
     def delete_instance(self, instance):
-        self._old_backend.delete_instance(instance)
-        (models.FloatingIP.objects
-            .filter(service_project_link=instance.service_project_link, address=instance.external_ips)
-            .update(status='DOWN'))
+        try:
+            self._old_backend.delete_instance(instance)
+            (models.FloatingIP.objects
+                .filter(service_project_link=instance.service_project_link, address=instance.external_ips)
+                .update(status='DOWN'))
+        except:
+            event_logger.resource.error(
+                'Resource {resource_name} deletion has failed.',
+                event_type='resource_deletion_failed',
+                event_context={'resource': instance})
+            six.reraise(*sys.exc_info())
 
     @reraise_exceptions
     def create_snapshots(self, service_project_link, volume_ids, prefix='Cloned volume'):

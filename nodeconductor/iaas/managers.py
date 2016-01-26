@@ -1,29 +1,22 @@
 from django.db import models
 
-class InstanceManager(models.Manager):
+from nodeconductor.structure.managers import StructureQueryset
 
-    def for_aggregates(self, model_name, aggregates):
-        if model_name == 'project':
-            return self.for_projects(aggregates)
-        elif model_name == 'project_group':
-            return self.for_project_groups(aggregates)
-        elif model_name == 'customer':
-            return self.for_customers(aggregates)
 
-    def for_projects(self, qs):
-        """
-        Filters instances by projects
-        """
-        return self.get_queryset().filter(cloud_project_membership__project__in=qs)
+class InstanceQueryset(StructureQueryset):
+    """ Hack that allow to filter iaas instances based on service_project_links and services """
 
-    def for_project_groups(self, qs):
-        """
-        Filters instances by project groups
-        """
-        return self.get_queryset().filter(cloud_project_membership__project__project_groups__in=qs)
+    def order_by(self, *keys):
+        new_keys = [key.replace('service_project_link', 'cloud_project_membership') for key in keys]
+        new_keys = [key.replace('service', 'cloud') for key in new_keys]
+        return super(InstanceQueryset, self).order_by(*new_keys)
 
-    def for_customers(self, qs):
-        """
-        Filters instances by customers
-        """
-        return self.get_queryset().filter(cloud_project_membership__project__customer__in=qs)
+    def _filter_by_custom_fields(self, **kwargs):
+        # replace filter fields to enable filtering by spl and service.
+        for key in kwargs:
+            new_key = key.replace('service_project_link', 'cloud_project_membership')
+            new_key = new_key.replace('service', 'cloud')
+            kwargs[new_key] = kwargs.pop(key)
+        return super(InstanceQueryset, self)._filter_by_custom_fields(**kwargs)
+
+InstanceManager = models.Manager.from_queryset(InstanceQueryset)

@@ -25,6 +25,7 @@ ADMIN_TEMPLATE_LOADERS = (
 )
 
 FLUENT_DASHBOARD_APP_ICONS = {
+    'core/user': 'system-users.png',
     'structure/customer': 'system-users.png',
     'structure/servicesettings': 'preferences-other.png',
     'structure/project': 'folder.png',

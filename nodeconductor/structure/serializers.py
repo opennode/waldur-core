@@ -101,7 +101,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     service_project_link_url = serializers.SerializerMethodField()
     name = serializers.ReadOnlyField(source='service.name')
     type = serializers.SerializerMethodField()
-    state = serializers.ReadOnlyField(source='get_state_display')
+    state = serializers.SerializerMethodField()
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
@@ -131,6 +131,15 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     def get_type(self, link):
         return SupportedServices.get_name_for_model(link.service)
 
+    # XXX: SPL is intended to become stateless. For backward compatiblity we are returning here state from connected
+    # service settings. To be removed once SPL becomes stateless.
+    def get_state(self, link):
+        try:
+            return link.service.settings.get_state_display()
+        except AttributeError:
+            # XXX: remove once IaaS Cloud is gone
+            return 'In Sync'  # arbitrary value
+
     def get_shared(self, link):
         # XXX: Backward compatibility with IAAS Cloud
         try:
@@ -151,7 +160,6 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
 
 
 class ProjectSerializer(PermissionFieldFilteringMixin,
-                        core_serializers.DynamicSerializer,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = NestedProjectGroupSerializer(
@@ -225,7 +233,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
         services = defaultdict(list)
         related_fields = (
             'id',
-            'state',
+            'service__settings__state',
             'project_id',
             'service__uuid',
             'service__name',
@@ -270,8 +278,7 @@ class CustomerImageSerializer(serializers.ModelSerializer):
         fields = ['image']
 
 
-class CustomerSerializer(core_serializers.DynamicSerializer,
-                         core_serializers.AugmentedSerializerMixin,
+class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
     projects = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
@@ -1090,6 +1097,67 @@ class BasicResourceSerializer(serializers.Serializer):
         return SupportedServices.get_name_for_model(resource)
 
 
+class SummaryResourceSerializer(BasicResourceSerializer):
+    url = serializers.SerializerMethodField()
+    state = serializers.ReadOnlyField(source='get_state_display')
+
+    project_groups = BasicProjectGroupSerializer(
+        source='service_project_link.project.project_groups', many=True, read_only=True)
+
+    project = serializers.HyperlinkedRelatedField(
+        source='service_project_link.project',
+        view_name='project-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    customer = serializers.HyperlinkedRelatedField(
+        source='service_project_link.project.customer',
+        view_name='customer-detail',
+        read_only=True,
+        lookup_field='uuid')
+    customer_abbreviation = serializers.ReadOnlyField(source='service_project_link.project.customer.abbreviation')
+    customer_native_name = serializers.ReadOnlyField(source='service_project_link.project.customer.native_name')
+
+    service_project_link = serializers.SerializerMethodField()
+
+    service = serializers.SerializerMethodField()
+    service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
+    service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
+
+    created = serializers.DateTimeField(read_only=True)
+    tags = serializers.SerializerMethodField()
+
+    latitude = serializers.ReadOnlyField()
+    longitude = serializers.ReadOnlyField()
+
+    access_url = serializers.SerializerMethodField()
+    error_message = serializers.ReadOnlyField()
+
+    def get_url(self, obj):
+        return reverse(obj.get_url_name() + '-detail',
+                       kwargs={'uuid': obj.uuid}, request=self.context['request'])
+
+    def get_tags(self, obj):
+        return [t.name for t in obj.tags.all()]
+
+    def get_service_project_link(self, obj):
+        return reverse(obj.service_project_link.get_url_name() + '-detail',
+                       kwargs={'pk': obj.service_project_link.pk}, request=self.context['request'])
+
+    def get_service(self, obj):
+        return reverse(obj.service_project_link.service.get_url_name() + '-detail',
+                       kwargs={'uuid': obj.service_project_link.service.uuid}, request=self.context['request'])
+
+    def get_access_url(self, obj):
+        url = obj.get_access_url()
+        if url:
+            return url
+
+        url_name = obj.get_access_url_name()
+        if url_name:
+            return reverse(url_name, kwargs={'uuid': obj.uuid}, request=self.context['request'])
+
+
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
@@ -1136,6 +1204,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     resource_type = serializers.SerializerMethodField()
 
     tags = serializers.SerializerMethodField()
+    access_url = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -1147,6 +1216,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
+            'access_url'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1173,6 +1243,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_resource_fields(self):
         return self.Meta.model._meta.get_all_field_names()
+
+    # an optional generic URL for accessing a resource
+    def get_access_url(self, obj):
+        return obj.get_access_url()
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1257,7 +1331,8 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     class Meta(BaseResourceSerializer.Meta):
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
-            'cores', 'ram', 'disk', 'external_ips', 'internal_ips'
+            'cores', 'ram', 'disk', 'external_ips', 'internal_ips',
+            'latitude', 'longitude'
         )
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
             'user_data', 'ssh_public_key'
@@ -1265,6 +1340,7 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         write_only_fields = ('user_data',)
         fields = BaseResourceSerializer.Meta.fields + (
             'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
+            'latitude', 'longitude'
         )
 
     def get_fields(self):

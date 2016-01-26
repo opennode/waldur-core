@@ -4,6 +4,8 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
+from nodeconductor.core.tasks import send_task
+from nodeconductor.openstack.log import event_logger
 from nodeconductor.openstack.models import SecurityGroup, SecurityGroupRule, OpenStackServiceProjectLink
 
 
@@ -91,9 +93,25 @@ def check_project_name_update(sender, instance=None, created=False, **kwargs):
 
     old_name = instance.tracker.previous('name')
     if old_name != instance.name:
-        links = OpenStackServiceProjectLink.objects.filter(project__uuid=instance.uuid)
-        if links.exists():
-            from nodeconductor.openstack.tasks import openstack_update_tenant_name
+        for spl in OpenStackServiceProjectLink.objects.filter(project__uuid=instance.uuid):
+            send_task('openstack', 'update_tenant_name')(spl.to_string())
 
-            for link in links:
-                openstack_update_tenant_name.delay(link.to_string())
+
+def log_backup_schedule_save(sender, instance, created=False, **kwargs):
+    if created:
+        event_logger.openstack_backup.info(
+            'Backup schedule for {resource_name} has been created.',
+            event_type='resource_backup_schedule_creation_succeeded',
+            event_context={'resource': instance.instance})
+    else:
+        event_logger.openstack_backup.info(
+            'Backup schedule for {resource_name} has been updated.',
+            event_type='resource_backup_schedule_update_succeeded',
+            event_context={'resource': instance.instance})
+
+
+def log_backup_schedule_delete(sender, instance, **kwargs):
+    event_logger.openstack_backup.info(
+        'Backup schedule for {resource_name} has been deleted.',
+        event_type='resource_backup_schedule_deletion_succeeded',
+        event_context={'resource': instance.instance})

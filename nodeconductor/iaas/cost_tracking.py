@@ -6,7 +6,7 @@ from nodeconductor.iaas import models
 
 
 class PriceItemTypes(object):
-    FLAVOR = 'flavor'
+    FLAVOR = CostTrackingBackend.VM_SIZE_ITEM_TYPE
     STORAGE = 'storage'
     LICENSE_APPLICATION = 'license-application'
     LICENSE_OS = 'license-os'
@@ -33,7 +33,7 @@ class SupportTypes(object):
 
 
 class IaaSCostTrackingBackend(CostTrackingBackend):
-
+    NUMERICAL = [PriceItemTypes.STORAGE]
     STORAGE_KEY = '1 GB'
 
     @classmethod

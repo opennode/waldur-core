@@ -553,6 +553,31 @@ class BaseResourceFilter(django_filters.FilterSet):
             # resource
             'name', 'description', 'state', 'uuid',
         )
+        order_by = [
+            'name',
+            '-name',
+            'state',
+            '-state',
+            'service_project_link__project__customer__name',
+            '-service_project_link__project__customer__name',
+            'service_project_link__project__customer__native_name',
+            '-service_project_link__project__customer__native_name',
+            'service_project_link__project__customer__abbreviation',
+            '-service_project_link__project__customer__abbreviation',
+            'service_project_link__project__name',
+            '-service_project_link__project__name',
+            'service_project_link__project__project_groups__name',
+            '-service_project_link__project__project_groups__name',
+            'created',
+            '-created',
+        ]
+        order_by_mapping = {
+            'customer_name': 'service_project_link__project__customer__name',
+            'customer_native_name': 'service_project_link__project__customer__native_name',
+            'customer_abbreviation': 'service_project_link__project__customer__abbreviation',
+            'project_name': 'service_project_link__project__name',
+            'project_group_name': 'service_project_link__project__project_groups__name',
+        }
 
 
 class BaseServicePropertyFilter(django_filters.FilterSet):

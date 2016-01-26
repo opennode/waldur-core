@@ -4,8 +4,9 @@ from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 from django_fsm import signals as fsm_signals
+from model_utils import FieldTracker
 
-from nodeconductor.core.models import SshPublicKey
+from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
 from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
 from nodeconductor.structure import handlers
 from nodeconductor.structure import signals as structure_signals
@@ -151,19 +152,21 @@ class StructureConfig(AppConfig):
         )
 
         for index, model in enumerate(Resource.get_all_models()):
-            signals.post_save.connect(
-                handlers.log_resource_created,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.log_resource_created_{}_{}'.format(
-                    model.__name__, index),
-            )
-
             signals.post_delete.connect(
                 handlers.log_resource_deleted,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.log_resource_deleted_{}_{}'.format(
                     model.__name__, index),
             )
+
+        for index, model in enumerate(Resource.get_vm_models()):
+            if issubclass(model, CoordinatesMixin):
+                signals.post_save.connect(
+                    handlers.detect_vm_coordinates,
+                    sender=model,
+                    dispatch_uid='nodeconductor.structure.handlers.detect_vm_coordinates_{}_{}'.format(
+                        model.__name__, index),
+                )
 
         for model in ServiceProjectLink.get_all_models():
             name = 'propagate_ssh_keys_for_%s' % model.__name__

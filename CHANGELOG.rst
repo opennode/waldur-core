@@ -3,8 +3,30 @@ CHANGELOG
 
 Release NEXT
 ------------
+
 <Nothing yet>
 
+Release 0.85.0
+--------------
+
+- Updated documentation for resource lifecycle events.
+- Improved /admin interface, exposed installed plugins and versions.
+- Made state rendering in /projects consistent.
+- Fixed recovery command for service project links.
+- Exposed subscribtion to Kill Bill and offline resources from admin page.
+- Reimplemented resources summary view.
+- Moved external_ips field to VirtualMachineMixin.
+- Added model to resource viewset for permissions.
+- Added ability to expose location with coordinates to VMs and resources.
+- Added url field to /api/resources.
+- Exposed OpenStack instance resize feature.
+- Added a generic access_url field for Resource model.
+- Added filter for default price list item in admin page.
+- Refactored OpenStack Сelery tasks.
+- Removed temporarily validation of TLS.
+- Removed dev only app from test_settings.
+- Extended DefaultPriceListItem with metadata.
+- Fixed documentation typos.
 
 Release 0.84.0
 --------------

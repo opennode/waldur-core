@@ -4,6 +4,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import transition, FSMIntegerField
 from jsonfield import JSONField
 from model_utils import FieldTracker
+from urlparse import urlparse
 
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models
@@ -12,6 +13,7 @@ from nodeconductor.openstack.managers import BackupManager
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.structure.utils import get_coordinates_by_ip, Coordinates
 
 
 class OpenStackService(structure_models.Service):
@@ -149,17 +151,14 @@ class FloatingIP(core_models.UuidMixin):
     tracker = FieldTracker()
 
 
-class Instance(structure_models.Resource,
+class Instance(structure_models.VirtualMachineMixin,
                structure_models.PaidResource,
-               structure_models.VirtualMachineMixin):
+               structure_models.Resource):
 
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024
 
     service_project_link = models.ForeignKey(
         OpenStackServiceProjectLink, related_name='instances', on_delete=models.PROTECT)
-
-    external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-    internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
 
     # OpenStack backend specific fields
     system_volume_id = models.CharField(max_length=255, blank=True)
@@ -182,6 +181,17 @@ class Instance(structure_models.Resource,
             'uuid', 'name', 'type', 'service_project_link', 'ram', 'cores',
             'data_volume_size', 'system_volume_size',
         )
+
+    def detect_coordinates(self):
+        settings = self.service_project_link.service.settings
+        data = settings.options.get('coordinates')
+        if data:
+            return Coordinates(latitude=data['latitude'],
+                               longitude=data['longitude'])
+        else:
+            hostname = urlparse(settings.backend_url).hostname
+            if hostname:
+                return get_coordinates_by_ip(hostname)
 
 
 class InstanceSecurityGroup(models.Model):

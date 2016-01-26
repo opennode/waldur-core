@@ -14,6 +14,7 @@ class Command(BaseCommand):
         # TODO: implement other quotas recalculation
         # TODO: implement global stale quotas deletion
         self.delete_stale_quotas()
+        self.init_missing_quotas()
         self.recalculate_global_quotas()
         self.recalculate_counter_quotas()
         self.recalculate_aggregator_quotas()
@@ -24,6 +25,14 @@ class Command(BaseCommand):
             for obj in model.objects.all():
                 quotas_names = model.QUOTAS_NAMES + [f.name for f in model.get_quotas_fields()]
                 obj.quotas.exclude(name__in=quotas_names).delete()
+        self.stdout.write('...done')
+
+    def init_missing_quotas(self):
+        self.stdout.write('Initializing missing quotas')
+        for model in get_models_with_quotas():
+            for obj in model.objects.all():
+                for field in obj.get_quotas_fields():
+                    field.get_or_create_quota(scope=obj)
         self.stdout.write('...done')
 
     def recalculate_global_quotas(self):

@@ -155,8 +155,12 @@ class AbstractPriceListItem(models.Model):
 class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, AbstractPriceListItem):
     """ Default price list item for all resources of supported service types """
     resource_content_type = models.ForeignKey(ContentType, default=None)
+    metadata = JSONField(blank=True)
 
     tracker = FieldTracker()
+
+    def __str__(self):
+        return 'Price list item %s: %s = %s for %s' % (self.name, self.key, self.value, self.resource_content_type)
 
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
