@@ -6,8 +6,8 @@ One plugin can contain several extensions which is a pure Django application by 
 In order to be recognized and automatically connected to NodeConductor
 some additional configuration required.
 
-Extensions’ URL’s will be registered automatically only if
-settings.NODECONDUCTOR[‘EXTENSIONS_AUTOREGISTER’] is True, which is default.
+Extensions' URLs will be registered automatically only if
+settings.NODECONDUCTOR['EXTENSIONS_AUTOREGISTER'] is True, which is default.
 
 Create a class inherited from `nodeconductor.core.NodeConductorExtension`.
 Implement methods which reflect your app functionality. At least `django_app()` should be implemented.
