@@ -5,6 +5,8 @@ from django.db import models, migrations
 import uuidfield.fields
 import django_fsm
 
+import nodeconductor.core.validators
+
 
 class Migration(migrations.Migration):
 
@@ -17,7 +19,7 @@ class Migration(migrations.Migration):
             name='ServiceSettings',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('state', django_fsm.FSMIntegerField(default=1, choices=[(1, 'Sync Scheduled'), (2, 'Syncing'), (3, 'In Sync'), (4, 'Erred')])),
                 ('backend_url', models.URLField(null=True, blank=True)),
