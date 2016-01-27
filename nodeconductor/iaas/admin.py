@@ -67,7 +67,8 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     inlines = [QuotaInline]
 
     actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships',
-               'detect_external_networks', 'push_ssh_public_keys', 'allocate_floating_ip']
+               'detect_external_networks', 'allocate_floating_ip', 'pull_security_groups',
+               'push_security_groups', 'push_ssh_public_keys']
 
     def get_queryset(self, request):
         queryset = super(CloudProjectMembershipAdmin, self).get_queryset(request)
@@ -180,6 +181,48 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     allocate_floating_ip.short_description = "Allocate floating IPs for selected cloud project memberships"
+
+    def pull_security_groups(self, request, queryset):
+        queryset = queryset.exclude(state=SynchronizationStates.ERRED)
+
+        tasks_scheduled = 0
+        for membership in queryset.iterator():
+            tasks.pull_cloud_project_membership_security_groups.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'Scheduled security groups pulling for one cloud project membership',
+            'Scheduled security groups pulling for %(tasks_scheduled)d cloud project memberships',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    pull_security_groups.short_description = "Pull security groups for selected cloud project memberships"
+
+    def push_security_groups(self, request, queryset):
+        queryset = queryset.exclude(state=SynchronizationStates.ERRED)
+
+        tasks_scheduled = 0
+        for membership in queryset.iterator():
+            tasks.push_cloud_project_membership_security_groups.delay(membership.pk)
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'Scheduled security groups pushing for one cloud project membership',
+            'Scheduled security groups pushing for %(tasks_scheduled)d cloud project memberships',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    push_security_groups.short_description = "Push security groups for selected cloud project memberships"
 
     def get_cloud_name(self, obj):
         return obj.cloud.name
