@@ -288,6 +288,21 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(*sys.exc_info())
 
     @reraise_exceptions
+    def pull_security_groups(self, service_project_link):
+        try:
+            self._old_backend.pull_security_groups(service_project_link)
+        except Exception as e:
+            event_logger.service_project_link.warning(
+                'Failed to pull security groups from backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(*sys.exc_info())
+
+    @reraise_exceptions
     def sync_instance_security_groups(self, instance):
         self._old_backend.push_instance_security_groups(instance)
 
