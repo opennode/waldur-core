@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin
+from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models
@@ -101,10 +101,11 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
     resource_type = serializers.SerializerMethodField()
     value = serializers.FloatField()
+    metadata = JSONField()
 
     class Meta:
         model = models.DefaultPriceListItem
-        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'resource_type')
+        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'resource_type', 'metadata')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }

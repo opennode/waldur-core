@@ -399,6 +399,7 @@ class InstanceSlaHistory(models.Model):
     class Meta:
         verbose_name = 'Instance SLA history'
         verbose_name_plural = 'Instance SLA histories'
+        unique_together = ('period', 'instance')
 
     def __str__(self):
         return 'SLA for %s during %s: %s' % (self.instance, self.period, self.value)

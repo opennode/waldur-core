@@ -160,7 +160,6 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
 
 
 class ProjectSerializer(PermissionFieldFilteringMixin,
-                        core_serializers.DynamicSerializer,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = NestedProjectGroupSerializer(
@@ -279,8 +278,7 @@ class CustomerImageSerializer(serializers.ModelSerializer):
         fields = ['image']
 
 
-class CustomerSerializer(core_serializers.DynamicSerializer,
-                         core_serializers.AugmentedSerializerMixin,
+class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
     projects = serializers.SerializerMethodField()
     project_groups = serializers.SerializerMethodField()
@@ -1133,6 +1131,7 @@ class SummaryResourceSerializer(BasicResourceSerializer):
     longitude = serializers.ReadOnlyField()
 
     access_url = serializers.SerializerMethodField()
+    error_message = serializers.ReadOnlyField()
 
     def get_url(self, obj):
         return reverse(obj.get_url_name() + '-detail',
@@ -1150,7 +1149,13 @@ class SummaryResourceSerializer(BasicResourceSerializer):
                        kwargs={'uuid': obj.service_project_link.service.uuid}, request=self.context['request'])
 
     def get_access_url(self, obj):
-        return obj.get_access_url()
+        url = obj.get_access_url()
+        if url:
+            return url
+
+        url_name = obj.get_access_url_name()
+        if url_name:
+            return reverse(url_name, kwargs={'uuid': obj.uuid}, request=self.context['request'])
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,

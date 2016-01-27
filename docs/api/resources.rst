@@ -27,7 +27,7 @@ Supported filters are:
 - ?service_name=<service name>
 
 
-OpenStack Resources list
+OpenStack resources list
 ------------------------
 
 Use */api/iaas-resources/* to get a list of all the resources that a user can see.

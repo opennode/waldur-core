@@ -1452,8 +1452,8 @@ class OpenStackBackend(ServiceBackend):
         neutron = self.neutron_admin_client
 
         if not external_network_id:
-            settings = service_project_link.service.settings
-            external_network_id = settings.options.get('external_network_id')
+            options = service_project_link.service.settings.options or {}
+            external_network_id = options.get('external_network_id')
 
         if external_network_id:
             try:

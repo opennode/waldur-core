@@ -6,10 +6,10 @@ Oracle services list
 
 To get a list of services, run GET against **/api/oracle/** as authenticated user.
 
-Create an oracle service
+Create an Oracle service
 ------------------------
 
-To create a new oracle service, issue a POST with service details to **/api/oracle/** as a customer owner.
+To create a new Oracle service, issue a POST with service details to **/api/oracle/** as a customer owner.
 Example of a request:
 
 .. code-block:: http
@@ -30,7 +30,7 @@ Settings must be of proper type and represent Oracle service.
 
 Link service to a project
 -------------------------
-In order to be able to provision oracle resources, it must first be linked to a project. To do that,
+In order to be able to provision Oracle resources, it must first be linked to a project. To do that,
 POST a connection between project and a service to **/api/oracle-service-project-link/** as stuff user or customer owner.
 For example,
 
@@ -47,17 +47,17 @@ For example,
         "service": "http://example.com/api/oracle/b0e8a4cbd47c4f9ca01642b7ec033db4/"
     }
 
-To remove a link, issue DELETE to url of the corresponding connection as stuff user or customer owner.
+To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
 
 Project-service connection list
 -------------------------------
-To get a list of connections between a project and an oracle service, run GET against **/api/oracle-service-project-link/**
+To get a list of connections between a project and an Oracle service, run GET against **/api/oracle-service-project-link/**
 as authenticated user. Note that a user can only see connections of a project where a user has a role.
 
 Oracle service properties
 -------------------------
 
-The following oracle properties available and required to provision a database.
+The following Oracle properties available and required to provision a database.
 All properties are automatically pulled from service backend on service settings creation.
 
 Zone
@@ -70,7 +70,7 @@ Template
 
 To get a list of zones, run GET against **/api/oracle-templates/** as authenticated user.
 
-Create an oracle database
+Create an Oracle database
 -------------------------
 
 A new database can be created by users with project administrator role or with staff privilege (is_staff=True).

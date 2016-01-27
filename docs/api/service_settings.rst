@@ -1,13 +1,13 @@
-Service Settings list
+Service settings list
 ---------------------
 
-To get a list of Service Settings, run GET against **/api/service-settings/** as an authenticated user.
+To get a list of service settings, run GET against **/api/service-settings/** as an authenticated user.
 Only settings owned by this user or shared settings will be listed.
 
 Supported filters are:
 
 - ?name=<text> - partial matching used for searching
-- ?type=<type> - choices: OpenStack, DigitalOcean, Amazon, Jira, GitLab, Oracle
+- ?type=<type> - choices: OpenStack, DigitalOcean, Amazon, JIRA, GitLab, Oracle
 - ?state=<state> - choices: New, Creation Scheduled, Creating, Sync Scheduled, Syncing, In Sync, Erred
 
 Example response:
@@ -38,7 +38,7 @@ Example response:
 
 
 
-Update Service Settings
+Update service settings
 -----------------------
 
 To update service settings, issue a PUT or PATCH to **/api/service-settings/<uuid>/** as a customer owner.
