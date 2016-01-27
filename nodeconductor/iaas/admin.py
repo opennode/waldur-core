@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.translation import ungettext, gettext
 from django.utils.translation import ugettext_lazy as _
 
@@ -183,7 +183,12 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     allocate_floating_ip.short_description = "Allocate floating IPs for selected cloud project memberships"
 
     def pull_security_groups(self, request, queryset):
-        queryset = queryset.exclude(state=SynchronizationStates.ERRED)
+        cpms_checked = queryset.count()
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+
+        if cpms_checked != queryset.count():
+            message = 'Only cloud project memberships that are IN_SYNC state can be scheduled'
+            self.message_user(request, message, level=messages.WARNING)
 
         tasks_scheduled = 0
         for membership in queryset.iterator():
@@ -204,7 +209,12 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     pull_security_groups.short_description = "Pull security groups for selected cloud project memberships"
 
     def push_security_groups(self, request, queryset):
-        queryset = queryset.exclude(state=SynchronizationStates.ERRED)
+        cpms_checked = queryset.count()
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+
+        if cpms_checked != queryset.count():
+            message = 'Only cloud project memberships that are IN_SYNC state can be scheduled'
+            self.message_user(request, message, level=messages.WARNING)
 
         tasks_scheduled = 0
         for membership in queryset.iterator():
