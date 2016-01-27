@@ -11,6 +11,8 @@ import uuidfield.fields
 import django.core.validators
 import model_utils.fields
 
+import nodeconductor.core.validators
+
 
 class Migration(migrations.Migration):
 
