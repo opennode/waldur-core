@@ -9,3 +9,8 @@ def validate_cron_schedule(value):
         croniter(value, base_time)
     except (KeyError, ValueError) as e:
         raise ValidationError(str(e))
+
+
+def validate_name(value):
+    if len(value.strip()) == 0:
+        raise ValidationError('Ensure that name has at least one non-whitespace character')
