@@ -6,6 +6,8 @@ import django.db.models.deletion
 import uuidfield.fields
 import django_fsm
 
+import nodeconductor.core.validators
+
 
 class Migration(migrations.Migration):
 
@@ -19,7 +21,7 @@ class Migration(migrations.Migration):
             name='OracleService',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('customer', models.ForeignKey(to='structure.Customer')),
             ],
