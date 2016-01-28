@@ -182,7 +182,7 @@ class OpenStackBackend(ServiceBackend):
         # TODO: Get rid of it (NC-646)
         self._old_backend = OldOpenStackBackend()
 
-    def _get_client(self, name=None, admin=False):
+    def get_client(self, name=None, admin=False):
         credentials = {
             'auth_url': self.settings.backend_url,
             'username': self.settings.username,
@@ -207,7 +207,7 @@ class OpenStackBackend(ServiceBackend):
             client = getattr(self, attr_name)
         else:
             client = OpenStackClient(**credentials)
-            getattr(self, attr_name, client)
+            setattr(self, attr_name, client)
 
         if name:
             return getattr(client, name)
@@ -218,10 +218,10 @@ class OpenStackBackend(ServiceBackend):
         clients = 'keystone', 'nova', 'neutron', 'cinder', 'glance', 'ceilometer'
         for client in clients:
             if name == '{}_client'.format(client):
-                return self._get_client(client, admin=False)
+                return self.get_client(client, admin=False)
 
             if name == '{}_admin_client'.format(client):
-                return self._get_client(client, admin=True)
+                return self.get_client(client, admin=True)
 
         raise AttributeError(
             "'%s' object has no attribute '%s'" % (self.__class__.__name__, name))
@@ -1087,10 +1087,6 @@ class OpenStackBackend(ServiceBackend):
         cinder.volumes.delete(data_volume_id)
 
     @reraise_exceptions
-    def update_flavor(self, instance, flavor):
-        self._old_backend.update_flavor(instance, flavor)
-
-    @reraise_exceptions
     def extend_disk(self, instance):
         self._old_backend.extend_disk(instance)
 
@@ -1543,4 +1539,16 @@ class OpenStackBackend(ServiceBackend):
 
     def update_tenant_name(self, service_project_link):
         keystone = self.keystone_admin_client
-        self._old_backend.update_tenant_name(service_project_link, keystone)
+        tenant_name = self._get_tenant_name(service_project_link)
+
+        if service_project_link.tenant_id:
+            logger.info('Trying to update name for tenant with id %s', service_project_link.tenant_id)
+            try:
+                keystone.tenants.update(service_project_link.tenant_id, name=tenant_name)
+                logger.info("Successfully updated name for tenant with id %s. Tenant's new name is %s",
+                            service_project_link.tenant_id, tenant_name)
+            except keystone_exceptions.NotFound as e:
+                logger.warning('Tenant with id %s does not exist', service_project_link.tenant_id)
+                six.reraise(OpenStackBackendError, e)
+        else:
+            logger.warning('Cannot update tenant name for link %s without tenant ID', service_project_link)
