@@ -155,12 +155,9 @@ class Command(BaseCommand):
                 options['image'] = self.get_obj_url('openstack-image-detail', image)
                 break
 
-        options['system_volume_size'] = (raw_input(
-            self.style.WARNING('System volume size, Mb [10240]: ')) or '10240')
-        options['data_volume_size'] = (raw_input(
-            self.style.WARNING('Data volume size, Mb [20480]: ')) or '20480')
-        options['user_data'] = (raw_input(
-            self.style.WARNING('User data, YML []: ')) or '')
+        options['system_volume_size'] = self.input_int('System volume size, Mb [10240]: ', 10240)
+        options['data_volume_size'] = self.input_int('Data volume size, Mb [20480]: ', 2048)
+        options['user_data'] = (raw_input(self.style.WARNING('User data, YML []: ')) or '')
 
         self.templates.append(Template(
             resource_content_type=ContentType.objects.get_for_model(models.Instance),
@@ -312,3 +309,10 @@ class Command(BaseCommand):
 
     def get_obj_url(self, name, obj):
         return self.base_url + reverse(name, args=(obj.uuid.hex if hasattr(obj, 'uuid') else obj.pk,))
+
+    def input_int(self, message, default_value):
+        while True:
+            try:
+                return int(raw_input(self.style.WARNING(message))) or default_value
+            except ValueError:
+                self.stdout.write('\nInputed value should be integer, please try again.')
