@@ -14,6 +14,7 @@ from rest_framework import serializers, status, exceptions
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
 from nodeconductor.core.fields import MappedChoiceField, TimestampField
+from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.core.utils import timeshift, datetime_to_timestamp
 from nodeconductor.cost_tracking import models as cost_tracking_models
 from nodeconductor.iaas import models
@@ -51,6 +52,17 @@ def get_clouds_for_project(serializer, project):
     return serializer_instance.data
 
 
+def add_clouds_for_project(sender, fields, **kwargs):
+    fields['clouds'] = serializers.SerializerMethodField()
+    setattr(sender, 'get_clouds', get_clouds_for_project)
+
+
+pre_serializer_fields.connect(
+    add_clouds_for_project,
+    sender=ProjectSerializer
+)
+
+
 def get_clouds_for_customer(serializer, customer):
     request = serializer.context['request']
 
@@ -73,11 +85,15 @@ def get_clouds_for_customer(serializer, customer):
     return serializer_instance.data
 
 
-ProjectSerializer.add_field('clouds', serializers.SerializerMethodField)
-ProjectSerializer.add_to_class('get_clouds', get_clouds_for_project)
+def add_clouds_for_customer(sender, fields, **kwargs):
+    fields['clouds'] = serializers.SerializerMethodField()
+    setattr(sender, 'get_clouds', get_clouds_for_customer)
 
-CustomerSerializer.add_field('clouds', serializers.SerializerMethodField)
-CustomerSerializer.add_to_class('get_clouds', get_clouds_for_customer)
+
+pre_serializer_fields.connect(
+    add_clouds_for_customer,
+    sender=CustomerSerializer
+)
 
 
 class BasicCloudSerializer(core_serializers.BasicInfoSerializer):

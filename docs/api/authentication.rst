@@ -28,7 +28,7 @@ Supported token backends
 Password-based backend
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Endpoint url: **/api-auth/password/**
+Endpoint URL: **/api-auth/password/**
 
 Valid request example:
 
@@ -82,10 +82,10 @@ Invalid credentials failure response example:
     }
 
 
-SAML-based backend
-^^^^^^^^^^^^^^^^^^
+SAML2-based backend
+^^^^^^^^^^^^^^^^^^^
 
-Endpoint url: ``/api-auth/saml2/``
+Endpoint URL: ``/api-auth/saml2/``
 
 Valid request example:
 
@@ -114,7 +114,7 @@ Success response example:
     }
 
 Invalid token can result in a failure like in the example below. In this case please enable/check concrete
-problem in saml2 log file.
+problem in SAML2 log file.
 
 .. code-block:: http
 

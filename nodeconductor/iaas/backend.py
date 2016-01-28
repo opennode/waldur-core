@@ -108,7 +108,7 @@ class OpenStackClient(object):
 
             if not self.keystone_session:
                 auth_plugin = v2.Password(**credentials)
-                self.keystone_session = keystone_session.Session(auth=auth_plugin)
+                self.keystone_session = keystone_session.Session(auth=auth_plugin, verify=False)
 
             try:
                 # This will eagerly sign in throwing AuthorizationFailure on bad credentials
@@ -239,7 +239,7 @@ class OpenStackClient(object):
 
         kwargs = {
             'token': session.get_token(),
-            'insecure': False,
+            'insecure': True,
             'timeout': 600,
             'ssl_compression': True,
         }
@@ -254,7 +254,7 @@ class OpenStackClient(object):
         kwargs = {
             'token': lambda: session.get_token(),
             'endpoint': endpoint,
-            'insecure': False,
+            'insecure': True,
             'timeout': 600,
             'ssl_compression': True,
         }
@@ -755,6 +755,7 @@ class OpenStackBackend(OpenStackClient):
                 )
                 if backend_group.name != nc_security_group.name:
                     nc_security_group.name = backend_group.name
+                    nc_security_group.state = SynchronizationStates.IN_SYNC
                     nc_security_group.save()
                 self.pull_security_group_rules(nc_security_group, nova)
             logger.debug('Updated existing security groups in database')
@@ -764,6 +765,7 @@ class OpenStackBackend(OpenStackClient):
                 nc_security_group = membership.security_groups.create(
                     backend_id=backend_group.id,
                     name=backend_group.name,
+                    state=SynchronizationStates.IN_SYNC
                 )
                 self.pull_security_group_rules(nc_security_group, nova)
                 logger.info('Created new security group %s in database', nc_security_group.uuid)

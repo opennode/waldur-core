@@ -12,7 +12,7 @@ from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
-from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
+from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user, GeoIpException
 
 logger = logging.getLogger(__name__)
 
@@ -475,9 +475,14 @@ def detect_vm_coordinates(vm_str):
         vm = next(models.Resource.from_string(vm_str))
     except StopIteration:
         logger.warning('Missing virtual machine %s.', vm_str)
-        return True
+        return
 
-    coordinates = vm.detect_coordinates()
+    try:
+        coordinates = vm.detect_coordinates()
+    except GeoIpException as e:
+        logger.warning('Unable to detect coordinates for virtual machines %s: %s.', vm_str, e)
+        return
+
     if coordinates:
         vm.latitude = coordinates.latitude
         vm.longitude = coordinates.longitude

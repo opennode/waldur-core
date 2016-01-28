@@ -906,6 +906,9 @@ class Resource(core_models.UuidMixin,
         # default behaviour. Override in subclasses if applicable
         return None
 
+    def get_access_url_name(self):
+        return None
+
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):

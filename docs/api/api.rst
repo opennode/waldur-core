@@ -53,7 +53,7 @@ IP mappings
 
 .. include:: ip_mapping.rst
 
-Jira management
+JIRA management
 ===============
 
 .. include:: jira.rst
@@ -136,7 +136,7 @@ Services
 
 .. include:: services.rst
 
-Service Settings
+Service settings
 ================
 
 .. include:: service_settings.rst

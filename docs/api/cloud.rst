@@ -69,7 +69,7 @@ For example,
         "cloud": "http://example.com/api/clouds/736038dc5cac47309111916eb6fe802d/",
     }
 
-To remove a link, issue DELETE to url of the corresponding connection as stuff user or customer owner.
+To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
 
 Any modification of a cloud in unstable state is prohibited and will fail with 409 response code.
 

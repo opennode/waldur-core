@@ -139,6 +139,7 @@ class ServiceSettingsEventLogger(EventLogger):
     error_message = six.text_type
 
     class Meta:
+        nullable_fields = ['error_message']
         event_types = ('service_settings_sync_failed',
                        'service_settings_recovered')
 

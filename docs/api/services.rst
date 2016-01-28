@@ -130,7 +130,7 @@ Or provide your own credentials. Example:
     Host: example.com
 
     {
-        "name": "My oracle",
+        "name": "My Oracle",
         "customer": "http://example.com/api/customers/1040561ca9e046d2b74268600c7e1105/",
         "backend_url": "https://oracle.example.com:7802/em",
         "username": "admin",
