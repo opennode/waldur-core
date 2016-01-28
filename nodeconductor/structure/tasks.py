@@ -12,7 +12,7 @@ from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
-from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
+from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user, GeoIpException
 
 logger = logging.getLogger(__name__)
 

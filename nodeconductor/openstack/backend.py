@@ -665,6 +665,120 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
+    def pull_security_groups(self, service_project_link):
+        nova = self.nova_client
+        logger.debug('About to pull security groups from tenant %s', self.tenant_id)
+
+        try:
+            try:
+                backend_security_groups = nova.security_groups.list()
+            except nova_exceptions.ClientException as e:
+                logger.exception('Failed to get openstack security groups for link %s', service_project_link.id)
+                six.reraise(OpenStackBackendError, e)
+
+            # list of openstack security groups that do not exist in nc
+            nonexistent_groups = []
+            # list of openstack security groups that have wrong parameters in in nc
+            unsynchronized_groups = []
+            # list of nc security groups that do not exist in openstack
+
+            extra_groups = service_project_link.security_groups.exclude(
+                backend_id__in=[g.id for g in backend_security_groups],
+            )
+
+            with transaction.atomic():
+                for backend_group in backend_security_groups:
+                    try:
+                        nc_group = service_project_link.security_groups.get(backend_id=backend_group.id)
+                        if not self._are_security_groups_equal(backend_group, nc_group):
+                            unsynchronized_groups.append(backend_group)
+                    except models.SecurityGroup.DoesNotExist:
+                        nonexistent_groups.append(backend_group)
+
+                # deleting extra security groups
+                extra_groups.delete()
+                logger.info('Deleted stale security groups in database')
+
+                # synchronizing unsynchronized security groups
+                for backend_group in unsynchronized_groups:
+                    nc_security_group = service_project_link.security_groups.get(backend_id=backend_group.id)
+                    if backend_group.name != nc_security_group.name:
+                        nc_security_group.name = backend_group.name
+                        nc_security_group.state = SynchronizationStates.IN_SYNC
+                        nc_security_group.save()
+                    self.pull_security_group_rules(nc_security_group)
+                logger.debug('Updated existing security groups in database')
+
+                # creating non-existed security groups
+                for backend_group in nonexistent_groups:
+                    nc_security_group = service_project_link.security_groups.create(
+                        backend_id=backend_group.id,
+                        name=backend_group.name,
+                        state=SynchronizationStates.IN_SYNC
+                    )
+                    self.pull_security_group_rules(nc_security_group)
+                    logger.info('Created new security group %s in database', nc_security_group.uuid)
+
+        except Exception as e:
+            event_logger.service_project_link.warning(
+                'Failed to pull security groups from backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(*sys.exc_info())
+
+    def pull_security_group_rules(self, security_group):
+        nova = self.nova_client
+        backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
+        backend_rules = [
+            self._normalize_security_group_rule(r)
+            for r in backend_security_group.rules
+        ]
+
+        # list of openstack rules, that do not exist in nc
+        nonexistent_rules = []
+        # list of openstack rules, that have wrong parameters in in nc
+        unsynchronized_rules = []
+        # list of nc rules, that have do not exist in openstack
+        extra_rules = security_group.rules.exclude(backend_id__in=[r['id'] for r in backend_rules])
+
+        with transaction.atomic():
+            for backend_rule in backend_rules:
+                try:
+                    nc_rule = security_group.rules.get(backend_id=backend_rule['id'])
+                    if not self._are_rules_equal(backend_rule, nc_rule):
+                        unsynchronized_rules.append(backend_rule)
+                except security_group.rules.model.DoesNotExist:
+                    nonexistent_rules.append(backend_rule)
+
+            # deleting extra rules
+            extra_rules.delete()
+            logger.info('Deleted stale security group rules in database')
+
+            # synchronizing unsynchronized rules
+            for backend_rule in unsynchronized_rules:
+                security_group.rules.filter(backend_id=backend_rule['id']).update(
+                    from_port=backend_rule['from_port'],
+                    to_port=backend_rule['to_port'],
+                    protocol=backend_rule['ip_protocol'],
+                    cidr=backend_rule['ip_range']['cidr'],
+                )
+            logger.debug('Updated existing security group rules in database')
+
+            # creating non-existed rules
+            for backend_rule in nonexistent_rules:
+                rule = security_group.rules.create(
+                    from_port=backend_rule['from_port'],
+                    to_port=backend_rule['to_port'],
+                    protocol=backend_rule['ip_protocol'],
+                    cidr=backend_rule['ip_range']['cidr'],
+                    backend_id=backend_rule['id'],
+                )
+                logger.info('Created new security group rule %s in database', rule.id)
+
     def sync_instance_security_groups(self, instance):
         nova = self.nova_client
         server_id = instance.backend_id
@@ -1475,7 +1589,7 @@ class OpenStackBackend(ServiceBackend):
 
         else:
             logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
-                           ' option is not defined in settings %s option', settings.name)
+                           ' option is not defined in settings %s option', service_project_link.service.settings.name)
             return None
 
     def get_or_create_router(self, network_name, subnet_id, external=False, network_id=None):

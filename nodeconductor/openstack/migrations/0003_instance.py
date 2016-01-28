@@ -11,6 +11,8 @@ import uuidfield.fields
 import django.core.validators
 import model_utils.fields
 
+import nodeconductor.core.validators
+
 
 class Migration(migrations.Migration):
 
@@ -26,7 +28,7 @@ class Migration(migrations.Migration):
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('description', models.CharField(max_length=500, verbose_name='description', blank=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('key_name', models.CharField(max_length=50, blank=True)),
                 ('key_fingerprint', models.CharField(max_length=47, blank=True)),

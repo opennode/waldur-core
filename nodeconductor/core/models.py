@@ -22,6 +22,7 @@ from uuidfield import UUIDField
 import reversion
 
 from nodeconductor.core.fields import CronScheduleField
+from nodeconductor.core.validators import validate_name
 from nodeconductor.logging.log import LoggableMixin
 
 
@@ -46,7 +47,7 @@ class NameMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    name = models.CharField(_('name'), max_length=150)
+    name = models.CharField(_('name'), max_length=150, validators=[validate_name])
 
 
 class UiDescribableMixin(DescribableMixin):
