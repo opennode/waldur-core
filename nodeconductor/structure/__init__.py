@@ -222,7 +222,7 @@ class SupportedServices(object):
                 'GitLab.Group': nodeconductor_plus.gitlab.models.Group,
                 'GitLab.Project': nodeconductor_plus.gitlab.models.Project,
                 'IaaS.Instance': nodeconductor.iaas.models.Instance,
-                'Oracle.Database': nodeconductor.oracle.models.Database
+                'Oracle.Database': nodeconductor_oracle_dbaas.models.Database
             }
 
         """
