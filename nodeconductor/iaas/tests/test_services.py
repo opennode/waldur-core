@@ -183,7 +183,7 @@ class ServiceEventsTest(test.APISimpleTestCase):
     def test_service_with_events_returns_events_list(self):
         today = timezone.now()
         event = factories.InstanceSlaHistoryEventsFactory(instance=self.sla_history)
-        self.instance.created = timezone.now() - relativedelta(months=+1)
+        self.instance.created = timezone.now() - relativedelta(months=1)
         self.instance.save()
         response = self.client.get(self._get_service_events_url(self.instance),
                                    data={'period': '%s-%s' % (today.year, today.month)})
