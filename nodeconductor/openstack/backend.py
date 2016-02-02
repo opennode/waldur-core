@@ -88,7 +88,7 @@ class OpenStackSession(dict):
         if expiresat > timezone.now() + datetime.timedelta(minutes=10):
             return True
 
-        raise OpenStackBackendError('Invalid OpenStack session')
+        raise OpenStackBackendError('OpenStack session is expired')
 
 
 class OpenStackClient(object):
