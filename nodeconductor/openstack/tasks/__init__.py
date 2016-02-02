@@ -5,6 +5,7 @@ from __future__ import absolute_import
 # and adding all tasks to the registry.
 
 from .backup import *
+from .base import *
 from .flavor import *
 from .floating_ip import *
 from .instance import *

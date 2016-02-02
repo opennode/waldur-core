@@ -347,6 +347,9 @@ class ServiceBackend(object):
     def sync(self):
         raise ServiceBackendNotImplemented
 
+    def sync_quotas(self, service_project_link):
+        raise ServiceBackendNotImplemented
+
     def sync_link(self, service_project_link, is_initial=False):
         raise ServiceBackendNotImplemented
 

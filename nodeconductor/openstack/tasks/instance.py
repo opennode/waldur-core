@@ -136,7 +136,7 @@ def start_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
     try:
-        backend._old_backend.start_instance(instance)
+        backend.start_instance(instance)
     except:
         event_logger.resource.error(
             'Resource {resource_name} start has failed.',
@@ -157,7 +157,7 @@ def stop_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
     try:
-        backend._old_backend.stop_instance(instance)
+        backend.stop_instance(instance)
     except:
         event_logger.resource.error(
             'Resource {resource_name} stop has failed.',
@@ -178,7 +178,7 @@ def restart_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
     try:
-        backend._old_backend.restart_instance(instance)
+        backend.restart_instance(instance)
     except:
         event_logger.resource.error(
             'Resource {resource_name} restart has failed.',

@@ -36,6 +36,7 @@ class InstanceVolumeChangeEventLogger(EventLogger):
     volume_size = int
 
     class Meta:
+        nullable_fields = ['volume_size']
         event_types = ('resource_volume_extension_scheduled',
                        'resource_volume_extension_succeeded',
                        'resource_volume_extension_failed')

@@ -29,7 +29,7 @@ class ErrorMessageTest(TestCase):
     def test_if_instance_start_fails_error_message_is_saved(self, mock_backend, mock_throttle):
         self.instance.state = Instance.States.STARTING_SCHEDULED
         self.instance.save()
-        mock_backend()._old_backend.start_instance.side_effect = self.error
+        mock_backend().start_instance.side_effect = self.error
 
         with self.assertRaises(OpenStackBackendError):
             tasks.start_instance(self.instance.uuid.hex)
@@ -39,7 +39,7 @@ class ErrorMessageTest(TestCase):
     def test_if_instance_stop_fails_error_message_is_saved(self, mock_backend, mock_throttle):
         self.instance.state = Instance.States.STOPPING_SCHEDULED
         self.instance.save()
-        mock_backend()._old_backend.stop_instance.side_effect = self.error
+        mock_backend().stop_instance.side_effect = self.error
 
         with self.assertRaises(OpenStackBackendError):
             tasks.stop_instance(self.instance.uuid.hex)
@@ -49,7 +49,7 @@ class ErrorMessageTest(TestCase):
     def test_if_instance_restart_fails_error_message_is_saved(self, mock_backend, mock_throttle):
         self.instance.state = Instance.States.RESTARTING_SCHEDULED
         self.instance.save()
-        mock_backend()._old_backend.restart_instance.side_effect = self.error
+        mock_backend().restart_instance.side_effect = self.error
 
         with self.assertRaises(OpenStackBackendError):
             tasks.restart_instance(self.instance.uuid.hex)
