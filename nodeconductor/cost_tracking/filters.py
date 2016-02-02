@@ -52,8 +52,8 @@ class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
             queryset = queryset.filter(Q(year__lt=year) | Q(year=year, month__lte=month))
 
         # Filter by customer
-        if 'customer' in request.query_params:
-            customer_uuid = request.query_params['customer']
+        if 'customer_uuid' in request.query_params:
+            customer_uuid = request.query_params['customer_uuid']
             qs = Q()
             for model in models.PriceEstimate.get_estimated_models():
                 content_type = ContentType.objects.get_for_model(model)

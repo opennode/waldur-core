@@ -6,11 +6,12 @@ To get a list of price estimates, run GET against **/api/price-estimates/** as a
 
 Price estimates can be filtered by:
  - ?scope=<object URL> URL of object that was estimated
+ - ?scope_type=<string> can be list. Filter by scope type
  - ?date=<string in format YYYY.MM> can be list. Filters price estimates for given months
  - ?start=<string in format YYYY.MM> filter price estimates that was after given months (excluding given)
  - ?end=<string in format YYYY.MM> filter price estimates that was before end months (including given)
  - ?is_manually_input=True|False - show manually created (auto calculated) estimates
- - ?customer=<UUID> - filter price estimates by objects connected to a specific customer
+ - ?customer_uuid=<UUID> - filter price estimates by objects connected to a specific customer
 
 Price estimates in response are sorted from latest to earliest.
 
