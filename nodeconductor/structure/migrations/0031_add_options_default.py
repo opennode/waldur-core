@@ -8,7 +8,8 @@ import jsonfield.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0030_customer_app_vm_count'),
+        # migrations 29 and 30 where deleted.
+        ('structure', '0028_servicesettings_service_type2'),
     ]
 
     operations = [
