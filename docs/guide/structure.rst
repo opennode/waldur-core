@@ -39,8 +39,8 @@ Glossary
       For example: image and flavor in OpenStack or zone and template in Oracle.
 
     General service property
-      Represents any properties of cloud service that are related to particular service settings.
-      (Service independent service property).
+      Represents any properties of cloud service that are not related to particular service settings.
+      For example: Amazon image.
 
     Project
       A project is an entity within a customer. Project has a linked group of users collaborating on work - 'project
