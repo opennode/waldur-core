@@ -50,6 +50,7 @@ class CustomMenu(Menu):
         'nodeconductor_saltstack.*',
         'nodeconductor_zabbix.*',
         'nodeconductor_plus.gitlab.*',
+        'nodeconductor_oracle_dbaas.*'
     )
 
     SUPPORT_MODULES = (
