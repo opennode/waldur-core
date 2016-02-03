@@ -5,6 +5,7 @@ Release NEXT
 ------------
 
 - Extracted Oracle app to plugin.
+- Moved SPLs and settings synchronization tasks to separate queue.
 
 Release 0.85.0
 --------------
@@ -13,7 +14,7 @@ Release 0.85.0
 - Improved /admin interface, exposed installed plugins and versions.
 - Made state rendering in /projects consistent.
 - Fixed recovery command for service project links.
-- Exposed subscribtion to Kill Bill and offline resources from admin page.
+- Exposed subscription to Kill Bill and offline resources from admin page.
 - Reimplemented resources summary view.
 - Moved external_ips field to VirtualMachineMixin.
 - Added model to resource viewset for permissions.
