@@ -39,8 +39,7 @@ Glossary
       For example: image and flavor in OpenStack or zone and template in Oracle.
 
     General service property
-      Represents any properties of cloud service that are related to particular service settings.
-      (Service independent service property).
+      Represents any property of a service that is not connected to service settings.
 
     Project
       A project is an entity within a customer. Project has a linked group of users collaborating on work - 'project
@@ -74,6 +73,6 @@ Relationships between customers and services:
 
 Example of shared settings and private service:
  - OpenStack service settings - shared settings, that are available for all customers.
- - Private Customer A service with separate settings - it is available only customer A.
+ - Private Customer A service with separate settings - available only for customer A.
 
 .. image:: ../images/structure-example.png
