@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-<Nothing yet>
+- Extracted Oracle app to plugin.
 
 Release 0.85.0
 --------------
