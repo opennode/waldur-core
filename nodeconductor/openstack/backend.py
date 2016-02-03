@@ -1237,9 +1237,12 @@ class OpenStackBackend(ServiceBackend):
         floatingips = neutron.list_floatingips(tenant_id=self.tenant_id)
         if floatingips:
             for floatingip in floatingips['floatingips']:
-                logger.info("Deleting floatingip %s from tenant %s", floatingip['id'], self.tenant_id)
+                logger.info("Deleting floating IP %s from tenant %s", floatingip['id'], self.tenant_id)
                 if not dryrun:
-                    neutron.delete_floatingip(floatingip['id'])
+                    try:
+                        neutron.delete_floatingip(floatingip['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Floating IP %s is already gone from tenant %s", floatingip['id'], self.tenant_id)
 
         # ports
         ports = neutron.list_ports(tenant_id=self.tenant_id)
@@ -1247,7 +1250,10 @@ class OpenStackBackend(ServiceBackend):
             for port in ports['ports']:
                 logger.info("Deleting port %s from tenant %s", port['id'], self.tenant_id)
                 if not dryrun:
-                    neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+                    try:
+                        neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Port %s is already gone from tenant %s", port['id'], self.tenant_id)
 
         # routers
         routers = neutron.list_routers(tenant_id=self.tenant_id)
@@ -1255,7 +1261,10 @@ class OpenStackBackend(ServiceBackend):
             for router in routers['routers']:
                 logger.info("Deleting router %s from tenant %s", router['id'], self.tenant_id)
                 if not dryrun:
-                    neutron.delete_router(router['id'])
+                    try:
+                        neutron.delete_router(router['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Router %s is already gone from tenant %s", router['id'], self.tenant_id)
 
         # networks
         networks = neutron.list_networks(tenant_id=self.tenant_id)
@@ -1264,11 +1273,17 @@ class OpenStackBackend(ServiceBackend):
                 for subnet in network['subnets']:
                     logger.info("Deleting subnetwork %s from tenant %s", subnet, self.tenant_id)
                     if not dryrun:
-                        neutron.delete_subnet(subnet)
+                        try:
+                            neutron.delete_subnet(subnet)
+                        except neutron_exceptions.NotFound:
+                            logger.info("Subnetwork %s is already gone from tenant %s", subnet, self.tenant_id)
 
                 logger.info("Deleting network %s from tenant %s", network['id'], self.tenant_id)
                 if not dryrun:
-                    neutron.delete_network(network['id'])
+                    try:
+                        neutron.delete_network(network['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Network %s is already gone from tenant %s", network['id'], self.tenant_id)
 
         # security groups
         nova = self.nova_client
