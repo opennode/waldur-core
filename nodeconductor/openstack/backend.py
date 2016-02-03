@@ -1751,6 +1751,8 @@ class OpenStackBackend(ServiceBackend):
             logger.exception('Failed to add external ip %s to instance %s',
                              instance.external_ips, instance.uuid)
             instance.set_erred()
+            instance.error_message = 'Failed to add external ip %s to instance %s' % (instance.external_ips,
+                                                                                      instance.uuid)
             instance.save()
         else:
             floating_ip.status = 'ACTIVE'
