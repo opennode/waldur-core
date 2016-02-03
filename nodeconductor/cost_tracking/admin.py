@@ -153,6 +153,14 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
 
+class PriceEstimateAdmin(admin.ModelAdmin):
+    fields = ('content_type', 'object_id', 'total',
+              ('month', 'year'), ('is_manually_input', 'is_visible'))
+    list_display = ('content_type', 'object_id', 'total', 'month', 'year')
+    list_filter = ('is_manually_input', 'is_visible')
+    search_fields = ('month', 'year', 'object_id', 'total')
+
+
 class ApplicationTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
@@ -160,5 +168,5 @@ class ApplicationTypeAdmin(admin.ModelAdmin):
 # TODO: disabled to reduce confusion. Enable once we start using it.
 # admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
-admin.site.register(models.PriceEstimate)
+admin.site.register(models.PriceEstimate, PriceEstimateAdmin)
 admin.site.register(models.ApplicationType, ApplicationTypeAdmin)
