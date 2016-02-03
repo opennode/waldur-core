@@ -27,10 +27,9 @@ class QuotaField(object):
         quota_name = QuotaField(default_limit=lambda scope: scope.attr)
     """
 
-    def __init__(self, name=None, default_limit=-1, default_usage=0, is_backend=False):
+    def __init__(self, default_limit=-1, default_usage=0, is_backend=False):
         self.default_limit = default_limit
         self.default_usage = default_usage
-        self.name = name
         self.is_backend = is_backend
 
     def get_or_create_quota(self, scope):
