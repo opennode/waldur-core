@@ -1132,6 +1132,7 @@ class SummaryResourceSerializer(BasicResourceSerializer):
 
     access_url = serializers.SerializerMethodField()
     error_message = serializers.ReadOnlyField()
+    key_name = serializers.ReadOnlyField()
 
     def get_url(self, obj):
         return reverse(obj.get_url_name() + '-detail',
