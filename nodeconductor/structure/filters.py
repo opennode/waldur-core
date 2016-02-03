@@ -501,6 +501,7 @@ class BaseServiceFilter(django_filters.FilterSet):
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
     service_uuid = django_filters.CharFilter(name='service__uuid')
+    customer_uuid = django_filters.CharFilter(name='service__customer__uuid')
     project_uuid = django_filters.CharFilter(name='project__uuid')
     project = core_filters.URLFilter(view_name='project-detail', name='project__uuid')
 
