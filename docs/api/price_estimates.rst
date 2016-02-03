@@ -11,7 +11,7 @@ Price estimates can be filtered by:
  - ?start=<string in format YYYY.MM> filter price estimates that was after given months (excluding given)
  - ?end=<string in format YYYY.MM> filter price estimates that was before end months (including given)
  - ?is_manually_input=True|False - show manually created (auto calculated) estimates
- - ?customer_uuid=<UUID> - filter price estimates by objects connected to a specific customer
+ - ?customer=<UUID> - filter price estimates by objects connected to a specific customer
 
 Price estimates in response are sorted from latest to earliest.
 
