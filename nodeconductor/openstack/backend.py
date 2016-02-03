@@ -1341,7 +1341,7 @@ class OpenStackBackend(ServiceBackend):
             elif old_core_size > new_core_size:
                 logger.warning('Not extending volume %s: desired size %d MiB is less then current size %d MiB',
                                volume_id, new_core_size, old_core_size)
-                event_logger.instance_volume.error(
+                event_logger.openstack_volume.error(
                     "Virtual machine {instance_name} disk extension has failed "
                     "due to new size being less than old size.",
                     event_type='resource_volume_extension_failed',
@@ -1367,7 +1367,7 @@ class OpenStackBackend(ServiceBackend):
                     'Failed to extend volume: exceeded quota limit while trying to extend volume %s',
                     volume.id,
                 )
-                event_logger.instance_volume.error(
+                event_logger.openstack_volume.error(
                     "Virtual machine {instance_name} disk extension has failed due to quota limits.",
                     event_type='resource_volume_extension_failed',
                     event_context={'resource': instance},
@@ -1397,7 +1397,7 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info('Successfully extended disk of an instance %s', instance.uuid)
-            event_logger.instance_volume.info(
+            event_logger.openstack_volume.info(
                 "Virtual machine {instance_name} disk has been extended to {volume_size} GB.",
                 event_type='resource_volume_extension_succeeded',
                 event_context={'resource': instance, 'volume_size': new_core_size_gib},
@@ -1842,14 +1842,14 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
-                event_logger.instance.error(
+                event_logger.resource.error(
                     'Virtual machine {instance_name} start has failed.',
                     event_type='resource_start_failed',
                     event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to start' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to start instance %s', instance.uuid)
-            event_logger.instance.error(
+            event_logger.resource.error(
                 'Virtual machine {instance_name} start has failed.',
                 event_type='resource_start_failed',
                 event_context={'resource': instance})
@@ -1859,7 +1859,7 @@ class OpenStackBackend(ServiceBackend):
             instance.save(update_fields=['start_time'])
 
             logger.info('Successfully started instance %s', instance.uuid)
-            event_logger.instance.info(
+            event_logger.resource.info(
                 'Virtual machine {instance_name} has been started.',
                 event_type='resource_start_succeeded',
                 event_context={'resource': instance})
@@ -1879,14 +1879,14 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
-                event_logger.instance.error(
+                event_logger.resource.error(
                     'Virtual machine {instance_name} stop has failed.',
                     event_type='resource_stop_failed',
                     event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to stop instance %s', instance.uuid)
-            event_logger.instance.error(
+            event_logger.resource.error(
                 'Virtual machine {instance_name} stop has failed.',
                 event_type='resource_stop_failed',
                 event_context={'resource': instance})
@@ -1895,7 +1895,7 @@ class OpenStackBackend(ServiceBackend):
             instance.start_time = None
             instance.save(update_fields=['start_time'])
             logger.info('Successfully stopped instance %s', instance.uuid)
-            event_logger.instance.info(
+            event_logger.resource.info(
                 'Virtual machine {instance_name} has been stopped.',
                 event_type='resource_stop_succeeded',
                 event_context={'resource': instance})
@@ -1908,21 +1908,21 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE', retries=80):
                 logger.error('Failed to restart instance %s', instance.uuid)
-                event_logger.instance.error(
+                event_logger.resource.error(
                     'Virtual machine {instance_name} restart has failed.',
                     event_type='resource_restart_failed',
                     event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to restart' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to restart instance %s', instance.uuid)
-            event_logger.instance.error(
+            event_logger.resource.error(
                 'Virtual machine {instance_name} restart has failed.',
                 event_type='resource_restart_failed',
                 event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info('Successfully restarted instance %s', instance.uuid)
-            event_logger.instance.info(
+            event_logger.resource.info(
                 'Virtual machine {instance_name} has been restarted.',
                 event_type='resource_restart_succeeded',
                 event_context={'resource': instance})
@@ -1935,7 +1935,7 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_deletion(instance.backend_id):
                 logger.info('Failed to delete instance %s', instance.uuid)
-                event_logger.instance.error(
+                event_logger.resource.error(
                     'Virtual machine {instance_name} deletion has failed.',
                     event_type='resource_deletion_failed',
                     event_context={'resource': instance})
@@ -1943,14 +1943,14 @@ class OpenStackBackend(ServiceBackend):
 
         except nova_exceptions.ClientException as e:
             logger.info('Failed to delete instance %s', instance.uuid)
-            event_logger.instance.error(
+            event_logger.resource.error(
                 'Virtual machine {instance_name} deletion has failed.',
                 event_type='resource_deletion_failed',
                 event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info('Successfully deleted instance %s', instance.uuid)
-            event_logger.instance.info(
+            event_logger.resource.info(
                 'Virtual machine {instance_name} has been deleted.',
                 event_type='resource_deletion_succeeded',
                 event_context={'resource': instance})
