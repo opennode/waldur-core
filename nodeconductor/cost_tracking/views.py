@@ -5,6 +5,7 @@ from rest_framework import viewsets, permissions, exceptions
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.cost_tracking import models, serializers, filters
 from nodeconductor.structure import models as structure_models
+from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
 
 class PriceEditPermissionMixin(object):
@@ -25,6 +26,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     filter_backends = (
         filters.AdditionalPriceEstimateFilterBackend,
         filters.PriceEstimateScopeFilterBackend,
+        ScopeTypeFilterBackend,
         DjangoMappingFilterBackend,
     )
     filter_class = filters.PriceEstimateFilter
