@@ -69,7 +69,7 @@ def recover_erred_services(service_project_links=None):
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings', heavy_task=True)
-@throttle(concurrency=2)
+@throttle(concurrency=2, key='service_settings_sync')
 def sync_service_settings(settings_uuids=None):
     settings = models.ServiceSettings.objects.all()
     if settings_uuids:
@@ -151,7 +151,7 @@ def recover_erred_service_settings(settings_uuids=None):
 @shared_task(name='nodeconductor.structure.sync_service_project_links',
              max_retries=120, default_retry_delay=5, is_heavy_task=True)
 @retry_if_false
-@throttle(concurrency=2)
+@throttle(concurrency=2, key='service_project_links_sync')
 def sync_service_project_links(service_project_links=None, quotas=None, initial=False):
     if service_project_links is not None:
         link_objects = models.ServiceProjectLink.from_string(service_project_links)
