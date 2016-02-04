@@ -31,7 +31,8 @@ class QuotaViewSet(mixins.UpdateModelMixin,
     def perform_update(self, serializer):
         if not serializer.instance.scope.can_user_update_quotas(self.request.user):
             raise rf_exceptions.PermissionDenied('You do not have permission to perform this action.')
-        quota_field = serializer.instance.get_field()
+        quota = self.get_object()
+        quota_field = quota.get_field()
         # old style quotas do not have quota_field
         if quota_field is not None and quota_field.is_backend:
             raise rf_exceptions.APIException(
@@ -39,7 +40,8 @@ class QuotaViewSet(mixins.UpdateModelMixin,
                 status_code=status.HTTP_409_CONFLICT
             )
 
-        super(QuotaViewSet, self).perform_update(serializer)
+        limit = serializer.validated_data['limit']
+        quota.scope.set_quota_limit(quota.name, limit)
 
     @decorators.detail_route()
     def history(self, request, uuid=None):

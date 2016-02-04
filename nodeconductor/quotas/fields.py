@@ -1,5 +1,7 @@
 from django.utils import six
 
+from . import exceptions
+
 
 class FieldsContainerMeta(type):
     """ Initiates quota fields names.
@@ -19,20 +21,33 @@ class QuotaField(object):
     """ Base quota field.
 
     Links quota to its scope right after its creation.
-    Allows to define quota initial limit and usage and is quota related to backend.
-    (It is impossible to modify backend quota).
+    Allows to define:
+     - default_limit
+     - default_usage
+     - is_backend - is quota represents backend limitation. It is impossible to modify backend quotas.
+     - creation_condition - function that receive quota scope and return True if quota should be created
+                            for given scope. Quota will be created automatically if creation_condition is None.
 
     Default limit and usage can be defined as callable function.
     Example:
         quota_name = QuotaField(default_limit=lambda scope: scope.attr)
     """
 
-    def __init__(self, default_limit=-1, default_usage=0, is_backend=False):
+    def __init__(self, default_limit=-1, default_usage=0, is_backend=False, creation_condition=None):
         self.default_limit = default_limit
         self.default_usage = default_usage
         self.is_backend = is_backend
+        self.creation_condition = creation_condition
+
+    def _can_quota_be_created_for_scope(self, scope):
+        if self.creation_condition is None:
+            return True
+        return self.creation_condition(scope)
 
     def get_or_create_quota(self, scope):
+        if not self._can_quota_be_created_for_scope(scope):
+            raise exceptions.CreationConditionFailedQuotaError(
+                'Wrong scope: Cannot create quota "%s" for scope "%s".' % (self.name, scope))
         defaults = {
             'limit': self.default_limit(scope) if six.callable(self.default_limit) else self.default_limit,
             'usage': self.default_usage(scope) if six.callable(self.default_usage) else self.default_usage,

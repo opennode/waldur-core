@@ -100,7 +100,8 @@ class QuotaModelMixin(models.Model):
     QUOTAS_NAMES = []  # this list has to be overridden. Deprecated use class Quotas instead
 
     class Quotas(six.with_metaclass(fields.FieldsContainerMeta)):
-        pass  # register model quota fields here
+        enable_fields_caching = True
+        # register model quota fields here
 
     class Meta:
         abstract = True
@@ -269,7 +270,7 @@ class QuotaModelMixin(models.Model):
 
     @classmethod
     def get_quotas_fields(cls, field_class=None):
-        if not hasattr(cls, '_quota_fields'):
+        if not hasattr(cls, '_quota_fields') or not cls.Quotas.enable_fields_caching:
             cls._quota_fields = dict(inspect.getmembers(cls.Quotas, lambda m: isinstance(m, fields.QuotaField))).values()
         if field_class is not None:
             return [v for v in cls._quota_fields if isinstance(v, field_class)]

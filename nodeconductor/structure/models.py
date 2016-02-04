@@ -551,7 +551,8 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class ServiceSettings(core_models.UuidMixin,
+class ServiceSettings(quotas_models.QuotaModelMixin,
+                      core_models.UuidMixin,
                       core_models.NameMixin,
                       core_models.SynchronizableMixin,
                       LoggableMixin):
@@ -563,6 +564,10 @@ class ServiceSettings(core_models.UuidMixin,
     class Permissions(object):
         customer_path = 'customer'
         extra_query = dict(shared=True)
+
+    class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        """ It is possible to add quotas to ServiceSettings in runtime with add_quota_field method """
+        enable_fields_caching = False
 
     customer = models.ForeignKey(Customer, related_name='service_settings', blank=True, null=True)
     backend_url = models.URLField(max_length=200, blank=True, null=True)
@@ -594,6 +599,11 @@ class ServiceSettings(core_models.UuidMixin,
 
     def get_type_display(self):
         return SupportedServices.get_name_for_type(self.type)
+
+    @classmethod
+    def add_quota_field(cls, name, quota_field):
+        quota_field.name = name
+        setattr(cls.Quotas, name, quota_field)
 
 
 @python_2_unicode_compatible

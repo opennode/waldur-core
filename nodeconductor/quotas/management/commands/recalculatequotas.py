@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from nodeconductor.quotas import models, fields
+from nodeconductor.quotas import models, fields, exceptions
 from nodeconductor.quotas.utils import get_models_with_quotas
 
 
@@ -32,7 +32,10 @@ class Command(BaseCommand):
         for model in get_models_with_quotas():
             for obj in model.objects.all():
                 for field in obj.get_quotas_fields():
-                    field.get_or_create_quota(scope=obj)
+                    try:
+                        field.get_or_create_quota(scope=obj)
+                    except exceptions.CreationConditionFailedQuotaError:
+                        pass
         self.stdout.write('...done')
 
     def recalculate_global_quotas(self):
