@@ -707,6 +707,7 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     class Meta(object):
         abstract = True
+        unique_together = ('service', 'project')
 
     class Permissions(object):
         customer_path = 'service__customer'
