@@ -1232,6 +1232,10 @@ class OpenStackBackend(ServiceBackend):
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
     def cleanup(self, dryrun=True):
+        if not self.tenant_id:
+            logger.info("Nothing to cleanup, tenant_id of %s is not set" % self)
+            return
+
         # floatingips
         neutron = self.neutron_admin_client
         floatingips = neutron.list_floatingips(tenant_id=self.tenant_id)
