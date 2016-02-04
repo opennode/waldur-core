@@ -46,8 +46,7 @@ class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProje
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
     )
 
-    class Meta:
-        unique_together = ('service', 'project')
+    class Meta(structure_models.ServiceProjectLink.Meta):
         verbose_name = 'OpenStack service project link'
         verbose_name_plural = 'OpenStack service project links'
 
