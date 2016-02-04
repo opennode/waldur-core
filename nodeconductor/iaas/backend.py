@@ -289,6 +289,8 @@ class OpenStackBackend(OpenStackClient):
                 'password': membership.password,
             }
             if check_tenant:
+                if not membership.tenant_id:
+                    raise CloudBackendError("Can't create tenant session, please provide tenant ID")
                 credentials['tenant_id'] = membership.tenant_id
             return backend.create_tenant_session(credentials)
 
