@@ -778,6 +778,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -785,7 +786,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
-            'dummy'
+            'dummy', 'quotas',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
