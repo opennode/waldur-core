@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.translation import ungettext
 
 from nodeconductor.core.tasks import send_task
@@ -12,7 +12,8 @@ from nodeconductor.openstack.models import OpenStackService, OpenStackServicePro
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
 
     actions = structure_admin.ServiceProjectLinkAdmin.actions + \
-              ['detect_external_networks', 'allocate_floating_ip']
+              ['detect_external_networks', 'allocate_floating_ip',
+               'pull_security_groups', 'push_security_groups']
 
     def detect_external_networks(self, request, queryset):
         queryset = queryset.exclude(state=SynchronizationStates.ERRED)
@@ -57,6 +58,58 @@ class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
         self.message_user(request, message)
 
     allocate_floating_ip.short_description = "Allocate floating IPs for selected service project links"
+
+    def pull_security_groups(self, request, queryset):
+        spls_checked = queryset.count()
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+
+        if spls_checked != queryset.count():
+            message = 'Only service project links that are IN_SYNC state can be scheduled'
+            self.message_user(request, message, level=messages.WARNING)
+
+        tasks_scheduled = 0
+        for spl in queryset.iterator():
+            send_task('openstack', 'openstack_pull_security_groups')(spl.to_string())
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'Scheduled security groups pulling for one service project link',
+            'Scheduled security groups pulling for %(tasks_scheduled)d service project links',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    pull_security_groups.short_description = "Pull security groups for selected service project links"
+
+    def push_security_groups(self, request, queryset):
+        spls_checked = queryset.count()
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
+
+        if spls_checked != queryset.count():
+            message = 'Only service project links that are IN_SYNC state can be scheduled'
+            self.message_user(request, message, level=messages.WARNING)
+
+        tasks_scheduled = 0
+        for spl in queryset.iterator():
+            send_task('openstack', 'openstack_push_security_groups')(spl.to_string())
+            tasks_scheduled += 1
+
+        message = ungettext(
+            'Scheduled security groups pushing for one service project link',
+            'Scheduled security groups pushing for %(tasks_scheduled)d service project links',
+            tasks_scheduled
+        )
+        message = message % {
+            'tasks_scheduled': tasks_scheduled,
+        }
+
+        self.message_user(request, message)
+
+    push_security_groups.short_description = "Push security groups for selected service project links"
 
 
 class BackupAdmin(admin.ModelAdmin):

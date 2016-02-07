@@ -4,7 +4,19 @@ CHANGELOG
 Release NEXT
 ------------
 
-<Nothing yet>
+<Add changes here>
+
+Release 0.86.0
+--------------
+- Extracted Oracle app to plugin.
+- Moved SPLs and settings synchronization tasks to separate queue.
+- Added documentation about the structure module.
+- Refactored /admin for price estimates.
+- Moved SPL synchronisation to a separate queue.
+- Added quotas for service settings.
+- Added CVS utils.
+- NB! Fixed an issue with potential cleanup of floating IPs from all OpenStack tenants.
+- Bugfixes.
 
 Release 0.85.0
 --------------
@@ -13,7 +25,7 @@ Release 0.85.0
 - Improved /admin interface, exposed installed plugins and versions.
 - Made state rendering in /projects consistent.
 - Fixed recovery command for service project links.
-- Exposed subscribtion to Kill Bill and offline resources from admin page.
+- Exposed subscription to Kill Bill and offline resources from admin page.
 - Reimplemented resources summary view.
 - Moved external_ips field to VirtualMachineMixin.
 - Added model to resource viewset for permissions.

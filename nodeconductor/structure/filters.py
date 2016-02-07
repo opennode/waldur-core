@@ -5,7 +5,7 @@ from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 
-from rest_framework.filters import BaseFilterBackend
+from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import models as core_models
@@ -17,6 +17,50 @@ from nodeconductor.structure.managers import filter_queryset_for_user
 
 
 User = auth.get_user_model()
+
+
+class ScopeTypeFilterBackend(DjangoFilterBackend):
+    """ Backend for filtering by scope type. """
+
+    scope_field = 'scope'
+    scope_param = 'scope_type'
+    scope_models = (
+        models.Resource,
+        models.Service,
+        models.ServiceProjectLink,
+        models.Project,
+        models.Customer)
+
+    @classmethod
+    def get_scope_type(cls, obj):
+        field = getattr(obj, cls.scope_field)
+        for model in cls.scope_models:
+            if isinstance(field, model):
+                return model._meta.model_name
+
+    @classmethod
+    def get_scope_models(cls, types):
+        for model in cls.scope_models:
+            if model._meta.model_name in types:
+                try:
+                    for submodel in model.get_all_models():
+                        yield submodel
+                except AttributeError:
+                    yield model
+
+    @classmethod
+    def get_scope_content_types(cls, types):
+        return ContentType.objects.get_for_models(*cls.get_scope_models(types)).values()
+
+    @classmethod
+    def get_ct_field(cls, obj_or_cls):
+        return next(field.ct_field for field in obj_or_cls._meta.virtual_fields if field.name == cls.scope_field)
+
+    def filter_queryset(self, request, queryset, view):
+        if self.scope_param in request.query_params:
+            content_types = self.get_scope_content_types(request.query_params.getlist(self.scope_param))
+            return queryset.filter(**{'%s__in' % self.get_ct_field(queryset.model): content_types})
+        return queryset
 
 
 class GenericRoleFilter(BaseFilterBackend):
@@ -501,6 +545,7 @@ class BaseServiceFilter(django_filters.FilterSet):
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
     service_uuid = django_filters.CharFilter(name='service__uuid')
+    customer_uuid = django_filters.CharFilter(name='service__customer__uuid')
     project_uuid = django_filters.CharFilter(name='project__uuid')
     project = core_filters.URLFilter(view_name='project-detail', name='project__uuid')
 

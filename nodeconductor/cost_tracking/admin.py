@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from django.shortcuts import redirect
 from django.utils.translation import ungettext, gettext
 
@@ -124,13 +125,21 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
                 items = backend.get_default_price_list_items()
             except NotImplementedError:
                 continue
-            for item in items:
-                if not models.DefaultPriceListItem.objects.filter(resource_content_type=item.resource_content_type,
-                                                                  item_type=item.item_type, key=item.key).exists():
-                    if not item.name:
-                        item.name = '{}: {}'.format(item.item_type, item.key)
-                    item.save()
-                    created_items.append(item)
+            with transaction.atomic():
+                for item in items:
+                    item, created = models.DefaultPriceListItem.objects.update_or_create(
+                        resource_content_type=item.resource_content_type,
+                        item_type=item.item_type,
+                        key=item.key,
+                        defaults={
+                            'value': item.value,
+                            'name': '{}: {}'.format(item.item_type, item.key),
+                            'metadata': item.metadata,
+                            'units': item.units
+                        }
+                    )
+                    if created:
+                        created_items.append(item)
         if created_items:
             message = ungettext(
                 'Price item was created: {}'.format(created_items[0].name),
@@ -139,9 +148,17 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
             )
             self.message_user(request, message)
         else:
-            self.message_user(request, "Price items exist for all registered applications")
+            self.message_user(request, "Price items for all registered applications have been updated")
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
+
+
+class PriceEstimateAdmin(admin.ModelAdmin):
+    fields = ('content_type', 'object_id', 'total',
+              ('month', 'year'), ('is_manually_input', 'is_visible'))
+    list_display = ('content_type', 'object_id', 'total', 'month', 'year')
+    list_filter = ('is_manually_input', 'is_visible')
+    search_fields = ('month', 'year', 'object_id', 'total')
 
 
 class ApplicationTypeAdmin(admin.ModelAdmin):
@@ -151,5 +168,5 @@ class ApplicationTypeAdmin(admin.ModelAdmin):
 # TODO: disabled to reduce confusion. Enable once we start using it.
 # admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
-admin.site.register(models.PriceEstimate)
+admin.site.register(models.PriceEstimate, PriceEstimateAdmin)
 admin.site.register(models.ApplicationType, ApplicationTypeAdmin)

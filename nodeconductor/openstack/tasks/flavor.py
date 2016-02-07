@@ -1,27 +1,24 @@
 import logging
 
-from celery import shared_task
+from celery import chain, shared_task
 
-from nodeconductor.core.tasks import save_error_message, transition
+from nodeconductor.core.tasks import transition
 from nodeconductor.openstack.models import Instance, Flavor
 from nodeconductor.structure.log import event_logger
+
+from .base import (
+    nova_server_resize, nova_server_resize_confirm,
+    nova_wait_for_server_status, save_error_message_from_task)
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(name='nodeconductor.openstack.change_flavor')
-def change_flavor(instance_uuid, flavor_uuid):
-    change_instance_flavor.apply_async(
-        args=(instance_uuid, flavor_uuid),
-        link=flavor_change_succeeded.si(instance_uuid, flavor_uuid),
-        link_error=flavor_change_failed.si(instance_uuid, flavor_uuid))
-
-
-@shared_task
 @transition(Instance, 'begin_resizing')
-@save_error_message
-def change_instance_flavor(instance_uuid, flavor_uuid, transition_entity=None):
+def change_flavor(instance_uuid, flavor_uuid, transition_entity=None):
     instance = transition_entity
+    backend = instance.get_backend()
+    client = backend.get_client()
     flavor = Flavor.objects.get(
         settings=instance.service_project_link.service.settings,
         uuid=flavor_uuid)
@@ -31,8 +28,18 @@ def change_instance_flavor(instance_uuid, flavor_uuid, transition_entity=None):
     instance.flavor_name = flavor.name
     instance.save(update_fields=['ram', 'cores', 'flavor_name'])
 
-    backend = instance.get_backend()
-    backend.update_flavor(instance, flavor)
+    server_id = instance.backend_id
+    flavor_id = flavor.backend_id
+
+    chain(
+        nova_server_resize.s(client.session, server_id, flavor_id),
+        nova_wait_for_server_status.s(server_id, 'VERIFY_RESIZE'),
+        nova_server_resize_confirm.s(server_id),
+        nova_wait_for_server_status.s(server_id, 'SHUTOFF'),
+    ).apply_async(
+        link=flavor_change_succeeded.si(instance_uuid, flavor_uuid),
+        link_error=flavor_change_failed.s(instance_uuid, flavor_uuid),
+    )
 
 
 @shared_task
@@ -53,7 +60,8 @@ def flavor_change_succeeded(instance_uuid, flavor_uuid, transition_entity=None):
 
 @shared_task
 @transition(Instance, 'set_erred')
-def flavor_change_failed(instance_uuid, flavor_uuid, transition_entity=None):
+@save_error_message_from_task
+def flavor_change_failed(task_uuid, instance_uuid, flavor_uuid, transition_entity=None):
     instance = transition_entity
     flavor = Flavor.objects.get(
         settings=instance.service_project_link.service.settings,

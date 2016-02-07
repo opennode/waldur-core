@@ -1,12 +1,13 @@
 from __future__ import unicode_literals
 
-from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
+from django.utils import six
+from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.cost_tracking import models
-from nodeconductor.structure import SupportedServices
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import SupportedServices, models as structure_models
+from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -37,17 +38,10 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
         return price_estimate
 
     def get_scope_name(self, obj):
-        return str(obj.scope)
+        return six.text_type(obj.scope)  # respect to unicode
 
     def get_scope_type(self, obj):
-        models = (structure_models.Resource,
-                  structure_models.Service,
-                  structure_models.ServiceProjectLink,
-                  structure_models.Project,
-                  structure_models.Customer)
-        for model in models:
-            if isinstance(obj.scope, model):
-                return model._meta.model_name
+        return ScopeTypeFilterBackend.get_scope_type(obj)
 
 
 class YearMonthField(serializers.CharField):

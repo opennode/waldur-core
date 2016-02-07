@@ -886,7 +886,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'uuid',
             'url',
             'name', 'projects',
-            'customer', 'customer_name', 'customer_native_name',
+            'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
             'settings', 'dummy',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message'
@@ -1132,6 +1132,7 @@ class SummaryResourceSerializer(BasicResourceSerializer):
 
     access_url = serializers.SerializerMethodField()
     error_message = serializers.ReadOnlyField()
+    key_name = serializers.ReadOnlyField()
 
     def get_url(self, obj):
         return reverse(obj.get_url_name() + '-detail',

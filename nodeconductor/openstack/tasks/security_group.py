@@ -1,7 +1,13 @@
+import logging
+
 from celery import shared_task
 
 from nodeconductor.core.tasks import transition
-from nodeconductor.openstack.models import Instance, SecurityGroup
+from nodeconductor.openstack.backend import OpenStackBackendError
+from nodeconductor.openstack.models import Instance, SecurityGroup, OpenStackServiceProjectLink
+
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(name='nodeconductor.openstack.sync_instance_security_groups')
@@ -83,3 +89,27 @@ def openstack_delete_security_group(security_group_uuid):
     security_group = SecurityGroup.objects.get(uuid=security_group_uuid)
     backend = security_group.service_project_link.get_backend()
     backend.delete_security_group(security_group)
+
+
+@shared_task(name='nodeconductor.openstack.openstack_pull_security_groups')
+def openstack_pull_security_groups(service_project_link_str):
+    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
+    backend = service_project_link.get_backend()
+
+    try:
+        backend.pull_security_groups(service_project_link)
+    except OpenStackBackendError:
+        logger.warning("Failed to pull security groups for service project link %s.",
+                       service_project_link_str)
+
+
+@shared_task(name='nodeconductor.openstack.openstack_push_security_groups')
+def openstack_push_security_groups(service_project_link_str):
+    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
+    backend = service_project_link.get_backend()
+
+    try:
+        backend.push_security_groups(service_project_link)
+    except OpenStackBackendError:
+        logger.warning("Failed to push security groups for service project link %s.",
+                       service_project_link_str)

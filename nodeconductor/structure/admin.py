@@ -257,6 +257,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
+    inlines = [QuotaInline]
 
     def get_type_display(self, obj):
         return obj.get_type_display()

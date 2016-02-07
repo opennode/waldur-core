@@ -222,7 +222,7 @@ class SupportedServices(object):
                 'GitLab.Group': nodeconductor_plus.gitlab.models.Group,
                 'GitLab.Project': nodeconductor_plus.gitlab.models.Project,
                 'IaaS.Instance': nodeconductor.iaas.models.Instance,
-                'Oracle.Database': nodeconductor.oracle.models.Database
+                'Oracle.Database': nodeconductor_oracle_dbaas.models.Database
             }
 
         """
@@ -345,6 +345,9 @@ class ServiceBackend(object):
         raise ServiceBackendNotImplemented
 
     def sync(self):
+        raise ServiceBackendNotImplemented
+
+    def sync_quotas(self, service_project_link):
         raise ServiceBackendNotImplemented
 
     def sync_link(self, service_project_link, is_initial=False):

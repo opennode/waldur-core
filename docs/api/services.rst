@@ -15,25 +15,31 @@ Example of a request:
     {
         "Oracle": {
             "url": "http://example.com/api/oracle/",
+            "service_project_link_url": "http://example.com/api/oracle-service-project-link/",
             "resources": {
                 "Database": "http://example.com/api/oracle-databases/"
             }
         },
         "OpenStack": {
-            "url": "http://example.com/api/clouds/",
+            "url": "http://example.com/api/openstack/",
+            "service_project_link_url": "http://example.com/api/openstack-service-project-link/",
+            "properties": {
+                "Flavor": "http://example.com/api/openstack-flavors/",
+                "Image": "http://example.com/api/openstack-images/",
+                "SecurityGroup": "http://example.com/api/openstack-security-groups/"
+            },
             "resources": {
-                "Instance": "http://example.com/api/iaas-resources/"
-            }
-        },
-        "GitLab": {
-            "url": "http://example.com/api/gitlab/",
-            "resources": {
-                "Project": "http://example.com/api/gitlab-projects/",
-                "Group": "http://example.com/api/gitlab-groups/"
+                "Instance": "http://example.com/api/openstack-instances/"
             }
         },
         "DigitalOcean": {
             "url": "http://example.com/api/digitalocean/",
+            "service_project_link_url": "http://example.com/api/digitalocean-service-project-link/",
+            "properties": {
+                "Image": "http://example.com/api/digitalocean-images/",
+                "Region": "http://example.com/api/digitalocean-regions/",
+                "Size": "http://example.com/api/digitalocean-sizes/"
+            },
             "resources": {
                 "Droplet": "http://example.com/api/digitalocean-droplets/"
             }
@@ -75,6 +81,7 @@ Example:
             "name": "Stratus",
             "projects": [],
             "customer": "http://www.example.com/api/customers/b3b0d890cab244b88429db838ead737a/",
+            "customer_uuid": "b3b0d890cab244b88429db838ead737a",
             "customer_name": "Ministry of Bells",
             "customer_native_name": "",
             "settings": "http://www.example.com/api/service-settings/beed810ccec24dd786ed9c79d7fb72fe/",
@@ -88,6 +95,7 @@ Example:
             "name": "Cumulus",
             "projects": [],
             "customer": "http://www.example.com/api/customers/5bf7c7f1c67842849cbfc0b544d67056/",
+            "customer_uuid": "5bf7c7f1c67842849cbfc0b544d67056",
             "customer_name": "Ministry of Whistles",
             "customer_native_name": "",
             "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/",
@@ -136,6 +144,48 @@ Or provide your own credentials. Example:
         "username": "admin",
         "password": "secret"
     }
+
+
+Project-service connection list
+-------------------------------
+
+In order to be able to provision resources, service must first be linked to a project. To do that,
+POST a connection between project and a service to service_project_link_url as stuff user or customer owner.
+
+To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
+
+To get a list of connections between a project and an service, run GET against service_project_link_url as authenticated user.
+Note that a user can only see connections of a project where a user has a role.
+
+Filtering of project-service connection list is supported through HTTP query parameters, the following fields are supported:
+
+- ?service_uuid
+- ?customer_uuid
+- ?project_uuid
+
+Example response:
+
+.. code-block:: http
+
+    GET /api/digitalocean-service-project-link/ HTTP/1.1
+    Content-Type: application/json
+    Accept: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    [
+        {
+            "url": "http://example.com/api/digitalocean-service-project-link/788/",
+            "project": "http://example.com/api/projects/d35b89f61cb24e9ebb63255a4bef997c/",
+            "project_name": "Web services",
+            "project_uuid": "d35b89f61cb24e9ebb63255a4bef997c",
+            "service": "http://example.com/api/digitalocean/f1cdaaf68d664a2a8e9aed09f6b80b40/",
+            "service_name": "DigitalOceanTest",
+            "service_uuid": "f1cdaaf68d664a2a8e9aed09f6b80b40",
+            "state": "In Sync",
+            "error_message": ""
+        }
+    ]
 
 
 Import service resources
