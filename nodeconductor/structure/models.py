@@ -551,7 +551,8 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class ServiceSettings(core_models.UuidMixin,
+class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
+                      core_models.UuidMixin,
                       core_models.NameMixin,
                       core_models.SynchronizableMixin,
                       LoggableMixin):
@@ -707,6 +708,7 @@ class ServiceProjectLink(core_models.SerializableAbstractMixin,
 
     class Meta(object):
         abstract = True
+        unique_together = ('service', 'project')
 
     class Permissions(object):
         customer_path = 'service__customer'
@@ -784,9 +786,6 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
             return self.external_ips
         if self.internal_ips:
             return self.internal_ips
-        return None
-
-    def get_access_url_name(self):
         return None
 
 
@@ -907,6 +906,9 @@ class Resource(core_models.UuidMixin,
 
     def get_access_url(self):
         # default behaviour. Override in subclasses if applicable
+        return None
+
+    def get_access_url_name(self):
         return None
 
     @classmethod

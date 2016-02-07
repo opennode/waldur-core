@@ -6,6 +6,8 @@ import uuidfield.fields
 import django.core.validators
 import django_fsm
 
+import nodeconductor.core.validators
+
 
 class Migration(migrations.Migration):
 
@@ -29,7 +31,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('description', models.CharField(max_length=500, verbose_name='description', blank=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('state', django_fsm.FSMIntegerField(default=1, choices=[(1, 'Sync Scheduled'), (2, 'Syncing'), (3, 'In Sync'), (4, 'Erred')])),
                 ('backend_id', models.CharField(max_length=128, blank=True)),

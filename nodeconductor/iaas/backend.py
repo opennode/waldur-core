@@ -289,6 +289,8 @@ class OpenStackBackend(OpenStackClient):
                 'password': membership.password,
             }
             if check_tenant:
+                if not membership.tenant_id:
+                    raise CloudBackendError("Can't create tenant session, please provide tenant ID")
                 credentials['tenant_id'] = membership.tenant_id
             return backend.create_tenant_session(credentials)
 
@@ -755,6 +757,7 @@ class OpenStackBackend(OpenStackClient):
                 )
                 if backend_group.name != nc_security_group.name:
                     nc_security_group.name = backend_group.name
+                    nc_security_group.state = SynchronizationStates.IN_SYNC
                     nc_security_group.save()
                 self.pull_security_group_rules(nc_security_group, nova)
             logger.debug('Updated existing security groups in database')
@@ -764,6 +767,7 @@ class OpenStackBackend(OpenStackClient):
                 nc_security_group = membership.security_groups.create(
                     backend_id=backend_group.id,
                     name=backend_group.name,
+                    state=SynchronizationStates.IN_SYNC
                 )
                 self.pull_security_group_rules(nc_security_group, nova)
                 logger.info('Created new security group %s in database', nc_security_group.uuid)

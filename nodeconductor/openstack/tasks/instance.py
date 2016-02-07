@@ -29,22 +29,24 @@ def provision(instance_uuid, **kwargs):
         begin_syncing_service_project_links.apply_async(
             args=(spl.to_string(),),
             kwargs={'initial': True, 'transition_method': 'begin_creating'},
-            link=set_spl_in_sync_and_start_provision.si(spl.to_string(), instance_uuid, **kwargs),
+            link=start_provision.si(spl.to_string(), instance_uuid, **kwargs),
             link_error=set_spl_and_instance_as_erred.si(spl.to_string(), instance_uuid),
         )
     else:
-        provision_instance.apply_async(
-            args=(instance_uuid,),
-            kwargs=kwargs,
-            link=set_online.si(instance_uuid),
-            link_error=set_erred.si(instance_uuid)
-        )
+        start_provision.delay(None, instance_uuid, **kwargs)
 
 
 @shared_task
-def set_spl_in_sync_and_start_provision(service_project_link_str, instance_uuid, **kwargs):
-    sync_service_project_link_succeeded(service_project_link_str)
-    provision_instance.delay(instance_uuid, **kwargs)
+def start_provision(service_project_link_str, instance_uuid, **kwargs):
+    if service_project_link_str:
+        sync_service_project_link_succeeded(service_project_link_str)
+
+    provision_instance.apply_async(
+        args=(instance_uuid,),
+        kwargs=kwargs,
+        link=set_online.si(instance_uuid),
+        link_error=set_erred.si(instance_uuid)
+    )
 
 
 @shared_task
@@ -134,7 +136,7 @@ def start_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
     try:
-        backend._old_backend.start_instance(instance)
+        backend.start_instance(instance)
     except:
         event_logger.resource.error(
             'Resource {resource_name} start has failed.',
@@ -155,7 +157,7 @@ def stop_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
     try:
-        backend._old_backend.stop_instance(instance)
+        backend.stop_instance(instance)
     except:
         event_logger.resource.error(
             'Resource {resource_name} stop has failed.',
@@ -176,7 +178,7 @@ def restart_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
     try:
-        backend._old_backend.restart_instance(instance)
+        backend.restart_instance(instance)
     except:
         event_logger.resource.error(
             'Resource {resource_name} restart has failed.',

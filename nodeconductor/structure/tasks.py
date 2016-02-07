@@ -7,12 +7,12 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from celery import shared_task
 
-from nodeconductor.core.tasks import transition, retry_if_false, save_error_message
+from nodeconductor.core.tasks import transition, retry_if_false, save_error_message, throttle
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
-from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user
+from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user, GeoIpException
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,8 @@ def recover_erred_services(service_project_links=None):
                 recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
 
 
-@shared_task(name='nodeconductor.structure.sync_service_settings')
+@shared_task(name='nodeconductor.structure.sync_service_settings', heavy_task=True)
+@throttle(concurrency=2, key='service_settings_sync')
 def sync_service_settings(settings_uuids=None):
     settings = models.ServiceSettings.objects.all()
     if settings_uuids:
@@ -147,8 +148,10 @@ def recover_erred_service_settings(settings_uuids=None):
             logger.warning('Cannot recover service settings %s from state %s', settings.name, settings.state)
 
 
-@shared_task(name='nodeconductor.structure.sync_service_project_links', max_retries=120, default_retry_delay=5)
+@shared_task(name='nodeconductor.structure.sync_service_project_links',
+             max_retries=120, default_retry_delay=5, is_heavy_task=True)
 @retry_if_false
+@throttle(concurrency=2, key='service_project_links_sync')
 def sync_service_project_links(service_project_links=None, quotas=None, initial=False):
     if service_project_links is not None:
         link_objects = models.ServiceProjectLink.from_string(service_project_links)

@@ -412,3 +412,25 @@ def update_cloud_project_membership_tenant_name(membership_pk):
         backend.update_tenant_name(membership, keystone)
     except CloudBackendError:
         logger.warning('Failed to update tenant name for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def push_cloud_project_membership_security_groups(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        backend.push_security_groups(membership)
+    except CloudBackendError:
+        logger.warning('Failed to push security groups for cloud project membership with id %s.', membership_pk)
+
+
+@shared_task
+def pull_cloud_project_membership_security_groups(membership_pk):
+    membership = models.CloudProjectMembership.objects.get(pk=membership_pk)
+    backend = membership.cloud.get_backend()
+
+    try:
+        backend.pull_security_groups(membership)
+    except CloudBackendError:
+        logger.warning('Failed to pull security groups for cloud project membership with id %s', membership_pk)

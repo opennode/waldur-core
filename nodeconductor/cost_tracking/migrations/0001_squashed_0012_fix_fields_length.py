@@ -6,6 +6,8 @@ import jsonfield.fields
 import uuidfield.fields
 import django.core.validators
 
+import nodeconductor.core.validators
+
 
 class ApplicationTypes(object):
     WORDPRESS = 'wordpress'
@@ -78,7 +80,7 @@ class Migration(migrations.Migration):
             name='DefaultPriceListItem',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('key', models.CharField(max_length=255)),
                 ('value', models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=2)),
@@ -95,7 +97,7 @@ class Migration(migrations.Migration):
             name='ApplicationType',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('slug', models.CharField(unique=True, max_length=150)),
             ],
             options={

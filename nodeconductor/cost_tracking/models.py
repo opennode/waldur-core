@@ -1,4 +1,5 @@
 import calendar
+import functools
 import logging
 
 from dateutil.relativedelta import relativedelta
@@ -113,6 +114,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             seconds_of_work = (month_end - created).total_seconds()
 
             creation_month_cost = round(monthly_cost * seconds_of_work / seconds_in_month, 2)
+            update = functools.partial(cls.update_price_for_scope, resource)
 
             if delete:
                 monthly_cost *= -1
@@ -120,18 +122,16 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
             if created.month == now.month and created.year == now.year:
                 # update only current month estimate
-                PriceEstimate.update_price_for_scope(resource, now.month, now.year, creation_month_cost)
+                update(now.month, now.year, creation_month_cost)
             else:
                 # update current month estimate
-                PriceEstimate.update_price_for_scope(resource, now.month, now.year, monthly_cost)
+                update(now.month, now.year, monthly_cost)
                 # update first month estimate
-                PriceEstimate.update_price_for_scope(resource, created.month, created.year, creation_month_cost,
-                                                     update_if_exists=False)
+                update(created.month, created.year, creation_month_cost, update_if_exists=False)
                 # update price estimate for previous months if it does not exist:
                 date = now - relativedelta(months=+1)
                 while not (date.month == created.month and date.year == created.year):
-                    PriceEstimate.update_price_for_scope(resource, date.month, date.year, monthly_cost,
-                                                         update_if_exists=False)
+                    update(date.month, date.year, monthly_cost, update_if_exists=False)
                     date -= relativedelta(months=+1)
 
     def __str__(self):

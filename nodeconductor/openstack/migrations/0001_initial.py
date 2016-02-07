@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 from django.db import models, migrations
 import nodeconductor.logging.log
+import nodeconductor.core.validators
 import uuidfield.fields
 import django_fsm
 
@@ -18,7 +19,7 @@ class Migration(migrations.Migration):
             name='Flavor',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('backend_id', models.CharField(max_length=255, db_index=True)),
                 ('cores', models.PositiveSmallIntegerField(help_text=b'Number of cores in a VM')),
@@ -35,7 +36,7 @@ class Migration(migrations.Migration):
             name='Image',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(max_length=150, verbose_name='name')),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
                 ('backend_id', models.CharField(max_length=255, db_index=True)),
                 ('min_disk', models.PositiveIntegerField(default=0, help_text=b'Minimum disk size in MiB')),

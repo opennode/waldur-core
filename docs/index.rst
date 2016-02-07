@@ -37,6 +37,7 @@ NodeConductor plugins
    :maxdepth: 1
 
    plugins/openstack/intro
+   plugins/oracle
    plugins/organization
    plugins/saltstack
    plugins/sugarcrm
