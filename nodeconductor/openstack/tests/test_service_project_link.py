@@ -303,6 +303,9 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=user)
 
         for state in SynchronizationStates.UNSTABLE_STATES:
+            if state == SynchronizationStates.NEW:
+                continue
+
             self.service_project_link.state = state
             self.service_project_link.save()
 
