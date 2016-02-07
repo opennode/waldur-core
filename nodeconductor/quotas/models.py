@@ -275,3 +275,30 @@ class QuotaModelMixin(models.Model):
         if field_class is not None:
             return [v for v in cls._quota_fields if isinstance(v, field_class)]
         return cls._quota_fields
+
+
+class ExtendableQuotaModelMixin(QuotaModelMixin):
+    """ Allows to add quotas to model in runtime.
+
+    Example:
+        from nodeconductor.quotas.fields import QuotaField
+
+        QuotaScopeModel.add_quota_field(
+            name='quota_name',
+            quota_field=QuotaField(...),
+        )
+    """
+
+    class Quotas(QuotaModelMixin.Quotas):
+        enable_fields_caching = False
+        # register model quota fields here
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def add_quota_field(cls, name, quota_field):
+        # We need to initiate name field here because quota is not listed in Quotas class
+        # and initialization is not executed automatically.
+        quota_field.name = name
+        setattr(cls.Quotas, name, quota_field)
