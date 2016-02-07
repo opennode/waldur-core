@@ -551,7 +551,8 @@ class ProjectGroup(core_models.UuidMixin,
 
 
 @python_2_unicode_compatible
-class ServiceSettings(core_models.UuidMixin,
+class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
+                      core_models.UuidMixin,
                       core_models.NameMixin,
                       core_models.SynchronizableMixin,
                       LoggableMixin):

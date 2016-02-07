@@ -3,6 +3,7 @@ from django.db.models import signals
 
 from nodeconductor.quotas import models, utils
 from nodeconductor.quotas.log import alert_logger, event_logger
+from nodeconductor.quotas.exceptions import CreationConditionFailedQuotaError
 
 
 # Deprecated, new style quotas adds them self automatically
@@ -52,6 +53,7 @@ def reset_quota_values_to_zeros_before_delete(sender, instance=None, **kwargs):
     quotas_names = quotas_scope.quotas.values_list('name', flat=True)
     for name in quotas_names:
         quotas_scope.set_quota_usage(name, 0)
+        quotas_scope.set_quota_limit(name, 0)
 
 
 # XXX: rewrite global quotas
@@ -86,7 +88,10 @@ def init_quotas(sender, instance, created=False, **kwargs):
     if not created:
         return
     for field in sender.get_quotas_fields():
-        field.get_or_create_quota(scope=instance)
+        try:
+            field.get_or_create_quota(scope=instance)
+        except CreationConditionFailedQuotaError:
+            pass
 
 
 def count_quota_handler_factory(count_quota_field):
