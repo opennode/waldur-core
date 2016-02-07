@@ -4,8 +4,19 @@ CHANGELOG
 Release NEXT
 ------------
 
+<Add changes here>
+
+Release 0.85.0
+--------------
 - Extracted Oracle app to plugin.
 - Moved SPLs and settings synchronization tasks to separate queue.
+- Added documentation about the structure module.
+- Refactored /admin for price estimates.
+- Moved SPL synchronisation to a separate queue.
+- Added quotas for service settings.
+- Added CVS utils.
+- NB! Fixed an issue with potential cleanup of floating IPs from all OpenStack tenants.
+- Bugfixes.
 
 Release 0.85.0
 --------------
