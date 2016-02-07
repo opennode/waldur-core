@@ -6,7 +6,7 @@ Release NEXT
 
 <Add changes here>
 
-Release 0.85.0
+Release 0.86.0
 --------------
 - Extracted Oracle app to plugin.
 - Moved SPLs and settings synchronization tasks to separate queue.
