@@ -25,10 +25,15 @@ class UpdateOnlyStableMixin(object):
     """
 
     def initial(self, request, *args, **kwargs):
-        if self.action in ('update', 'partial_update', 'destroy'):
+        acceptable_states = {
+            'update': SynchronizationStates.STABLE_STATES,
+            'partial_update': SynchronizationStates.STABLE_STATES,
+            'destroy': SynchronizationStates.STABLE_STATES | {SynchronizationStates.NEW},
+        }
+        if self.action in acceptable_states.keys():
             obj = self.get_object()
             if obj and isinstance(obj, SynchronizableMixin):
-                if obj.state not in SynchronizationStates.STABLE_STATES:
+                if obj.state not in acceptable_states[self.action]:
                     raise IncorrectStateException(
                         'Modification allowed in stable states only.')
 
