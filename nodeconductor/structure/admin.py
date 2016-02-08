@@ -1,11 +1,15 @@
+from django.conf.urls import patterns, url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import models as django_models
 from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, RadioSelect
 from django.http import HttpResponseRedirect
+from django.utils import six
 from django.utils.translation import ungettext
+from django.shortcuts import render
 
+from nodeconductor.core.admin import get_admin_url
 from nodeconductor.core.models import SynchronizationStates, User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
@@ -282,6 +286,35 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         if 'shared' in form.base_fields:
             form.base_fields['shared'].initial = True
         return form
+
+    def get_urls(self):
+        my_urls = patterns(
+            '',
+            url(r'^(.+)/services/$', self.admin_site.admin_view(self.services)),
+        )
+        return my_urls + super(ServiceSettingsAdmin, self).get_urls()
+
+    def services(self, request, pk=None):
+        settings = models.ServiceSettings.objects.get(id=pk)
+        projects = {}
+
+        for name, model in SupportedServices.get_service_models().items():
+            if name == SupportedServices.Types.IaaS:
+                continue
+
+            services = model['service'].objects.filter(settings=settings).values_list('id', flat=True)
+            for spl in model['service_project_link'].objects.filter(service__in=services):
+                projects.setdefault(spl.project.id, {
+                    'name': six.text_type(spl.project),
+                    'url': get_admin_url(spl.project),
+                    'services': [],
+                })
+                projects[spl.project.id]['services'].append({
+                    'name': six.text_type(spl.service),
+                    'url': get_admin_url(spl.service),
+                })
+
+        return render(request, 'structure/service_settings_entities.html', {'projects': projects.values()})
 
     def sync(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
