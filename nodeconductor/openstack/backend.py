@@ -477,7 +477,7 @@ class OpenStackBackend(ServiceBackend):
                 time.sleep(poll_interval)
 
             return False
-        except cinder_exceptions.NotFound:
+        except (cinder_exceptions.NotFound, keystone_exceptions.NotFound):
             return True
 
     def _wait_for_instance_deletion(self, backend_instance_id, retries=90, poll_interval=3):
@@ -2078,3 +2078,25 @@ class OpenStackBackend(ServiceBackend):
                 six.reraise(OpenStackBackendError, e)
         else:
             logger.warning('Cannot update tenant name for link %s without tenant ID', service_project_link)
+
+    def create_snapshot(self, volume_id, cinder):
+        """
+        Create snapshot from volume
+
+        :param: volume id
+        :type volume_id: str
+        :returns: snapshot id
+        :rtype: str
+        """
+        snapshot = cinder.volume_snapshots.create(
+            volume_id, force=True, display_name='snapshot_from_volume_%s' % volume_id)
+
+        logger.debug('About to create temporary snapshot %s' % snapshot.id)
+
+        if not self._wait_for_snapshot_status(snapshot.id, cinder, 'available', 'error'):
+            logger.error('Timed out creating snapshot for volume %s', volume_id)
+            raise OpenStackBackendError()
+
+        logger.info('Successfully created snapshot %s for volume %s', snapshot.id, volume_id)
+
+        return snapshot

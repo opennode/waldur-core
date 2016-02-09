@@ -2349,7 +2349,7 @@ class OpenStackBackend(OpenStackClient):
                 time.sleep(poll_interval)
 
             return False
-        except cinder_exceptions.NotFound:
+        except (cinder_exceptions.NotFound, keystone_exceptions.NotFound):
             return True
 
     def _wait_for_instance_deletion(self, backend_instance_id, nova, retries=90, poll_interval=3):
