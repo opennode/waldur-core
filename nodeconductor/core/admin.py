@@ -2,10 +2,15 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
+from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 import reversion
 
 from nodeconductor.core import models
+
+
+def get_admin_url(obj):
+    return reverse('admin:%s_%s_change' % (obj._meta.app_label, obj._meta.model_name), args=[obj.id])
 
 
 class UserCreationForm(auth_admin.UserCreationForm):
