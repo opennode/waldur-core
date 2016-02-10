@@ -220,7 +220,7 @@ class OpenStackBackend(ServiceBackend):
         raise AttributeError(
             "'%s' object has no attribute '%s'" % (self.__class__.__name__, name))
 
-    def ping(self):
+    def ping(self, raise_exception=False):
         # Session validation occurs on class creation so assume it's active
         # TODO: Consider validating session depending on tenant permissions
         return True
