@@ -38,6 +38,12 @@ class TestCounterQuotaField(TestCase):
         quota = self.parent.quotas.get(name=self.quota_field)
         self.assertEqual(quota.usage, 1)
 
+    def test_counter_quota_usage_is_working_with_two_models_as_targets(self):
+        self.parent.second_children.create()
+
+        quota = self.parent.quotas.get(name=test_models.ParentModel.Quotas.two_targets_counter_quota)
+        self.assertEqual(quota.usage, 2)
+
 
 class TestUsageAggregatorField(TestCase):
 
