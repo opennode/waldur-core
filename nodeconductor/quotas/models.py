@@ -1,8 +1,9 @@
+import functools
 import inspect
 
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
-from django.db import models, transaction
+from django.db import models
 from django.db.models import Sum
 from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
@@ -69,6 +70,19 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
             return
 
 
+def _fail_silently(method):
+
+    @functools.wraps(method)
+    def wrapped(self, quota_name, *args, **kwargs):
+        try:
+            return method(self, quota_name, *args, **kwargs)
+        except Quota.DoesNotExist:
+            if not kwargs.get('fail_silently', False):
+                raise Quota.DoesNotExist('Object %s does not have quota with name %s' % (self, quota_name))
+
+    return wrapped
+
+
 class QuotaModelMixin(models.Model):
     """
     Add general fields and methods to model for quotas usage.
@@ -119,63 +133,28 @@ class QuotaModelMixin(models.Model):
         except Quota.DoesNotExist:
             return default
 
-    def set_quota_limit(self, quota_name, limit):
-        self.quotas.filter(name=quota_name).update(limit=limit)
+    @_fail_silently
+    def set_quota_limit(self, quota_name, limit, fail_silently=False):
+        quota = self.quotas.get(name=quota_name)
+        quota.limit = limit
+        quota.save()
 
+    @_fail_silently
     def set_quota_usage(self, quota_name, usage, fail_silently=False):
-        self.quotas.filter(name=quota_name).update(usage=usage)
+        quota = self.quotas.get(name=quota_name)
+        quota.usage = usage
+        quota.save()
 
+    @_fail_silently
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
-        """
-        Add usage_delta to current quota usage
-
-        If <fail_silently> is True - operation will not fail if quota does not exist
-        """
-        self._add_delta_to_editable_field('usage', quota_name, usage_delta, fail_silently)
-
-    def _add_delta_to_editable_field(self, field, quota_name, delta, fail_silently=False):
-        """
-        Add delta to quota <field>
-
-        If <fail_silently> is True - operation will not fail if quota does not exist
-        """
-        if not delta:
-            return
-        with transaction.atomic():
-            try:
-                original_quota = self.quotas.select_for_update().get(name=quota_name)
-            except Quota.DoesNotExist, e:
-                if not fail_silently:
-                    raise e
-            else:
-                # Django's F() expressions makes quota.is_exceeded() unusable in signals
-                # wrap update into a safe transaction instead (may not work with sqlite)
-                old_value = getattr(original_quota, field)
-                # make sure that quota usage is not lower then 0 - it can become lower on cascade deletion
-                new_value = max(old_value + delta, 0)
-                delta = new_value - old_value
-                setattr(original_quota, field, new_value)
-                original_quota.save(update_fields=[field])
-                self._add_delta_to_ancestors(field, quota_name, delta)
-
-    def _add_delta_to_ancestors(self, field, quota_name, delta):
-        if not delta or not isinstance(self, DescendantMixin):
-            return
-
-        ancestors = (a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin))
-        for ancestor in ancestors:
-            with transaction.atomic():
-                try:
-                    quota = ancestor.quotas.select_for_update().get(name=quota_name)
-                except Quota.DoesNotExist:
-                    # ignore quotas change if parent does not have such quota
-                    pass
-                else:
-                    setattr(quota, field, getattr(quota, field) + delta)
-                    quota.save(update_fields=[field])
+        quota = self.quotas.get(name=quota_name)
+        quota.usage += usage_delta
+        quota.save()
 
     def get_quota_ancestors(self):
-        return [a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin)]
+        if isinstance(self, DescendantMixin):
+            return [a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin)]
+        return []
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """
@@ -198,10 +177,6 @@ class QuotaModelMixin(models.Model):
             if quota.is_exceeded(delta):
                 errors.append('%s quota limit: %s, requires %s (%s)\n' % (
                     quota.name, quota.limit, quota.usage + delta, quota.scope))
-        if isinstance(self, DescendantMixin):
-            for parent in self.get_parents():
-                if isinstance(parent, QuotaModelMixin) and parent.quotas.filter(name=name).exists():
-                    errors += parent.validate_quota_change(quota_deltas)
         if not raise_exception:
             return errors
         else:

@@ -107,16 +107,16 @@ class Customer(core_models.UuidMixin,
             path_to_scope='customer',
         )
         nc_user_count = quotas_fields.QuotaField()
-        nc_resource_count = quotas_fields.AggregatorQuotaField(
+        nc_resource_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
-        nc_app_count = quotas_fields.AggregatorQuotaField(
+        nc_app_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
-        nc_vm_count = quotas_fields.AggregatorQuotaField(
+        nc_vm_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
-        nc_service_project_link_count = quotas_fields.AggregatorQuotaField(
+        nc_service_project_link_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
 
