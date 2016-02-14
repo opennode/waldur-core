@@ -853,10 +853,7 @@ class OpenStackBackend(OpenStackClient):
         membership.set_quota_limit('storage', self.get_core_disk_size(cinder_quotas.gigabytes))
         membership.set_quota_limit('security_group_count', neutron_quotas['security_group'])
         membership.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
-
-        # XXX: this quota name is different in iaas and openstack apps, handle both
         membership.set_quota_limit('max_instances', nova_quotas.instances)
-        membership.set_quota_limit('instances', nova_quotas.instances)
 
     def pull_resource_quota_usage(self, membership):
         try:
