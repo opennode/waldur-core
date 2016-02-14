@@ -123,16 +123,7 @@ class QuotaModelMixin(models.Model):
         self.quotas.filter(name=quota_name).update(limit=limit)
 
     def set_quota_usage(self, quota_name, usage, fail_silently=False):
-        with transaction.atomic():
-            try:
-                original_quota = self.quotas.get(name=quota_name)
-            except Quota.DoesNotExist:
-                if not fail_silently:
-                    raise
-            else:
-                self._add_delta_to_ancestors('usage', quota_name, usage - original_quota.usage)
-                original_quota.usage = usage
-                original_quota.save(update_fields=['usage'])
+        self.quotas.filter(name=quota_name).update(usage=usage)
 
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
         """
@@ -182,6 +173,9 @@ class QuotaModelMixin(models.Model):
                 else:
                     setattr(quota, field, getattr(quota, field) + delta)
                     quota.save(update_fields=[field])
+
+    def get_quota_ancestors(self):
+        return [a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin)]
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """

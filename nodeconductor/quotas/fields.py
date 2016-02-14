@@ -54,6 +54,16 @@ class QuotaField(object):
         }
         return scope.quotas.get_or_create(name=self.name, defaults=defaults)
 
+    def get_aggregator_quotas(self, quota):
+        """ Fetch ancestors quotas that have the same name and are registered as aggregator quotas. """
+        ancestors = quota.scope.get_quota_ancestors()
+        aggregator_quotas = []
+        for ancestor in ancestors:
+            ancestor_quota_field = getattr(ancestor.Quotas, quota.name, None)
+            if ancestor_quota_field is not None and isinstance(ancestor_quota_field, AggregatorQuotaField):
+                aggregator_quotas.append(ancestor.quotas.get(name=ancestor_quota_field))
+        return aggregator_quotas
+
     def __str__(self):
         return self.name
 
@@ -109,24 +119,18 @@ class CounterQuotaField(QuotaField):
         return reduce(getattr, self.path_to_scope.split('.'), target_instance)
 
 
-# Aggregated quotas fields are used only for recalculation now.
-# Other part of aggregation logic is done in add_quota_usage and
-# set_quota_usage models methods and it is executed for all quotas.
-# Ideally all logic should be located in one place.
-#
-# XXX: Aggregation should be executed only for aggregation fields.
-#      (Currently it is executed for all scope parents quotas).
 class AggregatorQuotaField(QuotaField):
-    """ Aggregates sum of quota scope children with the same name
+    """ Aggregates sum of quota scope children with the same name.
 
-        Automatically increases/decreases usage if corresponding child quota changed.
+        Automatically increases/decreases usage if corresponding child quota <aggregation_field> changed.
 
         Example:
             # This quota will store sum of all customer projects resources
-            nc_resource_count = quotas_fields.AggregatorQuotaField(
+            nc_resource_count = quotas_fields.UsageAggregatorQuotaField(
                 get_children=lambda customer: customer.projects.all(),
             )
     """
+    aggregation_field = NotImplemented
 
     def __init__(self, get_children, **kwargs):
         self.get_children = get_children
@@ -136,8 +140,32 @@ class AggregatorQuotaField(QuotaField):
         children = self.get_children(scope)
         current_usage = 0
         for child in children:
-            current_usage += child.quotas.get(name=self.name).usage
+            child_quota = child.quotas.get(name=self.name)
+            current_usage += getattr(child_quota, self.aggregation_field)
         scope.set_quota_usage(self.name, current_usage)
 
+    def post_child_quota_save(self, scope, child_quota, created=False):
+        quota = scope.quotas.get(name=self.name)
+        current_value = getattr(child_quota, self.aggregation_field)
+        if created:
+            quota.usage += current_value
+        else:
+            quota.usage += current_value - child_quota.tracker.previous(self.aggregation_field)
+        quota.save()
+
+    def pre_child_quota_delete(self, scope, child_quota):
+        quota = scope.quotas.get(name=self.name)
+        quota.usage -= getattr(child_quota, self.aggregation_field)
+        quota.save()
+
+
+class UsageAggregatorQuotaField(AggregatorQuotaField):
+    """ Aggregates sum children quotas usages. """
+    aggregation_field = 'usage'
+
+
+class LimitAggregatorQuotaField(AggregatorQuotaField):
+    """ Aggregates sum children quotas limits. """
+    aggregation_field = 'limit'
 
 # TODO: Implement GlobalQuotaField and GlobalCounterQuotaField

@@ -20,13 +20,6 @@ class QuotasConfig(AppConfig):
         )
 
         for index, model in enumerate(utils.get_models_with_quotas()):
-            signals.pre_delete.connect(
-                handlers.reset_quota_values_to_zeros_before_delete,
-                sender=model,
-                dispatch_uid=('nodeconductor.quotas.handlers.reset_quota_values_to_zeros_before_delete_%s_%s'
-                              % (model.__name__, index)),
-            )
-
             signals.post_save.connect(
                 handlers.increase_global_quota,
                 sender=model,
@@ -55,7 +48,7 @@ class QuotasConfig(AppConfig):
                 dispatch_uid='nodeconductor.quotas.init_quotas_%s_%s' % (model.__name__, model_index)
             )
 
-            # counter quota signals
+            # Counter quota signals
             # How it works:
             # Each counter quota field has list of target models. Change of target model should increase or decrease
             # counter quota. So we connect generated handler to each of target models.
@@ -77,3 +70,16 @@ class QuotasConfig(AppConfig):
                         dispatch_uid='nodeconductor.quotas.decrease_counter_quota_%s_%s_%s_%s_%s' % (
                             model.__name__, model_index, count_field.name, target_model.__name__, target_model_index)
                     )
+
+        # Aggregator quotas signals
+        signals.post_save.connect(
+            handlers.handle_aggregated_quotas,
+            sender=Quota,
+            dispatch_uid='nodeconductor.quotas.handle_aggregated_quotas_post_save',
+        )
+
+        signals.pre_delete.connect(
+            handlers.handle_aggregated_quotas,
+            sender=Quota,
+            dispatch_uid='nodeconductor.quotas.handle_aggregated_quotas_post_delete',
+        )
