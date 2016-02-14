@@ -81,5 +81,5 @@ class QuotasConfig(AppConfig):
         signals.pre_delete.connect(
             handlers.handle_aggregated_quotas,
             sender=Quota,
-            dispatch_uid='nodeconductor.quotas.handle_aggregated_quotas_post_delete',
+            dispatch_uid='nodeconductor.quotas.handle_aggregated_quotas_pre_delete',
         )
