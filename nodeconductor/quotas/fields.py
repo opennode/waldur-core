@@ -59,9 +59,9 @@ class QuotaField(object):
         ancestors = quota.scope.get_quota_ancestors()
         aggregator_quotas = []
         for ancestor in ancestors:
-            ancestor_quota_field = getattr(ancestor.Quotas, quota.name, None)
-            if ancestor_quota_field is not None and isinstance(ancestor_quota_field, AggregatorQuotaField):
-                aggregator_quotas.append(ancestor.quotas.get(name=ancestor_quota_field))
+            for ancestor_quota_field in ancestor.get_quotas_fields(field_class=AggregatorQuotaField):
+                if ancestor_quota_field.get_child_quota_name() == quota.name:
+                    aggregator_quotas.append(ancestor.quotas.get(name=ancestor_quota_field))
         return aggregator_quotas
 
     def __str__(self):
@@ -132,15 +132,19 @@ class AggregatorQuotaField(QuotaField):
     """
     aggregation_field = NotImplemented
 
-    def __init__(self, get_children, **kwargs):
+    def __init__(self, get_children, child_quota_name=None, **kwargs):
         self.get_children = get_children
+        self._child_quota_name = child_quota_name
         super(AggregatorQuotaField, self).__init__(**kwargs)
+
+    def get_child_quota_name(self):
+        return self._child_quota_name if self._child_quota_name is not None else self.name
 
     def recalculate_usage(self, scope):
         children = self.get_children(scope)
         current_usage = 0
         for child in children:
-            child_quota = child.quotas.get(name=self.name)
+            child_quota = child.quotas.get(name=self.get_child_quota_name())
             current_usage += getattr(child_quota, self.aggregation_field)
         scope.set_quota_usage(self.name, current_usage)
 
