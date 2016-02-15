@@ -6,6 +6,13 @@ Release NEXT
 
 <Add changes here>
 
+Release 0.87.0
+--------------
+- Added service setting quotas.
+- Added new style aggregator quotas.
+- Display connected projects and service of service settings.
+- Bugfixes.
+
 Release 0.86.0
 --------------
 - Extracted Oracle app to plugin.
@@ -20,7 +27,6 @@ Release 0.86.0
 
 Release 0.85.0
 --------------
-
 - Updated documentation for resource lifecycle events.
 - Improved /admin interface, exposed installed plugins and versions.
 - Made state rendering in /projects consistent.
@@ -42,7 +48,6 @@ Release 0.85.0
 
 Release 0.84.0
 --------------
-
 - Port OpenStack cost-tracking to using tags.
 - Extract ldapsync application into a plugin.
 

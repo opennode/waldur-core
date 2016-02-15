@@ -18,6 +18,7 @@ DATABASES = {
 INSTALLED_APPS += (
     'kombu.transport.django',  # Needed for broker backend
     'djcelery',  # Needed for result backend,
+    'nodeconductor.quotas.tests',
 )
 
 BROKER_URL = 'django://'

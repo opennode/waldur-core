@@ -198,7 +198,7 @@ class OpenStackBackendMembershipApiTest(unittest.TestCase):
 
     def test_pull_quota_resource_calls_clients_quotas_gets_methods_with_membership_tenant_id(self):
         membership = factories.CloudProjectMembershipFactory(tenant_id='test_backend_id')
-         # when
+        # when
         self.backend.pull_resource_quota(membership)
         # then
         self.nova_client.quotas.get.assert_called_once_with(tenant_id=membership.tenant_id)

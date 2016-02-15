@@ -122,6 +122,9 @@ class CustomerRoleTest(TestCase):
     def setUp(self):
         self.customer = factories.CustomerFactory()
 
+    def test_get_owners_returns_empty_list(self):
+        self.assertEqual(0, self.customer.get_owners().count())
+
     def test_owner_customer_role_is_created_upon_customer_creation(self):
         self.assertTrue(self.customer.roles.filter(role_type=CustomerRole.OWNER).exists(),
                         'Owner role should have been created')

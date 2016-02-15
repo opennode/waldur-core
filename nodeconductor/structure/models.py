@@ -107,16 +107,16 @@ class Customer(core_models.UuidMixin,
             path_to_scope='customer',
         )
         nc_user_count = quotas_fields.QuotaField()
-        nc_resource_count = quotas_fields.AggregatorQuotaField(
+        nc_resource_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
-        nc_app_count = quotas_fields.AggregatorQuotaField(
+        nc_app_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
-        nc_vm_count = quotas_fields.AggregatorQuotaField(
+        nc_vm_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
-        nc_service_project_link_count = quotas_fields.AggregatorQuotaField(
+        nc_service_project_link_count = quotas_fields.UsageAggregatorQuotaField(
             get_children=lambda customer: customer.projects.all(),
         )
 
@@ -202,7 +202,10 @@ class Customer(core_models.UuidMixin,
         return queryset.exists()
 
     def get_owners(self):
-        return self.roles.get(role_type=CustomerRole.OWNER).permission_group.user_set
+        return get_user_model().objects.filter(
+            groups__customerrole__customer=self,
+            groups__customerrole__role_type=CustomerRole.OWNER
+        )
 
     def get_users(self):
         """ Return all connected to customer users """

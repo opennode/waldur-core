@@ -309,6 +309,9 @@ class CloudPermissionTest(test.APITransactionTestCase):
             url = factories.CloudFactory.get_url(cloud)
 
             for method in ('PUT', 'PATCH', 'DELETE'):
+                if method == 'DELETE' and state == SynchronizationStates.NEW:
+                    continue
+
                 func = getattr(self.client, method.lower())
                 response = func(url)
                 self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)

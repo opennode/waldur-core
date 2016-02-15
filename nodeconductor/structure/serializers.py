@@ -17,7 +17,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
-from nodeconductor.structure import models, SupportedServices
+from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
 
 
@@ -778,6 +778,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -785,7 +786,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
-            'dummy'
+            'dummy', 'quotas',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
@@ -989,11 +990,21 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
-                settings = models.ServiceSettings.objects.create(
+                settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
                     name=attrs['name'],
                     customer=customer,
                     **args)
+
+                try:
+                    backend = settings.get_backend()
+                    backend.ping(raise_exception=True)
+                except ServiceBackendError as e:
+                    raise serializers.ValidationError("Wrong settings: %s" % e)
+                except ServiceBackendNotImplemented:
+                    pass
+
+                settings.save()
                 attrs['settings'] = settings
 
             for f in settings_fields + extra_fields:
