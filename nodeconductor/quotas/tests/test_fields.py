@@ -119,6 +119,24 @@ class TestUsageAggregatorField(TestCase):
         quota = self.grandparent.quotas.get(name=self.grandparent_quota_field)
         self.assertEqual(quota.usage, usage_value * len(self.children))
 
+    def test_usage_aggregator_quota_works_with_specified_child_quota_name(self):
+        # change aggregator quota child_quota_name
+        self.parent_quota_field._child_quota_name = 'regular_quota'
+
+        # increase regular quotas usage
+        usage_value = 10
+        for child in self.children:
+            quota = child.quotas.get(name=test_models.ChildModel.Quotas.regular_quota)
+            quota.usage = usage_value
+            quota.save()
+
+        # parents quota should increases too
+        for parent in self.parents:
+            quota = parent.quotas.get(name=self.parent_quota_field)
+            self.assertEqual(quota.usage, usage_value)
+
+
+# TODO: test aggregation works with fields with different names.
 
 class TestLimitAggregatorField(TestCase):
 
