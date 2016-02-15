@@ -1,17 +1,17 @@
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from . import models as test_models
 
 
-class TestQuotaField(TestCase):
+class TestQuotaField(TransactionTestCase):
 
     def test_quota_is_automatically_created_with_scope(self):
         scope = test_models.GrandparentModel.objects.create()
         self.assertTrue(scope.quotas.filter(name=test_models.GrandparentModel.Quotas.reqular_quota).exists())
 
 
-class TestCounterQuotaField(TestCase):
+class TestCounterQuotaField(TransactionTestCase):
 
     def setUp(self):
         self.grandparent = test_models.GrandparentModel.objects.create()
@@ -45,7 +45,7 @@ class TestCounterQuotaField(TestCase):
         self.assertEqual(quota.usage, 2)
 
 
-class TestUsageAggregatorField(TestCase):
+class TestUsageAggregatorField(TransactionTestCase):
 
     def setUp(self):
         self.grandparent = test_models.GrandparentModel.objects.create()
@@ -120,25 +120,21 @@ class TestUsageAggregatorField(TestCase):
         self.assertEqual(quota.usage, usage_value * len(self.children))
 
     def test_usage_aggregator_quota_works_with_specified_child_quota_name(self):
-        # change aggregator quota child_quota_name
-        self.parent_quota_field._child_quota_name = 'regular_quota'
-
-        # increase regular quotas usage
         usage_value = 10
         for child in self.children:
-            quota = child.quotas.get(name=test_models.ChildModel.Quotas.regular_quota)
+            quota = child.quotas.get(name=self.child_quota_field)
             quota.usage = usage_value
             quota.save()
 
-        # parents quota should increases too
+        # second_usage_aggregator_quota quota should increases too
         for parent in self.parents:
-            quota = parent.quotas.get(name=self.parent_quota_field)
+            quota = parent.quotas.get(name=test_models.ParentModel.Quotas.second_usage_aggregator_quota)
             self.assertEqual(quota.usage, usage_value)
 
 
 # TODO: test aggregation works with fields with different names.
 
-class TestLimitAggregatorField(TestCase):
+class TestLimitAggregatorField(TransactionTestCase):
 
     def setUp(self):
         self.grandparent = test_models.GrandparentModel.objects.create()

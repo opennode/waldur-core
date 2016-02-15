@@ -33,6 +33,10 @@ class ParentModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_mod
         limit_aggregator_quota = fields.LimitAggregatorQuotaField(
             get_children=lambda scope: scope.children.all(),
         )
+        second_usage_aggregator_quota = fields.UsageAggregatorQuotaField(
+            get_children=lambda scope: scope.children.all(),
+            child_quota_name='usage_aggregator_quota',
+        )
 
     def get_parents(self):
         return [self.parent]
