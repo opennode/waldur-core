@@ -32,7 +32,8 @@ Example response:
             "customer": "http://example.com/api/customers/d0d7fe366ee94e479e13d7a873644931/",
             "customer_name": "Zed Lebowski",
             "customer_native_name": "Zed Lebowski",
-            "dummy": false
+            "dummy": false,
+            "quotas": []
         }
     ]
 

@@ -218,8 +218,8 @@ class CloudProjectMembershipActionsTest(test.APISimpleTestCase):
         self.assertEqual(response.data['detail'], 'Floating IP allocation has been scheduled.')
         self.assertTrue(mocked_task.delay.called)
 
-# XXX: this have to be reworked to permissions test
 
+# XXX: this have to be reworked to permissions test
 class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
         self.users = {
@@ -332,6 +332,9 @@ class ProjectCloudApiPermissionTest(UrlResolverMixin, test.APITransactionTestCas
         self.client.force_authenticate(user=user)
 
         for state in SynchronizationStates.UNSTABLE_STATES:
+            if state == SynchronizationStates.NEW:
+                continue
+
             self.membership.state = state
             self.membership.save()
 

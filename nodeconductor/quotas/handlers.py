@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.db.models import signals
 
-from nodeconductor.quotas import models, utils
+from nodeconductor.quotas import models, utils, fields
 from nodeconductor.quotas.log import alert_logger, event_logger
 from nodeconductor.quotas.exceptions import CreationConditionFailedQuotaError
 
@@ -46,14 +46,6 @@ def check_quota_threshold_breach(sender, instance, **kwargs):
                     })
         else:
             alert_logger.quota.close(scope=quota.scope, alert_type='quota_usage_is_over_threshold')
-
-
-def reset_quota_values_to_zeros_before_delete(sender, instance=None, **kwargs):
-    quotas_scope = instance
-    quotas_names = quotas_scope.quotas.values_list('name', flat=True)
-    for name in quotas_names:
-        quotas_scope.set_quota_usage(name, 0)
-        quotas_scope.set_quota_limit(name, 0)
 
 
 # XXX: rewrite global quotas
@@ -105,3 +97,22 @@ def count_quota_handler_factory(count_quota_field):
             count_quota_field.add_usage(instance, delta=-1, fail_silently=True)
 
     return recalculate_count_quota
+
+
+def handle_aggregated_quotas(sender, instance, **kwargs):
+    """ Call aggregated quotas fields update methods """
+    quota = instance
+    # aggregation is not supported for global quotas.
+    if quota.scope is None:
+        return
+    quota_field = quota.get_field()
+    # aggregation should not count another aggregator field to avoid calls duplication.
+    if isinstance(quota_field, fields.AggregatorQuotaField) or quota_field is None:
+        return
+    signal = kwargs['signal']
+    for aggregator_quota in quota_field.get_aggregator_quotas(quota):
+        field = aggregator_quota.get_field()
+        if signal == signals.post_save:
+            field.post_child_quota_save(aggregator_quota.scope, child_quota=quota, created=kwargs.get('created'))
+        elif signal == signals.pre_delete:
+            field.pre_child_quota_delete(aggregator_quota.scope, child_quota=quota)

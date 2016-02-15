@@ -18,6 +18,8 @@ class Command(BaseCommand):
         self.recalculate_global_quotas()
         self.recalculate_counter_quotas()
         self.recalculate_aggregator_quotas()
+        self.stdout.write('XXX: Second time to make sure that aggregators of aggregators where calculated properly.')
+        self.recalculate_aggregator_quotas()
 
     def delete_stale_quotas(self):
         self.stdout.write('Deleting stale quotas')
@@ -57,6 +59,7 @@ class Command(BaseCommand):
         self.stdout.write('...done')
 
     def recalculate_aggregator_quotas(self):
+        # TODO: recalculate child quotas first
         self.stdout.write('Recalculating aggregator quotas')
         for model in get_models_with_quotas():
             for aggregator_field in model.get_quotas_fields(field_class=fields.AggregatorQuotaField):

@@ -338,7 +338,7 @@ class ServiceBackend(object):
     def __init__(self, settings, **kwargs):
         pass
 
-    def ping(self):
+    def ping(self, raise_exception=False):
         raise ServiceBackendNotImplemented
 
     def ping_resource(self, resource):

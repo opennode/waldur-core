@@ -3,7 +3,6 @@
 # test only models, but it is not really supported by Django.
 
 from django.test import TestCase
-
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
