@@ -4,7 +4,7 @@ import inspect
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
@@ -101,6 +101,9 @@ class QuotaModelMixin(models.Model):
             Quotas(quotas_models.QuotaModelMixin.Quotas):
                 nc_user_count = quotas_fields.QuotaField()  # define user count quota for customers
 
+            # optional descriptor to direct access to quota
+            nc_user_count = quotas_fields.QuotaLimitField(quota_field=Quotas.nc_user_count)
+
             def can_user_update_quotas(self, user):
                 # only staff user can edit Customer quotas
                 return user.is_staff
@@ -135,21 +138,15 @@ class QuotaModelMixin(models.Model):
 
     @_fail_silently
     def set_quota_limit(self, quota_name, limit, fail_silently=False):
-        quota = self.quotas.get(name=quota_name)
-        quota.limit = limit
-        quota.save()
+        self.quotas.filter(name=quota_name).update(limit=limit)
 
     @_fail_silently
     def set_quota_usage(self, quota_name, usage, fail_silently=False):
-        quota = self.quotas.get(name=quota_name)
-        quota.usage = usage
-        quota.save()
+        self.quotas.filter(name=quota_name).update(usage=usage)
 
     @_fail_silently
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
-        quota = self.quotas.get(name=quota_name)
-        quota.usage += usage_delta
-        quota.save()
+        self.quotas.filter(name=quota_name).update(usage=F('usage') + usage_delta)
 
     def get_quota_ancestors(self):
         if isinstance(self, DescendantMixin):
