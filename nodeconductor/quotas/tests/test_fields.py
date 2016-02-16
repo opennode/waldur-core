@@ -132,8 +132,6 @@ class TestUsageAggregatorField(TransactionTestCase):
             self.assertEqual(quota.usage, usage_value)
 
 
-# TODO: test aggregation works with fields with different names.
-
 class TestLimitAggregatorField(TransactionTestCase):
 
     def setUp(self):
