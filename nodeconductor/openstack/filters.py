@@ -1,6 +1,7 @@
 import django_filters
 
 from nodeconductor.core import filters as core_filters
+from nodeconductor.monitoring.filters import MonitoringFilter
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.openstack import models
 
@@ -11,9 +12,11 @@ class OpenStackServiceProjectLinkFilter(structure_filters.BaseServiceProjectLink
 
 class InstanceFilter(structure_filters.BaseResourceFilter):
 
+    installation_state = MonitoringFilter(name='installation_state')
+
     class Meta(object):
         model = models.Instance
-        fields = structure_filters.BaseResourceFilter.Meta.fields
+        fields = structure_filters.BaseResourceFilter.Meta.fields + ('installation_state',)
         order_by = structure_filters.BaseResourceFilter.Meta.order_by + [
             'ram',
             '-ram',
