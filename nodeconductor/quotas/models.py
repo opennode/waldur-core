@@ -4,7 +4,7 @@ import inspect
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models
-from django.db.models import F, Sum
+from django.db.models import Sum
 from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
@@ -138,15 +138,21 @@ class QuotaModelMixin(models.Model):
 
     @_fail_silently
     def set_quota_limit(self, quota_name, limit, fail_silently=False):
-        self.quotas.filter(name=quota_name).update(limit=limit)
+        quota = self.quotas.get(name=quota_name)
+        quota.limit = limit
+        quota.save()
 
     @_fail_silently
     def set_quota_usage(self, quota_name, usage, fail_silently=False):
-        self.quotas.filter(name=quota_name).update(usage=usage)
+        quota = self.quotas.get(name=quota_name)
+        quota.usage = usage
+        quota.save()
 
     @_fail_silently
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False):
-        self.quotas.filter(name=quota_name).update(usage=F('usage') + usage_delta)
+        quota = self.quotas.get(name=quota_name)
+        quota.usage += usage_delta
+        quota.save()
 
     def get_quota_ancestors(self):
         if isinstance(self, DescendantMixin):
