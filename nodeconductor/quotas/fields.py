@@ -39,13 +39,13 @@ class QuotaField(object):
         self.is_backend = is_backend
         self.creation_condition = creation_condition
 
-    def _can_quota_be_created_for_scope(self, scope):
+    def is_connected_to_scope(self, scope):
         if self.creation_condition is None:
             return True
         return self.creation_condition(scope)
 
     def get_or_create_quota(self, scope):
-        if not self._can_quota_be_created_for_scope(scope):
+        if not self.is_connected_to_scope(scope):
             raise exceptions.CreationConditionFailedQuotaError(
                 'Wrong scope: Cannot create quota "%s" for scope "%s".' % (self.name, scope))
         defaults = {
@@ -66,6 +66,14 @@ class QuotaField(object):
 
     def __str__(self):
         return self.name
+
+    def recalculate(self, scope):
+        if not self.is_connected_to_scope(scope):
+            return
+        self.recalculate_usage(scope)
+
+    def recalculate_usage(self, scope):
+        pass
 
 
 class CounterQuotaField(QuotaField):
@@ -113,7 +121,8 @@ class CounterQuotaField(QuotaField):
 
     def add_usage(self, target_instance, delta, fail_silently=False):
         scope = self._get_scope(target_instance)
-        scope.add_quota_usage(self.name, delta, fail_silently=fail_silently)
+        if self.is_connected_to_scope(scope):
+            scope.add_quota_usage(self.name, delta, fail_silently=fail_silently)
 
     def _get_scope(self, target_instance):
         return reduce(getattr, self.path_to_scope.split('.'), target_instance)

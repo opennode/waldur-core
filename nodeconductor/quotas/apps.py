@@ -52,24 +52,8 @@ class QuotasConfig(AppConfig):
             # How it works:
             # Each counter quota field has list of target models. Change of target model should increase or decrease
             # counter quota. So we connect generated handler to each of target models.
-            for count_field in model.get_quotas_fields(field_class=fields.CounterQuotaField):
-
-                for target_model_index, target_model in enumerate(count_field.target_models):
-                    signals.post_save.connect(
-                        handlers.count_quota_handler_factory(count_field),
-                        sender=target_model,
-                        weak=False,  # saves handler from garbage collector
-                        dispatch_uid='nodeconductor.quotas.increase_counter_quota_%s_%s_%s_%s_%s' % (
-                            model.__name__, model_index, count_field.name, target_model.__name__, target_model_index)
-                    )
-
-                    signals.post_delete.connect(
-                        handlers.count_quota_handler_factory(count_field),
-                        sender=target_model,
-                        weak=False,  # saves handler from garbage collector
-                        dispatch_uid='nodeconductor.quotas.decrease_counter_quota_%s_%s_%s_%s_%s' % (
-                            model.__name__, model_index, count_field.name, target_model.__name__, target_model_index)
-                    )
+            for counter_field in model.get_quotas_fields(field_class=fields.CounterQuotaField):
+                self.register_counter_field_signals(model, counter_field)
 
         # Aggregator quotas signals
         signals.post_save.connect(
@@ -83,3 +67,22 @@ class QuotasConfig(AppConfig):
             sender=Quota,
             dispatch_uid='nodeconductor.quotas.handle_aggregated_quotas_pre_delete',
         )
+
+    @staticmethod
+    def register_counter_field_signals(model, counter_field):
+        for target_model_index, target_model in enumerate(counter_field.target_models):
+            signals.post_save.connect(
+                handlers.count_quota_handler_factory(counter_field),
+                sender=target_model,
+                weak=False,  # saves handler from garbage collector
+                dispatch_uid='nodeconductor.quotas.increase_counter_quota_%s_%s_%s_%s_%s' % (
+                    model.__name__, model._meta.app_label, counter_field.name, target_model.__name__, target_model_index)
+            )
+
+            signals.post_delete.connect(
+                handlers.count_quota_handler_factory(counter_field),
+                sender=target_model,
+                weak=False,  # saves handler from garbage collector
+                dispatch_uid='nodeconductor.quotas.decrease_counter_quota_%s_%s_%s_%s_%s' % (
+                    model.__name__, model._meta.app_label, counter_field.name, target_model.__name__, target_model_index)
+            )

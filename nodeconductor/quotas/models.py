@@ -271,3 +271,7 @@ class ExtendableQuotaModelMixin(QuotaModelMixin):
         # and initialization is not executed automatically.
         quota_field.name = name
         setattr(cls.Quotas, name, quota_field)
+        from nodeconductor.quotas.apps import QuotasConfig
+        # For counter quotas we need to register signals explicitly
+        if isinstance(quota_field, fields.CounterQuotaField):
+            QuotasConfig.register_counter_field_signals(model=cls, counter_field=quota_field)
