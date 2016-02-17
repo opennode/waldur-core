@@ -6,6 +6,11 @@ Release NEXT
 
 <Add changes here>
 
+Release 0.88.0
+--------------
+- Added additional quota types.
+- Allow deletion of resources from ERRED state - for cleanup flows.
+
 Release 0.87.0
 --------------
 - Added service setting quotas.
