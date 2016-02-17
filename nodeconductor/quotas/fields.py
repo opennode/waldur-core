@@ -45,7 +45,7 @@ class QuotaLimitField(models.IntegerField):
             try:
                 return instance.quotas.get(name=quota_field).limit
             except instance.quotas.model.DoesNotExist:
-                return self._quota_field.default_limit
+                return quota_field.default_limit
         return func
 
     def _set_func(self):
