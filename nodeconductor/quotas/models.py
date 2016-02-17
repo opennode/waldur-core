@@ -101,6 +101,9 @@ class QuotaModelMixin(models.Model):
             Quotas(quotas_models.QuotaModelMixin.Quotas):
                 nc_user_count = quotas_fields.QuotaField()  # define user count quota for customers
 
+            # optional descriptor to direct access to quota
+            nc_user_count = quotas_fields.QuotaLimitField(quota_field=Quotas.nc_user_count)
+
             def can_user_update_quotas(self, user):
                 # only staff user can edit Customer quotas
                 return user.is_staff
@@ -271,3 +274,7 @@ class ExtendableQuotaModelMixin(QuotaModelMixin):
         # and initialization is not executed automatically.
         quota_field.name = name
         setattr(cls.Quotas, name, quota_field)
+        from nodeconductor.quotas.apps import QuotasConfig
+        # For counter quotas we need to register signals explicitly
+        if isinstance(quota_field, fields.CounterQuotaField):
+            QuotasConfig.register_counter_field_signals(model=cls, counter_field=quota_field)

@@ -998,7 +998,7 @@ class Resource(core_models.UuidMixin,
         pass
 
     @transition(field=state,
-                source=States.OFFLINE,
+                source=[States.OFFLINE, States.ERRED],
                 target=States.DELETION_SCHEDULED)
     def schedule_deletion(self):
         pass
