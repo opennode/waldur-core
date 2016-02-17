@@ -11,11 +11,11 @@ class TestQuotaField(TransactionTestCase):
         self.assertTrue(scope.quotas.filter(name=test_models.GrandparentModel.Quotas.reqular_quota).exists())
 
     def test_quota_limit_field_create(self):
-        child = test_models.ChildModel.objects.create(regular_quota=7)
+        child = test_models.GrandparentModel.objects.create(regular_quota=7)
         self.assertEqual(child.quotas.get(name='regular_quota').limit, 7)
 
     def test_quota_limit_field_update(self):
-        child = test_models.ChildModel.objects.create()
+        child = test_models.GrandparentModel.objects.create()
         child.regular_quota = 9
         child.save()
         self.assertEqual(child.quotas.get(name='regular_quota').limit, 9)
