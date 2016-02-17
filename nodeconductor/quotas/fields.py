@@ -1,6 +1,60 @@
+from django import VERSION as DJANGO_VERSION
+from django.db import models
 from django.utils import six
 
 from . import exceptions
+
+
+class QuotaLimitField(models.IntegerField):
+    """ Django virtual model field.
+        Could be used to manage quotas transparently as model fields.
+    """
+
+    concrete = False
+
+    def __init__(self, quota_field=None, *args, **kwargs):
+        super(QuotaLimitField, self).__init__(*args, **kwargs)
+        self._quota_field = quota_field
+
+    def db_type(self, connection):
+        # virtual field -- ignore in migrtions
+        return None
+
+    def contribute_to_class(self, cls, name):
+        self.model = cls
+        self.name = self.attname = name
+        # setting column as none will tell django to not consider this a concrete field
+        self.column = None
+        # connect myself as the descriptor for this field
+        setattr(cls, name, property(self._get_func(), self._set_func()))
+        # add field to class
+        if DJANGO_VERSION[:2] >= (1, 8):
+            cls._meta.add_field(self, virtual=True)
+        else:
+            cls._meta.virtual_fields.append(self)
+
+    def deconstruct(self, *args, **kwargs):
+        name, path, args, kwargs = super(QuotaField, self).deconstruct(*args, **kwargs)
+        return (name, path, args, {'default': kwargs.get('default'), 'to': None})
+
+    def _get_func(self):
+        # retrieve quota limit from related object
+        def func(instance, quota_field=self._quota_field):
+            if instance is None:
+                raise AttributeError("Can only be accessed via instance")
+            try:
+                return instance.quotas.get(name=quota_field).limit
+            except instance.quotas.model.DoesNotExist:
+                return quota_field.default_limit
+        return func
+
+    def _set_func(self):
+        # store quota limit as related object
+        def func(instance, value, quota_field=self._quota_field):
+            # a hook to properly init quota after object saved to DB
+            quota_field.scope_default_limit(instance, value)
+            instance.set_quota_limit(quota_field, value, fail_silently=True)
+        return func
 
 
 class FieldsContainerMeta(type):
@@ -44,14 +98,24 @@ class QuotaField(object):
             return True
         return self.creation_condition(scope)
 
+    def scope_default_limit(self, scope, value=None):
+        attr_name = '_default_quota_limit_%s' % self.name
+        if value is not None:
+            setattr(scope, attr_name, value)
+        try:
+            return getattr(scope, attr_name)
+        except AttributeError:
+            return self.default_limit(scope) if six.callable(self.default_limit) else self.default_limit
+
     def get_or_create_quota(self, scope):
         if not self.is_connected_to_scope(scope):
             raise exceptions.CreationConditionFailedQuotaError(
                 'Wrong scope: Cannot create quota "%s" for scope "%s".' % (self.name, scope))
         defaults = {
-            'limit': self.default_limit(scope) if six.callable(self.default_limit) else self.default_limit,
+            'limit': self.scope_default_limit(scope),
             'usage': self.default_usage(scope) if six.callable(self.default_usage) else self.default_usage,
         }
+
         return scope.quotas.get_or_create(name=self.name, defaults=defaults)
 
     def get_aggregator_quotas(self, quota):

@@ -101,6 +101,9 @@ class QuotaModelMixin(models.Model):
             Quotas(quotas_models.QuotaModelMixin.Quotas):
                 nc_user_count = quotas_fields.QuotaField()  # define user count quota for customers
 
+            # optional descriptor to direct access to quota
+            nc_user_count = quotas_fields.QuotaLimitField(quota_field=Quotas.nc_user_count)
+
             def can_user_update_quotas(self, user):
                 # only staff user can edit Customer quotas
                 return user.is_staff
