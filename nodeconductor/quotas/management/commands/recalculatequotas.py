@@ -55,7 +55,7 @@ class Command(BaseCommand):
         for model in get_models_with_quotas():
             for counter_field in model.get_quotas_fields(field_class=fields.CounterQuotaField):
                 for instance in model.objects.all():
-                    counter_field.recalculate_usage(scope=instance)
+                    counter_field.recalculate(scope=instance)
         self.stdout.write('...done')
 
     def recalculate_aggregator_quotas(self):
@@ -64,5 +64,5 @@ class Command(BaseCommand):
         for model in get_models_with_quotas():
             for aggregator_field in model.get_quotas_fields(field_class=fields.AggregatorQuotaField):
                 for instance in model.objects.all():
-                    aggregator_field.recalculate_usage(scope=instance)
+                    aggregator_field.recalculate(scope=instance)
         self.stdout.write('...done')

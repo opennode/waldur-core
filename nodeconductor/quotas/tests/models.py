@@ -14,6 +14,8 @@ class GrandparentModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, cor
             get_children=lambda scope: ChildModel.objects.filter(parent__parent=scope),
         )
 
+    regular_quota = fields.QuotaLimitField(quota_field=Quotas.regular_quota)
+
 
 class ParentModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_models.DescendantMixin):
     parent = django_models.ForeignKey(GrandparentModel, related_name='children')

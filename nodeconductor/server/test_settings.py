@@ -19,6 +19,7 @@ INSTALLED_APPS += (
     'kombu.transport.django',  # Needed for broker backend
     'djcelery',  # Needed for result backend,
     'nodeconductor.quotas.tests',
+    'test_without_migrations',
 )
 
 BROKER_URL = 'django://'
