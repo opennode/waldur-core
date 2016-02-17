@@ -120,10 +120,6 @@ class Customer(core_models.UuidMixin,
             get_children=lambda customer: customer.projects.all(),
         )
 
-    max_projects = quotas_fields.QuotaLimitField(quota_field=Quotas.nc_project_count)
-    max_services = quotas_fields.QuotaLimitField(quota_field=Quotas.nc_service_count)
-    max_resources = quotas_fields.QuotaLimitField(quota_field=Quotas.nc_resource_count)
-
     def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
 

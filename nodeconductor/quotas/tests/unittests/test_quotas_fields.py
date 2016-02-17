@@ -30,16 +30,6 @@ class QuotaFieldTest(TestCase):
 
         self.assertEqual(customer.quotas.get(name='nc_resource_count').usage, 20)
 
-    def test_quota_limit_field_create(self):
-        customer = structure_factories.CustomerFactory(max_projects=7)
-        self.assertEqual(customer.quotas.get(name='nc_project_count').limit, 7)
-
-    def test_quota_limit_field_update(self):
-        customer = structure_factories.CustomerFactory()
-        customer.max_projects = 9
-        self.assertEqual(customer.quotas.get(name='nc_project_count').limit, 9)
-        self.assertEqual(customer.max_services, -1)
-
 
 class CounterQuotaFieldTest(TestCase):
 

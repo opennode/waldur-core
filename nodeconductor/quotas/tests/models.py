@@ -56,6 +56,8 @@ class ChildModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_mode
         usage_aggregator_quota = fields.QuotaField()  # this quota is aggregated by parent and grandparent
         limit_aggregator_quota = fields.QuotaField(default_limit=0)  # this quota is aggregated by parent and grandparent
 
+    regular_quota = fields.QuotaLimitField(quota_field=Quotas.regular_quota)
+
     def get_parents(self):
         if self.non_quota_parent:
             return [self.parent, self.non_quota_parent]
