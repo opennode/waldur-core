@@ -22,4 +22,5 @@ class MonitoringModelMixin(models.Model):
     class Meta:
         abstract = True
 
-    monitoring = GenericRelation('monitoring.MonitoringItem', related_query_name='monitoring')
+    monitoring_items = GenericRelation('monitoring.MonitoringItem',
+                                       related_query_name='monitoring_items')

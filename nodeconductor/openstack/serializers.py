@@ -9,7 +9,7 @@ from taggit.models import Tag
 from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.monitoring.serializers import MonitoringSerializer
+from nodeconductor.monitoring.serializers import MonitoringItemSerializer
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers
 from nodeconductor.openstack.backend import OpenStackBackendError
@@ -459,14 +459,14 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     skip_external_ip_assignment = serializers.BooleanField(write_only=True, default=False)
 
-    monitoring = MonitoringSerializer(many=True, read_only=True)
+    monitoring_items = MonitoringItemSerializer(many=True, read_only=True)
 
     class Meta(structure_serializers.VirtualMachineSerializer.Meta):
         model = models.Instance
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips', 'backups', 'backup_schedules', 'monitoring'
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules', 'monitoring_items'
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
