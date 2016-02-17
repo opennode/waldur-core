@@ -8,7 +8,7 @@ class TestQuotaField(TransactionTestCase):
 
     def test_quota_is_automatically_created_with_scope(self):
         scope = test_models.GrandparentModel.objects.create()
-        self.assertTrue(scope.quotas.filter(name=test_models.GrandparentModel.Quotas.reqular_quota).exists())
+        self.assertTrue(scope.quotas.filter(name=test_models.GrandparentModel.Quotas.regular_quota).exists())
 
     def test_quota_limit_field_create(self):
         child = test_models.GrandparentModel.objects.create(regular_quota=7)
