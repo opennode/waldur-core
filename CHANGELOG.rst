@@ -5,7 +5,7 @@ Release NEXT
 ------------
 
 - Added Recovering state.
-- Made SPLs and services recover triggering synchronization
+- Fixed service settings recover.
 
 Release 0.88.0
 --------------
