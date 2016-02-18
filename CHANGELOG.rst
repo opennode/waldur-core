@@ -4,7 +4,8 @@ CHANGELOG
 Release NEXT
 ------------
 
-<Add changes here>
+- Added Recovering state.
+- Made SPLs and services recover triggering synchronization
 
 Release 0.88.0
 --------------
