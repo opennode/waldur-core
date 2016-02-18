@@ -292,6 +292,7 @@ class FloatingIP(core_models.UuidMixin):
     backend_network_id = models.CharField(max_length=255, editable=False)
 
 
+@python_2_unicode_compatible
 class Instance(structure_models.Resource,
                structure_models.PaidResource,
                structure_models.BaseVirtualMachineMixin):
