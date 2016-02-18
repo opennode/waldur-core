@@ -4,8 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-- Added Recovering state.
-- Fixed service settings recover.
+- Added synchronization during service settings recovery.
 
 Release 0.88.0
 --------------
