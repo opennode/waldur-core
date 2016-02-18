@@ -147,7 +147,7 @@ def recover_erred_service_settings(settings_uuids=None):
             logger.warning('Cannot recover service settings %s from state %s', settings.name, settings.state)
 
 
-@shared_task(name='nodeconductor.       structure.sync_service_project_links',
+@shared_task(name='nodeconductor.structure.sync_service_project_links',
              max_retries=120, default_retry_delay=5, is_heavy_task=True)
 @retry_if_false
 @throttle(concurrency=2, key='service_project_links_sync')
