@@ -277,6 +277,7 @@ class SynchronizationStates(object):
     ERRED = 4
     CREATION_SCHEDULED = 5
     CREATING = 6
+    RECOVERING = 7
 
     CHOICES = (
         (NEW, _('New')),
@@ -286,6 +287,7 @@ class SynchronizationStates(object):
         (SYNCING, _('Syncing')),
         (IN_SYNC, _('In Sync')),
         (ERRED, _('Erred')),
+        (RECOVERING, _('Recovering')),
     )
 
     STABLE_STATES = {IN_SYNC}
@@ -305,11 +307,12 @@ class SynchronizableMixin(ErrorMessageMixin):
     def begin_creating(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.SYNCING_SCHEDULED, target=SynchronizationStates.SYNCING)
+    @transition(field=state, source=[SynchronizationStates.RECOVERING, SynchronizationStates.SYNCING_SCHEDULED],
+                target=SynchronizationStates.SYNCING)
     def begin_syncing(self):
         pass
 
-    @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.SYNCING)
+    @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.RECOVERING)
     def begin_recovering(self):
         pass
 
