@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
 from unittest import TestCase
@@ -699,3 +700,8 @@ class CustomerQuotasTest(test.APITransactionTestCase):
 
     def assert_quota_usage(self, name, value):
         self.assertEqual(value, self.customer.quotas.get(name=name).usage)
+
+
+class CustomerUnicodeTest(TransactionTestCase):
+    def test_customer_can_have_unicode_name(self):
+        factories.CustomerFactory(name="Моя организация")
