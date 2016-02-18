@@ -13,7 +13,6 @@ class InstanceFilter(structure_filters.BaseResourceFilter):
 
     class Meta(object):
         model = models.Instance
-        fields = structure_filters.BaseResourceFilter.Meta.fields
         order_by = structure_filters.BaseResourceFilter.Meta.order_by + [
             'ram',
             '-ram',
