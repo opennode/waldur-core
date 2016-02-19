@@ -10,6 +10,18 @@ from nodeconductor.openstack.models import OpenStackService, OpenStackServicePro
 
 
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
+    readonly_fields = ('get_service_settings_username', 'get_service_settings_password') + \
+                      structure_admin.ServiceSettingsAdmin.readonly_fields
+
+    def get_service_settings_username(self, obj):
+        return obj.service.settings.username
+
+    get_service_settings_username.short_description = 'Username'
+
+    def get_service_settings_password(self, obj):
+        return obj.service.settings.password
+
+    get_service_settings_password.short_description = 'Password'
 
     actions = structure_admin.ServiceProjectLinkAdmin.actions + \
               ['detect_external_networks', 'allocate_floating_ip',
