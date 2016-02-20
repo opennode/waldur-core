@@ -191,13 +191,19 @@ class Template(core_models.UuidMixin, models.Model):
 
         # execute post request
         response = requests.post(url, headers=headers, json=options, verify=False)
+        ct = self.resource_content_type
         if not response.ok and not ignore_provision_errors:
-            ct = self.resource_content_type
             message = 'Failed to schedule %s %s provision.' % (ct.app_label, ct.model)
             details = (
                 'POST request to URL %s failed. Request body - %s. Response code - %s, content - %s' %
                 (response.request.url, response.request.body, response.status_code, response.content))
             raise TemplateActionException(message, details)
+        if response.ok:
+            tags = [tag.name for tag in self.tags.all()]
+            if tags:
+                instance = ct.model_class().objects.get(uuid=response['uuid'])
+                if hasattr(instance, 'tags'):
+                    instance.tags.add(*tags)
 
         return response
 
