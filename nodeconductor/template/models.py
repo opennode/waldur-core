@@ -203,7 +203,7 @@ class Template(core_models.UuidMixin, models.Model):
         if response.ok:
             tags = [tag.name for tag in self.tags.all()]
             if tags:
-                instance = ct.model_class().objects.get(uuid=response['uuid'])
+                instance = ct.model_class().objects.get(uuid=response.json()['uuid'])
                 if hasattr(instance, 'tags'):
                     instance.tags.add(*tags)
 
