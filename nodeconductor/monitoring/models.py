@@ -13,7 +13,7 @@ class MonitoringItem(NameMixin, models.Model):
     object_id = models.PositiveIntegerField()
     scope = GenericForeignKey('content_type', 'object_id')
 
-    value = models.NullBooleanField()
+    value = models.CharField(max_length=255, blank=True)
     last_updated = AutoLastModifiedField()
 
     class Meta:
