@@ -890,7 +890,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
             'settings', 'dummy',
             'backend_url', 'username', 'password', 'token', 'certificate',
-            'resources_count', 'service_type', 'shared', 'state', 'error_message'
+            'resources_count', 'service_type', 'shared', 'state', 'error_message',
+            'available_for_all'
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
         protected_fields = ('customer', 'settings', 'dummy') + settings_fields
@@ -912,6 +913,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         related_fields = (
             'uuid',
             'name',
+            'available_for_all',
             'customer__uuid',
             'customer__name',
             'customer__native_name',

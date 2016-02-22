@@ -87,7 +87,10 @@ Example:
             "settings": "http://www.example.com/api/service-settings/beed810ccec24dd786ed9c79d7fb72fe/",
             "state": "Erred",
             "error_message": "Unable to authenticate you.",
-            "resources_count": 0
+            "resources_count": 0,
+            "service_type": "OpenStack",
+            "shared": false,
+            "available_for_all": false
         },
         {
             "uuid": "cc83b515a4364a4699a6b36f99b39381",
@@ -101,7 +104,10 @@ Example:
             "settings": "http://www.example.com/api/service-settings/2b688349377c4a28bf929ba0f60d6f46/",
             "state": "In Sync",
             "error_message": "",
-            "resources_count": 10
+            "resources_count": 10,
+            "service_type": "OpenStack",
+            "shared": false,
+            "available_for_all": true
         }
     ]
 
@@ -149,8 +155,8 @@ Or provide your own credentials. Example:
 Project-service connection list
 -------------------------------
 
-In order to be able to provision resources, service must first be linked to a project. To do that,
-POST a connection between project and a service to service_project_link_url as stuff user or customer owner.
+If service has `available_for_all` flag, project-service connections are created automatically. Otherwise, in order to be able to provision resources, service must first be linked to a project.
+To do that, POST a connection between project and a service to service_project_link_url as stuff user or customer owner.
 
 To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
 
