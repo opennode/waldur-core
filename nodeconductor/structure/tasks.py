@@ -242,10 +242,7 @@ def sync_service_settings_succeeded(settings_uuid, transition_entity=None, recov
 @transition(models.ServiceSettings, 'set_erred')
 def sync_service_settings_failed(settings_uuid, transition_entity=None, recovering=False):
     if recovering:
-        settings = transition_entity
-        settings.error_message = 'Failed to sync service settings %s' % settings.name
-        settings.save()
-        logger.info('Failed to recover service settings %s.' % settings.name)
+        logger.info('Failed to recover service settings %s.' % transition_entity.name)
 
 
 @shared_task
