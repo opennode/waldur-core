@@ -913,6 +913,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         related_fields = (
             'uuid',
             'name',
+            'available_for_all',
             'customer__uuid',
             'customer__name',
             'customer__native_name',
