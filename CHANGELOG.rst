@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-<Add changes here>
+- Added synchronization during service settings recovery.
 
 Release 0.88.0
 --------------
@@ -499,4 +499,4 @@ Release 0.25.0
 
 Release 0.24.0
 --------------
-- Introduce vm instance restart action.
+- Introduce VM instance restart action.

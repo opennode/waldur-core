@@ -99,11 +99,10 @@ def sync_service_settings(settings_uuids=None):
 
 
 @shared_task
-@transition(models.ServiceSettings, 'begin_recovering')
+@transition(models.ServiceSettings, 'schedule_syncing')
 @save_error_message
 def begin_recovering_erred_service_settings(settings_uuid, transition_entity=None):
-    settings = models.ServiceSettings.objects.get(uuid=settings_uuid)
-
+    settings = transition_entity
     try:
         backend = settings.get_backend()
         is_active = backend.ping()
@@ -111,11 +110,11 @@ def begin_recovering_erred_service_settings(settings_uuid, transition_entity=Non
         is_active = False
 
     if is_active:
-        settings.set_in_sync()
-        settings.error_message = ''
-        settings.save()
-        logger.info('Service settings %s successfully recovered.' % settings.name)
-
+        # Recovered service settings should be synchronised
+        begin_syncing_service_settings.apply_async(
+                args=(settings_uuid,),
+                link=sync_service_settings_succeeded.si(settings_uuid, recovering=True),
+                link_error=sync_service_settings_failed.si(settings_uuid, recovering=True))
         try:
             spl_model = SupportedServices.get_service_models()[settings.type]['service_project_link']
             erred_spls = spl_model.objects.filter(service__settings=settings,
@@ -231,14 +230,19 @@ def begin_creating_service_settings(settings_uuid, transition_entity=None):
 
 @shared_task
 @transition(models.ServiceSettings, 'set_in_sync')
-def sync_service_settings_succeeded(settings_uuid, transition_entity=None):
-    pass
+def sync_service_settings_succeeded(settings_uuid, transition_entity=None, recovering=False):
+    if recovering:
+        settings = transition_entity
+        settings.error_message = ''
+        settings.save()
+        logger.info('Service settings %s successfully recovered.' % settings.name)
 
 
 @shared_task
 @transition(models.ServiceSettings, 'set_erred')
-def sync_service_settings_failed(settings_uuid, transition_entity=None):
-    pass
+def sync_service_settings_failed(settings_uuid, transition_entity=None, recovering=False):
+    if recovering:
+        logger.info('Failed to recover service settings %s.' % transition_entity.name)
 
 
 @shared_task
