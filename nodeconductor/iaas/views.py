@@ -1410,18 +1410,6 @@ class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = FloatingIPFilter
 
 
-class QuotaStatsView(views.APIView):
-
-    def get(self, request, format=None):
-        serializer = serializers.StatsAggregateSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-
-        memberships = serializer.get_memberships(request.user)
-        sum_of_quotas = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
-            memberships, ['vcpu', 'ram', 'storage', 'max_instances'])
-        return Response(sum_of_quotas, status=status.HTTP_200_OK)
-
-
 # XXX: This view is deprecated. It has to be replaced with quotas history endpoints
 class QuotaTimelineStatsView(views.APIView):
     """
