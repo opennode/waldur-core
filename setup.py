@@ -33,7 +33,6 @@ install_requires = [
     'djangorestframework>=3.1.0,<3.2.0',
     'elasticsearch>=1.0.0,<2.0.0',
     'iptools>=0.6.1',
-    'jira>=0.47',
     'jsonfield==1.0.0',
     'Pillow>=2.0.0,<3.0.0',
     'python-ceilometerclient==1.0.12',

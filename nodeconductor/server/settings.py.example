@@ -188,12 +188,4 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
     'protocol': 'https',
 }
 
-# Jira support account credentials
-NODECONDUCTOR['JIRA_SUPPORT'] = {
-    'server': 'https://jira.example.com/',
-    'username': 'alice@example.com',
-    'password': 'password',
-    'project': 'NST',
-}
-
 DEFAULT_FROM_EMAIL='noreply@example.com'
