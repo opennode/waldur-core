@@ -19,6 +19,7 @@ from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
+from nodeconductor.structure.models import ServiceProjectLink
 
 
 User = auth.get_user_model()
@@ -1414,6 +1415,11 @@ class AggregateSerializer(serializers.Serializer):
         else:
             queryset = models.Project.objects.filter(customer__in=list(queryset))
             return filter_queryset_for_user(queryset, user)
+
+    def get_service_project_links(self, user):
+        projects = self.get_projects(user)
+        return [model.objects.filter(project__in=projects)
+                for model in ServiceProjectLink.get_all_models()]
 
 
 class ResourceProvisioningMetadata(metadata.SimpleMetadata):

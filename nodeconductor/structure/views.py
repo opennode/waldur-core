@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
+from collections import OrderedDict
 
 from datetime import timedelta
 
@@ -1276,7 +1277,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
 
 class BaseOnlineResourceViewSet(BaseResourceViewSet):
 
-    # User can only create and delete those resourse. He cannot stop them.
+    # User can only create and delete this resource. He cannot stop them.
     @safe_operation(valid_state=[models.Resource.States.ONLINE, models.Resource.States.ERRED])
     def destroy(self, request, resource, uuid=None):
         if resource.state == models.Resource.States.ONLINE:
@@ -1287,3 +1288,21 @@ class BaseOnlineResourceViewSet(BaseResourceViewSet):
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.BaseServicePropertyFilter
+
+
+class AggregatedStatsView(views.APIView):
+    """
+    Aggregate quotas from service project links.
+    """
+    def get(self, request, format=None):
+        serializer = serializers.AggregateSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        quota_names = request.query_params.getlist('quota_name')
+        if len(quota_names) == 0:
+            quota_names = None
+        querysets = serializer.get_service_project_links(request.user)
+
+        total_sum = models.ServiceProjectLink.get_sum_of_quotas_for_querysets(querysets, quota_names)
+        total_sum = OrderedDict(sorted(total_sum.items()))
+        return Response(total_sum, status=status.HTTP_200_OK)

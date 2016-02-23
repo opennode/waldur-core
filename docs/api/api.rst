@@ -136,6 +136,10 @@ Statistics
 
 .. include:: statistics.rst
 
+IAAS statistics
+===============
+
+.. include:: iaas_statistics.rst
 
 Templates
 =========
