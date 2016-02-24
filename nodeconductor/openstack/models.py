@@ -13,7 +13,6 @@ from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.structure import models as structure_models
 from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
 from nodeconductor.openstack.managers import BackupManager
-from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.structure.utils import get_coordinates_by_ip, Coordinates
@@ -34,7 +33,7 @@ class OpenStackService(structure_models.Service):
         return self.settings.backend_url
 
 
-class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProjectLink):
+class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count',
                     'floating_ip_count']
 
