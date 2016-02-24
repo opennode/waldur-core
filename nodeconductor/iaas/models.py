@@ -13,7 +13,6 @@ from nodeconductor.core import models as core_models
 from nodeconductor.cost_tracking import models as cost_tracking_models
 from nodeconductor.iaas import managers
 from nodeconductor.logging.log import LoggableMixin
-from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
 
 logger = logging.getLogger(__name__)
@@ -103,7 +102,7 @@ class ServiceStatistics(models.Model):
 
 
 @python_2_unicode_compatible
-class CloudProjectMembership(QuotaModelMixin, structure_models.ServiceProjectLink):
+class CloudProjectMembership(structure_models.ServiceProjectLink):
     """
     This model represents many to many relationships between project and cloud
     """

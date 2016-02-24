@@ -702,7 +702,8 @@ class GeneralServiceProperty(BaseServiceProperty):
 
 
 @python_2_unicode_compatible
-class ServiceProjectLink(core_models.SerializableAbstractMixin,
+class ServiceProjectLink(quotas_models.QuotaModelMixin,
+                         core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
                          core_models.DescendantMixin,
                          LoggableMixin,
