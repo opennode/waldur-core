@@ -13,7 +13,6 @@ from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.utils import timezone
 from django_fsm import TransitionNotAllowed
-from nodeconductor.quotas.models import QuotaModelMixin
 
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
@@ -27,6 +26,7 @@ from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+import reversion
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
@@ -36,6 +36,7 @@ from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.core.utils import request_api, datetime_to_timestamp
+from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
@@ -1307,3 +1308,112 @@ class AggregatedStatsView(views.APIView):
         total_sum = QuotaModelMixin.get_sum_of_quotas_for_querysets(querysets, quota_names)
         total_sum = OrderedDict(sorted(total_sum.items()))
         return Response(total_sum, status=status.HTTP_200_OK)
+
+
+# XXX: This view is deprecated. It has to be replaced with quotas history endpoints
+class QuotaTimelineStatsView(views.APIView):
+    """
+    Count quota usage and limit history statistics
+    """
+
+    def get(self, request, format=None):
+        stats = self.get_stats(request)
+        return Response(stats, status=status.HTTP_200_OK)
+
+    def get_quota_scopes(self, request):
+        serializer = serializers.AggregateSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        spls_with_quotas = [qs for qs in serializer.get_service_project_links(request.user)
+                            if isinstance(qs.model, QuotaModelMixin)]
+        scopes = sum([list(qs) for qs in spls_with_quotas], [])
+        return scopes
+
+    def get_all_spls_quotas(self):
+        spl_models = [m for m in models.ServiceProjectLink.get_all_models() if issubclass(m, QuotaModelMixin)]
+        return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
+
+    def get_stats(self, request):
+        mapped = {
+            'start_time': request.query_params.get('from'),
+            'end_time': request.query_params.get('to'),
+            'interval': request.query_params.get('interval'),
+            'item': request.query_params.get('item'),
+        }
+
+        data = {key: val for (key, val) in mapped.items() if val}
+        serializer = serializers.QuotaTimelineStatsSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        scopes = self.get_quota_scopes(request)
+        date_points = self.get_date_points(
+            start_time=serializer.validated_data['start_time'],
+            end_time=serializer.validated_data['end_time'],
+            interval=serializer.validated_data['interval']
+        )
+        reversed_dates = date_points[::-1]
+        dates = zip(reversed_dates[:-1], reversed_dates[1:])
+        if 'item' in serializer.validated_data:
+            items = [serializer.validated_data['item']]
+        else:
+            items = self.get_all_spls_quotas()
+
+        stats = [{'from': datetime_to_timestamp(start), 'to': datetime_to_timestamp(end)} for start, end in dates]
+
+        def _add(*args):
+            args = [arg if arg is not None else (0, 0) for arg in args]
+            return [sum(q) for q in zip(*args)]
+
+        for item in items:
+            item_stats = [self.get_stats_for_scope(item, scope, dates) for scope in scopes]
+            item_stats = map(_add, *item_stats)
+            for date_item_stats, date_stats in zip(item_stats, stats):
+                limit, usage = date_item_stats
+                date_stats['{}_limit'.format(item)] = limit
+                date_stats['{}_usage'.format(item)] = usage
+
+        return stats[::-1]
+
+    def get_stats_for_scope(self, quota_name, scope, dates):
+        stats_data = []
+        if not isinstance(scope, QuotaModelMixin):
+            return stats_data
+        try:
+            quota = scope.quotas.get(name=quota_name)
+        except Quota.DoesNotExist:
+            return stats_data
+        versions = reversion.get_for_object(quota).select_related('reversion').filter(
+            revision__date_created__lte=dates[0][0]).iterator()
+        version = None
+        for end, start in dates:
+            try:
+                while version is None or version.revision.date_created > end:
+                    version = versions.next()
+                stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
+            except StopIteration:
+                break
+
+        return stats_data
+
+    def get_date_points(self, start_time, end_time, interval):
+        if interval == 'hour':
+            start_point = start_time.replace(second=0, minute=0, microsecond=0)
+            interval = timedelta(hours=1)
+        elif interval == 'day':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = timedelta(days=1)
+        elif interval == 'week':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = timedelta(days=7)
+        elif interval == 'month':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = timedelta(days=30)
+
+        points = [start_time]
+        current_point = start_point
+        while current_point <= end_time:
+            points.append(current_point)
+            current_point += interval
+        if points[-1] != end_time:
+            points.append(end_time)
+
+        return [p for p in points if start_time <= p <= end_time]

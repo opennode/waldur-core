@@ -181,7 +181,6 @@ class EventLogger(BaseLogger):
         self.process('debug', *args, **kwargs)
 
     def process(self, level, message_template, event_type='undefined', event_context=None):
-        print message_template, event_type, event_context
         self.validate_logging_type(event_type)
 
         if not event_context:

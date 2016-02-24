@@ -15,7 +15,7 @@ from rest_framework.reverse import reverse
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.fields import MappedChoiceField
+from nodeconductor.core.fields import MappedChoiceField, TimestampField
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -1474,3 +1474,13 @@ class ResourceProvisioningMetadata(metadata.SimpleMetadata):
             ]
 
         return field_info
+
+
+class QuotaTimelineStatsSerializer(serializers.Serializer):
+
+    INTERVAL_CHOICES = ('hour', 'day', 'week', 'month')
+
+    start_time = TimestampField(default=lambda: core_utils.timeshift(days=-1))
+    end_time = TimestampField(default=lambda: core_utils.timeshift())
+    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
+    item = serializers.CharField(required=False)

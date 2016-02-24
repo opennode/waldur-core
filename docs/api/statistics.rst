@@ -190,8 +190,6 @@ Example result:
 Quotas timeline statistics
 --------------------------
 
-Warning! This endpoint is *deprecated*. Please use **/api/quotas/<uuid>/history/** instead.
-
 Historical data of quotas and quotas usage aggregated by projects/project_groups/customers.
 
 URL: **/api/stats/quota/timeline/**
@@ -201,8 +199,7 @@ Available request parameters:
 - ?from=timestamp (default: now - 1 day, for example: 1415910025)
 - ?to=timestamp (default: now, for example: 1415912625)
 - ?interval (default: day. Has to be from list: hour, day, week, month)
-- ?item=<item_name> (Has to take values from: 'vcpu', 'storage', 'ram', 'instances'). If this parameter is not
-  defined - endpoint will return data for all items.
+- ?item=<quota_name>. If this parameter is not defined - endpoint will return data for all items.
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter is defined, result will contain only object with given uuid)
 

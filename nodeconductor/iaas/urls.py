@@ -20,5 +20,4 @@ urlpatterns = patterns(
     url(r'^stats/customer/$', views.CustomerStatsView.as_view(), name='stats_customer'),
     url(r'^stats/usage/$', views.UsageStatsView.as_view(), name='stats_usage'),
     url(r'^stats/resource/$', views.ResourceStatsView.as_view(), name='stats_resource'),
-    url(r'^stats/quota/timeline/$', views.QuotaTimelineStatsView.as_view(), name='stats_quota_timeline'),
 )
