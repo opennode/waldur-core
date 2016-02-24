@@ -245,11 +245,7 @@ class QuotaModelMixin(models.Model):
 
     @classmethod
     def get_sum_of_quotas_for_querysets(cls, querysets, quota_names=None):
-        partial_sums = []
-        for qs in querysets:
-            # XXX: hotfix. Quota model mixin should be provided for all SPLs.
-            if issubclass(qs.model, QuotaModelMixin):
-                partial_sums.append(qs.model.get_sum_of_quotas_as_dict(qs, quota_names))
+        partial_sums = [qs.model.get_sum_of_quotas_as_dict(qs, quota_names) for qs in querysets]
         return reduce(cls._sum_dicts, partial_sums, defaultdict(lambda: 0.0))
 
     @classmethod

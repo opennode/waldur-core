@@ -1323,13 +1323,11 @@ class QuotaTimelineStatsView(views.APIView):
     def get_quota_scopes(self, request):
         serializer = serializers.AggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        spls_with_quotas = [qs for qs in serializer.get_service_project_links(request.user)
-                            if isinstance(qs.model, QuotaModelMixin)]
-        scopes = sum([list(qs) for qs in spls_with_quotas], [])
+        scopes = sum([list(qs) for qs in serializer.get_service_project_links(request.user)], [])
         return scopes
 
     def get_all_spls_quotas(self):
-        spl_models = [m for m in models.ServiceProjectLink.get_all_models() if issubclass(m, QuotaModelMixin)]
+        spl_models = [m for m in models.ServiceProjectLink.get_all_models()]
         return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
 
     def get_stats(self, request):
@@ -1375,8 +1373,6 @@ class QuotaTimelineStatsView(views.APIView):
 
     def get_stats_for_scope(self, quota_name, scope, dates):
         stats_data = []
-        if not isinstance(scope, QuotaModelMixin):
-            return stats_data
         try:
             quota = scope.quotas.get(name=quota_name)
         except Quota.DoesNotExist:
