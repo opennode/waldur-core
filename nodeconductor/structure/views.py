@@ -13,6 +13,7 @@ from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.utils import timezone
 from django_fsm import TransitionNotAllowed
+from nodeconductor.quotas.models import QuotaModelMixin
 
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
@@ -1303,6 +1304,6 @@ class AggregatedStatsView(views.APIView):
             quota_names = None
         querysets = serializer.get_service_project_links(request.user)
 
-        total_sum = models.ServiceProjectLink.get_sum_of_quotas_for_querysets(querysets, quota_names)
+        total_sum = QuotaModelMixin.get_sum_of_quotas_for_querysets(querysets, quota_names)
         total_sum = OrderedDict(sorted(total_sum.items()))
         return Response(total_sum, status=status.HTTP_200_OK)
