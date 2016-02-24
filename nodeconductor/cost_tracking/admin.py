@@ -96,6 +96,8 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
                     except KillBillError:
                         erred_resources.append(resource)
                     else:
+                        resource.last_usage_update_time = None
+                        resource.save(update_fields=['last_usage_update_time'])
                         subscribed_resources.append(resource)
 
             if subscribed_resources:
