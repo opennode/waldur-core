@@ -103,20 +103,23 @@ class Command(BaseCommand):
         op_settings = set(ServiceSettings.objects.filter(
             type=OpenStackConfig.service_name).values_list('backend_url', flat=True))
 
+        new_settings = []
         for s in iaas_settings:
             if s.auth_url in op_settings:
                 self.stdout.write('[ ] %s' % s)
             else:
                 self.stdout.write('[+] %s' % s)
                 if not dry_run:
-                    ServiceSettings.objects.create(
+                    settings = ServiceSettings.objects.create(
                         type=OpenStackConfig.service_name,
                         backend_url=s.auth_url,
                         username=s.username,
                         password=s.password,
                         options={'tenant_name': s.tenant_name, 'availability_zone': s.availability_zone},
                         state=SynchronizationStates.IN_SYNC,
-                        shared=True)
+                        shared=False)
+
+                    new_settings.append(settings.id)
 
         self.head("Step 1a: Migrate Flavors")
         flavors = {}
@@ -396,6 +399,8 @@ class Command(BaseCommand):
                         template.group = group
                         template.save()
                         template.tags.add(*tags)
+
+        ServiceSettings.objects.filter(id__in=new_settings).update(shared=True)
 
         if options.get('dry_run'):
             self.stdout.write("\n\n")
