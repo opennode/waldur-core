@@ -1,5 +1,4 @@
 from datetime import timedelta
-import unittest
 
 from django.core.urlresolvers import reverse
 from django.utils import timezone
@@ -306,7 +305,6 @@ class ResourceStatsTest(test.APITransactionTestCase):
             self.assertEqual(response.data, expected_result)
 
 
-@unittest.skip
 class QuotaStatsTest(test.APITransactionTestCase):
 
     def setUp(self):
@@ -327,18 +325,20 @@ class QuotaStatsTest(test.APITransactionTestCase):
         self.project1_admin = structure_factories.UserFactory()
         self.project1.add_user(self.project1_admin, structure_models.ProjectRole.ADMINISTRATOR)
 
-        quota_names = ['vcpu', 'ram', 'storage', 'max_instances']
+        self.quota_names = ['vcpu', 'ram', 'storage', 'max_instances']
 
         self.expected_quotas_for_project1 = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
-            [self.membership1], quota_names)
+            [self.membership1], self.quota_names)
 
         self.expected_quotas_for_both_projects = models.CloudProjectMembership.get_sum_of_quotas_as_dict(
-            [self.membership1, self.membership2], quota_names)
+            [self.membership1, self.membership2], self.quota_names)
 
     def execute_request_with_data(self, user, data):
+        request_data = {'quota_name': self.quota_names}
+        request_data.update(data)
         self.client.force_authenticate(user)
         url = 'http://testserver' + reverse('stats_quota')
-        return self.client.get(url, data)
+        return self.client.get(url, request_data)
 
     def test_customer_owner_receive_quotas_for_projects_from_his_customer(self):
         # when
