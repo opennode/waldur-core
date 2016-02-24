@@ -15,10 +15,11 @@ from rest_framework.reverse import reverse
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.fields import MappedChoiceField
+from nodeconductor.core.fields import MappedChoiceField, TimestampField
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
+from nodeconductor.structure.models import ServiceProjectLink
 
 
 User = auth.get_user_model()
@@ -1415,6 +1416,11 @@ class AggregateSerializer(serializers.Serializer):
             queryset = models.Project.objects.filter(customer__in=list(queryset))
             return filter_queryset_for_user(queryset, user)
 
+    def get_service_project_links(self, user):
+        projects = self.get_projects(user)
+        return [model.objects.filter(project__in=projects)
+                for model in ServiceProjectLink.get_all_models()]
+
 
 class ResourceProvisioningMetadata(metadata.SimpleMetadata):
     """
@@ -1468,3 +1474,13 @@ class ResourceProvisioningMetadata(metadata.SimpleMetadata):
             ]
 
         return field_info
+
+
+class QuotaTimelineStatsSerializer(serializers.Serializer):
+
+    INTERVAL_CHOICES = ('hour', 'day', 'week', 'month')
+
+    start_time = TimestampField(default=lambda: core_utils.timeshift(days=-1))
+    end_time = TimestampField(default=lambda: core_utils.timeshift())
+    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
+    item = serializers.CharField(required=False)

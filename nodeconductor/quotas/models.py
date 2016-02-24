@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import functools
 import inspect
+from collections import defaultdict
 
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
@@ -212,7 +213,7 @@ class QuotaModelMixin(models.Model):
             return {}
 
         if quota_names is None:
-            quota_names = cls.QUOTAS_NAMES
+            quota_names = cls.get_quotas_names()
 
         scope_models = set([scope._meta.model for scope in scopes])
         if len(scope_models) > 1:
@@ -243,12 +244,28 @@ class QuotaModelMixin(models.Model):
         return result
 
     @classmethod
+    def get_sum_of_quotas_for_querysets(cls, querysets, quota_names=None):
+        partial_sums = [qs.model.get_sum_of_quotas_as_dict(qs, quota_names) for qs in querysets]
+        return reduce(cls._sum_dicts, partial_sums, defaultdict(lambda: 0.0))
+
+    @classmethod
+    def _sum_dicts(cls, total, partial):
+        for key, val in partial.items():
+            if val != -1:
+                total[key] += val
+        return total
+
+    @classmethod
     def get_quotas_fields(cls, field_class=None):
         if not hasattr(cls, '_quota_fields') or not cls.Quotas.enable_fields_caching:
             cls._quota_fields = dict(inspect.getmembers(cls.Quotas, lambda m: isinstance(m, fields.QuotaField))).values()
         if field_class is not None:
             return [v for v in cls._quota_fields if isinstance(v, field_class)]
         return cls._quota_fields
+
+    @classmethod
+    def get_quotas_names(cls):
+        return cls.QUOTAS_NAMES + [f.name for f in cls.get_quotas_fields()]
 
 
 class ExtendableQuotaModelMixin(QuotaModelMixin):

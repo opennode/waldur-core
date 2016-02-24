@@ -1,5 +1,6 @@
 Usage statistics
 ----------------
+Warning! This endpoint is restricted to IAAS application.
 
 Historical data of usage aggregated by projects/project_groups/customers.
 
@@ -49,10 +50,11 @@ Example:
 
 Customer statistics
 -------------------
+Warning! This endpoint is restricted to IAAS application.
 
 Summary of projects/groups/vms per customer.
 
-URL: /stats/customer/
+URL: **/api/stats/customer/**
 
 No input parameters. Answer will be list dictionaries with fields:
 
@@ -66,16 +68,17 @@ Example:
 .. code-block:: python
 
     [
-        {'instances': 4, 'project_groups': 1, 'name': 'Customer5', 'projects': 2}
+        {"instances": 4, "project_groups": 1, "name": "Customer5", "projects": 2}
     ]
 
 
 Resource statistics
 -------------------
+Warning! This endpoint is restricted to IAAS application.
 
 Allocation of resources in a cloud backend.
 
-URL: **/stats/resource/**
+URL: **/api/stats/resource/**
 
 Required request GET parameter: *?auth_url* - cloud URL
 
@@ -105,15 +108,15 @@ Example:
 .. code-block:: javascript
 
     {
-    "free_disk_gb": 14,
-    "free_ram_mb": 510444,
-    "memory_mb": 516588,
-    "memory_mb_used": 6144,
-    "memory_quota": 0,
-    "storage_quota": 0,
-    "vcpu_quota": 0,
-    "vcpus": 64,
-    "vcpus_used": 4
+        "free_disk_gb": 14,
+        "free_ram_mb": 510444,
+        "memory_mb": 516588,
+        "memory_mb_used": 6144,
+        "memory_quota": 0,
+        "storage_quota": 0,
+        "vcpu_quota": 0,
+        "vcpus": 64,
+        "vcpus_used": 4
     }
 
 
@@ -158,17 +161,7 @@ Available request parameters:
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result will contain only
   object with given uuid)
-
-Answer will be dictionary with fields:
-
-- vcpu - virtual CPUs quota
-- ram - max RAM size in MiB
-- storage - max storage size in MiB
-- max_instances - max number of running instance
-- vcpu_usage - virtual CPUs usage
-- ram_usage - RAM usage
-- storage_usage - storage usage in MiB
-- max_instances_usage - number of running instance
+- ?quota_name - optional list of quota names, for example ram, vcpu, storage
 
 
 Example result:
@@ -176,21 +169,26 @@ Example result:
 .. code-block:: javascript
 
     {
-        'vcpu': 2,
-        'ram': 4096,
-        'storage': 16384,
-        'max_instances': 4,
-        'vcpu_usage': 1,
-        'ram_usage': 4096,
-        'storage_usage': 16000,
-        'max_instances_usage': 3
+        "floating_ip_count": 150.0,
+        "floating_ip_count_usage": 0.0,
+        "instances": 300.0,
+        "instances_usage": 2.0,
+        "max_instances_usage": 1.0,
+        "ram": 153600.0,
+        "ram_usage": 5633.0,
+        "security_group_count": 30.0,
+        "security_group_count_usage": 13.0,
+        "security_group_rule_count": 300.0,
+        "security_group_rule_count_usage": 30.0,
+        "storage": 3072000.0,
+        "storage_usage": 82945.0,
+        "vcpu": 300.0,
+        "vcpu_usage": 3.0
     }
 
 
 Quotas timeline statistics
 --------------------------
-
-Warning! This endpoint is *deprecated* use **/quotas/<uuid>/history/** instead of it.
 
 Historical data of quotas and quotas usage aggregated by projects/project_groups/customers.
 
@@ -201,12 +199,11 @@ Available request parameters:
 - ?from=timestamp (default: now - 1 day, for example: 1415910025)
 - ?to=timestamp (default: now, for example: 1415912625)
 - ?interval (default: day. Has to be from list: hour, day, week, month)
-- ?item=<item_name> (Has to take values from: 'vcpu', 'storage', 'ram', 'instances'). If this parameter is not
-  defined - endpoint will return data for all items.
+- ?item=<quota_name>. If this parameter is not defined - endpoint will return data for all items.
 - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
 - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter is defined, result will contain only object with given uuid)
 
-Answer will be list of dictionaries with fields, determining time frame. It's size is equal to interval paramter.
+Answer will be list of dictionaries with fields, determining time frame. It's size is equal to interval parameter.
 Values within each bucket are averaged for each project and then all projects metrics are summarized.
 
 Value fields include:
@@ -253,7 +250,7 @@ Example result:
 Alerts statistics
 -----------------
 
-Warning! This endpoint is *deprecated* use **/alerts/stats/** instead of it.
+Warning! This endpoint is *deprecated* use **/api/alerts/stats/** instead of it.
 
 Health statistics based on the alert number and severity. You may also narrow down statistics by instances aggregated
 by specific projects/project_groups/customers.
