@@ -169,21 +169,22 @@ Example result:
 .. code-block:: javascript
 
     {
-        "floating_ip_count": 150.0,
-        "floating_ip_count_usage": 0.0,
-        "instances": 300.0,
-        "instances_usage": 2.0,
-        "max_instances_usage": 1.0,
-        "ram": 153600.0,
-        "ram_usage": 5633.0,
-        "security_group_count": 30.0,
-        "security_group_count_usage": 13.0,
-        "security_group_rule_count": 300.0,
-        "security_group_rule_count_usage": 30.0,
-        "storage": 3072000.0,
-        "storage_usage": 82945.0,
-        "vcpu": 300.0,
-        "vcpu_usage": 3.0
+        "floating_ip_count": 150,
+        "floating_ip_count_usage": 0,
+        "instances": 300,
+        "instances_usage": 2,
+        "max_instances": -1,
+        "max_instances_usage": 1,
+        "ram": 153600,
+        "ram_usage": 5633,
+        "security_group_count": 30,
+        "security_group_count_usage": 13,
+        "security_group_rule_count": 300,
+        "security_group_rule_count_usage": 30,
+        "storage": 3072000,
+        "storage_usage": 82945,
+        "vcpu": 300,
+        "vcpu_usage": 3
     }
 
 
