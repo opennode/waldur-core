@@ -30,11 +30,14 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return self.list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        log.EventLogger().process(
+        scope_url = serializer.validated_data.get('scope_url')
+        context = {'scope_url': scope_url} if scope_url is not None else {}
+
+        log.event_logger.custom.process(
             level=serializer.validated_data.get('level'),
             message_template=serializer.validated_data.get('message'),
             event_type='custom_notification',
-            event_context=serializer.validated_data.get('context')
+            event_context=context
         )
 
     @decorators.list_route()

@@ -61,7 +61,7 @@ Request should contain following fields:
 
 - level: the level of current event. Following levels are supported: debug, info, warning, error
 - message: string representation of event message
-- context: optional JSON field, which adds some additional information to the emitted event
+- scope_url: optional URL field
 
 Request example:
 
@@ -76,7 +76,7 @@ Request example:
     {
         "level": "info",
         "message": "message#1",
-        "context": "{\"customer_name\": \"test\"}"
+        "scope_url": "http://example.com"
     }
 
 

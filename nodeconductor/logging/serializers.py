@@ -37,7 +37,7 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
 class EventSerializer(serializers.Serializer):
     level = serializers.ChoiceField(choices=['debug', 'info', 'warning', 'error'])
     message = serializers.CharField()
-    context = JsonField(required=False)
+    scope_url = serializers.URLField(required=False)
 
 
 class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
