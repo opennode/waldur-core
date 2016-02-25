@@ -604,6 +604,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
+              core_models.DescendantMixin,
               LoggableMixin,
               StructureModel):
     """ Base service class. """
@@ -655,6 +656,9 @@ class Service(core_models.SerializableAbstractMixin,
         Generic method for getting queryset of service project links related to current service
         """
         return self.projects.through.objects.filter(service=self)
+
+    def get_parents(self):
+        return [self.settings]
 
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
