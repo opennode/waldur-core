@@ -52,6 +52,34 @@ Response example:
     ]
 
 
+Create an event
+---------------
+
+Run POST against */api/events/* to create an event. Only users with staff privileges can create events.
+New event will be emitted with `custom_notification` event type.
+Request should contain following fields:
+
+- level: the level of current event. Following levels are supported: debug, info, warning, error
+- message: string representation of event message
+- context: optional JSON field, which adds some additional information to the emitted event
+
+Request example:
+
+.. code-block:: javascript
+
+    POST /api/events/
+    Accept: application/json
+    Content-Type: application/json
+    Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+    Host: example.com
+
+    {
+        "level": "info",
+        "message": "message#1",
+        "context": "{\"customer_name\": \"test\"}"
+    }
+
+
 Hooks
 -----
 

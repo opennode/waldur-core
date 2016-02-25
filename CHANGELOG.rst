@@ -5,6 +5,7 @@ Release NEXT
 ------------
 - Extracted Jira support app to plugin.
 - Added synchronization during service settings recovery.
+- Implemented events creation.
 
 Release 0.88.0
 --------------
