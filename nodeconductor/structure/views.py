@@ -43,6 +43,7 @@ from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure import managers
+from nodeconductor.structure.filters import ExternalResourceFilterBackend
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 
@@ -1146,7 +1147,11 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_backends = (
+        filters.GenericRoleFilter,
+        core_filters.DjangoMappingFilterBackend,
+        ExternalResourceFilterBackend,
+    )
     filter_class = filters.BaseResourceFilter
     metadata_class = serializers.ResourceProvisioningMetadata
 

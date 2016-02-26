@@ -9,7 +9,7 @@ from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import models as core_models
-from nodeconductor.core.filters import BaseExternalFilter
+from nodeconductor.core.filters import BaseExternalFilter, ExternalFilterBackend
 from nodeconductor.logging.filters import ExternalAlertFilterBackend
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
@@ -585,6 +585,8 @@ class BaseResourceFilter(django_filters.FilterSet):
     )
     uuid = django_filters.CharFilter(lookup_type='exact')
 
+    strict = False
+
     class Meta(object):
         model = models.Resource
         fields = (
@@ -679,3 +681,7 @@ class AggregateFilter(BaseExternalFilter):
         return queryset.filter(aggregate_query)
 
 ExternalAlertFilterBackend.register(AggregateFilter())
+
+
+class ExternalResourceFilterBackend(ExternalFilterBackend):
+    pass

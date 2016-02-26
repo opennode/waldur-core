@@ -9,7 +9,6 @@ from model_utils import FieldTracker
 from urlparse import urlparse
 
 from nodeconductor.core import models as core_models
-from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.structure import models as structure_models
 from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
 from nodeconductor.openstack.managers import BackupManager
@@ -154,7 +153,6 @@ class FloatingIP(core_models.UuidMixin):
 
 class Instance(structure_models.VirtualMachineMixin,
                structure_models.PaidResource,
-               MonitoringModelMixin,
                structure_models.Resource):
 
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024

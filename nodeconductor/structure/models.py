@@ -22,6 +22,7 @@ from jsonfield import JSONField
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
+from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user
@@ -813,7 +814,8 @@ class PaidResource(models.Model):
 
 
 @python_2_unicode_compatible
-class Resource(core_models.UuidMixin,
+class Resource(MonitoringModelMixin,
+               core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
                core_models.ErrorMessageMixin,
