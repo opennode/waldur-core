@@ -61,7 +61,7 @@ Request should contain following fields:
 
 - level: the level of current event. Following levels are supported: debug, info, warning, error
 - message: string representation of event message
-- scope_url: optional URL, which points to the loggable instance
+- scope: optional URL, which points to the loggable instance
 
 Request example:
 
@@ -76,7 +76,7 @@ Request example:
     {
         "level": "info",
         "message": "message#1",
-        "scope_url": "http://example.com/api/customers/9cd869201e1b4158a285427fcd790c1c/"
+        "scope": "http://example.com/api/customers/9cd869201e1b4158a285427fcd790c1c/"
     }
 
 
