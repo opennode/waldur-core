@@ -1,6 +1,6 @@
 from simplejson import JSONDecodeError
 
-from rest_framework import viewsets, decorators, exceptions, status, reverse
+from rest_framework import viewsets, decorators, exceptions, status
 from rest_framework.response import Response
 
 from nodeconductor.core import filters as core_filters
@@ -33,11 +33,12 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
                 return Response(response.json(), status=response.status_code)
             except JSONDecodeError:
                 return Response(
-                    {'Error message': 'cannot schedule head template provision %s' % response.content}, status=response.status_code)
+                    {'Error message': 'cannot schedule head template provision %s' % response.content},
+                    status=response.status_code)
         # schedule tasks for other templates provision
         result = group.schedule_tail_templates_provision(request, templates_additional_options, response)
-        result_url = reverse.reverse('template-result-detail', args=(result.uuid.hex, ), request=request)
-        return Response({'result_url': result_url}, status=status.HTTP_200_OK)
+        serialized_result = serializers.TemplateGroupResultSerializer(result, context={'request': request}).data
+        return Response(serialized_result, status=status.HTTP_200_OK)
 
     def _get_templates_additional_options(self, request):
         """ Get additional options from request, validate them and transform to internal values """
