@@ -193,17 +193,6 @@ class EventLogger(BaseLogger):
         log(msg, extra={'event_type': event_type, 'event_context': context})
 
 
-class CustomEventLogger(EventLogger):
-    """
-    Logger for custom events e.g. created by staff user
-    """
-    scope_url = basestring
-
-    class Meta:
-        event_types = ('custom_notification',)
-        nullable_fields = ('scope_url',)
-
-
 class AlertLogger(BaseLogger):
     """ Base alert logger API.
 
@@ -488,6 +477,17 @@ def get_valid_events():
 
 def get_valid_alerts():
     return alert_logger.get_all_types()
+
+
+class CustomEventLogger(EventLogger):
+    """
+    Logger for custom events e.g. created by staff user
+    """
+    scope = LoggableMixin
+
+    class Meta:
+        event_types = ('custom_notification',)
+        nullable_fields = ('scope',)
 
 
 # This global objects represent the default loggers registry

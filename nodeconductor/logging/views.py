@@ -30,8 +30,8 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return self.list(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        scope_url = serializer.validated_data.get('scope_url')
-        context = {'scope_url': scope_url} if scope_url is not None else {}
+        scope = serializer.validated_data.get('scope')
+        context = {'scope': scope} if scope is not None else {}
 
         log.event_logger.custom.process(
             level=serializer.validated_data.get('level'),

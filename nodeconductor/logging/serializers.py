@@ -37,7 +37,7 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
 class EventSerializer(serializers.Serializer):
     level = serializers.ChoiceField(choices=['debug', 'info', 'warning', 'error'])
     message = serializers.CharField()
-    scope_url = serializers.URLField(required=False)
+    scope = GenericRelatedField(related_models=utils.get_loggable_models(), required=False)
 
 
 class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
