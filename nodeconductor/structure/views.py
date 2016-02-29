@@ -1196,7 +1196,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise APIException(e)
 
         event_logger.resource.info(
-            '%s {resource_name} creation has been scheduled.' % serializer.instance.resource_type,
+            '{resource_full_name} {resource_name} creation has been scheduled.',
             event_type='resource_creation_scheduled',
             event_context={'resource': serializer.instance})
 
@@ -1209,14 +1209,14 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         resource = serializer.save()
 
         event_logger.resource.info(
-            '%s {resource_name} has been updated.' % resource.resource_type,
+            '{resource_full_name} {resource_name} has been updated.',
             event_type='resource_update_succeeded',
             event_context={'resource': resource})
 
     def perform_destroy(self, resource):
         resource.delete()
         event_logger.resource.info(
-            '%s {resource_name} has been deleted.' % resource.resource_type,
+            '{resource_full_name} {resource_name} has been deleted.',
             event_type='resource_deletion_succeeded',
             event_context={'resource': resource})
 
@@ -1228,7 +1228,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             backend = resource.get_backend()
             backend.destroy(resource, force=force)
             event_logger.resource.info(
-                'Resource {resource_name} has been scheduled to deletion.',
+                '{resource_full_name} {resource_name} has been scheduled for deletion.',
                 event_type='resource_deletion_scheduled',
                 event_context={'resource': resource})
         else:
