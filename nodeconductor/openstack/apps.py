@@ -9,12 +9,15 @@ from nodeconductor.structure.models import Project
 
 
 class OpenStackConfig(AppConfig):
+    """ OpenStack is a toolkit for building private and public clouds.
+        This application adds support for managing OpenStack deployments -
+        tenants, instances, security groups and networks.
+    """
     name = 'nodeconductor.openstack'
     verbose_name = 'NodeConductor OpenStack'
     service_name = 'OpenStack'
 
     def ready(self):
-        OpenStackService = self.get_model('OpenStackService')
         OpenStackServiceProjectLink = self.get_model('OpenStackServiceProjectLink')
         Instance = self.get_model('Instance')
         FloatingIP = self.get_model('FloatingIP')
