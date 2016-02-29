@@ -8,6 +8,7 @@ from rest_framework import filters
 from nodeconductor.core import filters as core_filters
 from nodeconductor.cost_tracking import models, serializers
 from nodeconductor.structure import models as structure_models, SupportedServices
+from nodeconductor.structure.models import Resource
 
 
 class PriceEstimateFilter(django_filters.FilterSet):
@@ -81,7 +82,7 @@ class PriceListItemServiceFilterBackend(core_filters.GenericKeyFilterBackend):
 class DefaultPriceListItemFilter(django_filters.FilterSet):
     resource_type = core_filters.ContentTypeFilter(
         name='resource_content_type',
-        models=SupportedServices.get_resource_models().values())
+        models=Resource.get_all_models())
 
     class Meta:
         model = models.DefaultPriceListItem
