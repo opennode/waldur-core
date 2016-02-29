@@ -260,12 +260,47 @@ class StaffOrUserFilter(object):
 
 class ContentTypeFilter(django_filters.CharFilter):
 
+    def __init__(self, models=None, **kwargs):
+        super(ContentTypeFilter, self).__init__(**kwargs)
+        self.models = models
+
     def filter(self, qs, value):
         if value:
             try:
                 app_label, model = value.split('.')
                 ct = ContentType.objects.get(app_label=app_label, model=model)
+                if self.models and ct.model_class() not in self.models:
+                    return qs.none()
                 return super(ContentTypeFilter, self).filter(qs, ct)
             except (ContentType.DoesNotExist, ValueError):
                 return qs.none()
         return qs
+
+
+class BaseExternalFilter(object):
+    """ Interface for external alert filter """
+    def filter(self, request, queryset, view):
+        raise NotImplementedError
+
+
+class ExternalFilterBackend(filters.BaseFilterBackend):
+    """
+    Support external filters registered in other apps
+    """
+
+    @classmethod
+    def get_registered_filters(cls):
+        return getattr(cls, '_filters', [])
+
+    @classmethod
+    def register(cls, external_filter):
+        assert isinstance(external_filter, BaseExternalFilter), 'Registered filter has to inherit BaseExternalFilter'
+        if hasattr(cls, '_filters'):
+            cls._filters.append(external_filter)
+        else:
+            cls._filters = [external_filter]
+
+    def filter_queryset(self, request, queryset, view):
+        for filt in self.__class__.get_registered_filters():
+            queryset = filt.filter(request, queryset, view)
+        return queryset

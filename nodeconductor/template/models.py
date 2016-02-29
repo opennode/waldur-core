@@ -17,7 +17,7 @@ from rest_framework.authtoken.models import Token
 from taggit.managers import TaggableManager
 
 from nodeconductor.core import models as core_models
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import models as structure_models, SupportedServices
 
 
 @python_2_unicode_compatible
@@ -55,6 +55,11 @@ class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, model
 
         templates_tasks = []
         template_group_result = TemplateGroupResult.objects.create(group=self)
+
+        head_template = self.get_head_template()
+        resource_type = SupportedServices.get_name_for_model(head_template.resource_content_type.model_class())
+        template_group_result.provisioned_resources[resource_type] = head_template_provision_response.json()['url']
+
         token_key = Token.objects.get(user=request.user).key
         # Define wait task for head templates
         head_template = self.get_head_template()

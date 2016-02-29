@@ -237,7 +237,11 @@ class AggregatorQuotaField(QuotaField):
 
 
 class UsageAggregatorQuotaField(AggregatorQuotaField):
-    """ Aggregates sum children quotas usages. """
+    """ Aggregates sum children quotas usages.
+
+        Note! It is impossible to aggregate usage of another usage aggregator quotas.
+        This restriction was added to avoid calls duplications on quota usage field update.
+    """
     aggregation_field = 'usage'
 
 

@@ -59,16 +59,19 @@ class SupportedServices(object):
     })
 
     @classmethod
-    def register_backend(cls, backend_class):
+    def register_backend(cls, backend_class, nested=False):
         if not cls._is_active_model(backend_class):
             return
 
-        key = cls.get_model_key(backend_class)
-        cls._registry[key]['backend'] = backend_class
+        # For nested backends just discover resources/properties
+        if not nested:
+            key = cls.get_model_key(backend_class)
+            cls._registry[key]['backend'] = backend_class
 
+        # Forcely import service serialize to run services autodiscovery
         try:
-            # Forcely import service serialize to run services autodiscovery
-            importlib.import_module(backend_class.__module__.replace('backend', 'serializers'))
+            module_name = backend_class.__module__
+            importlib.import_module(module_name.replace('backend', 'serializers'))
         except ImportError:
             pass
 

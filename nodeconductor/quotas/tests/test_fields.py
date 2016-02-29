@@ -193,7 +193,7 @@ class TestLimitAggregatorField(TransactionTestCase):
 
         quota = parent.quotas.get(name=self.parent_quota_field)
         self.assertEqual(quota.usage, limit_value)
-        quota = self.grandparent.quotas.get(name=self.parent_quota_field)
+        quota = self.grandparent.quotas.get(name=self.grandparent_quota_field)
         self.assertEqual(quota.usage, limit_value)
 
     def test_limit_aggregator_recalculation(self):

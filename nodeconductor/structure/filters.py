@@ -9,7 +9,8 @@ from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import models as core_models
-from nodeconductor.logging.filters import ExternalAlertFilterBackend, BaseExternalFilter
+from nodeconductor.core.filters import BaseExternalFilter
+from nodeconductor.logging.filters import ExternalAlertFilterBackend
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure import SupportedServices

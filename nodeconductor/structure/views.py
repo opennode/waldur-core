@@ -1196,7 +1196,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise APIException(e)
 
         event_logger.resource.info(
-            'Resource {resource_name} creation has been scheduled.',
+            '{resource_full_name} creation has been scheduled.',
             event_type='resource_creation_scheduled',
             event_context={'resource': serializer.instance})
 
@@ -1209,14 +1209,14 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         resource = serializer.save()
 
         event_logger.resource.info(
-            'Resource {resource_name} has been updated.',
+            '{resource_full_name} has been updated.',
             event_type='resource_update_succeeded',
             event_context={'resource': resource})
 
     def perform_destroy(self, resource):
         resource.delete()
         event_logger.resource.info(
-            'Resource {resource_name} has been deleted.',
+            '{resource_full_name} has been deleted.',
             event_type='resource_deletion_succeeded',
             event_context={'resource': resource})
 
@@ -1228,7 +1228,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             backend = resource.get_backend()
             backend.destroy(resource, force=force)
             event_logger.resource.info(
-                'Resource {resource_name} has been scheduled to deletion.',
+                '{resource_full_name} has been scheduled for deletion.',
                 event_type='resource_deletion_scheduled',
                 event_context={'resource': resource})
         else:
@@ -1318,6 +1318,7 @@ class QuotaTimelineStatsView(views.APIView):
 
     def get(self, request, format=None):
         stats = self.get_stats(request)
+        stats = [OrderedDict(sorted(stat.items())) for stat in stats]
         return Response(stats, status=status.HTTP_200_OK)
 
     def get_quota_scopes(self, request):
@@ -1355,11 +1356,13 @@ class QuotaTimelineStatsView(views.APIView):
         else:
             items = self.get_all_spls_quotas()
 
-        stats = [{'from': datetime_to_timestamp(start), 'to': datetime_to_timestamp(end)} for start, end in dates]
+        stats = [{'from': datetime_to_timestamp(start),
+                  'to': datetime_to_timestamp(end)}
+                 for start, end in dates]
 
         def _add(*args):
             args = [arg if arg is not None else (0, 0) for arg in args]
-            return [sum(q) for q in zip(*args)]
+            return [self.sum_positive(qs) for qs in zip(*args)]
 
         for item in items:
             item_stats = [self.get_stats_for_scope(item, scope, dates) for scope in scopes]
@@ -1371,20 +1374,32 @@ class QuotaTimelineStatsView(views.APIView):
 
         return stats[::-1]
 
+    def sum_positive(self, xs):
+        if not xs:
+            return 0
+        positive = (x for x in xs if x != -1)
+        if not positive:
+            return -1
+        return sum(positive)
+
     def get_stats_for_scope(self, quota_name, scope, dates):
         stats_data = []
         try:
             quota = scope.quotas.get(name=quota_name)
         except Quota.DoesNotExist:
             return stats_data
-        versions = reversion.get_for_object(quota).select_related('reversion').filter(
-            revision__date_created__lte=dates[0][0]).iterator()
+        versions = reversion\
+            .get_for_object(quota)\
+            .select_related('revision')\
+            .filter(revision__date_created__lte=dates[0][0])\
+            .iterator()
         version = None
         for end, start in dates:
             try:
                 while version is None or version.revision.date_created > end:
                     version = versions.next()
-                stats_data.append((version.object_version.object.limit, version.object_version.object.usage))
+                stats_data.append((version.object_version.object.limit,
+                                   version.object_version.object.usage))
             except StopIteration:
                 break
 
