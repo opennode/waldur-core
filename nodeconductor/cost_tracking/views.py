@@ -79,7 +79,7 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
 
 class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.DefaultPriceListItem.objects.all()
+    queryset = models.DefaultPriceListItem.objects.all().select_related('resource_content_type')
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated,)
     filter_class = filters.DefaultPriceListItemFilter
