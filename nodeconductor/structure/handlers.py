@@ -373,7 +373,7 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
 
 def log_resource_deleted(sender, instance, **kwargs):
     event_logger.resource.info(
-        'Resource {resource_name} has been deleted.',
+        '%s {resource_name} has been deleted.' % instance.resource_type,
         event_type='resource_deletion_succeeded',
         event_context={'resource': instance})
 
