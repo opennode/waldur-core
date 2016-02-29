@@ -951,7 +951,7 @@ class Resource(core_models.UuidMixin,
 
     @property
     def full_name(self):
-        return '%s %s' % (SupportedServices.get_name_for_model(self), self.name)
+        return '%s %s' % (SupportedServices.get_name_for_model(self).replace('.', ' '), self.name)
 
     def _get_log_context(self, entity_name):
         context = super(Resource, self)._get_log_context(entity_name)
