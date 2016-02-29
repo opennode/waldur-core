@@ -9,16 +9,17 @@ from django.core.urlresolvers import reverse
 from django.db import transaction
 from optparse import make_option
 
-from nodeconductor.iaas import models as iaas_models
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.iaas import models as iaas_models
+from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
 from nodeconductor.openstack import Types
 from nodeconductor.openstack import models as op_models
 from nodeconductor.openstack.apps import OpenStackConfig
+from nodeconductor.quotas.handlers import init_quotas
 from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.template.models import TemplateGroup, Template
-from nodeconductor.quotas.handlers import init_quotas
 
 zbx = NodeConductorExtension.is_installed('nodeconductor_zabbix')
 
@@ -56,6 +57,103 @@ class Command(BaseCommand):
             tags.append((Types.PriceItems.SUPPORT, Types.Support.BASIC))
             is_app = False
         return is_app, [':'.join(t) for t in tags]
+
+    def get_old_zabbix_client(self):
+        if not hasattr(self, '_old_zabbix_client'):
+            self._old_zabbix_client = ZabbixApiClient()
+        return self._old_zabbix_client
+
+    # TODO: move this command to zabbix app as part of import process
+    def create_zabbix_data(self, iaas_instance, openstack_instance, zabbix_settings, options):
+        from nodeconductor_zabbix.models import Template, Host, ITService, Trigger
+
+        backend = zabbix_settings.get_backend()
+        api = backend.api
+        old_client = self.get_old_zabbix_client()
+
+        # Zabbix host
+        try:
+            host_id = old_client.get_host(iaas_instance)['hostid']
+        except IndexError:
+            self.error(
+                'Zabbix host does not exist for instance %s (UUID: %s)' % (iaas_instance.name, iaas_instance.uuid))
+            return
+
+        host_data = api.host.get(
+            filter={'hostid': host_id}, selectParentTemplates='', output='extend', selectGroups='extend')[0]
+        host_interface_data = api.hostinterface.get(filter={'hostid': host_id}, output='extend')[0]
+        del host_interface_data['hostid']
+        del host_interface_data['interfaceid']
+        template_ids = [el['templateid'] for el in host_data['parentTemplates']]
+        try:
+            templates = [Template.objects.get(backend_id=template_id) for template_id in template_ids]
+        except Template.DoesNotExist:
+            self.error('NC Zabbix database does not have template with backend_id %s. Please pull it.' % template_ids)
+            return
+        try:
+            host_group_name = host_data['groups'][0]['name']
+        except (IndexError, KeyError):
+            host_group_name = ''
+
+        self.stdout.write('[+] Host for instance %s' % openstack_instance)
+        host = Host.objects.create(
+            service_project_link=openstack_instance.service_project_link,
+            scope=openstack_instance,
+            visible_name=host_data['name'],
+            name=host_data['host'],
+            backend_id=host_id,
+            state=Host.States.ONLINE,
+            host_group_name=host_group_name,
+            interface_parameters=host_interface_data,
+        )
+        host.templates.add(*templates)
+
+        service_name = old_client.get_service_name(iaas_instance)
+        try:
+            service_data = api.service.get(filter={'name': service_name}, output='extend')[0]
+        except IndexError:
+            self.error(
+                'IT service for instance %s (UUID: %s) does not exist' % (iaas_instance.name, iaas_instance.uuid))
+            return
+
+        trigger_data = api.trigger.get(filter={'triggerid': service_data['triggerid']}, output='extend')[0]
+        try:
+            trigger = Trigger.objects.get(
+                name=trigger_data['description'], template__backend_id=trigger_data['templateid'])
+        except Trigger.DoesNotExist:
+            self.error(
+                'Trigger with name "%s" that belong to template with backend_id %s does not exist in NC database.'
+                'Please pull it' % (trigger_data['description'], trigger_data['templateid']))
+
+        self.stdout.write('[+] IT Service for instance %s' % openstack_instance)
+        ITService.objects.create(
+            service_project_link=openstack_instance.service_project_link,
+            host=host,
+            is_main=True,
+            algorithm=int(service_data['algorithm']),
+            sort_order=int(service_data['sortorder']),
+            agreed_sla=float(service_data['goodsla']),
+            backend_trigger_id=service_data['triggerid'],
+            state=ITService.States.ONLINE,
+            backend_id=service_data['serviceid'],
+            name=service_data['name'],
+            trigger=trigger,
+        )
+
+        self.stdout.write('[+] SLAs as monitoring items for %s' % openstack_instance)
+        for sla in iaas_instance.slas:
+            openstack_instance.monitoring_items.create(
+                name='SLA-%s' % sla.period,
+                value=sla.value)
+
+        self.stdout.write('[+] Installation state as monitoring item for %s' % openstack_instance)
+        mapping = {'NO DATA': 0, 'OK': 1, 'NOT OK': 0}  # TODO: Check this values
+        openstack_instance.monitoring_items.create(
+            name=Host.MONITORING_ITEMS_CONFIGS[0]['monitoring_item_name'],
+            value=mapping[iaas_instance.Installation_state])
+
+        # TODO: monitoring items
+        # XXX: Should we add some tags to newly created resources?
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -231,10 +329,6 @@ class Command(BaseCommand):
             else:
                 self.stdout.write('[ ] %s' % cpm)
 
-        # XXX: sync new SPLs with backend in order to grant admin access to the tenants
-        if spls and not options.get('dry_run'):
-            send_task('structure', 'sync_service_project_links')(spls)
-
         self.head("Step 4a: Migrate FloatingIPs")
         for fip in iaas_models.FloatingIP.objects.all():
             try:
@@ -299,6 +393,10 @@ class Command(BaseCommand):
             else:
                 self.stdout.write('[ ] %s' % sgr)
 
+        # XXX: sync new SPLs with backend in order to grant admin access to the tenants
+        if spls and not options.get('dry_run'):
+            send_task('structure', 'sync_service_project_links')(spls)
+
         self.head("Step 4: Migrate Resources")
         for instance in iaas_models.Instance.objects.filter(cloud_project_membership__in=cpms):
             try:
@@ -322,6 +420,7 @@ class Command(BaseCommand):
                         flavor_name=instance.flavor_name,
                         cores=instance.cores,
                         ram=instance.ram,
+                        state=op_models.Instance.ONLINE,
                     )
 
                     # XXX: duplicate UUIDs due to killbill
@@ -336,9 +435,10 @@ class Command(BaseCommand):
                     _, tags = self.license2tags(instance.template)
                     inst.tags.add(*tags)
 
-                    if self.zabbix_settings:
-                        # InstanceSlaHistory & InstanceSlaHistoryEvents
-                        self.warn('Skip monitoring. Not Implemented')
+                    # if self.zabbix_settings:
+                    #     # TODO: InstanceSlaHistory & InstanceSlaHistoryEvents
+                    #     backend = self.zabbix_settings.get_backend()
+                    #     api = backend.api
             else:
                 self.stdout.write('[ ] %s' % instance)
 
@@ -380,6 +480,8 @@ class Command(BaseCommand):
                     },
                     use_previous_resource_project=True,
                     order_number=2))
+
+                # TODO: Add Zabbix ITService template creation here.
 
             is_app, tags = self.license2tags(tmpl)
             if not dry_run:
