@@ -266,16 +266,14 @@ class UserViewSet(viewsets.ModelViewSet):
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
         if (not django_settings.NODECONDUCTOR.get('SHOW_ALL_USERS', True) and not user.is_staff) or \
-            'potential' in self.request.query_params:
+                'potential' in self.request.query_params:
             connected_customers_query = models.Customer.objects.all()
             # is user is not staff, allow only connected customers
             if not user.is_staff:
                 # XXX: Let the DB cry...
                 connected_customers_query = connected_customers_query.filter(
-                    Q(roles__permission_group__user=user)
-                    |
-                    Q(projects__roles__permission_group__user=user)
-                    |
+                    Q(roles__permission_group__user=user) |
+                    Q(projects__roles__permission_group__user=user) |
                     Q(project_groups__roles__permission_group__user=user)
                 ).distinct()
 
@@ -294,18 +292,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
             queryset = queryset.filter(is_staff=False).filter(
                 # customer users
-                Q(
-                    groups__customerrole__customer__in=connected_customers,
-                )
-                |
-                Q(
-                    groups__projectrole__project__customer__in=connected_customers,
-                )
-                |
-                Q(
-                    groups__projectgrouprole__project_group__customer__in=connected_customers,
-                )
-                |
+                Q(groups__customerrole__customer__in=connected_customers) |
+                Q(groups__projectrole__project__customer__in=connected_customers) |
+                Q(groups__projectgrouprole__project_group__customer__in=connected_customers) |
                 # users with no role
                 Q(
                     groups__customerrole=None,
@@ -521,10 +510,8 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
         if not self.request.user.is_staff:
             queryset = queryset.filter(
                 Q(group__projectgrouprole__project_group__customer__roles__permission_group__user=self.request.user,
-                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER)
-                |
-                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user)
-                |
+                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER) |
+                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user) |
                 Q(group__projectgrouprole__project_group__roles__permission_group__user=self.request.user)
             ).distinct()
 
@@ -584,10 +571,8 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
         if not self.request.user.is_staff:
             queryset = queryset.filter(
                 Q(group__customerrole__customer__roles__permission_group__user=self.request.user,
-                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
-                |
-                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
-                |
+                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER) |
+                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user) |
                 Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
             ).distinct()
 
@@ -694,10 +679,8 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
         return Response(SupportedServices.get_services_with_resources(request))
 
 
-class ResourceViewSet(mixins.ListModelMixin,
-                      viewsets.GenericViewSet):
+class ResourceViewSet(viewsets.GenericViewSet):
     model = models.Resource  # for permissions definition.
-    serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     filter_class = filters.BaseResourceFilter
@@ -708,6 +691,24 @@ class ResourceViewSet(mixins.ListModelMixin,
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
         return managers.SummaryQuerySet(resource_models.values())
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            data = self._serialize_resources(page, request)
+            return self.get_paginated_response(data)
+
+        data = self._serialize_resources(queryset, request)
+        return Response(data)
+
+    def _serialize_resources(self, resources, request):
+        serialized = []
+        for resource in resources:
+            serializer = SupportedServices.get_resource_serializer(resource.__class__)
+            serialized.append(serializer(resource, context={'request': request}).data)
+        return serialized
 
     @list_route()
     def count(self, request):

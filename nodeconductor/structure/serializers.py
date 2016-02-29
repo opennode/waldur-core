@@ -1091,8 +1091,9 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
         See SupportedServices for details.
     """
     def __new__(cls, name, bases, args):
-        SupportedServices.register_resource(args['Meta'].model)
-        return super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
+        serializer = super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
+        SupportedServices.register_resource(args['Meta'].model, serializer)
+        return serializer
 
 
 class BasicResourceSerializer(serializers.Serializer):
