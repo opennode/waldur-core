@@ -947,15 +947,15 @@ class Resource(core_models.UuidMixin,
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
 
     def get_log_fields(self):
-        return ('uuid', 'name', 'service_project_link', 'full_name',)
+        return ('uuid', 'name', 'service_project_link', 'full_name')
 
     @property
     def full_name(self):
-        return SupportedServices.get_name_for_model(self)
+        return '%s %s' % (SupportedServices.get_name_for_model(self), self.name)
 
     def _get_log_context(self, entity_name):
         context = super(Resource, self)._get_log_context(entity_name)
-        context['resource_type'] = self.full_name  # required for lookups in ElasticSearch by the client
+        context['resource_type'] = SupportedServices.get_name_for_model(self)  # required for lookups in ElasticSearch by the client
         return context
 
     def get_parents(self):
