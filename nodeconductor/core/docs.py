@@ -3,6 +3,7 @@ import importlib
 
 from django.apps import apps
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.admindocs.views import simplify_regex
 from django.core.urlresolvers import RegexURLResolver, RegexURLPattern
 from django_filters import ModelMultipleChoiceFilter
@@ -219,7 +220,10 @@ class ApiEndpoint(object):
                 return []
 
         if isinstance(cls, type):
-            serializer = cls(context={'request': type('R', (object,), {'method': 'GET'}), 'user': None})
+            user = get_user_model()()
+            serializer = cls(context={
+                'request': type('R', (object,), {'method': 'GET', 'user': user}),
+                'user': user})
         else:
             serializer = cls
         if cls:
