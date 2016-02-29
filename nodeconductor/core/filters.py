@@ -10,45 +10,46 @@ from nodeconductor.core import serializers as core_serializers, fields as core_f
 
 
 class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
-    """
-    A filter backend that uses django-filter that fixes order_by.
+    """ ..drfdocs-ignore
 
-    This backend supports additional attribute of a FilterSet named `order_by_mapping`.
-    It maps ordering fields from user friendly ones to the ones that depend on
-    the model relation innards.
+        A filter backend that uses django-filter that fixes order_by.
 
-    See https://github.com/alex/django-filter/issues/178#issuecomment-62129586
+        This backend supports additional attribute of a FilterSet named `order_by_mapping`.
+        It maps ordering fields from user friendly ones to the ones that depend on
+        the model relation innards.
 
-    Example usage:
+        See https://github.com/alex/django-filter/issues/178#issuecomment-62129586
 
-    # models.py
+        Example usage:
 
-    class Project(models.Model):
-        name = models.CharField(max_length=10)
+        # models.py
+
+        class Project(models.Model):
+          name = models.CharField(max_length=10)
 
 
-    class Instance(models.Model):
-        name = models.CharField(max_length=10)
-        instance = models.ForeignKey(Project)
+        class Instance(models.Model):
+          name = models.CharField(max_length=10)
+          instance = models.ForeignKey(Project)
 
-    # filters.py
+        # filters.py
 
-    class InstanceFilter(django_filters.FilterSet):
-        class Meta(object):
-            model = models.Instance
+        class InstanceFilter(django_filters.FilterSet):
+          class Meta(object):
+              model = models.Instance
 
-            # Filter fields go here
-            order_by = [
-                'name',
-                '-name',
-                'project__name',
-                '-project__name',
-            ]
-            order_by_mapping = {
-                # Fix order by parameters
-                'project_name': 'project__name',
-                # '-project_name' mapping is handled automatically
-            }
+              # Filter fields go here
+              order_by = [
+                  'name',
+                  '-name',
+                  'project__name',
+                  '-project__name',
+              ]
+              order_by_mapping = {
+                  # Fix order by parameters
+                  'project_name': 'project__name',
+                  # '-project_name' mapping is handled automatically
+              }
     """
 
     def filter_queryset(self, request, queryset, view):

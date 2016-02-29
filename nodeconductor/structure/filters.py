@@ -21,7 +21,11 @@ User = auth.get_user_model()
 
 
 class ScopeTypeFilterBackend(DjangoFilterBackend):
-    """ Backend for filtering by scope type. """
+    """ Scope filters:
+
+        * ?scope = ``URL``
+        * ?scope_type = ``string`` (can be list)
+    """
 
     scope_field = 'scope'
     scope_param = 'scope_type'

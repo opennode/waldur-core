@@ -17,8 +17,6 @@ from rest_framework.views import APIView
 
 from nodeconductor.core.filters import ContentTypeFilter, MappedMultipleChoiceFilter
 from nodeconductor.core.serializers import GenericRelatedField
-from nodeconductor.cost_tracking.filters import ResourceTypeFilter
-from nodeconductor.structure import SupportedServices
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +170,7 @@ class ApiDocs(object):
                 ".. toctree::",
                 "   :glob:",
                 "   :titlesonly:",
-                "   :maxdepth: 2",
+                "   :maxdepth: 1",
                 "",
                 "   **",
             ]
@@ -284,7 +282,12 @@ class ApiEndpoint(object):
 
     def get_filter_docs(self):
         try:
-            return '\n\n'.join([getdoc(cls) for cls in self.callback.cls.filter_backends])
+            docs = []
+            for cls in self.callback.cls.filter_backends:
+                doc = getdoc(cls)
+                if not doc.startswith('..drfdocs-ignore'):
+                    docs.append(doc)
+            return '\n\n'.join(docs)
         except AttributeError:
             return ''
 
@@ -308,9 +311,10 @@ class ApiEndpoint(object):
             if path:
                 return 'link to any: %s' % path
         if isinstance(field, ContentTypeFilter):
-            return 'string in form <app_label>.<model_name>'
-        if isinstance(field, ResourceTypeFilter):
-            return 'choices(%s)' % ', '.join(["'%s'" % f for f in sorted(SupportedServices.get_resource_models())])
+            if field.models:
+                return 'choices(%s)' % ', '.join(["'%s'" % m._meta for m in field.models])
+            else:
+                return 'string in form <app_label>.<model_name>'
         if isinstance(field, ModelSerializer):
             fields = {f['name']: f['type'] for f in self.get_serializer_fields(field) if not f['readonly']}
             return '{%s}' % ', '.join(['%s: %s' % (k, v) for k, v in fields.items()])

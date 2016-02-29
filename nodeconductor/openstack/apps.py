@@ -14,7 +14,7 @@ class OpenStackConfig(AppConfig):
         tenants, instances, security groups and networks.
     """
     name = 'nodeconductor.openstack'
-    verbose_name = 'NodeConductor OpenStack'
+    verbose_name = 'OpenStack'
     service_name = 'OpenStack'
 
     def ready(self):

@@ -4,7 +4,6 @@ from django.apps import AppConfig
 from django.contrib.auth import get_user_model
 from django.db.models import signals
 from django_fsm import signals as fsm_signals
-from model_utils import FieldTracker
 
 from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
 from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
@@ -14,7 +13,7 @@ from nodeconductor.structure import signals as structure_signals
 
 class StructureConfig(AppConfig):
     name = 'nodeconductor.structure'
-    verbose_name = "NodeConductor Structure"
+    verbose_name = 'Structure'
 
     # See, https://docs.djangoproject.com/en/1.7/ref/applications/#django.apps.AppConfig.ready
     def ready(self):

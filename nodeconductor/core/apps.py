@@ -9,7 +9,7 @@ from nodeconductor.core import handlers
 
 class CoreConfig(AppConfig):
     name = 'nodeconductor.core'
-    verbose_name = "NodeConductor Core"
+    verbose_name = 'Core'
 
     def ready(self):
         User = get_user_model()
