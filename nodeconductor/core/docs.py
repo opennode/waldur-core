@@ -67,8 +67,8 @@ class ApiDocs(object):
     def get_all_view_names(self, urlpatterns, parent_pattern=None):
         for pattern in urlpatterns:
             if isinstance(pattern, RegexURLResolver):
-                parent_pattern = None if pattern._regex.startswith('^') else pattern
-                for ep in self.get_all_view_names(pattern.url_patterns, parent_pattern=parent_pattern):
+                pp = None if pattern._regex == '^' else pattern
+                for ep in self.get_all_view_names(pattern.url_patterns, parent_pattern=pp):
                     yield ep
             elif isinstance(pattern, RegexURLPattern) and self._is_drf_view(pattern):
                 suffix = '?P<%s>' % api_settings.FORMAT_SUFFIX_KWARG
@@ -100,6 +100,10 @@ class ApiDocs(object):
                     f.write(endpoint + '\n' + '-' * len(endpoint) + '\n\n')
                     if top.docstring:
                         f.write(top.docstring + '\n\n')
+
+                    doc = top.get_filter_docs()
+                    if doc:
+                        f.write(doc + '\n')
 
                     f.write('Supported actions and methods:\n\n')
                     for idx, act in enumerate(actions, start=1):
@@ -190,6 +194,7 @@ class ApiEndpoint(object):
         'DecimalField': 'float',
         'FloatField': 'float',
         'FileField': 'file',
+        'EmailField': 'email',
         'IntegerField': 'integer',
         'IPAddressField': 'IP address',
         'HyperlinkedRelatedField': 'link',
@@ -276,6 +281,12 @@ class ApiEndpoint(object):
                 'filter': {k: self._get_field_type(v) for k, v in filter_cls.declared_filters.items()},
                 'order': sorted([order_by_mapping.get(f, f) for f in order_by if not f.startswith('-')]),
             }
+
+    def get_filter_docs(self):
+        try:
+            return '\n\n'.join([getdoc(cls) for cls in self.callback.cls.filter_backends])
+        except AttributeError:
+            return ''
 
     def get_path(self, parent_pattern):
         if parent_pattern:

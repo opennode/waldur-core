@@ -29,6 +29,10 @@ class EventViewSet(viewsets.GenericViewSet):
 
     @decorators.list_route()
     def count(self, request, *args, **kwargs):
+        """ Returns a count of events.
+            Response example: ``{"count": 12321}``
+        """
+
         self.queryset = self.filter_queryset(self.get_queryset())
         return response.Response({'count': self.queryset.count()}, status=status.HTTP_200_OK)
 
