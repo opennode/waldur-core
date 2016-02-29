@@ -1,5 +1,6 @@
-import inspect
 import importlib
+import inspect
+import logging
 
 from django.apps import apps
 from django.conf import settings
@@ -18,6 +19,22 @@ from nodeconductor.core.filters import ContentTypeFilter, MappedMultipleChoiceFi
 from nodeconductor.core.serializers import GenericRelatedField
 from nodeconductor.cost_tracking.filters import ResourceTypeFilter
 from nodeconductor.structure import SupportedServices
+
+logger = logging.getLogger(__name__)
+
+
+def getdoc(obj, warning=True):
+    doc = inspect.getdoc(obj) or ''
+    if not doc and warning:
+        if inspect.isclass(obj):
+            name = '{}.{}'.format(obj.__module__, obj.__name__)
+        elif inspect.ismethod(obj):
+            cls = obj.im_class
+            name = '{}.{}.{}'.format(cls.__module__, cls.__name__, obj.im_func.func_name)
+        else:
+            name = str(obj)
+        logger.warning("Docstring is missing for %s", name)
+    return doc
 
 
 class ApiDocs(object):
@@ -73,7 +90,7 @@ class ApiDocs(object):
             print '\t* %s' % file
 
             with open(path + '/' + file, 'w') as f:
-                doc = inspect.getdoc(conf) or name
+                doc = getdoc(conf) or name
                 f.write(name + '\n' + '=' * len(name) + '\n\n')
                 f.write(doc + '\n\n')
                 for endpoint, actions in sorted(endpoints.items(), reverse=True):
@@ -124,18 +141,18 @@ class ApiDocs(object):
 
                         cls = act.callback.cls
                         if act.action:
-                            doc = inspect.getdoc(getattr(cls, act.action))
+                            doc = getdoc(getattr(cls, act.action))
                             if doc:
                                 f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
                         else:
                             for method in methods:
                                 try:
-                                    doc = inspect.getdoc(getattr(cls, method.lower()))
+                                    doc = getdoc(getattr(cls, method.lower()), warning=False)
                                 except AttributeError:
                                     for m, a in act.METHODS:
                                         action = getattr(cls, a, None)
                                         if action:
-                                            doc = inspect.getdoc(action)
+                                            doc = getdoc(action, warning=False)
                                             if doc:
                                                 break
                                 if doc:
@@ -194,7 +211,7 @@ class ApiEndpoint(object):
         conf = apps.get_app_config(pattern.callback.cls.__module__.split('.')[-2])
         self.pattern = pattern
         self.callback = pattern.callback
-        self.docstring = inspect.getdoc(self.callback) or ''
+        self.docstring = getdoc(self.callback.cls)
         self.name_parent = simplify_regex(parent_pattern.regex.pattern).replace('/', '') if parent_pattern else None
         self.path = self.get_path(parent_pattern)
         self.name = conf.verbose_name
