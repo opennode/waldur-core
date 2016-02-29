@@ -67,7 +67,7 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + (
             'quotas', 'tenant_id', 'external_network_id', 'internal_network_id'
         )
-        read_only_fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.read_only_fields +(
+        read_only_fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.read_only_fields + (
             'tenant_id', 'external_network_id', 'internal_network_id'
         )
         extra_kwargs = {

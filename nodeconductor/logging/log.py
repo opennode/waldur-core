@@ -479,6 +479,19 @@ def get_valid_alerts():
     return alert_logger.get_all_types()
 
 
+class CustomEventLogger(EventLogger):
+    """
+    Logger for custom events e.g. created by staff user
+    """
+    scope = LoggableMixin
+
+    class Meta:
+        event_types = ('custom_notification',)
+        nullable_fields = ('scope',)
+
+
 # This global objects represent the default loggers registry
 event_logger = EventLoggerRegistry()
 alert_logger = AlertLoggerRegistry()
+
+event_logger.register('custom', CustomEventLogger)

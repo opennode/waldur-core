@@ -4,14 +4,16 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 from rest_framework import response, viewsets, permissions, status, decorators, mixins
 
-from nodeconductor.core import serializers as core_serializers, filters as core_filters
+from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.views import BaseSummaryView
-from nodeconductor.logging import elasticsearch_client, models, serializers, filters
+from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log
 
 
-class EventViewSet(viewsets.GenericViewSet):
+class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
+    permission_classes = (permissions.IsAuthenticated, core_permissions.IsAdminOrReadOnly)
     filter_backends = (filters.EventFilterBackend,)
+    serializer_class = serializers.EventSerializer
 
     def get_queryset(self):
         return elasticsearch_client.ElasticsearchResultList()
@@ -26,6 +28,17 @@ class EventViewSet(viewsets.GenericViewSet):
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        scope = serializer.validated_data.get('scope')
+        context = {'scope': scope} if scope is not None else {}
+
+        log.event_logger.custom.process(
+            level=serializer.validated_data.get('level'),
+            message_template=serializer.validated_data.get('message'),
+            event_type='custom_notification',
+            event_context=context
+        )
 
     @decorators.list_route()
     def count(self, request, *args, **kwargs):

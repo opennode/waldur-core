@@ -68,7 +68,15 @@ class SupportedServices(object):
 
         try:
             # Forcely import service serialize to run services autodiscovery
-            importlib.import_module(backend_class.__module__.replace('backend', 'serializers'))
+            module_name = backend_class.__module__
+
+            # XXX: a temporary ugly hack for SaltStack apps: NC-1179
+            if 'saltstack' in module_name:
+                importlib.import_module(module_name.replace('saltstack.backend', 'exchange.serializers'))
+                importlib.import_module(module_name.replace('saltstack.backend', 'sharepoint.serializers'))
+            else:
+                importlib.import_module(module_name.replace('backend', 'serializers'))
+
         except ImportError:
             pass
 
