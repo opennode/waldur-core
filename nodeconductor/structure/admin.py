@@ -257,7 +257,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
     list_filter = (ServiceTypeFilter, 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
-    actions = ['sync', 'recover']
+    actions = ['sync', 'recover', 'create_spls_and_services']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
@@ -354,6 +354,27 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         self.message_user(request, message)
 
     recover.short_description = "Recover selected service settings"
+
+    def create_spls_and_services(self, request, queryset):
+        selected_settings = queryset.count()
+        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC, shared=True)
+        settings_uuids = list(queryset.values_list('uuid', flat=True))
+        send_task('structure', 'create_spls_and_services_for_shared_settings')(settings_uuids)
+
+        tasks_scheduled = queryset.count()
+        if selected_settings != tasks_scheduled:
+            message = 'Only shared, in sync service settings can be scheduled for SPLs and services creation'
+            self.message_user(request, message, level=messages.WARNING)
+
+        message = ungettext(
+            'One service settings record scheduled for SPLs and services creation',
+            '%(tasks_scheduled)d service settings records scheduled for SPLs and services creation',
+            tasks_scheduled)
+        message = message % {'tasks_scheduled': tasks_scheduled}
+
+        self.message_user(request, message)
+
+    create_spls_and_services.short_description = "Create SPLs and services for selected service settings"
 
 
 class ServiceAdmin(admin.ModelAdmin):
