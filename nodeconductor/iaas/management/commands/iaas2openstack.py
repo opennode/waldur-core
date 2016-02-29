@@ -144,7 +144,7 @@ class Command(BaseCommand):
         )
 
         self.stdout.write('  [+] SLAs as monitoring items for %s.' % openstack_instance)
-        for sla in iaas_instance.slas:
+        for sla in iaas_instance.slas.all():
             openstack_instance.monitoring_items.create(
                 name='SLA-%s' % sla.period,
                 value=sla.value)
@@ -153,7 +153,7 @@ class Command(BaseCommand):
         mapping = {'NO DATA': 0, 'OK': 1, 'NOT OK': 0}  # TODO: Check this values
         openstack_instance.monitoring_items.create(
             name=Host.MONITORING_ITEMS_CONFIGS[0]['monitoring_item_name'],
-            value=mapping[iaas_instance.Installation_state])
+            value=mapping[iaas_instance.installation_state])
 
         # TODO: monitoring items
         # XXX: Should we add some tags to newly created resources?
@@ -164,8 +164,9 @@ class Command(BaseCommand):
 
         try:
             self.migrate_data(*args, **options)
-        except:
-            self.error("Error happens: rollback all changes")
+        except Exception as e:
+            self.error("Error happens: %s" % e)
+            self.error("Rollback all changes")
             transaction.savepoint_rollback(save_point)
             raise
         else:
@@ -428,6 +429,7 @@ class Command(BaseCommand):
                     cores=instance.cores,
                     ram=instance.ram,
                     state=op_models.Instance.States.ONLINE,
+                    name=instance.name,
                 )
 
                 # XXX: duplicate UUIDs due to killbill
