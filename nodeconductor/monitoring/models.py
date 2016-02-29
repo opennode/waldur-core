@@ -6,8 +6,8 @@ from nodeconductor.core.models import NameMixin
 
 
 class ScopeMixin(models.Model):
-    content_type = models.ForeignKey(ContentType, null=True)
-    object_id = models.PositiveIntegerField(null=True)
+    content_type = models.ForeignKey(ContentType)
+    object_id = models.PositiveIntegerField()
     scope = GenericForeignKey('content_type', 'object_id')
 
     class Meta:
@@ -30,11 +30,12 @@ class ResourceSla(ScopeMixin):
 
 
 class ResourceState(ScopeMixin):
+    period = models.CharField(max_length=10)
     timestamp = models.IntegerField()
     state = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('timestamp', 'content_type', 'object_id')
+        unique_together = ('timestamp', 'period', 'content_type', 'object_id')
 
 
 class MonitoringModelMixin(models.Model):
