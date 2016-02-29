@@ -1,10 +1,10 @@
 import inspect
+import importlib
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.admindocs.views import simplify_regex
 from django.core.urlresolvers import RegexURLResolver, RegexURLPattern
-from django.utils.module_loading import import_string
 from django_filters import ModelMultipleChoiceFilter
 
 from rest_framework.fields import ChoiceField, ReadOnlyField, ModelField
@@ -30,7 +30,7 @@ class ApiDocs(object):
     exclude = ['rest_framework']
 
     def __init__(self, apps=None):
-        root_urlconf = import_string(settings.ROOT_URLCONF)
+        root_urlconf = importlib.import_module(settings.ROOT_URLCONF)
         enpoints = self.get_all_view_names(root_urlconf.urlpatterns)
         self.build_docs_tree(enpoints)
         self.apps = apps

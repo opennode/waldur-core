@@ -20,9 +20,10 @@ import os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
-import django
-os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.settings'
-django.setup()
+# Uncoment it for autodoc
+# import django
+# os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.settings'
+# django.setup()
 
 # -- General configuration ------------------------------------------------
 
