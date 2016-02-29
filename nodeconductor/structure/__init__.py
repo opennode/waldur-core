@@ -59,24 +59,19 @@ class SupportedServices(object):
     })
 
     @classmethod
-    def register_backend(cls, backend_class):
+    def register_backend(cls, backend_class, nested=False):
         if not cls._is_active_model(backend_class):
             return
 
-        key = cls.get_model_key(backend_class)
-        cls._registry[key]['backend'] = backend_class
+        # For nested backends just discover resources/properties
+        if not nested:
+            key = cls.get_model_key(backend_class)
+            cls._registry[key]['backend'] = backend_class
 
+        # Forcely import service serialize to run services autodiscovery
         try:
-            # Forcely import service serialize to run services autodiscovery
             module_name = backend_class.__module__
-
-            # XXX: a temporary ugly hack for SaltStack apps: NC-1179
-            if 'saltstack' in module_name:
-                importlib.import_module(module_name.replace('saltstack.backend', 'exchange.serializers'))
-                importlib.import_module(module_name.replace('saltstack.backend', 'sharepoint.serializers'))
-            else:
-                importlib.import_module(module_name.replace('backend', 'serializers'))
-
+            importlib.import_module(module_name.replace('backend', 'serializers'))
         except ImportError:
             pass
 
