@@ -32,12 +32,12 @@ class ApiDocs(object):
 
     def __init__(self, apps=None):
         root_urlconf = importlib.import_module(settings.ROOT_URLCONF)
-        enpoints = self.get_all_view_names(root_urlconf.urlpatterns)
-        self.build_docs_tree(enpoints)
+        endpoints = self.get_all_view_names(root_urlconf.urlpatterns)
+        self.build_docs_tree(endpoints)
         self.apps = apps
 
-    def build_docs_tree(self, enpoints):
-        for ep in enpoints:
+    def build_docs_tree(self, endpoints):
+        for ep in endpoints:
             if ep.app in self.exclude:
                 continue
             root = '/'.join(ep.path.split('/')[:3])
@@ -95,27 +95,32 @@ class ApiDocs(object):
                         f.write('.. topic:: ``%s``' % act.path + '\n\n')
                         f.write('\tMethods: ' + ', '.join(['``%s``' % m for m in methods]) + '\n\n')
 
+                        # 1st line is supposed to be List/Create view -- add proper details
                         if idx == 1:
                             cfields = [o for o in fields if not o['readonly']]
                             if 'POST' in methods and cfields:
                                 f.write('\tSupported fields for creation:\n\n')
                                 for field in cfields:
                                     f.write('\t* {name} -- ``{type}``\n'.format(**field))
+                                f.write('\n')
 
                             fltr = top.get_filter_fields()
                             if fltr['filter']:
                                 f.write('\tFilter fields:\n\n')
                                 for name, field in fltr['filter'].items():
                                     f.write('\t* ?%s = ``%s``\n' % (name, field))
+                                f.write('\n')
                             if fltr['order']:
                                 f.write('\tOrder fields: ' + ', '.join(['``%s``' % o for o in fltr['order']]) + '\n\n')
 
+                        # 2nd line is supposed to be Retrieve/Update/Delete view
                         if idx == 2 and act.path.endswith('>/'):
                             ufields = [o for o in fields if not o['readonly'] and not o['protected']]
                             if 'PUT' in methods and ufields:
                                 f.write('\tSupported fields for update:\n\n')
                                 for field in ufields:
                                     f.write('\t* {name} -- ``{type}``\n'.format(**field))
+                                f.write('\n')
 
                         cls = act.callback.cls
                         if act.action:
