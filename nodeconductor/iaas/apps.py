@@ -12,7 +12,7 @@ from nodeconductor.quotas import handlers as quotas_handlers
 
 class IaasConfig(AppConfig):
     name = 'nodeconductor.iaas'
-    verbose_name = 'NodeConductor IaaS'
+    verbose_name = 'IaaS'
     service_name = 'IaaS'
 
     # See, https://docs.djangoproject.com/en/1.7/ref/applications/#django.apps.AppConfig.ready

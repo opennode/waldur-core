@@ -4,6 +4,7 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Q
 from celery import shared_task
 
@@ -494,3 +495,33 @@ def detect_vm_coordinates(vm_str):
         vm.latitude = coordinates.latitude
         vm.longitude = coordinates.longitude
         vm.save(update_fields=['latitude', 'longitude'])
+
+
+@shared_task(name='nodeconductor.structure.create_spls_and_services_for_shared_settings')
+def create_spls_and_services_for_shared_settings(settings_uuids=None):
+    shared_settings = models.ServiceSettings.objects.all()
+    if settings_uuids:
+        if not isinstance(settings_uuids, (list, tuple)):
+            settings_uuids = [settings_uuids]
+        shared_settings = shared_settings.filter(uuid__in=settings_uuids)
+    else:
+        shared_settings = shared_settings.filter(state=SynchronizationStates.IN_SYNC, shared=True)
+
+    for settings in shared_settings:
+        service_model = SupportedServices.get_service_models()[settings.type]['service']
+
+        with transaction.atomic():
+            for customer in models.Customer.objects.all():
+                services = service_model.objects.filter(customer=customer, settings=settings)
+                if not services.exists():
+                    service = service_model.objects.create(
+                        customer=customer, settings=settings, name=settings.name, available_for_all=True)
+                else:
+                    service = services.first()
+
+                service_project_link_model = service.projects.through
+                for project in service.customer.projects.all():
+                    spl = service_project_link_model.objects.filter(project=project, service=service)
+                    if not spl.exists():
+                        service_project_link_model.objects.create(
+                            project=project, service=service, state=SynchronizationStates.NEW)
