@@ -40,13 +40,13 @@ class Migration(migrations.Migration):
             bases=(models.Model,),
         ),
         migrations.CreateModel(
-            name='ResourceState',
+            name='ResourceSlaStateTransition',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('object_id', models.PositiveIntegerField()),
                 ('period', models.CharField(max_length=10)),
                 ('timestamp', models.IntegerField()),
-                ('state', models.BooleanField(default=False)),
+                ('state', models.BooleanField(default=False, help_text="If state is True resource became available")),
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
             ],
             options={
@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
             name='MonitoringItem',
         ),
         migrations.AlterUniqueTogether(
-            name='resourcestate',
+            name='resourceslastatetransition',
             unique_together=set([('timestamp', 'period', 'content_type', 'object_id')]),
         ),
         migrations.AlterUniqueTogether(

@@ -36,6 +36,7 @@ from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.core.utils import request_api, datetime_to_timestamp
+from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
@@ -43,7 +44,6 @@ from nodeconductor.structure import permissions
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure import managers
-from nodeconductor.structure.filters import ExternalResourceFilterBackend
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 
@@ -1150,7 +1150,8 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_backends = (
         filters.GenericRoleFilter,
         core_filters.DjangoMappingFilterBackend,
-        ExternalResourceFilterBackend,
+        SlaFilter,
+        MonitoringItemFilter
     )
     filter_class = filters.BaseResourceFilter
     metadata_class = serializers.ResourceProvisioningMetadata

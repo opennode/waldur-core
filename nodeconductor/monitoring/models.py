@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -29,10 +31,10 @@ class ResourceSla(ScopeMixin):
         unique_together = ('period', 'content_type', 'object_id')
 
 
-class ResourceState(ScopeMixin):
+class ResourceSlaStateTransition(ScopeMixin):
     period = models.CharField(max_length=10)
     timestamp = models.IntegerField()
-    state = models.BooleanField(default=False)
+    state = models.BooleanField(default=False, help_text="If state is True resource became available")
 
     class Meta:
         unique_together = ('timestamp', 'period', 'content_type', 'object_id')
@@ -44,4 +46,4 @@ class MonitoringModelMixin(models.Model):
 
     sla_items = GenericRelation('monitoring.ResourceSla')
     monitoring_items = GenericRelation('monitoring.ResourceItem')
-    state_items = GenericRelation('monitoring.ResourceState')
+    state_items = GenericRelation('monitoring.ResourceSlaStateTransition')
