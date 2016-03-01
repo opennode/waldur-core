@@ -26,6 +26,21 @@ Supported filters are:
 - ?service_uuid=<service uuid>
 - ?service_name=<service name>
 
+Supported ordering:
+
+- ?o=name
+- ?o=state
+- ?o=customer_name
+- ?o=customer_native_name
+- ?o=customer_abbreviation
+- ?o=created
+- ?o=project_name
+- ?o=project_group_name
+
+Also it is possible to filter and order by resource-specific fields, but this filters will be applied only for to
+resources that support such filtering. For example it is possible to filter resource by ?o=ram, but sugarcrm crms
+will ignore this ordering, because they do not support such option.
+
 
 OpenStack resources list
 ------------------------

@@ -682,7 +682,7 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
 class ResourceViewSet(viewsets.GenericViewSet):
     model = models.Resource  # for permissions definition.
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):

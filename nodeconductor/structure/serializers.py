@@ -1092,7 +1092,7 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
     """
     def __new__(cls, name, bases, args):
         serializer = super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
-        SupportedServices.register_resource(args['Meta'].model, serializer)
+        SupportedServices.register_resource_serializer(args['Meta'].model, serializer)
         return serializer
 
 
@@ -1110,68 +1110,6 @@ class BasicResourceSerializer(serializers.Serializer):
 
     def get_resource_type(self, resource):
         return SupportedServices.get_name_for_model(resource)
-
-
-class SummaryResourceSerializer(BasicResourceSerializer):
-    url = serializers.SerializerMethodField()
-    state = serializers.ReadOnlyField(source='get_state_display')
-
-    project_groups = BasicProjectGroupSerializer(
-        source='service_project_link.project.project_groups', many=True, read_only=True)
-
-    project = serializers.HyperlinkedRelatedField(
-        source='service_project_link.project',
-        view_name='project-detail',
-        read_only=True,
-        lookup_field='uuid')
-
-    customer = serializers.HyperlinkedRelatedField(
-        source='service_project_link.project.customer',
-        view_name='customer-detail',
-        read_only=True,
-        lookup_field='uuid')
-    customer_abbreviation = serializers.ReadOnlyField(source='service_project_link.project.customer.abbreviation')
-    customer_native_name = serializers.ReadOnlyField(source='service_project_link.project.customer.native_name')
-
-    service_project_link = serializers.SerializerMethodField()
-
-    service = serializers.SerializerMethodField()
-    service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
-    service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
-
-    created = serializers.DateTimeField(read_only=True)
-    tags = serializers.SerializerMethodField()
-
-    latitude = serializers.ReadOnlyField()
-    longitude = serializers.ReadOnlyField()
-
-    access_url = serializers.SerializerMethodField()
-    error_message = serializers.ReadOnlyField()
-    key_name = serializers.ReadOnlyField()
-
-    def get_url(self, obj):
-        return reverse(obj.get_url_name() + '-detail',
-                       kwargs={'uuid': obj.uuid}, request=self.context['request'])
-
-    def get_tags(self, obj):
-        return [t.name for t in obj.tags.all()]
-
-    def get_service_project_link(self, obj):
-        return reverse(obj.service_project_link.get_url_name() + '-detail',
-                       kwargs={'pk': obj.service_project_link.pk}, request=self.context['request'])
-
-    def get_service(self, obj):
-        return reverse(obj.service_project_link.service.get_url_name() + '-detail',
-                       kwargs={'uuid': obj.service_project_link.service.uuid}, request=self.context['request'])
-
-    def get_access_url(self, obj):
-        url = obj.get_access_url()
-        if url:
-            return url
-
-        url_name = obj.get_access_url_name()
-        if url_name:
-            return reverse(url_name, kwargs={'uuid': obj.uuid}, request=self.context['request'])
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
@@ -1362,7 +1300,7 @@ class VirtualMachineSerializer(BaseResourceSerializer):
     def get_fields(self):
         fields = super(VirtualMachineSerializer, self).get_fields()
         fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
-            user=self.context['user'])
+            user=self.context['request'].user)
         return fields
 
 
