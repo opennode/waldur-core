@@ -311,10 +311,7 @@ class ApiEndpoint(object):
             if path:
                 return 'link to any: %s' % path
         if isinstance(field, ContentTypeFilter):
-            if field.models:
-                return 'choices(%s)' % ', '.join(["'%s'" % m._meta for m in field.models])
-            else:
-                return 'string in form <app_label>.<model_name>'
+            return 'string in form <app_label>.<model_name>'
         if isinstance(field, ModelSerializer):
             fields = {f['name']: f['type'] for f in self.get_serializer_fields(field) if not f['readonly']}
             return '{%s}' % ', '.join(['%s: %s' % (k, v) for k, v in fields.items()])
