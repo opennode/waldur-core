@@ -106,8 +106,10 @@ class ApiDocs(object):
                     f.write('Supported actions and methods:\n\n')
                     for idx, act in enumerate(actions, start=1):
                         methods = act.methods
+                        # 1st line is supposed to be List/Create view -- remove unfeasible methods
                         if idx == 1:
                             methods = [m for m in methods if m not in ('PUT', 'PATCH', 'DELETE')]
+                        # 2nd line is supposed to be Retrieve/Update/Delete view
                         if idx == 2 and act.path.endswith('>/'):
                             methods = [m for m in methods if m != 'POST']
 
@@ -116,10 +118,10 @@ class ApiDocs(object):
 
                         # 1st line is supposed to be List/Create view -- add proper details
                         if idx == 1:
-                            cfields = [o for o in fields if not o['readonly']]
-                            if 'POST' in methods and cfields:
+                            create_fields = [o for o in fields if not o['readonly']]
+                            if 'POST' in methods and create_fields:
                                 f.write('\tSupported fields for creation:\n\n')
-                                for field in cfields:
+                                for field in create_fields:
                                     f.write('\t* {name} -- ``{type}``\n'.format(**field))
                                 f.write('\n')
 
@@ -134,10 +136,10 @@ class ApiDocs(object):
 
                         # 2nd line is supposed to be Retrieve/Update/Delete view
                         if idx == 2 and act.path.endswith('>/'):
-                            ufields = [o for o in fields if not o['readonly'] and not o['protected']]
-                            if 'PUT' in methods and ufields:
+                            update_fields = [o for o in fields if not o['readonly'] and not o['protected']]
+                            if 'PUT' in methods and update_fields:
                                 f.write('\tSupported fields for update:\n\n')
-                                for field in ufields:
+                                for field in update_fields:
                                     f.write('\t* {name} -- ``{type}``\n'.format(**field))
                                 f.write('\n')
 
