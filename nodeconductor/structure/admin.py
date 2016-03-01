@@ -388,6 +388,7 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
     ordering = ('service__customer__name', 'project__name', 'service__name')
     list_display_links = ('get_service_name',)
     search_fields = ('service__customer__name', 'project__name', 'service__name')
+    inlines = [QuotaInline]
 
     actions = ['sync_with_backend', 'recover_erred_service_project_links']
 
