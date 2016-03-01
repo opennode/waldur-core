@@ -955,7 +955,10 @@ class Resource(core_models.UuidMixin,
 
     def _get_log_context(self, entity_name):
         context = super(Resource, self)._get_log_context(entity_name)
-        context['resource_type'] = SupportedServices.get_name_for_model(self)  # required for lookups in ElasticSearch by the client
+        # XXX: Add resource_full_name here, because event context does not support properties as fields
+        context['resource_full_name'] = self.full_name
+        # required for lookups in ElasticSearch by the client
+        context['resource_type'] = SupportedServices.get_name_for_model(self)
         return context
 
     def get_parents(self):

@@ -261,17 +261,11 @@ class StaffOrUserFilter(object):
 
 class ContentTypeFilter(django_filters.CharFilter):
 
-    def __init__(self, models=None, **kwargs):
-        super(ContentTypeFilter, self).__init__(**kwargs)
-        self.models = models
-
     def filter(self, qs, value):
         if value:
             try:
                 app_label, model = value.split('.')
                 ct = ContentType.objects.get(app_label=app_label, model=model)
-                if self.models and ct.model_class() not in self.models:
-                    return qs.none()
                 return super(ContentTypeFilter, self).filter(qs, ct)
             except (ContentType.DoesNotExist, ValueError):
                 return qs.none()
