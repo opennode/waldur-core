@@ -578,7 +578,7 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         service.delete()
         self.assert_quota_usage('nc_service_count', 0)
 
-    @skip()  # should be fixed in SAAS-1178
+    @skip('should be fixed in SAAS-1178')
     def test_customer_and_project_service_project_link_quota_updated(self):
         from nodeconductor.openstack.tests import factories as openstack_factories
 
