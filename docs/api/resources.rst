@@ -49,18 +49,18 @@ Resources may have monitoring items attached to it. Example rendering of monitor
 
 .. code-block:: javascript
 
-    'monitoring_items': {
-       'application_state': 1
+    "monitoring_items": {
+       "application_state": 1
     }
 
 Resources may have SLA attached to it. Example rendering of SLA:
 
 .. code-block:: javascript
 
-    'sla': {
-        'value': 95.0
-        'agreed_value': 99.0,
-        'period': '2016-03'
+    "sla": {
+        "value": 95.0
+        "agreed_value": 99.0,
+        "period": "2016-03"
     }
 
 You may filter or order resources by SLA. Default period is current year and month.
