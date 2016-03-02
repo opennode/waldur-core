@@ -56,7 +56,7 @@ try:
 except IndexError:
     pass
 else:
-    if action in ['develop', 'install', 'test']:
+    if action in ['develop', 'install', 'test', 'bdist_egg']:
         install_requires += [
             'cliff==1.7.0',
             'oslo.config==1.4.0',
