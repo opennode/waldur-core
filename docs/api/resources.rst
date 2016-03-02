@@ -42,16 +42,8 @@ resources that support such filtering. For example it is possible to sort resour
 will ignore this ordering, because they do not support such option.
 
 
-SLA values and monitoring items
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Resources may have monitoring items attached to it. Example rendering of monitoring items:
-
-.. code-block:: javascript
-
-    "monitoring_items": {
-       "application_state": 1
-    }
+SLA values
+^^^^^^^^^^
 
 Resources may have SLA attached to it. Example rendering of SLA:
 
@@ -69,19 +61,10 @@ You may filter or order resources by SLA. Default period is current year and mon
 
   /api/<resource_endpoint>/?actual_sla=90&period=2016-02
 
-- Example query for ordering list of resources by actual SLA:
+- Warning! If resource does not have SLA attached to it, it is not included in ordered response.
+  Example query for ordering list of resources by actual SLA:
 
   /api/<resource_endpoint>/?o=actual_sla&period=2016-02
-
-Also you may filter or order resources by monitoring item.
-
-- Example query for filtering list of resources by installation state:
-
-  /api/<resource_endpoint>/?monitoring__installation_state=1
-
-- Example query for ordering list of resources by installation state:
-
-  /api/<resource_endpoint>/?o=monitoring__installation_state
 
 SLA periods
 ^^^^^^^^^^^
@@ -127,6 +110,29 @@ Example output:
             "state": "U"
         }
     ]
+
+Monitoring items
+^^^^^^^^^^^^^^^^
+
+Resources may have monitoring items attached to it. Example rendering of monitoring items:
+
+.. code-block:: javascript
+
+    "monitoring_items": {
+       "application_state": 1
+    }
+
+You may filter or order resources by monitoring item.
+
+- Example query for filtering list of resources by installation state:
+
+  /api/<resource_endpoint>/?monitoring__installation_state=1
+
+- Warning! If resource does not have monitoring item attached to it, it is not included in ordered response.
+  Example query for ordering list of resources by installation state:
+
+  /api/<resource_endpoint>/?o=monitoring__installation_state
+
 
 
 OpenStack resources list
