@@ -143,20 +143,11 @@ class Command(BaseCommand):
             trigger=trigger,
         )
 
-        self.stdout.write('  [+] SLAs as monitoring items for %s.' % openstack_instance)
-        for sla in iaas_instance.slas.all():
-            openstack_instance.monitoring_items.create(
-                name='SLA-%s' % sla.period,
-                value=sla.value)
-
         self.stdout.write('  [+] Installation state as monitoring item for %s.' % openstack_instance)
         mapping = {'NO DATA': 0, 'OK': 1, 'NOT OK': 0}  # TODO: Check this values
         openstack_instance.monitoring_items.create(
             name=Host.MONITORING_ITEMS_CONFIGS[0]['monitoring_item_name'],
             value=mapping[iaas_instance.installation_state])
-
-        # TODO: monitoring items
-        # XXX: Should we add some tags to newly created resources?
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -479,7 +470,7 @@ class Command(BaseCommand):
                 order_number=1)]
 
             if self.zabbix_settings:
-                from nodeconductor_zabbix.models import Host
+                from nodeconductor_zabbix.models import Host, ITService, Trigger
 
                 templates.append(Template(
                     resource_content_type=ContentType.objects.get_for_model(Host),
@@ -489,11 +480,28 @@ class Command(BaseCommand):
                         'visible_name': '{{ response.name }}',
                         'scope': '{{ response.url }}',
                         'name': '{{ response.backend_id }}',
+                        'host_group_name': 'NodeConductor',
                     },
                     use_previous_resource_project=True,
                     order_number=2))
 
-                # TODO: Add Zabbix ITService template creation here.
+                trigger = Trigger.objects.get(name='{HOST.NAME} is not reachable', settings=self.zabbix_settings)
+
+                templates.append(Template(
+                    resource_content_type=ContentType.objects.get_for_model(ITService),
+                    service_settings=self.zabbix_settings,
+                    options={
+                        'service_settings': self.get_obj_url('servicesettings-detail', self.zabbix_settings),
+                        'host': '{{ response.url }}',
+                        'name': 'Availabilty of {{ response.name }}',
+                        'agreed_sla': 95,
+                        'sort_order': 1,
+                        'is_main': True,
+                        'trigger': self.get_obj_url('zabbix-trigger-detail', trigger),
+                        'algorithm': 'problem, if all children have problems',
+                    },
+                    use_previous_resource_project=True,
+                    order_number=3))
 
             is_app, tags = self.license2tags(tmpl)
             group.save()
