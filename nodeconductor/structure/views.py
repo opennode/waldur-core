@@ -679,8 +679,10 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
         return Response(SupportedServices.get_services_with_resources(request))
 
 
-class ResourceViewSet(viewsets.GenericViewSet):
+class ResourceViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
     model = models.Resource  # for permissions definition.
+    serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
     filter_class = filters.BaseResourceFilter
@@ -691,24 +693,6 @@ class ResourceViewSet(viewsets.GenericViewSet):
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
         return managers.SummaryQuerySet(resource_models.values())
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            data = self._serialize_resources(page, request)
-            return self.get_paginated_response(data)
-
-        data = self._serialize_resources(queryset, request)
-        return Response(data)
-
-    def _serialize_resources(self, resources, request):
-        serialized = []
-        for resource in resources:
-            serializer = SupportedServices.get_resource_serializer(resource.__class__)
-            serialized.append(serializer(resource, context={'request': request}).data)
-        return serialized
 
     @list_route()
     def count(self, request):

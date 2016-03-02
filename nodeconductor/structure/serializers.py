@@ -1213,6 +1213,13 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return super(BaseResourceSerializer, self).create(data)
 
 
+class SummaryResourceSerializer(serializers.BaseSerializer):
+
+    def to_representation(self, instance):
+        serializer = SupportedServices.get_resource_serializer(instance.__class__)
+        return serializer(instance, context=self.context).data
+
+
 class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
 
