@@ -25,6 +25,8 @@ def register_in(router):
 urlpatterns = patterns(
     '',
     url(r'^stats/creation-time/$', views.CreationTimeStatsView.as_view(), name='stats_creation_time'),
+    url(r'^stats/quota/$', views.AggregatedStatsView.as_view(), name='stats_quota'),
+    url(r'^stats/quota/timeline/$', views.QuotaTimelineStatsView.as_view(), name='stats_quota_timeline'),
     url(r'^customers/(?P<uuid>[a-z0-9]+)/image/$', views.CustomerImageView.as_view(), name='customer_image'),
     url(r'^customers/(?P<uuid>[a-z0-9]+)/counters/$', views.CustomerCountersView.as_view({'get': 'list'}), name='customer_counters'),
     url(r'^projects/(?P<uuid>[a-z0-9]+)/counters/$', views.ProjectCountersView.as_view({'get': 'list'}), name='project_counters'),

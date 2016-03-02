@@ -337,6 +337,11 @@ class OpenStackBackend(OpenStackClient):
             raise ServiceBackendNotImplemented
 
         from nodeconductor_killbill.backend import KillBillBackend, KillBillError
+        from nodeconductor.openstack.models import Instance as opInstance
+
+        # XXX: avoid overcharge for resources migrated from IaaS to OpenStack
+        if opInstance.object.filter(uuid=instance.uuid).exists():
+            raise ServiceBackendNotImplemented
 
         try:
             backend = KillBillBackend(instance.customer)

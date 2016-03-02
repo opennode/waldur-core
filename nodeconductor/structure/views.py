@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
+from collections import OrderedDict
 
 from datetime import timedelta
 
@@ -25,6 +26,7 @@ from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+import reversion
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import mixins as core_mixins
@@ -34,6 +36,7 @@ from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.core.utils import request_api, datetime_to_timestamp
+from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
 from nodeconductor.structure import permissions
@@ -263,16 +266,14 @@ class UserViewSet(viewsets.ModelViewSet):
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
         if (not django_settings.NODECONDUCTOR.get('SHOW_ALL_USERS', True) and not user.is_staff) or \
-            'potential' in self.request.query_params:
+                'potential' in self.request.query_params:
             connected_customers_query = models.Customer.objects.all()
             # is user is not staff, allow only connected customers
             if not user.is_staff:
                 # XXX: Let the DB cry...
                 connected_customers_query = connected_customers_query.filter(
-                    Q(roles__permission_group__user=user)
-                    |
-                    Q(projects__roles__permission_group__user=user)
-                    |
+                    Q(roles__permission_group__user=user) |
+                    Q(projects__roles__permission_group__user=user) |
                     Q(project_groups__roles__permission_group__user=user)
                 ).distinct()
 
@@ -291,18 +292,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
             queryset = queryset.filter(is_staff=False).filter(
                 # customer users
-                Q(
-                    groups__customerrole__customer__in=connected_customers,
-                )
-                |
-                Q(
-                    groups__projectrole__project__customer__in=connected_customers,
-                )
-                |
-                Q(
-                    groups__projectgrouprole__project_group__customer__in=connected_customers,
-                )
-                |
+                Q(groups__customerrole__customer__in=connected_customers) |
+                Q(groups__projectrole__project__customer__in=connected_customers) |
+                Q(groups__projectgrouprole__project_group__customer__in=connected_customers) |
                 # users with no role
                 Q(
                     groups__customerrole=None,
@@ -518,10 +510,8 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
         if not self.request.user.is_staff:
             queryset = queryset.filter(
                 Q(group__projectgrouprole__project_group__customer__roles__permission_group__user=self.request.user,
-                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER)
-                |
-                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user)
-                |
+                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER) |
+                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user) |
                 Q(group__projectgrouprole__project_group__roles__permission_group__user=self.request.user)
             ).distinct()
 
@@ -581,10 +571,8 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
         if not self.request.user.is_staff:
             queryset = queryset.filter(
                 Q(group__customerrole__customer__roles__permission_group__user=self.request.user,
-                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
-                |
-                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
-                |
+                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER) |
+                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user) |
                 Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
             ).distinct()
 
@@ -696,7 +684,7 @@ class ResourceViewSet(mixins.ListModelMixin,
     model = models.Resource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
@@ -1193,7 +1181,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise APIException(e)
 
         event_logger.resource.info(
-            'Resource {resource_name} creation has been scheduled.',
+            '{resource_full_name} creation has been scheduled.',
             event_type='resource_creation_scheduled',
             event_context={'resource': serializer.instance})
 
@@ -1203,17 +1191,22 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify resource if its service project link is in erred state.')
 
+        old_name = serializer.instance.name
         resource = serializer.save()
 
+        message = '{resource_full_name} has been updated.'
+        if old_name != resource.name:
+            message += ' Name was changed from %s to %s.' % (old_name, resource.name)
+
         event_logger.resource.info(
-            'Resource {resource_name} has been updated.',
+            message,
             event_type='resource_update_succeeded',
             event_context={'resource': resource})
 
     def perform_destroy(self, resource):
         resource.delete()
         event_logger.resource.info(
-            'Resource {resource_name} has been deleted.',
+            '{resource_full_name} has been deleted.',
             event_type='resource_deletion_succeeded',
             event_context={'resource': resource})
 
@@ -1225,7 +1218,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             backend = resource.get_backend()
             backend.destroy(resource, force=force)
             event_logger.resource.info(
-                'Resource {resource_name} has been scheduled to deletion.',
+                '{resource_full_name} has been scheduled for deletion.',
                 event_type='resource_deletion_scheduled',
                 event_context={'resource': resource})
         else:
@@ -1276,7 +1269,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
 
 class BaseOnlineResourceViewSet(BaseResourceViewSet):
 
-    # User can only create and delete those resourse. He cannot stop them.
+    # User can only create and delete this resource. He cannot stop them.
     @safe_operation(valid_state=[models.Resource.States.ONLINE, models.Resource.States.ERRED])
     def destroy(self, request, resource, uuid=None):
         if resource.state == models.Resource.States.ONLINE:
@@ -1287,3 +1280,141 @@ class BaseOnlineResourceViewSet(BaseResourceViewSet):
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.BaseServicePropertyFilter
+
+
+class AggregatedStatsView(views.APIView):
+    """
+    Aggregate quotas from service project links.
+    """
+    def get(self, request, format=None):
+        serializer = serializers.AggregateSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        quota_names = request.query_params.getlist('quota_name')
+        if len(quota_names) == 0:
+            quota_names = None
+        querysets = serializer.get_service_project_links(request.user)
+
+        total_sum = QuotaModelMixin.get_sum_of_quotas_for_querysets(querysets, quota_names)
+        total_sum = OrderedDict(sorted(total_sum.items()))
+        return Response(total_sum, status=status.HTTP_200_OK)
+
+
+# XXX: This view is deprecated. It has to be replaced with quotas history endpoints
+class QuotaTimelineStatsView(views.APIView):
+    """
+    Count quota usage and limit history statistics
+    """
+
+    def get(self, request, format=None):
+        stats = self.get_stats(request)
+        stats = [OrderedDict(sorted(stat.items())) for stat in stats]
+        return Response(stats, status=status.HTTP_200_OK)
+
+    def get_quota_scopes(self, request):
+        serializer = serializers.AggregateSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        scopes = sum([list(qs) for qs in serializer.get_service_project_links(request.user)], [])
+        return scopes
+
+    def get_all_spls_quotas(self):
+        spl_models = [m for m in models.ServiceProjectLink.get_all_models()]
+        return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
+
+    def get_stats(self, request):
+        mapped = {
+            'start_time': request.query_params.get('from'),
+            'end_time': request.query_params.get('to'),
+            'interval': request.query_params.get('interval'),
+            'item': request.query_params.get('item'),
+        }
+
+        data = {key: val for (key, val) in mapped.items() if val}
+        serializer = serializers.QuotaTimelineStatsSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        scopes = self.get_quota_scopes(request)
+        date_points = self.get_date_points(
+            start_time=serializer.validated_data['start_time'],
+            end_time=serializer.validated_data['end_time'],
+            interval=serializer.validated_data['interval']
+        )
+        reversed_dates = date_points[::-1]
+        dates = zip(reversed_dates[:-1], reversed_dates[1:])
+        if 'item' in serializer.validated_data:
+            items = [serializer.validated_data['item']]
+        else:
+            items = self.get_all_spls_quotas()
+
+        stats = [{'from': datetime_to_timestamp(start),
+                  'to': datetime_to_timestamp(end)}
+                 for start, end in dates]
+
+        def _add(*args):
+            args = [arg if arg is not None else (0, 0) for arg in args]
+            return [self.sum_positive(qs) for qs in zip(*args)]
+
+        for item in items:
+            item_stats = [self.get_stats_for_scope(item, scope, dates) for scope in scopes]
+            item_stats = map(_add, *item_stats)
+            for date_item_stats, date_stats in zip(item_stats, stats):
+                limit, usage = date_item_stats
+                date_stats['{}_limit'.format(item)] = limit
+                date_stats['{}_usage'.format(item)] = usage
+
+        return stats[::-1]
+
+    def sum_positive(self, xs):
+        if not xs:
+            return 0
+        positive = (x for x in xs if x != -1)
+        if not positive:
+            return -1
+        return sum(positive)
+
+    def get_stats_for_scope(self, quota_name, scope, dates):
+        stats_data = []
+        try:
+            quota = scope.quotas.get(name=quota_name)
+        except Quota.DoesNotExist:
+            return stats_data
+        versions = reversion\
+            .get_for_object(quota)\
+            .select_related('revision')\
+            .filter(revision__date_created__lte=dates[0][0])\
+            .iterator()
+        version = None
+        for end, start in dates:
+            try:
+                while version is None or version.revision.date_created > end:
+                    version = versions.next()
+                stats_data.append((version.object_version.object.limit,
+                                   version.object_version.object.usage))
+            except StopIteration:
+                break
+
+        return stats_data
+
+    def get_date_points(self, start_time, end_time, interval):
+        if interval == 'hour':
+            start_point = start_time.replace(second=0, minute=0, microsecond=0)
+            interval = timedelta(hours=1)
+        elif interval == 'day':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = timedelta(days=1)
+        elif interval == 'week':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = timedelta(days=7)
+        elif interval == 'month':
+            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
+            interval = timedelta(days=30)
+
+        points = [start_time]
+        current_point = start_point
+        while current_point <= end_time:
+            points.append(current_point)
+            current_point += interval
+        if points[-1] != end_time:
+            points.append(end_time)
+
+        return [p for p in points if start_time <= p <= end_time]

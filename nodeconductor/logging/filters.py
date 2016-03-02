@@ -9,6 +9,7 @@ from rest_framework import settings, filters
 from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
+from nodeconductor.core.filters import ExternalFilterBackend
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.log import event_logger
 from nodeconductor.logging.features import features_to_events, features_to_alerts, UPDATE_EVENTS
@@ -21,6 +22,21 @@ def _convert(name):
 
 
 class EventFilterBackend(filters.BaseFilterBackend):
+    """ Sorting is supported in ascending and descending order by specifying a field to
+        an **?o=** parameter. By default events are sorted by @timestamp in descending order.
+
+        - ?o=\@timestamp
+
+        Filtering of customer list is supported through HTTP query parameters, the following fields are supported:
+
+        - ?event_type=<string> - type of filtered events. Can be list
+        - ?search=<string> - text for FTS. FTS fields: 'message', 'customer_abbreviation', 'importance'
+          'project_group_name', 'cloud_account_name', 'project_name'
+        - ?scope=<URL> - url of object that is connected to event
+        - ?scope_type=<string> - name of scope type of object that is connected to event (Ex.: project, customer...)
+        - ?exclude_features=<feature> (can be list) - exclude event from output if
+          it's type corresponds to one of listed features
+    """
 
     def filter_queryset(self, request, queryset, view):
         search_text = request.query_params.get(settings.api_settings.SEARCH_PARAM, '')
@@ -161,30 +177,5 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
         return queryset
 
 
-class BaseExternalFilter(object):
-    """ Interface for external alert filter """
-    def filter(self, request, queryset, view):
-        raise NotImplementedError
-
-
-class ExternalAlertFilterBackend(filters.BaseFilterBackend):
-    """
-    Support external filters registered in other apps
-    """
-
-    @classmethod
-    def get_registered_filters(cls):
-        return getattr(cls, '_filters', [])
-
-    @classmethod
-    def register(cls, external_filter):
-        assert isinstance(external_filter, BaseExternalFilter), 'Registered filter has to inherit BaseExternalFilter'
-        if hasattr(cls, '_filters'):
-            cls._filters.append(external_filter)
-        else:
-            cls._filters = [external_filter]
-
-    def filter_queryset(self, request, queryset, view):
-        for filt in self.__class__.get_registered_filters():
-            queryset = filt.filter(request, queryset, view)
-        return queryset
+class ExternalAlertFilterBackend(ExternalFilterBackend):
+    pass

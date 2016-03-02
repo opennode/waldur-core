@@ -33,7 +33,6 @@ install_requires = [
     'djangorestframework>=3.1.0,<3.2.0',
     'elasticsearch>=1.0.0,<2.0.0',
     'iptools>=0.6.1',
-    'jira>=0.47',
     'jsonfield==1.0.0',
     'Pillow>=2.0.0,<3.0.0',
     'python-ceilometerclient==1.0.12',
@@ -57,7 +56,7 @@ try:
 except IndexError:
     pass
 else:
-    if action in ['develop', 'install', 'test']:
+    if action in ['develop', 'install', 'test', 'bdist_egg']:
         install_requires += [
             'cliff==1.7.0',
             'oslo.config==1.4.0',
@@ -69,7 +68,7 @@ else:
 
 setup(
     name='nodeconductor',
-    version='0.88.0',
+    version='0.89.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

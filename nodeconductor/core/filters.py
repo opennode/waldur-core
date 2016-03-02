@@ -10,45 +10,46 @@ from nodeconductor.core import serializers as core_serializers, fields as core_f
 
 
 class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
-    """
-    A filter backend that uses django-filter that fixes order_by.
+    """ ..drfdocs-ignore
 
-    This backend supports additional attribute of a FilterSet named `order_by_mapping`.
-    It maps ordering fields from user friendly ones to the ones that depend on
-    the model relation innards.
+        A filter backend that uses django-filter that fixes order_by.
 
-    See https://github.com/alex/django-filter/issues/178#issuecomment-62129586
+        This backend supports additional attribute of a FilterSet named `order_by_mapping`.
+        It maps ordering fields from user friendly ones to the ones that depend on
+        the model relation innards.
 
-    Example usage:
+        See https://github.com/alex/django-filter/issues/178#issuecomment-62129586
 
-    # models.py
+        Example usage:
 
-    class Project(models.Model):
-        name = models.CharField(max_length=10)
+        # models.py
+
+        class Project(models.Model):
+          name = models.CharField(max_length=10)
 
 
-    class Instance(models.Model):
-        name = models.CharField(max_length=10)
-        instance = models.ForeignKey(Project)
+        class Instance(models.Model):
+          name = models.CharField(max_length=10)
+          instance = models.ForeignKey(Project)
 
-    # filters.py
+        # filters.py
 
-    class InstanceFilter(django_filters.FilterSet):
-        class Meta(object):
-            model = models.Instance
+        class InstanceFilter(django_filters.FilterSet):
+          class Meta(object):
+              model = models.Instance
 
-            # Filter fields go here
-            order_by = [
-                'name',
-                '-name',
-                'project__name',
-                '-project__name',
-            ]
-            order_by_mapping = {
-                # Fix order by parameters
-                'project_name': 'project__name',
-                # '-project_name' mapping is handled automatically
-            }
+              # Filter fields go here
+              order_by = [
+                  'name',
+                  '-name',
+                  'project__name',
+                  '-project__name',
+              ]
+              order_by_mapping = {
+                  # Fix order by parameters
+                  'project_name': 'project__name',
+                  # '-project_name' mapping is handled automatically
+              }
     """
 
     def filter_queryset(self, request, queryset, view):
@@ -269,3 +270,32 @@ class ContentTypeFilter(django_filters.CharFilter):
             except (ContentType.DoesNotExist, ValueError):
                 return qs.none()
         return qs
+
+
+class BaseExternalFilter(object):
+    """ Interface for external alert filter """
+    def filter(self, request, queryset, view):
+        raise NotImplementedError
+
+
+class ExternalFilterBackend(filters.BaseFilterBackend):
+    """
+    Support external filters registered in other apps
+    """
+
+    @classmethod
+    def get_registered_filters(cls):
+        return getattr(cls, '_filters', [])
+
+    @classmethod
+    def register(cls, external_filter):
+        assert isinstance(external_filter, BaseExternalFilter), 'Registered filter has to inherit BaseExternalFilter'
+        if hasattr(cls, '_filters'):
+            cls._filters.append(external_filter)
+        else:
+            cls._filters = [external_filter]
+
+    def filter_queryset(self, request, queryset, view):
+        for filt in self.__class__.get_registered_filters():
+            queryset = filt.filter(request, queryset, view)
+        return queryset

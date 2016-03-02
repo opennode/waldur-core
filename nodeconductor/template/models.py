@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import json
 import urlparse
 
@@ -15,7 +17,7 @@ from rest_framework.authtoken.models import Token
 from taggit.managers import TaggableManager
 
 from nodeconductor.core import models as core_models
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import models as structure_models, SupportedServices
 
 
 @python_2_unicode_compatible
@@ -53,6 +55,11 @@ class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, model
 
         templates_tasks = []
         template_group_result = TemplateGroupResult.objects.create(group=self)
+
+        head_template = self.get_head_template()
+        resource_type = SupportedServices.get_name_for_model(head_template.resource_content_type.model_class())
+        template_group_result.provisioned_resources[resource_type] = head_template_provision_response.json()['url']
+
         token_key = Token.objects.get(user=request.user).key
         # Define wait task for head templates
         head_template = self.get_head_template()
@@ -191,13 +198,19 @@ class Template(core_models.UuidMixin, models.Model):
 
         # execute post request
         response = requests.post(url, headers=headers, json=options, verify=False)
+        ct = self.resource_content_type
         if not response.ok and not ignore_provision_errors:
-            ct = self.resource_content_type
             message = 'Failed to schedule %s %s provision.' % (ct.app_label, ct.model)
             details = (
                 'POST request to URL %s failed. Request body - %s. Response code - %s, content - %s' %
                 (response.request.url, response.request.body, response.status_code, response.content))
             raise TemplateActionException(message, details)
+        if response.ok:
+            tags = [tag.name for tag in self.tags.all()]
+            if tags:
+                instance = ct.model_class().objects.get(uuid=response.json()['uuid'])
+                if hasattr(instance, 'tags'):
+                    instance.tags.add(*tags)
 
         return response
 

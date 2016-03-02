@@ -10,7 +10,7 @@ from nodeconductor.structure import models as structure_models
 
 class CostTrackingConfig(AppConfig):
     name = 'nodeconductor.cost_tracking'
-    verbose_name = "NodeConductor Cost Tracking"
+    verbose_name = 'Cost Tracking'
 
     def ready(self):
         PriceEstimate = self.get_model('PriceEstimate')

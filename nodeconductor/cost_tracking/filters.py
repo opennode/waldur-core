@@ -8,6 +8,7 @@ from rest_framework import filters
 from nodeconductor.core import filters as core_filters
 from nodeconductor.cost_tracking import models, serializers
 from nodeconductor.structure import models as structure_models, SupportedServices
+from nodeconductor.structure.models import Resource
 
 
 class PriceEstimateFilter(django_filters.FilterSet):

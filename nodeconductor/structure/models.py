@@ -604,6 +604,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
 class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
+              core_models.DescendantMixin,
               LoggableMixin,
               StructureModel):
     """ Base service class. """
@@ -656,6 +657,9 @@ class Service(core_models.SerializableAbstractMixin,
         """
         return self.projects.through.objects.filter(service=self)
 
+    def get_parents(self):
+        return [self.settings]
+
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
@@ -702,7 +706,8 @@ class GeneralServiceProperty(BaseServiceProperty):
 
 
 @python_2_unicode_compatible
-class ServiceProjectLink(core_models.SerializableAbstractMixin,
+class ServiceProjectLink(quotas_models.QuotaModelMixin,
+                         core_models.SerializableAbstractMixin,
                          core_models.SynchronizableMixin,
                          core_models.DescendantMixin,
                          LoggableMixin,
@@ -942,10 +947,17 @@ class Resource(core_models.UuidMixin,
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
 
     def get_log_fields(self):
-        return ('uuid', 'name', 'service_project_link')
+        return ('uuid', 'name', 'service_project_link', 'full_name')
+
+    @property
+    def full_name(self):
+        return '%s %s' % (SupportedServices.get_name_for_model(self).replace('.', ' '), self.name)
 
     def _get_log_context(self, entity_name):
         context = super(Resource, self)._get_log_context(entity_name)
+        # XXX: Add resource_full_name here, because event context does not support properties as fields
+        context['resource_full_name'] = self.full_name
+        # required for lookups in ElasticSearch by the client
         context['resource_type'] = SupportedServices.get_name_for_model(self)
         return context
 

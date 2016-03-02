@@ -53,11 +53,6 @@ IP mappings
 
 .. include:: ip_mapping.rst
 
-JIRA management
-===============
-
-.. include:: jira.rst
-
 Historical data
 ===============
 
