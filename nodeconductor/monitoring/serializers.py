@@ -5,7 +5,7 @@ from .models import ResourceItem, ResourceSla
 from .utils import get_period, filter_for_qs
 
 
-class ResourceStateSerializer(serializers.Serializer):
+class ResourceSlaStateTransitionSerializer(serializers.Serializer):
     timestamp = serializers.IntegerField()
     state = serializers.SerializerMethodField()
 
