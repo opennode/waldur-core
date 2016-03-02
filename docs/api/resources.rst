@@ -37,8 +37,8 @@ Supported ordering:
 - ?o=project_name
 - ?o=project_group_name
 
-Also it is possible to filter and order by resource-specific fields, but this filters will be applied only for to
-resources that support such filtering. For example it is possible to filter resource by ?o=ram, but sugarcrm crms
+Also it is possible to filter and order by resource-specific fields, but this filters will be applied only to
+resources that support such filtering. For example it is possible to sort resource by ?o=ram, but sugarcrm crms
 will ignore this ordering, because they do not support such option.
 
 
