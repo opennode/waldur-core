@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
-import django_filters
 from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
+from django.utils import six
+import django_filters
+from django_filters.filterset import FilterSetMetaclass
 
 from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
 
@@ -21,7 +23,11 @@ User = auth.get_user_model()
 
 
 class ScopeTypeFilterBackend(DjangoFilterBackend):
-    """ Backend for filtering by scope type. """
+    """ Scope filters:
+
+        * ?scope = ``URL``
+        * ?scope_type = ``string`` (can be list)
+    """
 
     scope_field = 'scope'
     scope_param = 'scope_type'
@@ -554,7 +560,18 @@ class BaseServiceProjectLinkFilter(django_filters.FilterSet):
         model = models.ServiceProjectLink
 
 
-class BaseResourceFilter(django_filters.FilterSet):
+class ResourceFilterMetaclass(FilterSetMetaclass):
+    """ Build a list of supported resource via serializers definition.
+        See SupportedServices for details.
+    """
+    def __new__(cls, name, bases, args):
+        resource_filter = super(ResourceFilterMetaclass, cls).__new__(cls, name, bases, args)
+        SupportedServices.register_resource_filter(args['Meta'].model, resource_filter)
+        return resource_filter
+
+
+class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
+                         django_filters.FilterSet)):
     # customer
     customer = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
     customer_uuid = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
@@ -665,9 +682,9 @@ class AggregateFilter(BaseExternalFilter):
         aggregates_ids = list(aggregates.values_list('id', flat=True))
         query = {serializer.data['aggregate'] + '__in': aggregates_ids}
 
-        all_models = models.Resource.get_all_models() + \
-                     models.Service.get_all_models() + \
-                     models.ServiceProjectLink.get_all_models()
+        all_models = (models.Resource.get_all_models() +
+                      models.Service.get_all_models() +
+                      models.ServiceProjectLink.get_all_models())
         for model in all_models:
             qs = model.objects.filter(**query).all()
             querysets.append(filter_queryset_for_user(qs, request.user))
@@ -681,3 +698,21 @@ class AggregateFilter(BaseExternalFilter):
         return queryset.filter(aggregate_query)
 
 ExternalAlertFilterBackend.register(AggregateFilter())
+
+
+class ResourceSummaryFilterBackend(BaseFilterBackend):
+    """ Filter each resource queryset using its own filter """
+
+    def filter_queryset(self, request, queryset, view):
+        summary_queryset = queryset
+        filtered_querysets = []
+        for resource_queryset in summary_queryset.querysets:
+            try:
+                filter_class = SupportedServices.get_resource_filter(resource_queryset.model)
+            except KeyError:
+                filter_class = BaseResourceFilter
+            resource_queryset = filter_class(request.query_params, queryset=resource_queryset).qs
+            filtered_querysets.append(resource_queryset)
+
+        summary_queryset.querysets = filtered_querysets
+        return summary_queryset

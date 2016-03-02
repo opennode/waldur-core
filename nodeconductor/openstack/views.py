@@ -113,6 +113,57 @@ class ImageViewSet(structure_views.BaseServicePropertyViewSet):
 
 
 class InstanceViewSet(structure_views.BaseResourceViewSet):
+    """ Manage OpenStack Instances.
+
+        Instance permissions
+        ^^^^^^^^^^^^^^^^^^^^
+
+        - Staff members can list all available VM instances in any service.
+        - Customer owners can list all VM instances in all the services that belong to any
+          of the customers they own.
+        - Project administrators can list all VM instances, create new instances and
+          start/stop/restart instances in all the services that are connected to any of
+          the projects they are administrators in.
+        - Project managers can list all VM instances in all the services that are connected
+          to any of the projects they are managers in.
+
+        Instance states
+        ^^^^^^^^^^^^^^^
+
+        Each instance has a **state** field that defines its current operational state.
+        Instance has a FSM that defines possible state transitions. If a request is made
+        to perform an operation on instance in incorrect state, a validation
+        error will be returned.
+
+        The UI can poll for updates to provide feedback after submitting one of the
+        longer running operations.
+
+        In a DB, state is stored encoded with a symbol. States are:
+
+        - PROVISIONING_SCHEDULED = 1
+        - PROVISIONING = 2
+        - ONLINE = 3
+        - OFFLINE = 4
+        - STARTING_SCHEDULED = 5
+        - STARTING = 6
+        - STOPPING_SCHEDULED = 7
+        - STOPPING = 8
+        - ERRED = 9
+        - DELETION_SCHEDULED = 10
+        - DELETING = 11
+        - RESIZING_SCHEDULED = 13
+        - RESIZING = 14
+        - RESTARTING_SCHEDULED = 15
+        - RESTARTING = 16
+
+        Any modification of an instance in unstable or PROVISIONING_SCHEDULED state is prohibited
+        and will fail with 409 response code. Assuming stable states are ONLINE and OFFLINE.
+
+        A graph of possible state transitions is shown below.
+
+        .. image:: /images/instance-states.png
+    """
+
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     filter_class = filters.InstanceFilter
@@ -159,6 +210,10 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
     def resize(self, request, uuid=None):
+        """ Change Instance flavor or extend disk size.
+
+            Instance must be in OFFLINE state.
+        """
         instance = self.get_object()
 
         serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
@@ -357,6 +412,28 @@ class BackupViewSet(mixins.CreateModelMixin,
 
 
 class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """ View licenses for all OpenStack Instances,
+
+        Example response:
+
+        .. code-block:: json
+
+            [
+                {
+                    "instance": "http://example.com/api/openstack-instances/7a823b0074d34873a754cea9190e046e/",
+                    "group": "license-application",
+                    "type": "postgresql",
+                    "name": "9.4"
+                },
+                {
+                    "instance": "http://example.com/api/openstack-instances/7a823b0074d34873a754cea9190e046e/",
+                    "group": "license-os",
+                    "type": "centos7",
+                    "name": "CentOS Linux x86_64"
+                }
+            ]
+
+    """
     serializer_class = serializers.LicenseSerializer
 
     def get_queryset(self):
@@ -373,6 +450,26 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     @decorators.list_route()
     def stats(self, request):
+        """ It is possible to issue queries to NodeConductor to get aggregate statistics about instance licenses.
+
+            Supported aggregate queries are:
+
+            - ?aggregate=name - by license name
+            - ?aggregate=type - by license type
+            - ?aggregate=project_group - by project groups
+            - ?aggregate=project - by projects
+            - ?aggregate=customer - by customer
+
+            Note: aggregate parameters can be combined to aggregate by several fields. For example,
+            *?aggregate=name&aggregate=type&aggregate=project* will aggregate result by license name,
+            license_type and project group.
+
+            Supported filters:
+
+            - ?customer = ``uuid``
+            - ?name = ``string``
+            - ?type = ``string``
+        """
         queryset = filter_queryset_for_user(models.Instance.objects.all(), request.user)
         if 'customer' in self.request.query_params:
             queryset = queryset.filter(customer__uuid=self.request.query_params['customer'])

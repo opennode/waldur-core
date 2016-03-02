@@ -267,16 +267,14 @@ class UserViewSet(viewsets.ModelViewSet):
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
         if (not django_settings.NODECONDUCTOR.get('SHOW_ALL_USERS', True) and not user.is_staff) or \
-            'potential' in self.request.query_params:
+                'potential' in self.request.query_params:
             connected_customers_query = models.Customer.objects.all()
             # is user is not staff, allow only connected customers
             if not user.is_staff:
                 # XXX: Let the DB cry...
                 connected_customers_query = connected_customers_query.filter(
-                    Q(roles__permission_group__user=user)
-                    |
-                    Q(projects__roles__permission_group__user=user)
-                    |
+                    Q(roles__permission_group__user=user) |
+                    Q(projects__roles__permission_group__user=user) |
                     Q(project_groups__roles__permission_group__user=user)
                 ).distinct()
 
@@ -295,18 +293,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
             queryset = queryset.filter(is_staff=False).filter(
                 # customer users
-                Q(
-                    groups__customerrole__customer__in=connected_customers,
-                )
-                |
-                Q(
-                    groups__projectrole__project__customer__in=connected_customers,
-                )
-                |
-                Q(
-                    groups__projectgrouprole__project_group__customer__in=connected_customers,
-                )
-                |
+                Q(groups__customerrole__customer__in=connected_customers) |
+                Q(groups__projectrole__project__customer__in=connected_customers) |
+                Q(groups__projectgrouprole__project_group__customer__in=connected_customers) |
                 # users with no role
                 Q(
                     groups__customerrole=None,
@@ -522,10 +511,8 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
         if not self.request.user.is_staff:
             queryset = queryset.filter(
                 Q(group__projectgrouprole__project_group__customer__roles__permission_group__user=self.request.user,
-                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER)
-                |
-                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user)
-                |
+                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER) |
+                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user) |
                 Q(group__projectgrouprole__project_group__roles__permission_group__user=self.request.user)
             ).distinct()
 
@@ -585,10 +572,8 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
         if not self.request.user.is_staff:
             queryset = queryset.filter(
                 Q(group__customerrole__customer__roles__permission_group__user=self.request.user,
-                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER)
-                |
-                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user)
-                |
+                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER) |
+                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user) |
                 Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
             ).distinct()
 
@@ -700,7 +685,7 @@ class ResourceViewSet(mixins.ListModelMixin,
     model = models.Resource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
@@ -1202,7 +1187,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise APIException(e)
 
         event_logger.resource.info(
-            'Resource {resource_name} creation has been scheduled.',
+            '{resource_full_name} creation has been scheduled.',
             event_type='resource_creation_scheduled',
             event_context={'resource': serializer.instance})
 
@@ -1212,17 +1197,22 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify resource if its service project link is in erred state.')
 
+        old_name = serializer.instance.name
         resource = serializer.save()
 
+        message = '{resource_full_name} has been updated.'
+        if old_name != resource.name:
+            message += ' Name was changed from %s to %s.' % (old_name, resource.name)
+
         event_logger.resource.info(
-            'Resource {resource_name} has been updated.',
+            message,
             event_type='resource_update_succeeded',
             event_context={'resource': resource})
 
     def perform_destroy(self, resource):
         resource.delete()
         event_logger.resource.info(
-            'Resource {resource_name} has been deleted.',
+            '{resource_full_name} has been deleted.',
             event_type='resource_deletion_succeeded',
             event_context={'resource': resource})
 
@@ -1234,7 +1224,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             backend = resource.get_backend()
             backend.destroy(resource, force=force)
             event_logger.resource.info(
-                'Resource {resource_name} has been scheduled to deletion.',
+                '{resource_full_name} has been scheduled for deletion.',
                 event_type='resource_deletion_scheduled',
                 event_context={'resource': resource})
         else:

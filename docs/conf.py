@@ -20,6 +20,11 @@ import os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
+# Uncomment it for autodoc
+# import django
+# os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.settings'
+# django.setup()
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -47,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'NodeConductor'
-copyright = u'2014-2015, OpenNode'
+copyright = u'2014-2016, OpenNode'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
