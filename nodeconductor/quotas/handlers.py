@@ -106,8 +106,8 @@ def handle_aggregated_quotas(sender, instance, **kwargs):
     if quota.scope is None:
         return
     quota_field = quota.get_field()
-    # aggregation should not count another aggregator field to avoid calls duplication.
-    if isinstance(quota_field, fields.AggregatorQuotaField) or quota_field is None:
+    # usage aggregation should not count another usage aggregator field to avoid calls duplication.
+    if isinstance(quota_field, fields.UsageAggregatorQuotaField) or quota_field is None:
         return
     signal = kwargs['signal']
     for aggregator_quota in quota_field.get_aggregator_quotas(quota):

@@ -36,11 +36,16 @@ NodeConductor plugins
 .. toctree::
    :maxdepth: 1
 
+   plugins/jira
+   plugins/killbill
    plugins/openstack/intro
    plugins/oracle
    plugins/organization
+   plugins/paypal
    plugins/saltstack
+   plugins/saml2
    plugins/sugarcrm
+   plugins/zabbix
 
 Developing NodeConductor
 ------------------------

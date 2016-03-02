@@ -13,9 +13,9 @@ from rest_framework import serializers, status, exceptions
 
 from nodeconductor.backup import serializers as backup_serializers
 from nodeconductor.core import models as core_models, serializers as core_serializers
-from nodeconductor.core.fields import MappedChoiceField, TimestampField
+from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.core.signals import pre_serializer_fields
-from nodeconductor.core.utils import timeshift, datetime_to_timestamp
+from nodeconductor.core.utils import datetime_to_timestamp
 from nodeconductor.cost_tracking import models as cost_tracking_models
 from nodeconductor.iaas import models
 from nodeconductor.monitoring.zabbix.db_client import ZabbixDBClient
@@ -1191,17 +1191,6 @@ class StatsAggregateSerializer(structure_serializers.AggregateSerializer):
     def get_instances(self, user):
         projects = self.get_projects(user)
         return models.Instance.objects.filter(cloud_project_membership__project__in=projects).all()
-
-
-class QuotaTimelineStatsSerializer(serializers.Serializer):
-
-    INTERVAL_CHOICES = ('hour', 'day', 'week', 'month')
-    ITEM_CHOICES = ('vcpu', 'storage', 'ram')
-
-    start_time = TimestampField(default=lambda: timeshift(days=-1))
-    end_time = TimestampField(default=lambda: timeshift())
-    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
-    item = serializers.ChoiceField(choices=ITEM_CHOICES, required=False)
 
 
 class ExternalNetworkSerializer(serializers.Serializer):

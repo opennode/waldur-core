@@ -4,7 +4,17 @@ CHANGELOG
 Release NEXT
 ------------
 
-<Add changes here>
+<add here>
+
+Release 0.89.0
+--------------
+- Extracted Jira support app to plugin.
+- Added synchronization during service settings recovery.
+- Added admin command for shared service settings SPLs and services recreation.
+- Added support for creating custom events by staff users.
+- Implement generic quota aggregation.
+- Add a management command for DRF API generation.
+- Bugfixes.
 
 Release 0.88.0
 --------------
@@ -499,4 +509,4 @@ Release 0.25.0
 
 Release 0.24.0
 --------------
-- Introduce vm instance restart action.
+- Introduce VM instance restart action.

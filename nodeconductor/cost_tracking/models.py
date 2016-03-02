@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import calendar
 import functools
 import logging
@@ -23,6 +25,7 @@ from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplem
 logger = logging.getLogger(__name__)
 
 
+@python_2_unicode_compatible
 class PriceEstimate(core_models.UuidMixin, models.Model):
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
@@ -152,6 +155,7 @@ class AbstractPriceListItem(models.Model):
         return '%0.2f' % (self.value * hours_in_month())
 
 
+@python_2_unicode_compatible
 class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, AbstractPriceListItem):
     """ Default price list item for all resources of supported service types """
     resource_content_type = models.ForeignKey(ContentType, default=None)

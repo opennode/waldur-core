@@ -45,7 +45,6 @@ INSTALLED_APPS = (
     'nodeconductor.cost_tracking',
     'nodeconductor.openstack',
     'nodeconductor.iaas',
-    'nodeconductor.support',
 
     'rest_framework',
     'rest_framework.authtoken',

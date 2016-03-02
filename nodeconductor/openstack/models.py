@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils.encoding import python_2_unicode_compatible
@@ -7,10 +9,10 @@ from model_utils import FieldTracker
 from urlparse import urlparse
 
 from nodeconductor.core import models as core_models
+from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.structure import models as structure_models
 from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
 from nodeconductor.openstack.managers import BackupManager
-from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.structure.utils import get_coordinates_by_ip, Coordinates
@@ -31,7 +33,7 @@ class OpenStackService(structure_models.Service):
         return self.settings.backend_url
 
 
-class OpenStackServiceProjectLink(QuotaModelMixin, structure_models.ServiceProjectLink):
+class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
     QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count',
                     'floating_ip_count']
 
@@ -152,6 +154,7 @@ class FloatingIP(core_models.UuidMixin):
 
 class Instance(structure_models.VirtualMachineMixin,
                structure_models.PaidResource,
+               MonitoringModelMixin,
                structure_models.Resource):
 
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024

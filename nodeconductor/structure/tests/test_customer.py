@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from unittest import TestCase
+from unittest import TestCase, skip
 
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
@@ -577,6 +578,7 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         service.delete()
         self.assert_quota_usage('nc_service_count', 0)
 
+    @skip('should be fixed in SAAS-1178')
     def test_customer_and_project_service_project_link_quota_updated(self):
         from nodeconductor.openstack.tests import factories as openstack_factories
 
@@ -699,3 +701,8 @@ class CustomerQuotasTest(test.APITransactionTestCase):
 
     def assert_quota_usage(self, name, value):
         self.assertEqual(value, self.customer.quotas.get(name=name).usage)
+
+
+class CustomerUnicodeTest(TransactionTestCase):
+    def test_customer_can_have_unicode_name(self):
+        factories.CustomerFactory(name="Моя организация")

@@ -153,10 +153,9 @@ class SummaryQuerySet(object):
     # Hack for permissions
     @property
     def model(self):
-        try:
-            return self.querysets[0].model
-        except IndexError:
-            return
+        # XXX: rewrite once iaas is deprecated
+        from nodeconductor.openstack.models import Instance
+        return Instance
 
     def filter(self, *args, **kwargs):
         self.querysets = [qs.filter(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]

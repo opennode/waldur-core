@@ -8,7 +8,7 @@ from nodeconductor.quotas import handlers, utils
 
 class QuotasConfig(AppConfig):
     name = 'nodeconductor.quotas'
-    verbose_name = "NodeConductor Quotas"
+    verbose_name = 'Quotas'
 
     def ready(self):
         Quota = self.get_model('Quota')
