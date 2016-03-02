@@ -86,16 +86,24 @@ class SupportedServices(object):
         cls._registry[key]['list_view'] = cls.get_list_view_for_model(model)
 
     @classmethod
-    def register_resource(cls, model):
+    def register_resource_serializer(cls, model, serializer):
         if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
         model_str = cls._get_model_str(model)
-        cls._registry[key]['resources'][model_str] = {
-            'name': model.__name__,
-            'detail_view': cls.get_detail_view_for_model(model),
-            'list_view': cls.get_list_view_for_model(model)
-        }
+        cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
+        cls._registry[key]['resources'][model_str]['detail_view'] = cls.get_detail_view_for_model(model)
+        cls._registry[key]['resources'][model_str]['list_view'] = cls.get_list_view_for_model(model)
+        cls._registry[key]['resources'][model_str]['serializer'] = serializer
+
+    @classmethod
+    def register_resource_filter(cls, model, filter):
+        if model is NotImplemented or not cls._is_active_model(model) or model._meta.abstract:
+            return
+        key = cls.get_model_key(model)
+        model_str = cls._get_model_str(model)
+        cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
+        cls._registry[key]['resources'][model_str]['filter'] = filter
 
     @classmethod
     def register_property(cls, model):
@@ -142,6 +150,18 @@ class SupportedServices(object):
         return {'.'.join([service['name'], resource['name']]): reverse(resource['list_view'], request=request)
                 for service in cls._registry.values()
                 for resource in service['resources'].values()}
+
+    @classmethod
+    def get_resource_serializer(cls, model):
+        key = cls.get_model_key(model)
+        model_str = cls._get_model_str(model)
+        return cls._registry[key]['resources'][model_str]['serializer']
+
+    @classmethod
+    def get_resource_filter(cls, model):
+        key = cls.get_model_key(model)
+        model_str = cls._get_model_str(model)
+        return cls._registry[key]['resources'][model_str]['filter']
 
     @classmethod
     def get_services_with_resources(cls, request=None):
