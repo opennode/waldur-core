@@ -49,9 +49,9 @@ Resources may have monitoring items attached to it. Example rendering of monitor
 
 .. code-block:: javascript
 
-    'monitoring_items': [{
+    'monitoring_items': {
        'application_state': 1
-    }]
+    }
 
 Resources may have SLA attached to it. Example rendering of SLA:
 
