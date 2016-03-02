@@ -33,6 +33,7 @@ class Migration(migrations.Migration):
                 ('object_id', models.PositiveIntegerField()),
                 ('period', models.CharField(max_length=10)),
                 ('value', models.DecimalField(null=True, max_digits=11, decimal_places=4, blank=True)),
+                ('agreed_value', models.DecimalField(null=True, max_digits=11, decimal_places=4, blank=True)),
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
             ],
             options={

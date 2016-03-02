@@ -14,18 +14,26 @@ class ResourceStateSerializer(serializers.Serializer):
 
 
 class MonitoringSerializerMixin(serializers.Serializer):
-    actual_sla = serializers.SerializerMethodField()
+    sla = serializers.SerializerMethodField()
     monitoring_items = serializers.SerializerMethodField()
 
     class Meta:
-        fields = ('actual_sla', 'monitoring_items')
+        fields = ('sla', 'monitoring_items')
 
-    def get_actual_sla(self, resource):
+    def get_sla(self, resource):
         if 'sla_map' not in self.context:
+            sla_map = {}
             request = self.context['request']
+
             items = filter_for_qs(ResourceSla, self.instance)
             items = items.filter(period=get_period(request))
-            sla_map = {item.object_id: item.value for item in items}
+
+            for item in items:
+                sla_map[item.object_id] = dict(
+                    value=item.value,
+                    agreed_value=item.agreed_value,
+                    period=item.period
+                )
 
             self.context['sla_map'] = sla_map
         return self.context['sla_map'].get(resource.id)

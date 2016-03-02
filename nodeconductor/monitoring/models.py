@@ -26,6 +26,7 @@ class ResourceItem(NameMixin, ScopeMixin):
 class ResourceSla(ScopeMixin):
     period = models.CharField(max_length=10)
     value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
+    agreed_value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
 
     class Meta:
         unique_together = ('period', 'content_type', 'object_id')

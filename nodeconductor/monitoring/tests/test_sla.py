@@ -39,7 +39,7 @@ class SlaTest(BaseMonitoringTest):
         response = self.client.get(InstanceFactory.get_list_url(), data={'o': 'actual_sla'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(2, len(response.data))
-        self.assertEqual([80, 90], [item['actual_sla'] for item in response.data])
+        self.assertEqual([80, 90], [item['sla']['value'] for item in response.data])
 
     def test_filtering(self):
         response = self.client.get(InstanceFactory.get_list_url(), data={'actual_sla': 80})
@@ -49,12 +49,7 @@ class SlaTest(BaseMonitoringTest):
     def test_actual_sla_serializer(self):
         response = self.client.get(InstanceFactory.get_url(self.vm1))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(90, response.data['actual_sla'])
-
-    def test_empty_monitoring_items_serializer(self):
-        response = self.client.get(InstanceFactory.get_url(self.vm2))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(None, response.data['monitoring_items'])
+        self.assertEqual(90, response.data['sla']['value'])
 
 
 class EventsTest(BaseMonitoringTest):
