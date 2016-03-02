@@ -1206,10 +1206,15 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise core_exceptions.IncorrectStateException(
                 detail='Cannot modify resource if its service project link is in erred state.')
 
+        old_name = serializer.instance.name
         resource = serializer.save()
 
+        message = '{resource_full_name} has been updated.'
+        if old_name != resource.name:
+            message += ' Name was changed from %s to %s.' % (old_name, resource.name)
+
         event_logger.resource.info(
-            '{resource_full_name} has been updated.',
+            message,
             event_type='resource_update_succeeded',
             event_context={'resource': resource})
 
