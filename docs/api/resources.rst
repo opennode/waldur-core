@@ -27,8 +27,26 @@ Supported filters are:
 - ?service_name=<service name>
 
 
-Filtering and ordering by SLA values and monitoring items
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SLA values and monitoring items
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Resources may have monitoring items attached to it. Example rendering of monitoring items:
+
+.. code-block:: javascript
+
+    'monitoring_items': [{
+       'application_state': 1
+    }]
+
+Resources may have SLA attached to it. Example rendering of SLA:
+
+.. code-block:: javascript
+
+    'sla': {
+        'value': 95.0
+        'agreed_value': 99.0,
+        'period': '2016-03'
+    }
 
 You may filter or order resources by SLA. Default period is current year and month.
 
@@ -69,6 +87,7 @@ Service SLAs are connected with occurrences of events. To get a list of such eve
 */api/monitoring-events/*.
 
 Supported query arguments:
+
 - ?scope=<URL of resource>
 - ?period - use the format defined above.
 
