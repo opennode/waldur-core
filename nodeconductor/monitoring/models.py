@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from nodeconductor.core.models import NameMixin
+from nodeconductor.monitoring.managers import ResourceSlaManager, ResourceItemManager
 
 
 class ScopeMixin(models.Model):
@@ -18,6 +19,7 @@ class ScopeMixin(models.Model):
 
 class ResourceItem(NameMixin, ScopeMixin):
     value = models.FloatField()
+    objects = ResourceItemManager()
 
     class Meta:
         unique_together = ('name', 'content_type', 'object_id')
@@ -27,6 +29,7 @@ class ResourceSla(ScopeMixin):
     period = models.CharField(max_length=10)
     value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
     agreed_value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
+    objects = ResourceSlaManager()
 
     class Meta:
         unique_together = ('period', 'content_type', 'object_id')

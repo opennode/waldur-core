@@ -2,7 +2,7 @@ from collections import defaultdict
 from rest_framework import serializers
 
 from .models import ResourceItem, ResourceSla
-from .utils import get_period, filter_for_qs
+from .utils import get_period, to_list
 
 
 class ResourceSlaStateTransitionSerializer(serializers.Serializer):
@@ -25,7 +25,7 @@ class MonitoringSerializerMixin(serializers.Serializer):
             sla_map = {}
             request = self.context['request']
 
-            items = filter_for_qs(ResourceSla, self.instance)
+            items = ResourceSla.objects.filter(scope__in=to_list(self.instance))
             items = items.filter(period=get_period(request))
 
             for item in items:
@@ -40,7 +40,7 @@ class MonitoringSerializerMixin(serializers.Serializer):
 
     def get_monitoring_items(self, resource):
         if 'monitoring_items' not in self.context:
-            items = filter_for_qs(ResourceItem, self.instance)
+            items = ResourceItem.objects.filter(scope__in=to_list(self.instance))
 
             monitoring_items = defaultdict(dict)
             for item in items:

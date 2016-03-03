@@ -2,7 +2,6 @@ import datetime
 import logging
 
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.monitoring.log import event_logger
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
@@ -21,13 +20,8 @@ def format_period(date):
     return '%d-%02d' % (date.year, date.month)
 
 
-def filter_for_qs(model, instance):
-    if not isinstance(instance, list):
-        instance = [instance]
-
-    content_type = ContentType.objects.get_for_model(instance[0])
-    object_ids = [obj.id for obj in instance]
-    return model.objects.filter(content_type=content_type, object_id__in=object_ids)
+def to_list(xs):
+    return xs if isinstance(xs, list) else [xs]
 
 
 def create_host(cloud_project_membership, warn_if_exists=True):
