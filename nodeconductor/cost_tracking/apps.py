@@ -61,6 +61,12 @@ class CostTrackingConfig(AppConfig):
             dispatch_uid='nodeconductor.cost_tracking.handlers.delete_price_list_items_if_default_was_deleted'
         )
 
+        signals.post_save.connect(
+            handlers.update_price_estimate_ancessors,
+            sender=PriceEstimate,
+            dispatch_uid='nodeconductor.cost_tracking.handlers.update_price_estimate_ancessors'
+        )
+
         for index, resource in enumerate(structure_models.Resource.get_all_models()):
             post_transition.connect(
                 handlers.add_resource_price_estimate_on_provision,

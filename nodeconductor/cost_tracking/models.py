@@ -78,6 +78,10 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             structure_models.ServiceProjectLink.get_all_models()
         )
 
+    @property
+    def is_leaf(self):
+        return self.is_leaf_scope(self.scope)
+
     @staticmethod
     def is_leaf_scope(scope):
         return scope._meta.model in structure_models.Resource.get_all_models()
@@ -89,17 +93,21 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             self.consumed = sum(e.consumed for e in leaf_estimates)
             self.save(update_fields=['total', 'consumed'])
 
+    def update_ancessors(self, force=False):
+        for parent in self.scope.get_ancestors():
+            parent_estimate, created = self.__class__.objects.get_or_create(
+                object_id=parent.id,
+                content_type=ContentType.objects.get_for_model(parent),
+                month=self.month, year=self.year)
+            if created or force:
+                if self.is_leaf:
+                    parent_estimate.leaf_estimates.add(self)
+            parent_estimate.update_from_leaf()
+
     @classmethod
-    def update_ancessors_for_resource(cls, resource):
+    def update_ancessors_for_resource(cls, resource, force=False):
         for estimate in cls.objects.filter(scope=resource, is_manually_input=False):
-            for parent in resource.get_ancestors():
-                parent_estimate, created = cls.objects.get_or_create(
-                    object_id=parent.id,
-                    content_type=ContentType.objects.get_for_model(parent),
-                    month=estimate.month, year=estimate.year)
-                if created:
-                    parent_estimate.leaf_estimates.add(estimate)
-                parent_estimate.update_from_leaf()
+            estimate.update_ancessors(force=force)
 
     @classmethod
     def delete_estimates_for_resource(cls, resource):

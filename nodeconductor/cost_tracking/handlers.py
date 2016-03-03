@@ -107,12 +107,15 @@ def add_resource_price_estimate_on_provision(sender, instance, name=None, source
             resource_str=instance.to_string())
 
 
-def update_resource_price_estimate(sender, instance, created=False, **kwargs):
+def update_price_estimate_ancessors(sender, instance, created=False, **kwargs):
     # ignore created -- avoid double call from PriceEstimate.update_price_for_resource.update_estimate
-    if not created:
-        models.PriceEstimate.update_ancessors_for_resource(instance)
+    if not created and instance.is_leaf:
+        instance.update_ancessors()
 
-        # TODO: cover the case of SPL change
+
+# TODO: cover the case of SPL change
+def update_resource_price_estimate(sender, instance, created=False, **kwargs):
+    pass
 
 
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
