@@ -46,14 +46,6 @@ class CostTrackingConfig(AppConfig):
                     .format(service.__name__, index))
             )
 
-        for index, resource in enumerate(structure_models.Resource.get_all_models()):
-            post_transition.connect(
-                handlers.add_estimate_costs,
-                sender=resource,
-                dispatch_uid='nodeconductor.cost_tracking.handlers.add_estimate_costs_{}_{}'.format(
-                    resource.__name__, index),
-            )
-
         # TODO: enable once price list items start being used
         # Commented out as it's failing on the unique_together constraint when SaltStack tenants are updated
 
@@ -68,6 +60,14 @@ class CostTrackingConfig(AppConfig):
             sender=DefaultPriceListItem,
             dispatch_uid='nodeconductor.cost_tracking.handlers.delete_price_list_items_if_default_was_deleted'
         )
+
+        for index, resource in enumerate(structure_models.Resource.get_all_models()):
+            post_transition.connect(
+                handlers.add_estimate_costs,
+                sender=resource,
+                dispatch_uid='nodeconductor.cost_tracking.handlers.add_estimate_costs_{}_{}'.format(
+                    resource.__name__, index),
+            )
 
         for index, model in enumerate(PriceEstimate.get_estimated_models()):
             signals.pre_delete.connect(

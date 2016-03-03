@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import yaml
+import itertools
 
 from django.apps import apps
 from django.core.validators import MaxLengthValidator
@@ -76,6 +77,7 @@ class StructureModel(models.Model):
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
+               core_models.DescendantMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
                ImageModelMixin,
@@ -216,6 +218,10 @@ class Customer(core_models.UuidMixin,
 
     def can_user_update_quotas(self, user):
         return user.is_staff
+
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(customer=self) for m in [Project] + Service.get_all_models())
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
@@ -429,6 +435,10 @@ class Project(core_models.DescribableMixin,
 
     def get_parents(self):
         return [self.customer]
+
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(project=self) for m in ServiceProjectLink.get_all_models())
 
     def get_links(self):
         """
@@ -660,6 +670,12 @@ class Service(core_models.SerializableAbstractMixin,
     def get_parents(self):
         return [self.settings]
 
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(**{
+                'cloud' if 'cloud' in m._meta.get_all_field_names() else 'service': self
+            }) for m in ServiceProjectLink.get_all_models())
+
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
@@ -745,6 +761,10 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
 
     def get_parents(self):
         return [self.project, self.service]
+
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(service_project_link=self) for m in Resource.get_all_models())
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)

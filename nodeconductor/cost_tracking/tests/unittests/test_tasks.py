@@ -59,7 +59,7 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
         estimate = PriceEstimate.objects.create(
             scope=self.instance1, month=now.month, year=now.year, total=instance_total)
 
-        update_projected_estimate(resource_uuid=self.instance1.uuid.hex)
+        update_projected_estimate(resource_str=self.instance1.to_string())
 
         reread_estimate = PriceEstimate.objects.get(id=estimate.id)
         self.assertEqual(reread_estimate.total, self.INSTANCE_MONTHLY_COST)

@@ -11,12 +11,6 @@ from nodeconductor.structure import SupportedServices
 logger = logging.getLogger('nodeconductor.cost_tracking')
 
 
-def add_estimate_costs(sender, instance, name=None, source=None, **kwargs):
-    if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
-        send_task('cost_tracking', 'update_projected_estimate')(
-            resource_uuid=instance.uuid.hex)
-
-
 def make_autocalculate_price_estimate_invisible_on_manual_estimate_creation(sender, instance, created=False, **kwargs):
     if created and instance.is_manually_input:
         manually_created_price_estimate = instance
@@ -107,16 +101,18 @@ def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
     ).delete()
 
 
+def add_estimate_costs(sender, instance, name=None, source=None, **kwargs):
+    if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
+        send_task('cost_tracking', 'update_projected_estimate')(
+            resource_str=instance.to_string())
+
+
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
+    # if scope is Resource -- delete estimates on unlinking only
     if isinstance(instance, tuple(Resource.get_all_models())):
-        is_unlink = getattr(instance, 'PERFORM_UNLINK', False)
-        if is_unlink:
-            models.PriceEstimate.update_price_for_resource(instance, delete=True)
-            return
-
-    estimates = models.PriceEstimate.objects.filter(scope=instance)
-    # Set estimates total to zero before deletion - to update ancestors estimate
-    for estimate in estimates.filter(is_manually_input=False):
-        models.PriceEstimate.update_price_for_scope(instance, month=estimate.month, year=estimate.year, total=0)
-
-    estimates.delete()
+        if getattr(instance, 'PERFORM_UNLINK', False):
+            models.PriceEstimate.delete_estimates_for_resource(instance)
+    # otherwise delete everything in hope of django carrying out DB consistency
+    # i.e. higher level scope can only be deleted if there's no any resource in it
+    else:
+        models.PriceEstimate.objects.filter(scope=instance).delete()
