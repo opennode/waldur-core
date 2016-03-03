@@ -30,6 +30,13 @@ logger = logging.getLogger(__name__)
 class PriceEstimate(core_models.UuidMixin, models.Model):
     """ Store prices based on both estimates and actual consumption.
         Every record holds a list of leaf estimates with actual data.
+
+                         /--- Service ---\
+        (top) Customer --                 ---> SPL --> Resource (leaf)
+                         \--- Project ---/
+
+        Only leaf node has actual data.
+        Another ones should be re-calculated on every change of leaf one.
     """
 
     content_type = models.ForeignKey(ContentType, null=True, related_name='+')
