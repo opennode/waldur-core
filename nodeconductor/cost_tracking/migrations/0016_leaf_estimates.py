@@ -11,13 +11,13 @@ from nodeconductor.cost_tracking.models import PriceEstimate
 def update_price_estimate_relations(apps, schema_editor):
     for model in Resource.get_all_models():
         for resource in model.objects.all():
-            PriceEstimate.update_ancessors_for_resource(resource, force=True)
+            PriceEstimate.update_ancestors_for_resource(resource, force=True)
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '__latest__'),
+        ('structure', '0032_make_options_optional'),
         ('contenttypes', '0001_initial'),
         ('cost_tracking', '0015_defaultpricelistitem_metadata'),
     ]
@@ -33,6 +33,12 @@ class Migration(migrations.Migration):
             model_name='priceestimate',
             name='leaf_estimates',
             field=gm2m.fields.GM2MField('cost_tracking.PriceEstimate', through_fields=(b'gm2m_src', b'gm2m_tgt', b'gm2m_ct', b'gm2m_pk')),
+            preserve_default=True,
+        ),
+        migrations.AddField(
+            model_name='priceestimate',
+            name='scope_customer',
+            field=models.ForeignKey(related_name='+', to='structure.Customer', null=True),
             preserve_default=True,
         ),
         migrations.AlterField(

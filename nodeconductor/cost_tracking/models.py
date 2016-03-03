@@ -43,6 +43,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
     object_id = models.PositiveIntegerField()
     scope = GenericForeignKey('content_type', 'object_id')
 
+    scope_customer = models.ForeignKey(structure_models.Customer, null=True, related_name='+')
     leaf_estimates = GM2MField('PriceEstimate')
 
     total = models.FloatField(default=0)
@@ -95,7 +96,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
         self.consumed = sum(e.consumed for e in leaf_estimates)
         self.save(update_fields=['total', 'consumed'])
 
-    def update_ancessors(self, force=False):
+    def update_ancestors(self, force=False):
         for parent in self.scope.get_ancestors():
             parent_estimate, created = self.__class__.objects.get_or_create(
                 object_id=parent.id,
@@ -107,9 +108,9 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             parent_estimate.update_from_leaf()
 
     @classmethod
-    def update_ancessors_for_resource(cls, resource, force=False):
+    def update_ancestors_for_resource(cls, resource, force=False):
         for estimate in cls.objects.filter(scope=resource, is_manually_input=False):
-            estimate.update_ancessors(force=force)
+            estimate.update_ancestors(force=force)
 
     @classmethod
     def delete_estimates_for_resource(cls, resource):
@@ -123,15 +124,17 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
     @classmethod
     def update_metadata_for_scope(cls, scope):
-        cls.objects.filter(scope=scope).update(details=dict(
-            scope_name=scope.name,
-            scope_type=SupportedServices.get_name_for_model(scope),
-            scope_backend_id=scope.backend_id,
-        ))
+        cls.objects.filter(scope=scope).update(
+            scope_customer=scope.customer,
+            details=dict(
+                scope_name=scope.name,
+                scope_type=SupportedServices.get_name_for_model(scope),
+                scope_backend_id=scope.backend_id,
+            ))
 
     @classmethod
     def update_price_for_scope(cls, scope):
-        # update Resource and re-calculate ancessors
+        # update Resource and re-calculate ancestors
         if cls.is_leaf_scope(scope):
             return cls.update_price_for_resource(scope)
 

@@ -107,10 +107,10 @@ def add_resource_price_estimate_on_provision(sender, instance, name=None, source
             resource_str=instance.to_string())
 
 
-def update_price_estimate_ancessors(sender, instance, created=False, **kwargs):
+def update_price_estimate_ancestors(sender, instance, created=False, **kwargs):
     # ignore created -- avoid double call from PriceEstimate.update_price_for_resource.update_estimate
     if not created and instance.is_leaf:
-        instance.update_ancessors()
+        instance.update_ancestors()
 
 
 def update_price_estimate_on_resource_spl_change(sender, instance, created=False, **kwargs):
@@ -126,19 +126,18 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
                 parent_estimate.leaf_estimates.remove(estimate)
                 parent_estimate.update_from_leaf()
 
-        models.PriceEstimate.update_ancessors_for_resource(instance, force=True)
+        models.PriceEstimate.update_ancestors_for_resource(instance, force=True)
 
 
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
     # if scope is Resource:
-    #    delete -- add metadata about deleted resource, set object_id to 0
+    #    delete -- add metadata about deleted resource
     #    unlink -- delete all related estimates
     if isinstance(instance, tuple(Resource.get_all_models())):
         if getattr(instance, 'PERFORM_UNLINK', False):
             models.PriceEstimate.delete_estimates_for_resource(instance)
         else:
             models.PriceEstimate.update_metadata_for_scope(instance)
-            models.PriceEstimate.objects.filter(scope=instance).update(object_id=0)
 
     # otherwise delete everything in hope of django carrying out DB consistency
     # i.e. higher level scope can only be deleted if there's no any resource in it

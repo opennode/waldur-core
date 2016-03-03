@@ -63,9 +63,9 @@ class CostTrackingConfig(AppConfig):
         )
 
         signals.post_save.connect(
-            handlers.update_price_estimate_ancessors,
+            handlers.update_price_estimate_ancestors,
             sender=PriceEstimate,
-            dispatch_uid='nodeconductor.cost_tracking.handlers.update_price_estimate_ancessors'
+            dispatch_uid='nodeconductor.cost_tracking.handlers.update_price_estimate_ancestors'
         )
 
         for index, resource in enumerate(structure_models.Resource.get_all_models()):

@@ -15,7 +15,7 @@ def update_projected_estimate(customer_uuid=None, resource_str=None):
         PriceEstimate.update_price_for_scope(resource)
 
     else:
-        # XXX: it's quite inefficient -- will update ancessors many times
+        # XXX: it's quite inefficient -- will update ancestors many times
         for model in Resource.get_all_models():
             queryset = model.objects.exclude(state=model.States.ERRED)
             if customer_uuid:
