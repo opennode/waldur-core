@@ -602,6 +602,8 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     )
     uuid = django_filters.CharFilter(lookup_type='exact')
 
+    strict = False
+
     class Meta(object):
         model = models.Resource
         fields = (

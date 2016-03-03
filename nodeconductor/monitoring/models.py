@@ -3,26 +3,51 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from model_utils.fields import AutoLastModifiedField
 
 from nodeconductor.core.models import NameMixin
+from nodeconductor.monitoring.managers import ResourceSlaManager, ResourceItemManager
 
 
-class MonitoringItem(NameMixin, models.Model):
+class ScopeMixin(models.Model):
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     scope = GenericForeignKey('content_type', 'object_id')
 
-    value = models.CharField(max_length=255, blank=True)
-    last_updated = AutoLastModifiedField()
+    class Meta:
+        abstract = True
+
+
+class ResourceItem(NameMixin, ScopeMixin):
+    value = models.FloatField()
+    objects = ResourceItemManager()
 
     class Meta:
         unique_together = ('name', 'content_type', 'object_id')
+
+
+class ResourceSla(ScopeMixin):
+    period = models.CharField(max_length=10)
+    value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
+    agreed_value = models.DecimalField(max_digits=11, decimal_places=4, null=True, blank=True)
+    objects = ResourceSlaManager()
+
+    class Meta:
+        unique_together = ('period', 'content_type', 'object_id')
+
+
+class ResourceSlaStateTransition(ScopeMixin):
+    period = models.CharField(max_length=10)
+    timestamp = models.IntegerField()
+    state = models.BooleanField(default=False, help_text="If state is True resource became available")
+
+    class Meta:
+        unique_together = ('timestamp', 'period', 'content_type', 'object_id')
 
 
 class MonitoringModelMixin(models.Model):
     class Meta:
         abstract = True
 
-    monitoring_items = GenericRelation('monitoring.MonitoringItem',
-                                       related_query_name='monitoring_items')
+    sla_items = GenericRelation('monitoring.ResourceSla')
+    monitoring_items = GenericRelation('monitoring.ResourceItem')
+    state_items = GenericRelation('monitoring.ResourceSlaStateTransition')

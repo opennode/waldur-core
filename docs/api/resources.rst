@@ -42,6 +42,99 @@ resources that support such filtering. For example it is possible to sort resour
 will ignore this ordering, because they do not support such option.
 
 
+SLA values
+^^^^^^^^^^
+
+Resources may have SLA attached to it. Example rendering of SLA:
+
+.. code-block:: javascript
+
+    "sla": {
+        "value": 95.0
+        "agreed_value": 99.0,
+        "period": "2016-03"
+    }
+
+You may filter or order resources by SLA. Default period is current year and month.
+
+- Example query for filtering list of resources by actual SLA:
+
+  /api/<resource_endpoint>/?actual_sla=90&period=2016-02
+
+- Warning! If resource does not have SLA attached to it, it is not included in ordered response.
+  Example query for ordering list of resources by actual SLA:
+
+  /api/<resource_endpoint>/?o=actual_sla&period=2016-02
+
+SLA periods
+^^^^^^^^^^^
+
+Service list is displaying current SLAs for each of the items. By default, SLA period is set to the current month. To
+change the period pass it as a query argument:
+
+- ?period=YYYY-MM - return a list with SLAs for a given month
+- ?period=YYYY - return a list with SLAs for a given year
+
+In all cases all currently running resources are returned, if SLA for the given period is not known or not present, it
+will be shown as **null** in the response.
+
+SLA events
+^^^^^^^^^^
+
+Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
+*/api/monitoring-events/*.
+
+Supported query arguments:
+
+- ?scope=<URL of resource>
+- ?period - use the format defined above.
+
+The output contains a list of states and timestamps when the state was reached. The list is sorted in descending order
+by the timestamp.
+
+Example output:
+
+.. code-block:: javascript
+
+    [
+        {
+            "timestamp": 1418043540,
+            "state": "U"
+        },
+        {
+            "timestamp": 1417928550,
+            "state": "D"
+        },
+        {
+            "timestamp": 1417928490,
+            "state": "U"
+        }
+    ]
+
+Monitoring items
+^^^^^^^^^^^^^^^^
+
+Resources may have monitoring items attached to it. Example rendering of monitoring items:
+
+.. code-block:: javascript
+
+    "monitoring_items": {
+       "application_state": 1
+    }
+
+You may filter or order resources by monitoring item.
+
+- Example query for filtering list of resources by installation state:
+
+  /api/<resource_endpoint>/?monitoring__installation_state=1
+
+- Warning! If resource does not have monitoring item attached to it, it is not included in ordered response.
+  Example query for ordering list of resources by installation state:
+
+  /api/<resource_endpoint>/?o=monitoring__installation_state
+
+
+
 OpenStack resources list
 ------------------------
 
@@ -82,8 +175,6 @@ Response example:
 
 .. code-block:: http
 
-    GET /api/iaas-resources/ HTTP/1.1
-
     HTTP/1.0 200 OK
     Content-Type: application/json
     Vary: Accept
@@ -111,43 +202,3 @@ Response example:
         }
     ]
 
-
-SLA periods
-^^^^^^^^^^^
-
-Service list is displaying current SLAs for each of the items. By default, SLA period is set to the current month. To
-change the period pass it as a query argument:
-
-- ?period=YYYY-MM - return a list with SLAs for a given month
-- ?period=YYYY - return a list with SLAs for a given year
-
-In all cases all currently running resources are returned, if SLA for the given period is not known or not present, it
-will be shown as **null** in the response.
-
-SLA events
-^^^^^^^^^^
-
-Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
-*/resources/<service_uuid>/events/*. Optionally period can be supplied using the format defined above.
-
-The output contains a list of states and timestamps when the state was reached. The list is sorted in descending order
-by the timestamp.
-
-Example output:
-
-.. code-block:: javascript
-
-    [
-        {
-            "timestamp": 1418043540,
-            "state": "U"
-        },
-        {
-            "timestamp": 1417928550,
-            "state": "D"
-        },
-        {
-            "timestamp": 1417928490,
-            "state": "U"
-        }
-    ]

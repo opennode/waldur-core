@@ -10,7 +10,6 @@ from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
-from nodeconductor.monitoring.filters import MonitoringItemFilterBackend
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -168,9 +167,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     filter_class = filters.InstanceFilter
-    filter_backends = structure_views.BaseResourceViewSet.filter_backends + (
-        MonitoringItemFilterBackend,
-    )
 
     def perform_update(self, serializer):
         super(InstanceViewSet, self).perform_update(serializer)

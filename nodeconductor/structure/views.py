@@ -36,6 +36,7 @@ from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.core.utils import request_api, datetime_to_timestamp
+from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
@@ -1131,7 +1132,12 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_backends = (
+        filters.GenericRoleFilter,
+        core_filters.DjangoMappingFilterBackend,
+        SlaFilter,
+        MonitoringItemFilter
+    )
     filter_class = filters.BaseResourceFilter
     metadata_class = serializers.ResourceProvisioningMetadata
 

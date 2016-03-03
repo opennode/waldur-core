@@ -16,6 +16,7 @@ from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField, TimestampField
+from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -1113,6 +1114,7 @@ class BasicResourceSerializer(serializers.Serializer):
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
+                             MonitoringSerializerMixin,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer)):
@@ -1163,7 +1165,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     class Meta(object):
         model = NotImplemented
         view_name = NotImplemented
-        fields = (
+        fields = MonitoringSerializerMixin.Meta.fields + (
             'url', 'uuid', 'name', 'description', 'start_time',
             'service', 'service_name', 'service_uuid',
             'project', 'project_name', 'project_uuid',
