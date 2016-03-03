@@ -40,10 +40,10 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
         return price_estimate
 
     def get_scope_name(self, obj):
-        return six.text_type(obj.scope)  # respect to unicode
+        return six.text_type(obj.scope or obj.details.get('scope_name'))  # respect to unicode
 
     def get_scope_type(self, obj):
-        return ScopeTypeFilterBackend.get_scope_type(obj)
+        return ScopeTypeFilterBackend.get_scope_type(obj) or obj.details.get('scope_type')
 
 
 class YearMonthField(serializers.CharField):
