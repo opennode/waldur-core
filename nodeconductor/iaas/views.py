@@ -36,7 +36,7 @@ from nodeconductor.iaas import tasks
 from nodeconductor.iaas.serializers import ServiceSerializer
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.quotas import filters as quota_filters
-from nodeconductor.structure import filters as structure_filters
+from nodeconductor.structure import filters as structure_filters, SupportedServices
 from nodeconductor.structure.views import UpdateOnlyByPaidCustomerMixin
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ProjectRole, Project, Customer, ProjectGroup, CustomerRole
@@ -1406,3 +1406,6 @@ class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_backends = (structure_filters.GenericRoleFilter, filters.DjangoFilterBackend)
     filter_class = FloatingIPFilter
+
+
+SupportedServices.register_resource_filter(models.Instance, InstanceFilter)
