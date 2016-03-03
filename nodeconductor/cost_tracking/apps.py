@@ -4,6 +4,7 @@ from django.apps import AppConfig
 from django.db.models import signals
 from django_fsm.signals import post_transition
 
+from nodeconductor.core.handlers import preserve_fields_before_update
 from nodeconductor.cost_tracking import handlers
 from nodeconductor.structure import models as structure_models
 
@@ -76,11 +77,19 @@ class CostTrackingConfig(AppConfig):
                     .format(resource.__name__, index))
             )
 
-            signals.post_save.connect(
-                handlers.update_resource_price_estimate,
+            signals.pre_save.connect(
+                preserve_fields_before_update,
                 sender=resource,
                 dispatch_uid=(
-                    'nodeconductor.cost_tracking.handlers.update_resource_price_estimate_{}_{}'
+                    'nodeconductor.cost_tracking.handlers.preserve_fields_before_update_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
+            signals.post_save.connect(
+                handlers.update_price_estimate_on_resource_spl_change,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.update_price_estimate_on_resource_spl_change_{}_{}'
                     .format(resource.__name__, index))
             )
 

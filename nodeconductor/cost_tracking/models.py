@@ -87,11 +87,13 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
         return scope._meta.model in structure_models.Resource.get_all_models()
 
     def update_from_leaf(self):
+        if self.is_leaf:
+            return
+
         leaf_estimates = list(self.leaf_estimates.all())
-        if leaf_estimates:  # ignore leaf itself
-            self.total = sum(e.total for e in leaf_estimates)
-            self.consumed = sum(e.consumed for e in leaf_estimates)
-            self.save(update_fields=['total', 'consumed'])
+        self.total = sum(e.total for e in leaf_estimates)
+        self.consumed = sum(e.consumed for e in leaf_estimates)
+        self.save(update_fields=['total', 'consumed'])
 
     def update_ancessors(self, force=False):
         for parent in self.scope.get_ancestors():

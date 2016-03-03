@@ -113,9 +113,20 @@ def update_price_estimate_ancessors(sender, instance, created=False, **kwargs):
         instance.update_ancessors()
 
 
-# TODO: cover the case of SPL change
-def update_resource_price_estimate(sender, instance, created=False, **kwargs):
-    pass
+def update_price_estimate_on_resource_spl_change(sender, instance, created=False, **kwargs):
+    if not created and instance.service_project_link_id != instance._old_values['service_project_link']:
+        spl_model = SupportedServices.get_related_models(instance)['service_project_link']
+        spl_old = spl_model.objects.get(pk=instance._old_values['service_project_link'])
+
+        old_family_scope = [spl_old] + spl_old.get_ancestors()
+        for estimate in models.PriceEstimate.filter(scope=instance, is_manually_input=False):
+            qs = models.PriceEstimate.objects.filter(
+                scope__in=old_family_scope, month=estimate.month, year=estimate.year)
+            for parent_estimate in qs:
+                parent_estimate.leaf_estimates.remove(estimate)
+                parent_estimate.update_from_leaf()
+
+        models.PriceEstimate.update_ancessors_for_resource(instance, force=True)
 
 
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
