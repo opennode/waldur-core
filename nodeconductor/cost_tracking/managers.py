@@ -18,7 +18,8 @@ class UserFilterMixin(object):
         for model in self.get_available_models():
             user_object_ids = filter_queryset_for_user(model.objects.all(), user).values_list('id', flat=True)
             content_type_id = ContentType.objects.get_for_model(model).id
-            query |= Q(object_id__in=user_object_ids, content_type_id=content_type_id)
+            # XXX: expose orphan estimates to everybody
+            query |= Q(object_id__in=[0] + list(user_object_ids), content_type_id=content_type_id)
 
         return queryset.filter(query)
 
