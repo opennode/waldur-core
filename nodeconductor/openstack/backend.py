@@ -700,7 +700,7 @@ class OpenStackBackend(ServiceBackend):
 
             # list of nc security groups, that do not exist in openstack
             nonexistent_groups = []
-            # list of nc security groups, that have wrong parameters in in openstack
+            # list of nc security groups, that have wrong parameters in openstack
             unsynchronized_groups = []
             # list of os security groups ids, that exist in openstack and do not exist in nc
             extra_group_ids = backend_security_groups.keys()
