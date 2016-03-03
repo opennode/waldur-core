@@ -63,10 +63,19 @@ class CostTrackingConfig(AppConfig):
 
         for index, resource in enumerate(structure_models.Resource.get_all_models()):
             post_transition.connect(
-                handlers.add_estimate_costs,
+                handlers.add_resource_price_estimate_on_provision,
                 sender=resource,
-                dispatch_uid='nodeconductor.cost_tracking.handlers.add_estimate_costs_{}_{}'.format(
-                    resource.__name__, index),
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.add_resource_price_estimate_on_provision_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
+            signals.post_save.connect(
+                handlers.update_resource_price_estimate,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.update_resource_price_estimate_{}_{}'
+                    .format(resource.__name__, index))
             )
 
         for index, model in enumerate(PriceEstimate.get_estimated_models()):

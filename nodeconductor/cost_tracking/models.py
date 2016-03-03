@@ -20,7 +20,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
 from nodeconductor.cost_tracking import CostTrackingRegister, managers
 from nodeconductor.structure import models as structure_models
-from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 
 
 logger = logging.getLogger(__name__)
@@ -112,6 +112,14 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
                     parent_estimate.update_from_leaf()
 
     @classmethod
+    def update_metadata_for_scope(cls, scope):
+        cls.objects.filter(scope=scope).update(details=dict(
+            scope_name=scope.name,
+            scope_type=SupportedServices.get_name_for_model(scope),
+            scope_backend_id=scope.backend_id,
+        ))
+
+    @classmethod
     def update_price_for_scope(cls, scope):
         # update Resource and re-calculate ancessors
         if cls.is_leaf_scope(scope):
@@ -136,8 +144,6 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
                 estimate.consumed = total if consumed is None else consumed
                 estimate.total = total
                 estimate.save(update_fields=['total', 'consumed'])
-
-            cls.update_ancessors_for_resource(resource)
 
         try:
             cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)

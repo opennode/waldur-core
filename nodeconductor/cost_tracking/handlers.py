@@ -101,17 +101,30 @@ def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
     ).delete()
 
 
-def add_estimate_costs(sender, instance, name=None, source=None, **kwargs):
+def add_resource_price_estimate_on_provision(sender, instance, name=None, source=None, **kwargs):
     if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
         send_task('cost_tracking', 'update_projected_estimate')(
             resource_str=instance.to_string())
 
 
+def update_resource_price_estimate(sender, instance, created=False, **kwargs):
+    # ignore created -- avoid double call from PriceEstimate.update_price_for_resource.update_estimate
+    if not created:
+        models.PriceEstimate.update_ancessors_for_resource(instance)
+
+        # TODO: cover the case of SPL change
+
+
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
-    # if scope is Resource -- delete estimates on unlinking only
+    # if scope is Resource:
+    #    delete -- add metadata about deleted resource
+    #    unlink -- delete all related estimates
     if isinstance(instance, tuple(Resource.get_all_models())):
         if getattr(instance, 'PERFORM_UNLINK', False):
             models.PriceEstimate.delete_estimates_for_resource(instance)
+        else:
+            models.PriceEstimate.update_metadata_for_scope(instance)
+
     # otherwise delete everything in hope of django carrying out DB consistency
     # i.e. higher level scope can only be deleted if there's no any resource in it
     else:
