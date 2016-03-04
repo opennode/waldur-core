@@ -25,12 +25,8 @@ class IaasConfig(AppConfig):
         CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
 
         from nodeconductor.iaas.backend import OpenStackBackend
-        from nodeconductor.iaas.serializers import InstanceSerializer
-        from nodeconductor.iaas.views import InstanceFilter
         SupportedServices.register_backend(OpenStackBackend)
         SupportedServices.register_service(Cloud)
-        SupportedServices.register_resource_serializer(Instance, InstanceSerializer)
-        SupportedServices.register_resource_filter(Instance, InstanceFilter)
 
         signals.post_save.connect(
             quotas_handlers.add_quotas_to_scope,
