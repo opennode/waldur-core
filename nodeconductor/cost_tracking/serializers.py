@@ -4,7 +4,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import six
 from rest_framework import serializers
 
-from nodeconductor.core.fields import JsonField
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
@@ -15,11 +14,10 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
     scope = GenericRelatedField(related_models=models.PriceEstimate.get_editable_estimated_models())
     scope_name = serializers.SerializerMethodField()
     scope_type = serializers.SerializerMethodField()
-    details = JsonField(read_only=True)
 
     class Meta(object):
         model = models.PriceEstimate
-        fields = ('url', 'uuid', 'scope', 'total', 'details', 'month', 'year',
+        fields = ('url', 'uuid', 'scope', 'total', 'consumed', 'month', 'year',
                   'is_manually_input', 'scope_name', 'scope_type')
         read_only_fields = ('is_manually_input',)
         extra_kwargs = {
