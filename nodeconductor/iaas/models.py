@@ -581,6 +581,6 @@ class IpMapping(core_models.UuidMixin, models.Model):
         customer_path = 'project__customer'
         project_group_path = 'project__project_groups'
 
-    public_ip = models.IPAddressField(null=False)
-    private_ip = models.IPAddressField(null=False)
+    public_ip = models.GenericIPAddressField(null=False)
+    private_ip = models.GenericIPAddressField(null=False)
     project = models.ForeignKey(structure_models.Project, related_name='ip_mappings')

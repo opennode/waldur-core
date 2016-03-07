@@ -16,13 +16,11 @@ DATABASES = {
 }
 
 INSTALLED_APPS += (
-    'kombu.transport.django',  # Needed for broker backend
-    'djcelery',  # Needed for result backend,
     'nodeconductor.quotas.tests',
 )
 
-BROKER_URL = 'django://'
-CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
+BROKER_URL = 'sqla+sqlite:///:memory:'
+CELERY_RESULT_BACKEND = 'db+sqlite:///:memory:'
 
 NODECONDUCTOR.update({
     'MONITORING': {

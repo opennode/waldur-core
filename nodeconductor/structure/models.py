@@ -904,8 +904,7 @@ class Resource(MonitoringModelMixin,
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED,
         choices=States.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
-        max_length=1)
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     def get_backend(self, **kwargs):
         return self.service_project_link.get_backend(**kwargs)

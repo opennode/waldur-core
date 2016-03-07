@@ -12,150 +12,7 @@ import django.core.validators
 import model_utils.fields
 import nodeconductor.core.validators
 
-from uuid import uuid4
 from django.db import models, migrations
-from django.db.models import Count
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
-
-from keystoneclient.exceptions import ClientException
-from neutronclient.common.exceptions import NeutronClientException
-
-from nodeconductor.iaas.backend import OpenStackBackend
-
-
-RESOURCE_COUNT_QUOTA = 'nc_resource_count'
-
-
-# nodeconductor.iaas.migrations.0015_cloudprojectmembership_internal_network_id
-def populate_internal_network(apps, schema_editor):
-    # check if such a network already exists, if so -- use it instead
-    CloudProjectMembership = apps.get_model("iaas", "CloudProjectMembership")
-    db_alias = schema_editor.connection.alias
-
-    def get_tenant_name(membership):
-        return '{0}-{1}'.format(membership.project.uuid.hex, membership.project.name)
-
-    openstack = OpenStackBackend()
-    for cpm in CloudProjectMembership.objects.using(db_alias).filter(internal_network_id='').iterator():
-        network_name = get_tenant_name(cpm)
-        network_lookup = {
-            'name': network_name,
-            'tenant_id': cpm.tenant_id,
-        }
-        try:
-            session = openstack.create_tenant_session(cpm)
-            neutron = openstack.create_neutron_client(session)
-
-            networks_by_name = neutron.list_networks(**network_lookup)['networks']
-            network_id = networks_by_name[0]['id']
-        except (ClientException, NeutronClientException, KeyError):
-            network_id = 'ERROR-API'
-        except IndexError:
-            network_id = 'ERROR-NOT-FOUND'
-        else:
-            if len(networks_by_name) > 1:
-                network_id = 'ERROR-TOO-MANY'
-
-        cpm.internal_network_id = network_id
-        cpm.save()
-
-
-# nodeconductor.iaas.migrations.0017_init_new_quotas
-def init_quotas(apps, schema_editor):
-    quotas_names = ['vcpu', 'ram', 'storage', 'max_instances']
-
-    # create quotas:
-    Membership = apps.get_model('iaas', 'CloudProjectMembership')
-    Quota = apps.get_model("quotas", 'Quota')
-    Project = apps.get_model('structure', 'Project')
-    cpm_ct = ContentType.objects.get_for_model(Membership)
-    project_ct = ContentType.objects.get_for_model(Project)
-
-    for membership in Membership.objects.all():
-        for quota_name in quotas_names:
-            if not Quota.objects.filter(name=quota_name, content_type_id=cpm_ct.id, object_id=membership.id).exists():
-                Quota.objects.create(
-                    uuid=uuid4().hex, name=quota_name, content_type_id=cpm_ct.id, object_id=membership.id)
-
-    for project in Project.objects.all():
-        for quota_name in quotas_names:
-            if not Quota.objects.filter(name=quota_name, content_type_id=project_ct.id, object_id=project.id).exists():
-                Quota.objects.create(
-                    uuid=uuid4().hex, name=quota_name, content_type_id=project_ct.id, object_id=project.id)
-
-    # initiate quotas:
-    for membership in Membership.objects.all():
-        project = membership.project
-        try:
-            resource_quota = membership.resource_quota
-            for quota_name in quotas_names:
-                membership_quota = Quota.objects.get(
-                    content_type_id=cpm_ct.id, object_id=membership.id, name=quota_name)
-                membership_quota.limit = getattr(resource_quota, quota_name)
-                membership_quota.save()
-        except ObjectDoesNotExist:
-            pass
-
-        try:
-            resource_quota_usage = membership.resource_quota_usage
-            for quota_name in quotas_names:
-                membership_quota = Quota.objects.get(
-                    content_type_id=cpm_ct.id, object_id=membership.id, name=quota_name)
-                membership_quota.usage = getattr(resource_quota_usage, quota_name)
-                membership_quota.save()
-                project_quota = Quota.objects.get(content_type_id=project_ct.id, object_id=project.id, name=quota_name)
-                project_quota.usage += membership_quota.usage
-                project_quota.save()
-        except ObjectDoesNotExist:
-            pass
-
-
-# nodeconductor.iaas.migrations.0024_init_customers_nc_instances_quota
-def init_customers_nc_instances_quota(apps, schema_editor):
-    Customer = apps.get_model('structure', 'Customer')
-    Quota = apps.get_model('quotas', 'Quota')
-    ContentType = apps.get_model('contenttypes', 'ContentType')
-
-    # sometimes django does not initiate customer content type, so we need update content types manually
-    # update_all_contenttypes()
-    customer_ct = ContentType.objects.get(app_label='structure', model='customer')
-    customer_qs = Customer.objects.all()
-    customer_qs = customer_qs.annotate(
-        instance_count=Count('projects__cloudprojectmembership__instances', distinct=True),
-    )
-
-    for customer in customer_qs.iterator():
-        Quota.objects.create(
-            # We need to add UUID explicitly, because django ignores auto=True parameter in migration UUID field
-            uuid=uuid4().hex,
-            name=RESOURCE_COUNT_QUOTA,
-            content_type=customer_ct,
-            object_id=customer.pk,
-            usage=customer.instance_count,
-        )
-
-
-# nodeconductor.iaas.migrations.0037_init_security_groups_quotas
-def init_quotas2(apps, schema_editor):
-    quotas_names = ['security_group_count', 'security_group_rule_count']
-
-    # create quotas:
-    Membership = apps.get_model('iaas', 'CloudProjectMembership')
-    Quota = apps.get_model("quotas", 'Quota')
-    cpm_ct = ContentType.objects.get_for_model(Membership)
-
-    for membership in Membership.objects.all():
-        for quota_name in quotas_names:
-            if not Quota.objects.filter(name=quota_name, content_type_id=cpm_ct.id, object_id=membership.id).exists():
-                Quota.objects.create(
-                    uuid=uuid4().hex, name=quota_name, content_type_id=cpm_ct.id, object_id=membership.id)
-
-
-# nodeconductor.iaas.migrations.0038_securitygroup_state
-def mark_security_groups_as_synced(apps, schema_editor):
-    SecurityGroup = apps.get_model('iaas', 'SecurityGroup')
-    SecurityGroup.objects.all().update(state=3)
 
 
 class Migration(migrations.Migration):
@@ -164,7 +21,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('contenttypes', '0001_initial'),
-        ('structure', '0015_drop_service_polymorphic'),
+        ('structure', '__latest__'),
         ('template', '0004_upgrate_polymorphic_package'),
         ('cost_tracking', '__latest__'),
     ]
@@ -303,7 +160,7 @@ class Migration(migrations.Migration):
                 ('external_ips', models.GenericIPAddressField(null=True, protocol='IPv4', blank=True)),
                 ('internal_ips', models.GenericIPAddressField(null=True, protocol='IPv4', blank=True)),
                 ('start_time', models.DateTimeField(null=True, blank=True)),
-                ('state', django_fsm.FSMIntegerField(default=1, help_text='WARNING! Should not be changed manually unless you really know what you are doing.', max_length=1, choices=[(1, 'Provisioning Scheduled'), (2, 'Provisioning'), (3, 'Online'), (4, 'Offline'), (5, 'Starting Scheduled'), (6, 'Starting'), (7, 'Stopping Scheduled'), (8, 'Stopping'), (9, 'Erred'), (10, 'Deletion Scheduled'), (11, 'Deleting'), (13, 'Resizing Scheduled'), (14, 'Resizing'), (15, 'Restarting Scheduled'), (16, 'Restarting')])),
+                ('state', django_fsm.FSMIntegerField(default=1, help_text='WARNING! Should not be changed manually unless you really know what you are doing.', choices=[(1, 'Provisioning Scheduled'), (2, 'Provisioning'), (3, 'Online'), (4, 'Offline'), (5, 'Starting Scheduled'), (6, 'Starting'), (7, 'Stopping Scheduled'), (8, 'Stopping'), (9, 'Erred'), (10, 'Deletion Scheduled'), (11, 'Deleting'), (13, 'Resizing Scheduled'), (14, 'Resizing'), (15, 'Restarting Scheduled'), (16, 'Restarting')])),
                 ('cores', models.PositiveSmallIntegerField(help_text='Number of cores in a VM')),
                 ('ram', models.PositiveIntegerField(help_text='Memory size in MiB')),
                 ('flavor_name', models.CharField(max_length=255, blank=True)),
@@ -371,8 +228,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
-                ('public_ip', models.IPAddressField()),
-                ('private_ip', models.IPAddressField()),
+                ('public_ip', models.GenericIPAddressField()),
+                ('private_ip', models.GenericIPAddressField()),
                 ('project', models.ForeignKey(related_name='ip_mappings', to='structure.Project')),
             ],
             options={
@@ -479,30 +336,5 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'OpenStack settings',
             },
             bases=(models.Model,),
-        ),
-        migrations.RunPython(
-            code=populate_internal_network,
-            reverse_code=None,
-            atomic=True,
-        ),
-        migrations.RunPython(
-            code=init_quotas,
-            reverse_code=None,
-            atomic=True,
-        ),
-        migrations.RunPython(
-            code=init_customers_nc_instances_quota,
-            reverse_code=None,
-            atomic=True,
-        ),
-        migrations.RunPython(
-            code=init_quotas2,
-            reverse_code=None,
-            atomic=True,
-        ),
-        migrations.RunPython(
-            code=mark_security_groups_as_synced,
-            reverse_code=None,
-            atomic=True,
         ),
     ]
