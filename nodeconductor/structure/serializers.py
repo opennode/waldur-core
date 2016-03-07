@@ -1440,7 +1440,8 @@ class ResourceActionsMetadata(SimpleMetadata):
         return self._get_action_attr(view, action, 'destructive', False)
 
     def get_action_title(self, view, action):
-        return self._get_action_attr(view, action, 'title', action.title())
+        return self._get_action_attr(view, action, 'title') or \
+               action.replace('_', ' ').title()
 
     def get_action_fields(self, view, action):
         serializer_class = self._get_action_attr(view, action, 'serializer_class')
