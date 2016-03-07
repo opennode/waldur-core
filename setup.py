@@ -24,6 +24,7 @@ install_requires = [
     'django-filter==0.10',
     'django-fluent-dashboard==0.5.1',
     'django-fsm==2.2.0',
+    'django-gm2m==0.3',
     'django-model-utils==2.2',
     'django-permission==0.8.2',
     'django-polymorphic>=0.7',

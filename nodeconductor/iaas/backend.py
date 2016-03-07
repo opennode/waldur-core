@@ -340,7 +340,7 @@ class OpenStackBackend(OpenStackClient):
         from nodeconductor.openstack.models import Instance as opInstance
 
         # XXX: avoid overcharge for resources migrated from IaaS to OpenStack
-        if opInstance.object.filter(uuid=instance.uuid).exists():
+        if opInstance.objects.filter(uuid=instance.uuid).exists():
             raise ServiceBackendNotImplemented
 
         try:

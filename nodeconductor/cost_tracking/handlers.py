@@ -11,12 +11,6 @@ from nodeconductor.structure import SupportedServices
 logger = logging.getLogger('nodeconductor.cost_tracking')
 
 
-def add_estimate_costs(sender, instance, name=None, source=None, **kwargs):
-    if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
-        send_task('cost_tracking', 'update_projected_estimate')(
-            resource_uuid=instance.uuid.hex)
-
-
 def make_autocalculate_price_estimate_invisible_on_manual_estimate_creation(sender, instance, created=False, **kwargs):
     if created and instance.is_manually_input:
         manually_created_price_estimate = instance
@@ -107,16 +101,51 @@ def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
     ).delete()
 
 
+def add_resource_price_estimate_on_provision(sender, instance, name=None, source=None, **kwargs):
+    if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
+        send_task('cost_tracking', 'update_projected_estimate')(
+            resource_str=instance.to_string())
+
+
+def update_price_estimate_ancestors(sender, instance, created=False, **kwargs):
+    # ignore created -- avoid double call from PriceEstimate.update_price_for_resource.update_estimate
+    if not created and instance.is_leaf:
+        instance.update_ancestors()
+
+
+def update_price_estimate_on_resource_spl_change(sender, instance, created=False, **kwargs):
+    try:
+        # XXX: drop support of IaaS app
+        is_changed = not created and instance.service_project_link_id != instance._old_values['service_project_link']
+    except AttributeError:
+        is_changed = False
+
+    if is_changed:
+        spl_model = SupportedServices.get_related_models(instance)['service_project_link']
+        spl_old = spl_model.objects.get(pk=instance._old_values['service_project_link'])
+
+        old_family_scope = [spl_old] + spl_old.get_ancestors()
+        for estimate in models.PriceEstimate.filter(scope=instance, is_manually_input=False):
+            qs = models.PriceEstimate.objects.filter(
+                scope__in=old_family_scope, month=estimate.month, year=estimate.year)
+            for parent_estimate in qs:
+                parent_estimate.leaf_estimates.remove(estimate)
+                parent_estimate.update_from_leaf()
+
+        models.PriceEstimate.update_ancestors_for_resource(instance, force=True)
+
+
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
+    # if scope is Resource:
+    #    delete -- add metadata about deleted resource
+    #    unlink -- delete all related estimates
     if isinstance(instance, tuple(Resource.get_all_models())):
-        is_unlink = getattr(instance, 'PERFORM_UNLINK', False)
-        if is_unlink:
-            models.PriceEstimate.update_price_for_resource(instance, delete=True)
-            return
+        if getattr(instance, 'PERFORM_UNLINK', False):
+            models.PriceEstimate.delete_estimates_for_resource(instance)
+        else:
+            models.PriceEstimate.update_metadata_for_scope(instance)
 
-    estimates = models.PriceEstimate.objects.filter(scope=instance)
-    # Set estimates total to zero before deletion - to update ancestors estimate
-    for estimate in estimates.filter(is_manually_input=False):
-        models.PriceEstimate.update_price_for_scope(instance, month=estimate.month, year=estimate.year, total=0)
-
-    estimates.delete()
+    # otherwise delete everything in hope of django carrying out DB consistency
+    # i.e. higher level scope can only be deleted if there's no any resource in it
+    else:
+        models.PriceEstimate.objects.filter(scope=instance).delete()
