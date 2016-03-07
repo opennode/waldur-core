@@ -2,12 +2,24 @@ from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
 from django.utils import six
+from gm2m.relations import GM2MTo
 from rest_framework import serializers
+from rest_framework.utils import model_meta
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
+
+
+# XXX: hackish monkey patch for DRF in order to work with GM2M fields
+def _resolve_model(obj):
+    if isinstance(obj, GM2MTo):
+        return None
+    return model_meta._old_resolve_model(obj)
+
+model_meta._old_resolve_model = model_meta._resolve_model
+model_meta._resolve_model = _resolve_model
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -17,7 +29,7 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
 
     class Meta(object):
         model = models.PriceEstimate
-        fields = ('url', 'uuid', 'scope', 'total', 'details', 'month', 'year',
+        fields = ('url', 'uuid', 'scope', 'total', 'consumed', 'month', 'year',
                   'is_manually_input', 'scope_name', 'scope_type')
         read_only_fields = ('is_manually_input',)
         extra_kwargs = {
@@ -38,10 +50,10 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
         return price_estimate
 
     def get_scope_name(self, obj):
-        return six.text_type(obj.scope)  # respect to unicode
+        return six.text_type(obj.scope or obj.details.get('scope_name'))  # respect to unicode
 
     def get_scope_type(self, obj):
-        return ScopeTypeFilterBackend.get_scope_type(obj)
+        return ScopeTypeFilterBackend.get_scope_type(obj) or obj.details.get('scope_type')
 
 
 class YearMonthField(serializers.CharField):

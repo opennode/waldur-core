@@ -368,13 +368,17 @@ class SerializableAbstractMixin(object):
                 continue
 
 
+# XXX: consider renaming it to AffinityMixin
 class DescendantMixin(object):
     """ Mixin to provide child-parent relationships.
-
-    Each descendant model can provide list of its parents.
+        Each related model can provide list of its parents/children.
     """
     def get_parents(self):
         """ Return list instance parents. """
+        return []
+
+    def get_children(self):
+        """ Return list instance children. """
         return []
 
     def get_ancestors(self):
@@ -387,6 +391,14 @@ class DescendantMixin(object):
                 if (parent.__class__, parent.id) not in ancestor_unique_attributes:
                     ancestors.append(parent)
         return ancestors
+
+    def get_descendants(self):
+        def traverse(obj):
+            for child in obj.get_children():
+                yield child
+                for baby in child.get_descendants():
+                    yield baby
+        return list(set(traverse(self)))
 
 
 class AbstractFieldTracker(FieldTracker):
