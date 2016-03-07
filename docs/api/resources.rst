@@ -82,7 +82,7 @@ SLA events
 ^^^^^^^^^^
 
 Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
-*/api/monitoring-events/*.
+*/api/resource-sla-state-transition/*.
 
 Supported query arguments:
 
@@ -138,6 +138,7 @@ You may filter or order resources by monitoring item.
 OpenStack resources list
 ------------------------
 
+Deprecated. Use filtering by SLA against **api/resources** endpoint.
 Use */api/iaas-resources/* to get a list of all the resources that a user can see.
 Only resources that have agreed and actual SLA values are shown.
 
