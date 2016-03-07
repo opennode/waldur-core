@@ -4,20 +4,11 @@ from __future__ import unicode_literals
 from django.db import models, migrations
 import gm2m.fields
 
-from nodeconductor.structure.models import Resource
-from nodeconductor.cost_tracking.models import PriceEstimate
-
-
-def update_price_estimate_relations(apps, schema_editor):
-    for model in Resource.get_all_models():
-        for resource in model.objects.all():
-            PriceEstimate.update_ancestors_for_resource(resource, force=True)
-
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0032_make_options_optional'),
+        ('structure', '__latest__'),
         ('contenttypes', '0001_initial'),
         ('cost_tracking', '0015_defaultpricelistitem_metadata'),
     ]
@@ -47,5 +38,4 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(related_name='+', to='contenttypes.ContentType', null=True),
             preserve_default=True,
         ),
-        migrations.RunPython(update_price_estimate_relations),
     ]

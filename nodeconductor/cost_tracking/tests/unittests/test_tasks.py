@@ -51,7 +51,7 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
         update_projected_estimate(customer_uuid=self.customer.uuid.hex)
 
         reread_estimate = PriceEstimate.objects.get(id=estimate.id)
-        self.assertEqual(reread_estimate.total, self.INSTANCE_MONTHLY_COST * 2 + customer_total)
+        self.assertEqual(reread_estimate.total, self.INSTANCE_MONTHLY_COST * 2)
 
     def test_estimate_calculation_for_current_month_if_instance_already_has_estimate(self):
         now = timezone.now()

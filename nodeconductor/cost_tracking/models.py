@@ -96,21 +96,20 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
         self.consumed = sum(e.consumed for e in leaf_estimates)
         self.save(update_fields=['total', 'consumed'])
 
-    def update_ancestors(self, force=False):
+    def update_ancestors(self):
         for parent in self.scope.get_ancestors():
             parent_estimate, created = self.__class__.objects.get_or_create(
                 object_id=parent.id,
                 content_type=ContentType.objects.get_for_model(parent),
                 month=self.month, year=self.year)
-            if created or force:
-                if self.is_leaf:
-                    parent_estimate.leaf_estimates.add(self)
+            if self.is_leaf:
+                parent_estimate.leaf_estimates.add(self)
             parent_estimate.update_from_leaf()
 
     @classmethod
-    def update_ancestors_for_resource(cls, resource, force=False):
+    def update_ancestors_for_resource(cls, resource):
         for estimate in cls.objects.filter(scope=resource, is_manually_input=False):
-            estimate.update_ancestors(force=force)
+            estimate.update_ancestors()
 
     @classmethod
     def delete_estimates_for_resource(cls, resource):
@@ -147,7 +146,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
     def update_price_for_resource(cls, resource):
 
         @transaction.atomic
-        def update_estimate(month, year, total, consumed=None, update_if_exists=False):
+        def update_estimate(month, year, total, consumed=None, update_if_exists=True):
             estimate, created = cls.objects.get_or_create(
                 object_id=resource.id,
                 content_type=ContentType.objects.get_for_model(resource),

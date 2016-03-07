@@ -12,7 +12,7 @@ def update_projected_estimate(customer_uuid=None, resource_str=None):
 
     if resource_str:
         resource = next(Resource.from_string(resource_str))
-        PriceEstimate.update_price_for_scope(resource)
+        PriceEstimate.update_price_for_resource(resource)
 
     else:
         # XXX: it's quite inefficient -- will update ancestors many times
