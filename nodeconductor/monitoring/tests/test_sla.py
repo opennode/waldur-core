@@ -63,7 +63,7 @@ class EventsTest(BaseMonitoringTest):
         ResourceSlaStateTransition.objects.create(scope=self.vm1, period=period, timestamp=timestamp, state=True)
         ResourceSlaStateTransition.objects.create(scope=self.vm2, period=period, timestamp=timestamp, state=False)
 
-        self.url = reverse('monitoring-event-list')
+        self.url = reverse('resource-sla-state-transition-list')
 
     def test_scope_filter(self):
         vm1_url = InstanceFactory.get_url(self.vm1)
@@ -77,7 +77,7 @@ class EventsTest(BaseMonitoringTest):
         self.assertEqual('D', response.data[0]['state'])
 
     def test_period_filter(self):
-        url = reverse('monitoring-event-list')
+        url = reverse('resource-sla-state-transition-list')
 
         today = datetime.date.today()
         invalid_date = today + datetime.timedelta(days=100)
