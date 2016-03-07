@@ -9,7 +9,8 @@ from django.conf import settings
 from django.utils import six
 from django.utils.encoding import force_text
 from django.utils.lru_cache import lru_cache
-from rest_framework import exceptions, metadata, serializers
+from rest_framework import exceptions, serializers
+from rest_framework.metadata import SimpleMetadata
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import serializers as core_serializers
@@ -1161,6 +1162,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.SerializerMethodField()
     access_url = serializers.SerializerMethodField()
+    actions = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -1172,7 +1174,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url',
+            'access_url', 'actions'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1203,6 +1205,38 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     # an optional generic URL for accessing a resource
     def get_access_url(self, obj):
         return obj.get_access_url()
+
+    def get_actions(self, obj):
+        actions = []
+
+        enabled = obj.state in (models.Resource.States.OFFLINE, models.Resource.States.ERRED)
+        action = {'name': 'destroy', 'enabled': enabled}
+        if not enabled:
+            action['reason'] = 'Action available in offline or erred state only'
+        actions.append(action)
+
+        action = {'name': 'unlink', 'enabled': True}
+        actions.append(action)
+
+        enabled = obj.state == models.Resource.States.OFFLINE
+        action = {'name': 'start', 'enabled': enabled}
+        if not enabled:
+            action['reason'] = 'Action available in offline state only'
+        actions.append(action)
+
+        enabled = obj.state == models.Resource.States.ONLINE
+        action = {'name': 'stop', 'enabled': enabled}
+        if not enabled:
+            action['reason'] = 'Action available in online state only'
+        actions.append(action)
+
+        enabled = obj.state == models.Resource.States.ONLINE
+        action = {'name': 'restart', 'enabled': enabled}
+        if not enabled:
+            action['reason'] = 'Action available in online state only'
+        actions.append(action)
+
+        return actions
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1370,12 +1404,68 @@ class AggregateSerializer(serializers.Serializer):
                 for model in ServiceProjectLink.get_all_models()]
 
 
-class ResourceProvisioningMetadata(metadata.SimpleMetadata):
+class ResourceActionsMetadata(SimpleMetadata):
     """
     Difference from SimpleMetadata class:
     1) Skip read-only fields, because options are used only for provisioning new resource.
     2) Don't expose choices for fields with queryset in order to reduce size of response.
+    3) Attach actions metadata
     """
+    def __init__(self):
+        self.label_lookup[serializers.HyperlinkedRelatedField] = 'select_url'
+
+    def determine_metadata(self, request, view):
+        self.request = request
+        metadata = OrderedDict()
+        metadata['name'] = view.get_view_name()
+        if hasattr(view, 'get_serializer'):
+            actions = self.determine_actions(request, view)
+            if actions:
+                metadata['actions'] = actions
+        metadata['$actions'] = self.get_actions_metadata(view, request)
+        return metadata
+
+    def get_actions_metadata(self, view, request):
+        actions = OrderedDict()
+        for action in view.actions:
+            actions[action] = {
+                'title': self.get_action_title(view, action),
+                'method': self.get_action_method(view, action),
+                'confirm': self.get_action_confirm(view, action),
+                'url': '%s{uuid}/%s/' % (request.build_absolute_uri(), action)
+            }
+            fields = self.get_action_fields(view, action)
+            if fields is None:
+                actions[action]['type'] = 'button'
+            else:
+                actions[action]['type'] = 'form'
+                actions[action]['fields'] = fields
+        return actions
+
+    def get_action_confirm(self, view, action):
+        return self._get_action_attr(view, action, 'confirm', False)
+
+    def get_action_title(self, view, action):
+        return self._get_action_attr(view, action, 'title', action.title())
+
+    def get_action_fields(self, view, action):
+        serializer_class = self._get_action_attr(view, action, 'serializer_class')
+        if serializer_class:
+            fields = serializer_class._declared_fields.items()
+            return OrderedDict([
+                (field_name, self.get_field_info(field))
+                for field_name, field in fields if field
+            ])
+
+    def get_action_method(self, view, action):
+        return self._get_action_attr(view, action, 'method', 'POST')
+
+    def _get_action_attr(self, view, action, attr, default=None):
+        try:
+            return getattr(getattr(view, action), attr)
+        except AttributeError:
+            return default
+
     def get_serializer_info(self, serializer):
         """
         Given an instance of a serializer, return a dictionary of metadata
@@ -1385,11 +1475,12 @@ class ResourceProvisioningMetadata(metadata.SimpleMetadata):
             # If this is a `ListSerializer` then we want to examine the
             # underlying child serializer instance instead.
             serializer = serializer.child
-        return OrderedDict([
-            (field_name, self.get_field_info(field))
-            for field_name, field in serializer.fields.items()
-            if not getattr(field, 'read_only', False)
-        ])
+        fields = OrderedDict()
+        for field_name, field in serializer.fields.items():
+            info = self.get_field_info(field)
+            if info:
+                fields[field_name] = info
+        return fields
 
     def get_field_info(self, field):
         """
@@ -1403,7 +1494,7 @@ class ResourceProvisioningMetadata(metadata.SimpleMetadata):
         attrs = [
             'read_only', 'label', 'help_text',
             'min_length', 'max_length',
-            'min_value', 'max_value'
+            'min_value', 'max_value', 'many'
         ]
 
         for attr in attrs:
@@ -1411,8 +1502,16 @@ class ResourceProvisioningMetadata(metadata.SimpleMetadata):
             if value is not None and value != '':
                 field_info[attr] = force_text(value, strings_only=True)
 
-        if not field_info.get('read_only') and hasattr(field, 'choices') \
-           and not hasattr(field, 'queryset'):
+        if 'read_only' in field_info:
+            if field_info['read_only']:
+                return None
+            del field_info['read_only']
+
+        if isinstance(field, serializers.HyperlinkedRelatedField):
+            list_view = field.view_name.replace('-detail', '-list')
+            field_info['url'] = reverse(list_view, request=self.request)
+
+        if hasattr(field, 'choices') and not hasattr(field, 'queryset'):
             field_info['choices'] = [
                 {
                     'value': choice_value,

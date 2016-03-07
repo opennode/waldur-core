@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework import serializers
 
-from nodeconductor.structure.serializers import ResourceProvisioningMetadata
+from nodeconductor.structure.serializers import ResourceActionsMetadata
 
 
 class ResourceProvisioningMetadataTest(TestCase):
@@ -25,7 +25,7 @@ class ResourceProvisioningMetadataTest(TestCase):
         return VirtualMachineSerializer()
 
     def test_read_only_options_are_skipped(self):
-        options = ResourceProvisioningMetadata()
+        options = ResourceActionsMetadata()
 
         serializer = self.get_serializer()
         serializer_info = options.get_serializer_info(serializer)
@@ -34,7 +34,7 @@ class ResourceProvisioningMetadataTest(TestCase):
         self.assertNotIn('name', serializer_info)
 
     def test_choices_for_related_fields_are_not_exposed(self):
-        options = ResourceProvisioningMetadata()
+        options = ResourceActionsMetadata()
 
         serializer = self.get_serializer()
         serializer_info = options.get_serializer_info(serializer)

@@ -589,7 +589,7 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         queryset=models.Flavor.objects.all(),
         required=False,
     )
-    disk_size = serializers.IntegerField(min_value=1, required=False)
+    disk_size = serializers.IntegerField(min_value=1, required=False, label='Disk size')
 
     def __init__(self, instance, *args, **kwargs):
         self.resized_instance = instance

@@ -1139,7 +1139,8 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         MonitoringItemFilter
     )
     filter_class = filters.BaseResourceFilter
-    metadata_class = serializers.ResourceProvisioningMetadata
+    metadata_class = serializers.ResourceActionsMetadata
+    actions = ['destroy', 'unlink', 'start', 'stop', 'restart']
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
@@ -1234,6 +1235,8 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     def destroy(self, request, resource, uuid=None):
         self.perform_managed_resource_destroy(
             resource, force=resource.state == models.Resource.States.ERRED)
+    destroy.method = 'DELETE'
+    destroy.confirm = True
 
     @detail_route(methods=['post'])
     @safe_operation()
@@ -1241,6 +1244,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         # XXX: add special attribute to an instance in order to be tracked by signal handler
         setattr(resource, 'PERFORM_UNLINK', True)
         self.perform_destroy(resource)
+    unlink.confirm = True
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.OFFLINE)
