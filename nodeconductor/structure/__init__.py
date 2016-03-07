@@ -164,6 +164,17 @@ class SupportedServices(object):
         return cls._registry[key]['resources'][model_str]['filter']
 
     @classmethod
+    def get_resource_view(cls, model):
+        from django.core.urlresolvers import resolve
+
+        key = cls.get_model_key(model)
+        model_str = cls._get_model_str(model)
+        view_name = cls._registry[key]['resources'][model_str]['list_view']
+        path = reverse(view_name)
+        match = resolve(path)
+        return match.func.cls
+
+    @classmethod
     def get_services_with_resources(cls, request=None):
         """ Get a list of services and resources endpoints.
             {

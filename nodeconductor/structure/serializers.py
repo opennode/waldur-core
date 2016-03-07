@@ -10,6 +10,7 @@ from django.utils import six
 from django.utils.encoding import force_text
 from django.utils.lru_cache import lru_cache
 from rest_framework import exceptions, serializers
+from rest_framework.exceptions import APIException
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.reverse import reverse
 
@@ -22,7 +23,7 @@ from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ServiceProjectLink
-
+from nodeconductor.structure.utils import check_operation
 
 User = auth.get_user_model()
 
@@ -1208,33 +1209,31 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_actions(self, obj):
         actions = []
+        user = self.context['user']
 
-        enabled = obj.state in (models.Resource.States.OFFLINE, models.Resource.States.ERRED)
-        action = {'name': 'destroy', 'enabled': enabled}
-        if not enabled:
-            action['reason'] = 'Action available in offline or erred state only'
-        actions.append(action)
+        def get_action(name, valid_state=None):
+            enabled = True
+            reason = None
+            try:
+                check_operation(user, obj, name, valid_state)
+            except APIException as e:
+                enabled = False
+                reason = six.text_type(e)
+            return {
+                'name': name,
+                'enabled': enabled,
+                'reason': reason
+            }
 
-        action = {'name': 'unlink', 'enabled': True}
-        actions.append(action)
+        view = SupportedServices.get_resource_view(self.Meta.model)
+        for action in view.actions:
+            valid_state = None
 
-        enabled = obj.state == models.Resource.States.OFFLINE
-        action = {'name': 'start', 'enabled': enabled}
-        if not enabled:
-            action['reason'] = 'Action available in offline state only'
-        actions.append(action)
-
-        enabled = obj.state == models.Resource.States.ONLINE
-        action = {'name': 'stop', 'enabled': enabled}
-        if not enabled:
-            action['reason'] = 'Action available in online state only'
-        actions.append(action)
-
-        enabled = obj.state == models.Resource.States.ONLINE
-        action = {'name': 'restart', 'enabled': enabled}
-        if not enabled:
-            action['reason'] = 'Action available in online state only'
-        actions.append(action)
+            try:
+                valid_state = getattr(view, action).valid_state
+            except AttributeError:
+                pass
+            actions.append(get_action(action, valid_state))
 
         return actions
 
@@ -1417,12 +1416,8 @@ class ResourceActionsMetadata(SimpleMetadata):
     def determine_metadata(self, request, view):
         self.request = request
         metadata = OrderedDict()
-        metadata['name'] = view.get_view_name()
-        if hasattr(view, 'get_serializer'):
-            actions = self.determine_actions(request, view)
-            if actions:
-                metadata['actions'] = actions
-        metadata['$actions'] = self.get_actions_metadata(view, request)
+        metadata['actions'] = self.get_actions_metadata(view, request)
+        metadata['actions'].update(self.determine_actions(request, view))
         return metadata
 
     def get_actions_metadata(self, view, request):
@@ -1431,8 +1426,7 @@ class ResourceActionsMetadata(SimpleMetadata):
             actions[action] = {
                 'title': self.get_action_title(view, action),
                 'method': self.get_action_method(view, action),
-                'confirm': self.get_action_confirm(view, action),
-                'url': '%s{uuid}/%s/' % (request.build_absolute_uri(), action)
+                'destructive': self.is_action_destructive(view, action),
             }
             fields = self.get_action_fields(view, action)
             if fields is None:
@@ -1442,8 +1436,8 @@ class ResourceActionsMetadata(SimpleMetadata):
                 actions[action]['fields'] = fields
         return actions
 
-    def get_action_confirm(self, view, action):
-        return self._get_action_attr(view, action, 'confirm', False)
+    def is_action_destructive(self, view, action):
+        return self._get_action_attr(view, action, 'destructive', False)
 
     def get_action_title(self, view, action):
         return self._get_action_attr(view, action, 'title', action.title())

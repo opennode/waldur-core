@@ -2,7 +2,9 @@ import collections
 
 from django.contrib.auth import get_user_model
 import requests
+from rest_framework.exceptions import PermissionDenied
 
+from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.models import SshPublicKey
 
 
@@ -58,3 +60,21 @@ def get_coordinates_by_ip(ip_address):
     else:
         params = (url, response.status_code, response.text)
         raise GeoIpException("Request to geoip API %s failed: %s %s" % params)
+
+
+def check_operation(user, resource, operation_name, valid_state=None):
+    from nodeconductor.structure import models
+
+    project = resource.service_project_link.project
+    is_admin = project.has_user(user, models.ProjectRole.ADMINISTRATOR) \
+        or project.customer.has_user(user, models.CustomerRole.OWNER)
+
+    if not is_admin and not user.is_staff:
+        raise PermissionDenied(
+            "Only project administrator or staff allowed to perform this action.")
+
+    if valid_state is not None:
+        state = valid_state if isinstance(valid_state, (list, tuple)) else [valid_state]
+        if state and resource.state not in state:
+            message = "Performing %s operation is not allowed for resource in its current state"
+            raise IncorrectStateException(message % operation_name)
