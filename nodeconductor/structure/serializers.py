@@ -1208,10 +1208,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return obj.get_access_url()
 
     def get_actions(self, obj):
-        actions = []
+        metadata = []
         user = self.context['user']
 
-        def get_action(name, valid_state=None):
+        def get_info(name, valid_state=None):
             enabled = True
             reason = None
             try:
@@ -1225,17 +1225,15 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                 'reason': reason
             }
 
-        view = SupportedServices.get_resource_view(self.Meta.model)
-        for action in view.actions:
+        actions = SupportedServices.get_resource_actions(self.Meta.model)
+        for name, action in actions.items():
             valid_state = None
+            if hasattr(action, 'valid_state'):
+                valid_state = getattr(action, 'valid_state')
+            info = get_info(name, valid_state)
+            metadata.append(info)
 
-            try:
-                valid_state = getattr(view, action).valid_state
-            except AttributeError:
-                pass
-            actions.append(get_action(action, valid_state))
-
-        return actions
+        return metadata
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1421,30 +1419,37 @@ class ResourceActionsMetadata(SimpleMetadata):
         return metadata
 
     def get_actions_metadata(self, view, request):
-        actions = OrderedDict()
-        for action in view.actions:
-            actions[action] = {
-                'title': self.get_action_title(view, action),
-                'method': self.get_action_method(view, action),
-                'destructive': self.is_action_destructive(view, action),
+        metadata = OrderedDict()
+        model = view.get_queryset().model
+        actions = SupportedServices.get_resource_actions(model)
+        for name, action in actions.items():
+            metadata[name] = {
+                'title': self.get_action_title(action, name),
+                'method': self.get_action_method(action),
+                'destructive': self.is_action_destructive(action),
             }
-            fields = self.get_action_fields(view, action)
+            fields = self.get_action_fields(view, name)
             if not fields:
-                actions[action]['type'] = 'button'
+                metadata[name]['type'] = 'button'
             else:
-                actions[action]['type'] = 'form'
-                actions[action]['fields'] = fields
-        return actions
+                metadata[name]['type'] = 'form'
+                metadata[name]['fields'] = fields
+        return metadata
 
-    def is_action_destructive(self, view, action):
-        return self._get_action_attr(view, action, 'destructive', False)
+    def is_action_destructive(self, action):
+        try:
+            return getattr(action, 'destructive')
+        except AttributeError:
+            return False
 
-    def get_action_title(self, view, action):
-        return self._get_action_attr(view, action, 'title') or \
-               action.replace('_', ' ').title()
+    def get_action_title(self, action, name):
+        try:
+            return getattr(action, 'title')
+        except AttributeError:
+            return name.replace('_', ' ').title()
 
-    def get_action_fields(self, view, action):
-        view.action = action
+    def get_action_fields(self, view, name):
+        view.action = name
         serializer_class = view.get_serializer_class()
         fields = OrderedDict()
         if serializer_class and serializer_class != view.serializer_class:
@@ -1455,14 +1460,8 @@ class ResourceActionsMetadata(SimpleMetadata):
         view.action = None
         return fields
 
-    def get_action_method(self, view, action):
-        return self._get_action_attr(view, action, 'method', 'POST')
-
-    def _get_action_attr(self, view, action, attr, default=None):
-        try:
-            return getattr(getattr(view, action), attr)
-        except AttributeError:
-            return default
+    def get_action_method(self, action):
+        return getattr(action, 'method', 'POST')
 
     def get_serializer_info(self, serializer):
         """

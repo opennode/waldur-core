@@ -167,9 +167,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     filter_class = filters.InstanceFilter
-    actions = structure_views.BaseResourceViewSet.actions + [
-        'assign_floating_ip', 'resize'
-    ]
 
     def perform_update(self, serializer):
         super(InstanceViewSet, self).perform_update(serializer)

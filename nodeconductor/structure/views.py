@@ -1130,7 +1130,6 @@ class _BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     )
     filter_class = filters.BaseResourceFilter
     metadata_class = serializers.ResourceActionsMetadata
-    actions = ['destroy', 'unlink', 'start', 'stop', 'restart']
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
