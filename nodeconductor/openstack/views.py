@@ -185,11 +185,19 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             ssh_key=serializer.validated_data.get('ssh_public_key'),
             skip_external_ip_assignment=serializer.validated_data['skip_external_ip_assignment'])
 
+    def get_serializer_class(self):
+        if self.action == 'assign_floating_ip':
+            return serializers.AssignFloatingIpSerializer
+        elif self.action == 'resize':
+            return serializers.InstanceResizeSerializer
+        return super(InstanceViewSet, self).get_serializer_class()
+
     @decorators.detail_route(methods=['post'])
     def assign_floating_ip(self, request, uuid):
         instance = self.get_object()
 
-        serializer = serializers.AssignFloatingIpSerializer(instance, data=request.data)
+        serializer_cls = self.get_serializer_class()
+        serializer = serializer_cls(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         if not instance.service_project_link.external_network_id:
@@ -211,7 +219,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             status=status.HTTP_202_ACCEPTED)
 
     assign_floating_ip.title = 'Assign floating IP'
-    assign_floating_ip.serializer_class = serializers.AssignFloatingIpSerializer
 
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
@@ -222,7 +229,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         """
         instance = self.get_object()
 
-        serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
+        serializer_cls = self.get_serializer_class()
+        serializer = serializer_cls(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         flavor = serializer.validated_data.get('flavor')
@@ -248,7 +256,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             {'detail': 'Resizing has been scheduled.'}, status=status.HTTP_202_ACCEPTED)
 
     resize.title = 'Resize virtual machine'
-    resize.serializer_class = serializers.InstanceResizeSerializer
 
 
 class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):

@@ -1429,7 +1429,7 @@ class ResourceActionsMetadata(SimpleMetadata):
                 'destructive': self.is_action_destructive(view, action),
             }
             fields = self.get_action_fields(view, action)
-            if fields is None:
+            if not fields:
                 actions[action]['type'] = 'button'
             else:
                 actions[action]['type'] = 'form'
@@ -1444,13 +1444,16 @@ class ResourceActionsMetadata(SimpleMetadata):
                action.replace('_', ' ').title()
 
     def get_action_fields(self, view, action):
-        serializer_class = self._get_action_attr(view, action, 'serializer_class')
-        if serializer_class:
-            fields = serializer_class._declared_fields.items()
-            return OrderedDict([
-                (field_name, self.get_field_info(field))
-                for field_name, field in fields if field
-            ])
+        view.action = action
+        serializer_class = view.get_serializer_class()
+        fields = OrderedDict()
+        if serializer_class and serializer_class != view.serializer_class:
+            for field_name, field in serializer_class._declared_fields.items():
+                info = self.get_field_info(field)
+                if info:
+                    fields[field_name] = info
+        view.action = None
+        return fields
 
     def get_action_method(self, view, action):
         return self._get_action_attr(view, action, 'method', 'POST')
