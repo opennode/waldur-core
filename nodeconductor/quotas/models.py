@@ -11,6 +11,7 @@ from django.db.models import Sum
 from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
+import reversion
 
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import exceptions, managers, fields
@@ -18,6 +19,7 @@ from nodeconductor.core.models import UuidMixin, ReversionMixin, DescendantMixin
 
 
 @python_2_unicode_compatible
+@reversion.register(fields=['usage', 'limit'])
 class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     """
     Abstract quota for any resource.

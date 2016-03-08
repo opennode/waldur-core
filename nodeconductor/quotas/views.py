@@ -51,21 +51,24 @@ class QuotaViewSet(mixins.UpdateModelMixin,
             'points_count': request.query_params.get('points_count'),
             'point_list': request.query_params.getlist('point'),
         }
-        serializer = HistorySerializer(data={k: v for k, v in mapped.items() if v})
-        serializer.is_valid(raise_exception=True)
+        history_serializer = HistorySerializer(data={k: v for k, v in mapped.items() if v})
+        history_serializer.is_valid(raise_exception=True)
 
         quota = self.get_object()
+        serializer = self.get_serializer(quota)
         serialized_versions = []
-        for point_date in serializer.get_filter_data():
+        for point_date in history_serializer.get_filter_data():
             serialized = {'point': datetime_to_timestamp(point_date)}
             try:
                 version = reversion.get_for_date(quota, point_date)
             except Version.DoesNotExist:
                 pass
             else:
-                serializer = self.get_serializer()
-                serializer.instance = version.object_version.object
-                serialized['object'] = serializer.data
+                # make copy of serialized data and update field that are stored in version
+                version_object = version.object_version.object
+                serialized['object'] = serializer.data.copy()
+                serialized['object'].update({
+                    f: getattr(version_object, f) for f in quota.get_version_fields()
+                })
             serialized_versions.append(serialized)
-
         return response.Response(serialized_versions, status=status.HTTP_200_OK)

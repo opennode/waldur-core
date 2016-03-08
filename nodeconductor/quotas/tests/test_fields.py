@@ -1,5 +1,6 @@
 from django.core.management import call_command
 from django.test import TransactionTestCase
+import reversion
 
 from . import models as test_models
 
@@ -19,6 +20,22 @@ class TestQuotaField(TransactionTestCase):
         child.regular_quota = 9
         child.save()
         self.assertEqual(child.quotas.get(name='regular_quota').limit, 9)
+
+    # XXX: Ideally this method should belong to ReversionMixin tests and
+    #      should be separated into several smaller tests.
+    def test_quota_versions(self):
+        scope = test_models.GrandparentModel.objects.create()
+        quota = scope.quotas.get(name=test_models.GrandparentModel.Quotas.regular_quota)
+        quota.usage = 13.0
+        quota.save()
+        # make sure that new version was created after quota usage change.
+        latest_version = reversion.get_for_object(quota).latest('revision__date_created')
+        self.assertEqual(latest_version.object_version.object.usage, quota.usage)
+        # make sure that new version was not created if object was saved without data change.
+        quota.usage = 13
+        quota.save()
+        new_latest_version = reversion.get_for_object(quota).latest('revision__date_created')
+        self.assertEqual(new_latest_version, latest_version)
 
 
 class TestCounterQuotaField(TransactionTestCase):
