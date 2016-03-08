@@ -1229,6 +1229,7 @@ class _BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     unlink.destructive = True
 
 
+# TODO: Consider renaming to BaseVirtualMachineViewSet
 class BaseResourceViewSet(_BaseResourceViewSet):
     @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
     def destroy(self, request, resource, uuid=None):
