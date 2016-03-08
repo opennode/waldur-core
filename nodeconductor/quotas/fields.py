@@ -236,7 +236,7 @@ class AggregatorQuotaField(QuotaField):
         quota = scope.quotas.get(name=self.name)
         diff = getattr(child_quota, self.aggregation_field)
         if diff:
-            quota -= diff
+            quota.usage -= diff
             quota.save()
 
 
