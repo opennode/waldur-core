@@ -1414,11 +1414,11 @@ class ResourceActionsMetadata(SimpleMetadata):
     def determine_metadata(self, request, view):
         self.request = request
         metadata = OrderedDict()
-        metadata['actions'] = self.get_actions_metadata(view, request)
+        metadata['actions'] = self.get_actions_metadata(request, view)
         metadata['actions'].update(self.determine_actions(request, view))
         return metadata
 
-    def get_actions_metadata(self, view, request):
+    def get_actions_metadata(self, request, view):
         metadata = OrderedDict()
         model = view.get_queryset().model
         actions = SupportedServices.get_resource_actions(model)
