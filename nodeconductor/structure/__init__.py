@@ -183,6 +183,7 @@ class SupportedServices(object):
             attr = getattr(view, key)
             if hasattr(attr, 'bind_to_methods'):
                 actions[key] = attr
+        actions['destroy'] = view.destroy
         return sort_dict(actions)
 
     @classmethod

@@ -1209,7 +1209,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_actions(self, obj):
         metadata = []
-        user = self.context['user']
+        user = self.context['request'].user
 
         def get_info(name, valid_state=None):
             enabled = True
