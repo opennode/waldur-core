@@ -29,6 +29,7 @@ Requires: python-django-cors-headers
 Requires: python-django-filter >= 0.10
 Requires: python-django-fluent-dashboard = 0.5.1
 Requires: python-django-fsm = 2.2.0
+Requires: python-django-gm2m = 0.3
 Requires: python-django-model-utils = 2.2
 Requires: python-django-permission = 0.8.2
 Requires: python-django-polymorphic >= 0.7.0
