@@ -182,45 +182,43 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             ssh_key=serializer.validated_data.get('ssh_public_key'),
             skip_external_ip_assignment=serializer.validated_data['skip_external_ip_assignment'])
 
+    def get_serializer_class(self):
+        if self.action == 'assign_floating_ip':
+            return serializers.AssignFloatingIpSerializer
+        elif self.action == 'resize':
+            return serializers.InstanceResizeSerializer
+        return super(InstanceViewSet, self).get_serializer_class()
+
     @decorators.detail_route(methods=['post'])
-    def assign_floating_ip(self, request, uuid):
-        instance = self.get_object()
-
-        serializer = serializers.AssignFloatingIpSerializer(instance, data=request.data)
+    @structure_views.safe_operation(valid_state=tuple(models.Instance.States.STABLE_STATES))
+    def assign_floating_ip(self, request, instance, uuid=None):
+        """
+        Assign floating IP to the instance.
+        Instance must be in stable state.
+        """
+        serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        if not instance.service_project_link.external_network_id:
-            return response.Response(
-                {'detail': 'External network ID of the service project link is missing.'},
-                status=status.HTTP_409_CONFLICT)
-        elif instance.service_project_link.state not in SynchronizationStates.STABLE_STATES:
-            raise IncorrectStateException(
-                "Service project link of instance should be in stable state.")
-        elif instance.state not in instance.States.STABLE_STATES:
-            raise IncorrectStateException(
-                "Cannot add floating IP to instance in unstable state.")
 
         send_task('openstack', 'assign_floating_ip')(
             instance.uuid.hex, serializer.validated_data['floating_ip_uuid'])
 
-        return response.Response(
-            {'detail': 'Assigning floating IP to the instance has been scheduled.'},
-            status=status.HTTP_202_ACCEPTED)
+    assign_floating_ip.title = 'Assign floating IP'
 
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
-    def resize(self, request, uuid=None):
-        """ Change Instance flavor or extend disk size.
+    def resize(self, request, instance, uuid=None):
+        """ Change instance flavor or extend disk size.
 
             Instance must be in OFFLINE state.
         """
-        instance = self.get_object()
-
-        serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
+        serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         flavor = serializer.validated_data.get('flavor')
         new_size = serializer.validated_data.get('disk_size')
+
+        instance.schedule_resizing()
+        instance.save()
 
         # Serializer makes sure that exactly one of the branches will match
         if flavor is not None:
@@ -238,8 +236,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
                 event_context={'resource': instance, 'volume_size': new_size}
             )
 
-        return response.Response(
-            {'detail': 'Resizing has been scheduled.'}, status=status.HTTP_202_ACCEPTED)
+    resize.title = 'Resize virtual machine'
 
 
 class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):

@@ -11,7 +11,7 @@ from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import transaction, IntegrityError
 from django.db.models import Q
-from django.utils import timezone
+from django.utils import six, timezone
 from django_fsm import TransitionNotAllowed
 
 from rest_framework import filters as rf_filters
@@ -46,7 +46,7 @@ from nodeconductor.structure import serializers
 from nodeconductor.structure import managers
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
-
+from nodeconductor.structure.metadata import check_operation, ResourceActionsMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -1079,6 +1079,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
 
 def safe_operation(valid_state=None):
     def decorator(view_fn):
+        view_fn.valid_state = valid_state
         @functools.wraps(view_fn)
         def wrapped(self, request, *args, **kwargs):
             message = "Performing %s operation is not allowed for resource in its current state"
@@ -1087,18 +1088,7 @@ def safe_operation(valid_state=None):
             try:
                 with transaction.atomic():
                     resource = self.get_object()
-                    project = resource.service_project_link.project
-                    is_admin = project.has_user(request.user, models.ProjectRole.ADMINISTRATOR) \
-                        or project.customer.has_user(request.user, models.CustomerRole.OWNER)
-
-                    if not is_admin and not request.user.is_staff:
-                        raise PermissionDenied(
-                            "Only project administrator or staff allowed to perform this action.")
-
-                    if valid_state is not None:
-                        state = valid_state if isinstance(valid_state, (list, tuple)) else [valid_state]
-                        if state and resource.state not in state:
-                            raise core_exceptions.IncorrectStateException(message % operation_name)
+                    check_operation(request.user, resource, operation_name, valid_state)
 
                     # Important! We are passing back the instance from current transaction to a view
                     try:
@@ -1120,9 +1110,20 @@ def safe_operation(valid_state=None):
     return decorator
 
 
-class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
-                          core_mixins.UserContextMixin,
-                          viewsets.ModelViewSet):
+class ResourceViewMetaclass(type):
+    """ Store view in registry """
+    def __new__(cls, name, bases, args):
+        resource_view = super(ResourceViewMetaclass, cls).__new__(cls, name, bases, args)
+        queryset = args.get('queryset')
+        if queryset and queryset is not NotImplemented:
+            SupportedServices.register_resource_view(queryset.model, resource_view)
+        return resource_view
+
+
+class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                              UpdateOnlyByPaidCustomerMixin,
+                                              core_mixins.UserContextMixin,
+                                              viewsets.ModelViewSet)):
 
     class PaidControl:
         customer_path = 'service_project_link__service__customer'
@@ -1139,7 +1140,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         MonitoringItemFilter
     )
     filter_class = filters.BaseResourceFilter
-    metadata_class = serializers.ResourceProvisioningMetadata
+    metadata_class = ResourceActionsMetadata
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
@@ -1154,10 +1155,10 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
                 raise core_exceptions.IncorrectStateException(
                     'Provisioning scheduled. Disabled modifications.')
 
-        super(BaseResourceViewSet, self).initial(request, *args, **kwargs)
+        super(_BaseResourceViewSet, self).initial(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = super(BaseResourceViewSet, self).get_queryset()
+        queryset = super(_BaseResourceViewSet, self).get_queryset()
 
         order = self.request.query_params.get('o', None)
         if order == 'start_time':
@@ -1230,17 +1231,23 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         else:
             self.perform_destroy(resource)
 
-    @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
-    def destroy(self, request, resource, uuid=None):
-        self.perform_managed_resource_destroy(
-            resource, force=resource.state == models.Resource.States.ERRED)
-
     @detail_route(methods=['post'])
     @safe_operation()
     def unlink(self, request, resource, uuid=None):
         # XXX: add special attribute to an instance in order to be tracked by signal handler
         setattr(resource, 'PERFORM_UNLINK', True)
         self.perform_destroy(resource)
+    unlink.destructive = True
+
+
+# TODO: Consider renaming to BaseVirtualMachineViewSet
+class BaseResourceViewSet(_BaseResourceViewSet):
+    @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
+    def destroy(self, request, resource, uuid=None):
+        self.perform_managed_resource_destroy(
+            resource, force=resource.state == models.Resource.States.ERRED)
+    destroy.method = 'DELETE'
+    destroy.destructive = True
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.OFFLINE)
@@ -1273,7 +1280,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             event_context={'resource': resource})
 
 
-class BaseOnlineResourceViewSet(BaseResourceViewSet):
+class BaseOnlineResourceViewSet(_BaseResourceViewSet):
 
     # User can only create and delete this resource. He cannot stop them.
     @safe_operation(valid_state=[models.Resource.States.ONLINE, models.Resource.States.ERRED])
@@ -1282,6 +1289,9 @@ class BaseOnlineResourceViewSet(BaseResourceViewSet):
             resource.state = resource.States.OFFLINE
             resource.save()
         self.perform_managed_resource_destroy(resource, force=resource.state == models.Resource.States.ERRED)
+
+    destroy.method = 'DELETE'
+    destroy.destructive = True
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
