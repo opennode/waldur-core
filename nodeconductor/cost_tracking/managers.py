@@ -14,11 +14,16 @@ class UserFilterMixin(object):
         if queryset is None:
             queryset = self.get_queryset()
 
-        query = Q()
+        # include orphan estimates with presaved owner
+        if 'scope_customer' in queryset.model._meta.get_all_field_names():
+            query = Q(scope_customer__roles__permission_group__user=user)
+        else:
+            query = Q()
+
         for model in self.get_available_models():
             user_object_ids = filter_queryset_for_user(model.objects.all(), user).values_list('id', flat=True)
             content_type_id = ContentType.objects.get_for_model(model).id
-            query |= Q(object_id__in=user_object_ids, content_type_id=content_type_id)
+            query |= Q(object_id__in=list(user_object_ids), content_type_id=content_type_id)
 
         return queryset.filter(query)
 

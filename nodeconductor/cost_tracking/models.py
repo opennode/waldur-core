@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import calendar
-import functools
 import logging
 
 from dateutil.relativedelta import relativedelta
@@ -12,14 +11,16 @@ from django.db import models, transaction
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
+
 from jsonfield import JSONField
 from model_utils import FieldTracker
+from gm2m import GM2MField
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
 from nodeconductor.cost_tracking import CostTrackingRegister, managers
 from nodeconductor.structure import models as structure_models
-from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 
 
 logger = logging.getLogger(__name__)
@@ -27,11 +28,26 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class PriceEstimate(core_models.UuidMixin, models.Model):
-    content_type = models.ForeignKey(ContentType)
+    """ Store prices based on both estimates and actual consumption.
+        Every record holds a list of leaf estimates with actual data.
+
+                         /--- Service ---\
+        (top) Customer --                 ---> SPL --> Resource (leaf)
+                         \--- Project ---/
+
+        Only leaf node has actual data.
+        Another ones should be re-calculated on every change of leaf one.
+    """
+
+    content_type = models.ForeignKey(ContentType, null=True, related_name='+')
     object_id = models.PositiveIntegerField()
     scope = GenericForeignKey('content_type', 'object_id')
 
+    scope_customer = models.ForeignKey(structure_models.Customer, null=True, related_name='+')
+    leaf_estimates = GM2MField('PriceEstimate')
+
     total = models.FloatField(default=0)
+    consumed = models.FloatField(default=0)
     details = JSONField(blank=True)
 
     month = models.PositiveSmallIntegerField(validators=[MaxValueValidator(12), MinValueValidator(1)])
@@ -63,38 +79,84 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             structure_models.ServiceProjectLink.get_all_models()
         )
 
-    @classmethod
-    @transaction.atomic
-    def update_price_for_scope(cls, scope, month, year, total, update_if_exists=True):
-        estimate, created = cls.objects.get_or_create(
-            content_type=ContentType.objects.get_for_model(scope),
-            object_id=scope.id,
-            month=month,
-            year=year,
-            is_manually_input=False)
+    @property
+    def is_leaf(self):
+        return self.is_leaf_scope(self.scope)
 
-        if update_if_exists or created:
-            delta = total - estimate.total
-            estimate.total = total
-            estimate.save(update_fields=['total'])
-        else:
-            delta = 0
+    @staticmethod
+    def is_leaf_scope(scope):
+        return scope._meta.model in structure_models.Resource.get_all_models()
 
-        if isinstance(scope, core_models.DescendantMixin):
-            for parent in scope.get_ancestors():
-                estimate, created = cls.objects.get_or_create(
-                    content_type=ContentType.objects.get_for_model(parent),
-                    object_id=parent.id,
-                    month=month,
-                    year=year,
-                    is_manually_input=False)
+    def update_from_leaf(self):
+        if self.is_leaf:
+            return
 
-                if delta or created:
-                    estimate.total += delta
-                    estimate.save(update_fields=['total'])
+        leaf_estimates = list(self.leaf_estimates.all())
+        self.total = sum(e.total for e in leaf_estimates)
+        self.consumed = sum(e.consumed for e in leaf_estimates)
+        self.save(update_fields=['total', 'consumed'])
+
+    def update_ancestors(self):
+        for parent in self.scope.get_ancestors():
+            parent_estimate, created = self.__class__.objects.get_or_create(
+                object_id=parent.id,
+                content_type=ContentType.objects.get_for_model(parent),
+                month=self.month, year=self.year)
+            if self.is_leaf:
+                parent_estimate.leaf_estimates.add(self)
+            parent_estimate.update_from_leaf()
 
     @classmethod
-    def update_price_for_resource(cls, resource, delete=False):
+    def update_ancestors_for_resource(cls, resource):
+        for estimate in cls.objects.filter(scope=resource, is_manually_input=False):
+            estimate.update_ancestors()
+
+    @classmethod
+    def delete_estimates_for_resource(cls, resource):
+        for estimate in cls.objects.filter(scope=resource):
+            estimate.delete()
+            for parent in resource.get_ancestors():
+                qs = cls.objects.filter(scope=parent, month=estimate.month, year=estimate.year)
+                for parent_estimate in qs:
+                    parent_estimate.leaf_estimates.remove(estimate)
+                    parent_estimate.update_from_leaf()
+
+    @classmethod
+    def update_metadata_for_scope(cls, scope):
+        cls.objects.filter(scope=scope).update(
+            scope_customer=scope.customer,
+            details=dict(
+                scope_name=scope.name,
+                scope_type=SupportedServices.get_name_for_model(scope),
+                scope_backend_id=scope.backend_id,
+            ))
+
+    @classmethod
+    def update_price_for_scope(cls, scope):
+        # update Resource and re-calculate ancestors
+        if cls.is_leaf_scope(scope):
+            return cls.update_price_for_resource(scope)
+
+        # re-calculate scope and descendants till Resource
+        family_scope = [scope] + [s for s in scope.get_descendants() if not cls.is_leaf_scope(s)]
+        for estimate in cls.objects.filter(scope__in=family_scope, is_manually_input=False):
+            estimate.update_from_leaf()
+
+    @classmethod
+    def update_price_for_resource(cls, resource):
+
+        @transaction.atomic
+        def update_estimate(month, year, total, consumed=None, update_if_exists=True):
+            estimate, created = cls.objects.get_or_create(
+                object_id=resource.id,
+                content_type=ContentType.objects.get_for_model(resource),
+                month=month, year=year, is_manually_input=False)
+
+            if update_if_exists or created:
+                estimate.consumed = total if consumed is None else consumed
+                estimate.total = total
+                estimate.save(update_fields=['total', 'consumed'])
+
         try:
             cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)
             monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(resource))
@@ -114,31 +176,37 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
             month_start = created.replace(day=1, hour=0, minute=0, second=0)
             month_end = month_start + timezone.timedelta(days=days_in_month)
             seconds_in_month = (month_end - month_start).total_seconds()
-            seconds_of_work = (month_end - created).total_seconds()
 
-            creation_month_cost = round(monthly_cost * seconds_of_work / seconds_in_month, 2)
-            update = functools.partial(cls.update_price_for_scope, resource)
-
-            if delete:
-                monthly_cost *= -1
-                creation_month_cost *= -1
+            def prorata_cost(work_interval):
+                return round(monthly_cost * work_interval.total_seconds() / seconds_in_month, 2)
 
             if created.month == now.month and created.year == now.year:
-                # update only current month estimate
-                update(now.month, now.year, creation_month_cost)
+                # update only current month
+                update_estimate(
+                    now.month, now.year,
+                    total=prorata_cost(month_end - created),
+                    consumed=prorata_cost(now - created))
             else:
-                # update current month estimate
-                update(now.month, now.year, monthly_cost)
-                # update first month estimate
-                update(created.month, created.year, creation_month_cost, update_if_exists=False)
-                # update price estimate for previous months if it does not exist:
+                # update current month
+                update_estimate(
+                    now.month, now.year,
+                    total=monthly_cost,
+                    consumed=prorata_cost(now - now.replace(day=1, hour=0, minute=0, second=0)))
+
+                # update first month
+                update_estimate(
+                    created.month, created.year,
+                    total=prorata_cost(month_end - created),
+                    update_if_exists=False)
+
+                # update price for previous months if it does not exist:
                 date = now - relativedelta(months=+1)
                 while not (date.month == created.month and date.year == created.year):
-                    update(date.month, date.year, monthly_cost, update_if_exists=False)
+                    update_estimate(date.month, date.year, monthly_cost, update_if_exists=False)
                     date -= relativedelta(months=+1)
 
     def __str__(self):
-        return '%s for %s-%s' % (self.scope, self.year, self.month)
+        return '%s for %s-%s %.2f' % (self.scope, self.year, self.month, self.total)
 
 
 class AbstractPriceListItem(models.Model):

@@ -1038,7 +1038,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 event_context={'resource': resource})
 
             send_task('cost_tracking', 'update_projected_estimate')(
-                resource_uuid=resource.uuid.hex)
+                resource_str=resource.to_string())
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
