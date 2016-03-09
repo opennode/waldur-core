@@ -9,11 +9,11 @@ from model_utils import FieldTracker
 from urlparse import urlparse
 
 from nodeconductor.core import models as core_models
-from nodeconductor.structure import models as structure_models
-from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
-from nodeconductor.openstack.managers import BackupManager
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
+from nodeconductor.openstack.managers import BackupManager
+from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.utils import get_coordinates_by_ip, Coordinates
 
 

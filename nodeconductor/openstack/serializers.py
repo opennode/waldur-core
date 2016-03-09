@@ -467,7 +467,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips', 'backups', 'backup_schedules'
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
