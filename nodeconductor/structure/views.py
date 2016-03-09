@@ -46,7 +46,7 @@ from nodeconductor.structure import serializers
 from nodeconductor.structure import managers
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
-from nodeconductor.structure.utils import check_operation
+from nodeconductor.structure.metadata import check_operation, ResourceActionsMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -1140,7 +1140,7 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         MonitoringItemFilter
     )
     filter_class = filters.BaseResourceFilter
-    metadata_class = serializers.ResourceActionsMetadata
+    metadata_class = ResourceActionsMetadata
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):

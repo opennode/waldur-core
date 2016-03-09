@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework import serializers
 
-from nodeconductor.structure.serializers import ResourceActionsMetadata
+from nodeconductor.structure.metadata import ResourceActionsMetadata
 
 
 class ResourceProvisioningMetadataTest(TestCase):
