@@ -6,11 +6,11 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework import test, status
 
-# This test contains dependencies from iaas and backup app,
-# but it will be moved to separate app 'stats' in future, so this is ok
 from nodeconductor.core import utils as core_utils
 from nodeconductor.structure import models
 from nodeconductor.structure.tests import factories
+
+from nodeconductor.openstack.tests import factories as openstack_factories
 
 
 class CreationTimeStatsTest(test.APITransactionTestCase):
@@ -111,3 +111,50 @@ class CreationTimeStatsTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data), 2, 'Response has to contain 2 datapoints')
         self.assertEqual(response.data[0]['value'], 0, 'First datapoint has to contain 0 project_groups')
         self.assertEqual(response.data[1]['value'], 0, 'Second datapoint has to contain 0 project_groups')
+
+
+class QuotaAggregationTest(test.APITransactionTestCase):
+    """
+    If any quota limit is -1, total limit is -1
+    """
+
+    def setUp(self):
+        user = factories.UserFactory()
+        self.client.force_authenticate(user)
+
+        customer = factories.CustomerFactory()
+        customer.add_user(user, models.CustomerRole.OWNER)
+
+        self.project = factories.ProjectFactory(customer=customer)
+
+        link1 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        link1.set_quota_limit('vcpu', -1)
+        link1.set_quota_usage('vcpu', 10)
+
+        link2 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        link2.set_quota_limit('vcpu', 2)
+        link2.set_quota_usage('vcpu', 1)
+
+        self.total_limit = -1
+        self.total_usage = 11
+
+    def test_stats_quota_timeline_view(self):
+        response = self.client.get(reverse('stats_quota_timeline'), data={
+            'aggregate': 'project',
+            'uuid': self.project.uuid.hex,
+            'item': 'vcpu',
+            'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=1)),
+            'to': core_utils.datetime_to_timestamp(timezone.now() + timedelta(minutes=1))
+        })
+
+        self.assertEqual(self.total_limit, response.data[0]['vcpu_limit'])
+        self.assertEqual(self.total_usage, response.data[0]['vcpu_usage'])
+
+    def test_stats_quota_view(self):
+        response = self.client.get(reverse('stats_quota'), data={
+            'aggregate': 'project',
+            'uuid': self.project.uuid.hex
+        })
+
+        self.assertEqual(self.total_limit, response.data['vcpu'])
+        self.assertEqual(self.total_usage, response.data['vcpu_usage'])
