@@ -18,8 +18,9 @@ def _resolve_model(obj):
         return None
     return model_meta._old_resolve_model(obj)
 
-model_meta._old_resolve_model = model_meta._resolve_model
-model_meta._resolve_model = _resolve_model
+if not hasattr(model_meta, '_old_resolve_model'):
+    model_meta._old_resolve_model = model_meta._resolve_model
+    model_meta._resolve_model = _resolve_model
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):

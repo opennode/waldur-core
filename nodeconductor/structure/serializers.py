@@ -1,15 +1,14 @@
 from __future__ import unicode_literals
 
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
 from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
 from django.utils import six
-from django.utils.encoding import force_text
 from django.utils.lru_cache import lru_cache
-from rest_framework import exceptions, metadata, serializers
+from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import models as core_models
@@ -20,8 +19,8 @@ from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
+from nodeconductor.structure.metadata import get_actions_for_resource
 from nodeconductor.structure.models import ServiceProjectLink
-
 
 User = auth.get_user_model()
 
@@ -1161,6 +1160,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.SerializerMethodField()
     access_url = serializers.SerializerMethodField()
+    actions = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -1172,7 +1172,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url',
+            'access_url', 'actions'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1203,6 +1203,9 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     # an optional generic URL for accessing a resource
     def get_access_url(self, obj):
         return obj.get_access_url()
+
+    def get_actions(self, obj):
+        return get_actions_for_resource(self.context['request'].user, obj)
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1368,57 +1371,3 @@ class AggregateSerializer(serializers.Serializer):
         projects = self.get_projects(user)
         return [model.objects.filter(project__in=projects)
                 for model in ServiceProjectLink.get_all_models()]
-
-
-class ResourceProvisioningMetadata(metadata.SimpleMetadata):
-    """
-    Difference from SimpleMetadata class:
-    1) Skip read-only fields, because options are used only for provisioning new resource.
-    2) Don't expose choices for fields with queryset in order to reduce size of response.
-    """
-    def get_serializer_info(self, serializer):
-        """
-        Given an instance of a serializer, return a dictionary of metadata
-        about its fields.
-        """
-        if hasattr(serializer, 'child'):
-            # If this is a `ListSerializer` then we want to examine the
-            # underlying child serializer instance instead.
-            serializer = serializer.child
-        return OrderedDict([
-            (field_name, self.get_field_info(field))
-            for field_name, field in serializer.fields.items()
-            if not getattr(field, 'read_only', False)
-        ])
-
-    def get_field_info(self, field):
-        """
-        Given an instance of a serializer field, return a dictionary
-        of metadata about it.
-        """
-        field_info = OrderedDict()
-        field_info['type'] = self.label_lookup[field]
-        field_info['required'] = getattr(field, 'required', False)
-
-        attrs = [
-            'read_only', 'label', 'help_text',
-            'min_length', 'max_length',
-            'min_value', 'max_value'
-        ]
-
-        for attr in attrs:
-            value = getattr(field, attr, None)
-            if value is not None and value != '':
-                field_info[attr] = force_text(value, strings_only=True)
-
-        if not field_info.get('read_only') and hasattr(field, 'choices') \
-           and not hasattr(field, 'queryset'):
-            field_info['choices'] = [
-                {
-                    'value': choice_value,
-                    'display_name': force_text(choice_name, strings_only=True)
-                }
-                for choice_value, choice_name in field.choices.items()
-            ]
-
-        return field_info

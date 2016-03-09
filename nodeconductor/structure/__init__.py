@@ -6,6 +6,7 @@ from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
 
+from nodeconductor.core.utils import sort_dict
 
 default_app_config = 'nodeconductor.structure.apps.StructureConfig'
 
@@ -106,6 +107,13 @@ class SupportedServices(object):
         cls._registry[key]['resources'][model_str]['filter'] = filter
 
     @classmethod
+    def register_resource_view(cls, model, view):
+        key = cls.get_model_key(model)
+        model_str = cls._get_model_str(model)
+        cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
+        cls._registry[key]['resources'][model_str]['view'] = view
+
+    @classmethod
     def register_property(cls, model):
         if model is NotImplemented or not cls._is_active_model(model):
             return
@@ -162,6 +170,23 @@ class SupportedServices(object):
         key = cls.get_model_key(model)
         model_str = cls._get_model_str(model)
         return cls._registry[key]['resources'][model_str]['filter']
+
+    @classmethod
+    def get_resource_view(cls, model):
+        key = cls.get_model_key(model)
+        model_str = cls._get_model_str(model)
+        return cls._registry[key]['resources'][model_str]['view']
+
+    @classmethod
+    def get_resource_actions(cls, model):
+        view = cls.get_resource_view(model)
+        actions = {}
+        for key in dir(view):
+            attr = getattr(view, key)
+            if hasattr(attr, 'bind_to_methods'):
+                actions[key] = attr
+        actions['destroy'] = view.destroy
+        return sort_dict(actions)
 
     @classmethod
     def get_services_with_resources(cls, request=None):

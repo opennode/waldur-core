@@ -1,7 +1,7 @@
 import collections
 
-from django.contrib.auth import get_user_model
 import requests
+from django.contrib.auth import get_user_model
 
 from nodeconductor.core.models import SshPublicKey
 

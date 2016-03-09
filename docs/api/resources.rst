@@ -133,7 +133,88 @@ You may filter or order resources by monitoring item.
 
   /api/<resource_endpoint>/?o=monitoring__installation_state
 
+Resource actions
+----------------
 
+To get a list of supported resources' actions, run OPTIONS against **/api/<resource_url>/** as an authenticated user.
+
+Example rendering of response:
+
+.. code-block:: javascript
+
+    {
+        "actions": {
+            "destroy": {
+                "destructive": true,
+                "type": "button",
+                "method": "DELETE",
+                "title": "Destroy"
+            },
+            "resize": {
+                "fields": {
+                    "flavor": {
+                        "type": "select_url",
+                        "required": false,
+                        "url": "http://example.com/api/openstack-flavors/"
+                    },
+                    "disk_size": {
+                        "type": "integer",
+                        "required": false,
+                        "label": "Disk size",
+                        "min_value": 1
+                    }
+                },
+                "destructive": false,
+                "type": "form",
+                "method": "POST",
+                "title": "Resize virtual machine"
+            },
+            "restart": {
+                "destructive": false,
+                "type": "button",
+                "method": "POST",
+                "title": "Restart"
+            },
+            "start": {
+                "destructive": false,
+                "type": "button",
+                "method": "POST",
+                "title": "Start"
+            },
+            "stop": {
+                "destructive": false,
+                "type": "button",
+                "method": "POST",
+                "title": "Stop"
+            },
+            "unlink": {
+                "destructive": true,
+                "type": "button",
+                "method": "POST",
+                "title": "Unlink"
+            },
+            "PUT": {
+                "name": {
+                    "type": "string",
+                    "required": true,
+                    "label": "Name",
+                    "max_length": 150
+                },
+                "description": {
+                    "type": "string",
+                    "required": false,
+                    "label": "Description",
+                    "max_length": 500
+                },
+                "security_groups": {
+                    "type": "field",
+                    "required": false,
+                    "label": "Security groups",
+                    "many": true
+                }
+            }
+        }
+    }
 
 OpenStack resources list
 ------------------------
