@@ -1290,6 +1290,9 @@ class BaseOnlineResourceViewSet(_BaseResourceViewSet):
             resource.save()
         self.perform_managed_resource_destroy(resource, force=resource.state == models.Resource.States.ERRED)
 
+    destroy.method = 'DELETE'
+    destroy.destructive = True
+
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.BaseServicePropertyFilter
