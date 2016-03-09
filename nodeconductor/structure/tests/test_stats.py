@@ -146,6 +146,9 @@ class StatsQuotaTimelineTest(BaseQuotaAggregationTest):
         self.assertEqual(11, response.data[0]['vcpu_usage'])
 
     def test_positive_limit(self):
+        """
+        If all limits are positive they are summed up
+        """
         self.create_links(limit1=10, usage1=2, limit2=100, usage2=10)
 
         response = self.get_response()
@@ -178,6 +181,9 @@ class StatsQuotaTest(BaseQuotaAggregationTest):
         self.assertEqual(11, response.data['vcpu_usage'])
 
     def test_positive_limit(self):
+        """
+        If all limits are positive they are summed up
+        """
         self.create_links(limit1=10, usage1=2, limit2=100, usage2=10)
 
         response = self.get_response()
