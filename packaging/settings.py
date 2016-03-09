@@ -58,6 +58,8 @@ config_defaults = {
         'port': '443',
         'protocol': 'https',
         'username': '',
+        'use_ssl': True,
+        'verify_certs': False
     },
     'events': {
         'hook': 'false',
@@ -661,6 +663,8 @@ NODECONDUCTOR.update({
         'host': config.get('elasticsearch', 'host'),
         'port': config.get('elasticsearch', 'port'),
         'protocol': config.get('elasticsearch', 'protocol'),
+        'use_ssl': config.get('elasticsearch', 'use_ssl'),
+        'verify_certs': config.get('elasticsearch', 'verify_certs'),
     },
 
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
