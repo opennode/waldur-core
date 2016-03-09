@@ -108,6 +108,8 @@ class SupportedServices(object):
 
     @classmethod
     def register_resource_view(cls, model, view):
+        if model is NotImplemented or not cls._is_active_model(model) or model._meta.abstract:
+            return
         key = cls.get_model_key(model)
         model_str = cls._get_model_str(model)
         cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
