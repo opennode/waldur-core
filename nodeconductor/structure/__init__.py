@@ -107,6 +107,13 @@ class SupportedServices(object):
         cls._registry[key]['resources'][model_str]['filter'] = filter
 
     @classmethod
+    def register_resource_view(cls, model, view):
+        key = cls.get_model_key(model)
+        model_str = cls._get_model_str(model)
+        cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
+        cls._registry[key]['resources'][model_str]['view'] = view
+
+    @classmethod
     def register_property(cls, model):
         if model is NotImplemented or not cls._is_active_model(model):
             return
@@ -166,14 +173,9 @@ class SupportedServices(object):
 
     @classmethod
     def get_resource_view(cls, model):
-        from django.core.urlresolvers import resolve
-
         key = cls.get_model_key(model)
         model_str = cls._get_model_str(model)
-        view_name = cls._registry[key]['resources'][model_str]['list_view']
-        path = reverse(view_name)
-        match = resolve(path)
-        return match.func.cls
+        return cls._registry[key]['resources'][model_str]['view']
 
     @classmethod
     def get_resource_actions(cls, model):

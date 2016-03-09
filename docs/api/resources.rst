@@ -192,6 +192,26 @@ Example rendering of response:
                 "type": "button",
                 "method": "POST",
                 "title": "Unlink"
+            },
+            "PUT": {
+                "name": {
+                    "type": "string",
+                    "required": true,
+                    "label": "Name",
+                    "max_length": 150
+                },
+                "description": {
+                    "type": "string",
+                    "required": false,
+                    "label": "Description",
+                    "max_length": 500
+                },
+                "security_groups": {
+                    "type": "field",
+                    "required": false,
+                    "label": "Security groups",
+                    "many": true
+                }
             }
         }
     }

@@ -11,7 +11,7 @@ from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import transaction, IntegrityError
 from django.db.models import Q
-from django.utils import timezone
+from django.utils import six, timezone
 from django_fsm import TransitionNotAllowed
 
 from rest_framework import filters as rf_filters
@@ -1110,9 +1110,20 @@ def safe_operation(valid_state=None):
     return decorator
 
 
-class _BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
-                          core_mixins.UserContextMixin,
-                          viewsets.ModelViewSet):
+class ResourceViewMetaclass(type):
+    """ Store view in registry """
+    def __new__(cls, name, bases, args):
+        resource_view = super(ResourceViewMetaclass, cls).__new__(cls, name, bases, args)
+        queryset = args.get('queryset')
+        if queryset and queryset is not NotImplemented:
+            SupportedServices.register_resource_view(queryset.model, resource_view)
+        return resource_view
+
+
+class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                              UpdateOnlyByPaidCustomerMixin,
+                                              core_mixins.UserContextMixin,
+                                              viewsets.ModelViewSet)):
 
     class PaidControl:
         customer_path = 'service_project_link__service__customer'

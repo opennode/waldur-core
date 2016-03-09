@@ -10,7 +10,6 @@ from django.utils import six
 from django.utils.encoding import force_text
 from django.utils.lru_cache import lru_cache
 from rest_framework import exceptions, serializers
-from rest_framework.exceptions import APIException
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.reverse import reverse
 
@@ -1216,7 +1215,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             reason = None
             try:
                 check_operation(user, obj, name, valid_state)
-            except APIException as e:
+            except exceptions.APIException as e:
                 enabled = False
                 reason = six.text_type(e)
             return {
