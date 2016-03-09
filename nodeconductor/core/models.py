@@ -183,7 +183,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     @classmethod
     def get_permitted_objects_uuids(cls, user):
         if user.is_staff:
-            return {'user_uuid': cls.objects.all().values_list('uuid', flat=True)}
+            return {'user_uuid': cls.objects.values_list('uuid', flat=True)}
         else:
             return {'user_uuid': [user.uuid.hex]}
 

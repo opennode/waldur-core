@@ -60,6 +60,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('settings', models.ForeignKey(to='structure.ServiceSettings')),
                 ('customer', models.ForeignKey(to='structure.Customer')),
                 ('available_for_all', models.BooleanField(default=False, help_text='Service will be automatically added to all customers projects if it is available for all')),
             ],
@@ -89,11 +90,6 @@ class Migration(migrations.Migration):
             model_name='openstackservice',
             name='projects',
             field=models.ManyToManyField(related_name='openstack_services', through='openstack.OpenStackServiceProjectLink', to=b'structure.Project'),
-        ),
-        migrations.AddField(
-            model_name='openstackservice',
-            name='settings',
-            field=models.ForeignKey(to='structure.ServiceSettings'),
         ),
         migrations.AlterUniqueTogether(
             name='openstackservice',

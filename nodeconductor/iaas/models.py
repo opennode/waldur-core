@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 
-from django.contrib.contenttypes import generic as ct_generic
+from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, URLValidator
 from django.db import models
@@ -11,7 +11,6 @@ from iptools.ipv4 import validate_cidr
 
 from nodeconductor.core import models as core_models
 from nodeconductor.cost_tracking import models as cost_tracking_models
-from nodeconductor.quotas import models as quotas_models
 from nodeconductor.iaas import managers
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.structure import models as structure_models
@@ -321,8 +320,8 @@ class Instance(structure_models.Resource,
     cloud_project_membership = models.ForeignKey(
         CloudProjectMembership, related_name='instances', on_delete=models.PROTECT)
     # XXX: ideally these fields have to be added somewhere in iaas.backup module
-    backups = ct_generic.GenericRelation('backup.Backup')
-    backup_schedules = ct_generic.GenericRelation('backup.BackupSchedule')
+    backups = GenericRelation('backup.Backup')
+    backup_schedules = GenericRelation('backup.BackupSchedule')
 
     template = models.ForeignKey(Template, related_name='+')
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
