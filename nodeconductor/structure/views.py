@@ -1115,7 +1115,7 @@ class ResourceViewMetaclass(type):
     def __new__(cls, name, bases, args):
         resource_view = super(ResourceViewMetaclass, cls).__new__(cls, name, bases, args)
         queryset = args.get('queryset')
-        if queryset is not NotImplemented:
+        if hasattr(queryset, 'model'):
             SupportedServices.register_resource_view(queryset.model, resource_view)
         return resource_view
 
