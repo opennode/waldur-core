@@ -1322,7 +1322,7 @@ class QuotaTimelineTable(object):
     def add_quota(self, start, end, item, limit, usage):
         key = (start, end)
         self.table.setdefault(key, {})
-        self.table[key].setdefault(item, [-1, 0])
+        self.table[key].setdefault(item, [0, 0])
         if limit == -1 or self.table[key][item][0] == -1:
             self.table[key][item][0] = -1
         else:
