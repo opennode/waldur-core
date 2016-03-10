@@ -231,7 +231,7 @@ class AugmentedSerializerMixin(object):
                         'customer': ('uuid', 'name', 'native_name')
                     }
 
-    3,  Protect some fields from change.
+    3.  Protect some fields from change.
 
         Example:
             class ProjectSerializer(AugmentedSerializerMixin,
