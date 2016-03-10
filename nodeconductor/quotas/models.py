@@ -24,8 +24,9 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     """
     Abstract quota for any resource.
 
-    Quota can exist without scope - for example quota for all projects or all customers on site
-    If quota limit is defined as -1 quota will never be exceeded
+    Quota can exist without scope: for example, a quota for all projects or all
+    customers on site.
+    If quota limit is set to -1 quota will never be exceeded.
     """
     class Meta:
         unique_together = (('name', 'content_type', 'object_id'),)
