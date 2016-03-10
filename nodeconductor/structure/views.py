@@ -699,6 +699,7 @@ class ResourceViewSet(mixins.ListModelMixin,
     def count(self, request):
         """
         Count resources by type. Example output:
+
         {
             "Amazon.Instance": 0,
             "GitLab.Project": 3,
