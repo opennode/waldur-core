@@ -31,6 +31,7 @@ Price estimates in response are sorted from latest to earliest.
             "scope": "http://example.com/api/instances/0424c7746059458ab9a5ad4d097c1d31/",
             "scope_name": "Example Virtual Machine #100",
             "scope_type": "resource",
+            "resource_type": "OpenStack.Instance",
             "total": 1114.0,
             "consumed": 1027.0,
             "month": 7,
