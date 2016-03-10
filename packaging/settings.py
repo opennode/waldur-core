@@ -126,7 +126,7 @@ SECRET_KEY = config.get('global', 'secret_key')
 DEBUG = config.getboolean('global', 'debug')
 for tmpl in TEMPLATES:
     tmpl.setdefault('OPTIONS', {})
-    tmpl['OPTIONS'] = config.getboolean('global', 'template_debug')
+    tmpl['OPTIONS']['debug'] = config.getboolean('global', 'template_debug')
 
 MEDIA_ROOT = config.get('global', 'media_root')
 
