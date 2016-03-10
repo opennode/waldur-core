@@ -1,5 +1,6 @@
 import pytz
 
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils import timezone
 from netaddr import IPNetwork
@@ -652,7 +653,8 @@ class LicenseSerializer(serializers.ModelSerializer):
         fields = ('instance', 'group', 'type', 'name')
 
     def get_instance(self, obj):
-        instance = obj.taggit_taggeditem_items.filter(tag=obj).first().content_object
+        instance_ct = ContentType.objects.get_for_model(models.Instance)
+        instance = obj.taggit_taggeditem_items.filter(tag=obj, content_type=instance_ct).first().content_object
         url_name = instance.get_url_name() + '-detail'
         return reverse.reverse(
             url_name, request=self.context['request'], kwargs={'uuid': instance.uuid.hex})

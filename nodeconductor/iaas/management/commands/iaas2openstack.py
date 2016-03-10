@@ -53,7 +53,7 @@ class Command(BaseCommand):
             tags.append((Types.PriceItems.LICENSE_OS, tmpl.os_type, tmpl.os))
         if tmpl.application_type and tmpl.application_type.name != 'none':
             if tmpl.template_licenses.filter(license_type=tmpl.application_type.slug).exists():
-                pretty_name = tmpl.template_licenses.first().name
+                pretty_name = tmpl.template_licenses.filter(license_type=tmpl.application_type.slug).first().name
             else:
                 pretty_name = tmpl.application_type.name
             tags.append((Types.PriceItems.LICENSE_APPLICATION, tmpl.application_type.slug, pretty_name))
@@ -575,7 +575,7 @@ class Command(BaseCommand):
                     group=group,
                     order_number=2)
 
-                trigger = Trigger.objects.get(name='{HOST.NAME} is not reachable', settings=self.zabbix_settings)
+                trigger = Trigger.objects.get(name='Missing data about the VM', template__name='Template NodeConductor Instance', settings=self.zabbix_settings)
 
                 Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(ITService),
