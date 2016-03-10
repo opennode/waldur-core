@@ -20,6 +20,7 @@ from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
 from uuidfield import UUIDField
 import reversion
+from reversion.models import Version
 
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.validators import validate_name
@@ -333,12 +334,41 @@ class SynchronizableMixin(ErrorMessageMixin):
 
 
 class ReversionMixin(object):
+    """ Store historical values of instance, using django-reversion.
+
+        Note: `ReversionMixin` model should be registered in django-reversion,
+              using one of supported methods:
+              http://django-reversion.readthedocs.org/en/latest/api.html#registering-models-with-django-reversion
+    """
+
+    def get_version_fields(self):
+        """ Get field that are tracked in object history versions. """
+        adapter = reversion.default_revision_manager.get_adapter(self.__class__)
+        return adapter.fields or [f.name for f in self._meta.fields if f not in adapter.exclude]
+
+    def _is_version_duplicate(self):
+        """ Define should new version be created for object or no.
+
+            Reasons to provide custom check instead of default `ignore_revision_duplicates`:
+             - no need to compare all revisions - it is OK if right object version exists in any revision;
+             - need to compare object attributes (not serialized data) to avoid
+               version creation on wrong <float> vs <int> comparison;
+        """
+        if self.id is None:
+            return False
+        try:
+            latest_version = reversion.get_for_object(self).latest('revision__date_created')
+        except Version.DoesNotExist:
+            return False
+        latest_version_object = latest_version.object_version.object
+        fields = self.get_version_fields()
+        return all([getattr(self, f) == getattr(latest_version_object, f) for f in fields])
 
     def save(self, save_revision=True, ignore_revision_duplicates=True, **kwargs):
         if save_revision:
-            with reversion.create_revision():
-                reversion.revision_context_manager.set_ignore_duplicates(ignore_revision_duplicates)
-                return super(ReversionMixin, self).save(**kwargs)
+            if not ignore_revision_duplicates or not self._is_version_duplicate():
+                with reversion.create_revision():
+                    return super(ReversionMixin, self).save(**kwargs)
         return super(ReversionMixin, self).save(**kwargs)
 
 

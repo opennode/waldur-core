@@ -7,8 +7,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand
 from django.core.urlresolvers import reverse
 from django.db import transaction
+from keystoneclient import exceptions as keystone_exceptions
 from optparse import make_option
 
+from nodeconductor.backup import models as backup_models
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates
@@ -47,10 +49,14 @@ class Command(BaseCommand):
     def license2tags(self, tmpl):
         tags = []
         if tmpl.os_type:
-            license = tmpl.template_licenses.first()
-            tags.append((Types.PriceItems.LICENSE_OS, tmpl.os_type, license.license_type if license else tmpl.name))
-        if tmpl.application_type:
-            tags.append((Types.PriceItems.LICENSE_APPLICATION, tmpl.application_type.slug, tmpl.application_type.name))
+            # license = tmpl.template_licenses.first()
+            tags.append((Types.PriceItems.LICENSE_OS, tmpl.os_type, tmpl.os))
+        if tmpl.application_type and tmpl.application_type.name != 'none':
+            if tmpl.template_licenses.filter(license_type=tmpl.application_type.slug).exists():
+                pretty_name = tmpl.template_licenses.first().name
+            else:
+                pretty_name = tmpl.application_type.name
+            tags.append((Types.PriceItems.LICENSE_APPLICATION, tmpl.application_type.slug, pretty_name))
             tags.append((Types.PriceItems.SUPPORT, Types.Support.PREMIUM))
             is_app = True
         else:
@@ -62,6 +68,14 @@ class Command(BaseCommand):
         if not hasattr(self, '_old_zabbix_client'):
             self._old_zabbix_client = ZabbixApiClient()
         return self._old_zabbix_client
+
+    def add_user_to_tenant(self, username, cpm):
+        backend = cpm.get_backend()
+        session = backend.create_session(keystone_url=cpm.cloud.auth_url)
+        keystone = backend.create_keystone_client(session)
+        tenant = keystone.tenants.get(cpm.tenant_id)
+        backend.ensure_user_is_tenant_admin(username, tenant, keystone)
+        self.stdout.write('  User %s was added to tenant %s' % (username, cpm.tenant_id))
 
     # TODO: move this command to zabbix app as part of import process
     def create_zabbix_data(self, iaas_instance, openstack_instance, zabbix_settings, options):
@@ -143,11 +157,12 @@ class Command(BaseCommand):
             trigger=trigger,
         )
 
-        self.stdout.write('  [+] Installation state as monitoring item for %s.' % openstack_instance)
-        mapping = {'NO DATA': 0, 'OK': 1, 'NOT OK': 0}  # TODO: Check this values
-        openstack_instance.monitoring_items.create(
-            name=Host.MONITORING_ITEMS_CONFIGS[0]['monitoring_item_name'],
-            value=mapping[iaas_instance.installation_state])
+        if iaas_instance.type == iaas_instance.Services.PAAS:
+            self.stdout.write('  [+] Installation state as monitoring item for %s.' % openstack_instance)
+            mapping = {'NO DATA': 0, 'OK': 1, 'NOT OK': 0}
+            openstack_instance.monitoring_items.create(
+                name=Host.MONITORING_ITEMS_CONFIGS[0]['monitoring_item_name'],
+                value=mapping[iaas_instance.installation_state])
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -169,9 +184,13 @@ class Command(BaseCommand):
     def migrate_data(self, *args, **options):
         self.head("Step 0: Configure")
         self.base_url = 'http://%s' % (socket.gethostname() or '127.0.0.1:8000')
+        self.portal_base_url = 'https://10.7.30.50'
         if not options.get('dry_run'):
             self.base_url = (raw_input('Please enter NodeConductor base URL [%s]: ' % self.base_url) or self.base_url)
             self.base_url = self.base_url.rstrip('/')
+            self.portal_base_url = (
+                raw_input('Please enter Portal base URL [%s]: ' % self.portal_base_url) or self.portal_base_url)
+            self.portal_base_url = self.portal_base_url.rstrip('/')
         if zbx:
             from nodeconductor_zabbix.apps import ZabbixConfig
 
@@ -307,6 +326,11 @@ class Command(BaseCommand):
         spls = []
         for cpm in iaas_models.CloudProjectMembership.objects.filter(cloud__in=clouds):
             try:
+                self.add_user_to_tenant(clouds[cpm.cloud_id].settings.username, cpm)
+            except keystone_exceptions.NotFound:
+                self.stdout.write('  CPM tenant (UUID: %s) does not exist at backend. CPM will be ignored' % cpm.tenant_id)
+                continue
+            try:
                 spl = op_models.OpenStackServiceProjectLink.objects.get(
                     service=clouds[cpm.cloud_id],
                     project=cpm.project)
@@ -325,14 +349,17 @@ class Command(BaseCommand):
                 cpms[cpm.id] = spl
             else:
                 cpms[cpm.id] = spl
-                if spl.state != SynchronizationStates.NEW:
+                if spl.state != SynchronizationStates.NEW and spl.tenant_id != cpm.tenant_id:
                     raise Exception('There are 2 OpenStack tenants that connects service %s and project %s. This'
                                     ' conflict should be handled manually.' % (spl.service, spl.project))
                 else:
                     spl.tenant_id = cpm.tenant_id
+                    spl.internal_network_id = cpm.internal_network_id
+                    spl.external_network_id = cpm.external_network_id
+                    spl.availability_zone = cpm.availability_zone
                     spl.state = SynchronizationStates.IN_SYNC
                     spl.save()
-                self.stdout.write('[ ] %s' % cpm)
+                self.stdout.write('[ ] (only tenant id) %s' % cpm)
 
         self.head("Step 4a: Migrate FloatingIPs")
         for fip in iaas_models.FloatingIP.objects.all():
@@ -398,6 +425,7 @@ class Command(BaseCommand):
             send_task('structure', 'sync_service_project_links')(spls)
 
         self.head("Step 4d: Migrate Resources")
+        migrated_iaas_instances = []
         for instance in iaas_models.Instance.objects.filter(cloud_project_membership__in=cpms):
             try:
                 op_models.Instance.objects.get(
@@ -419,12 +447,13 @@ class Command(BaseCommand):
                     flavor_name=instance.flavor_name,
                     cores=instance.cores,
                     ram=instance.ram,
-                    state=op_models.Instance.States.ONLINE,
+                    state=instance.state,
                     name=instance.name,
                 )
 
                 # XXX: duplicate UUIDs due to killbill
                 inst.uuid = instance.uuid
+                inst.created = instance.created
                 inst.save()
 
                 for sgrp in instance.security_groups.all():
@@ -434,6 +463,7 @@ class Command(BaseCommand):
 
                 _, tags = self.license2tags(instance.template)
                 inst.tags.add(*tags)
+                inst.tags.add(instance.type)
 
                 if self.zabbix_settings:
                     self.create_zabbix_data(
@@ -442,18 +472,51 @@ class Command(BaseCommand):
                         zabbix_settings=self.zabbix_settings,
                         options=options,
                     )
+                migrated_iaas_instances.append(instance)
             else:
                 self.stdout.write('[ ] %s' % instance)
 
-        self.head("Step 5: Migrate Templates")
+        self.head("Step 5a: Migrate backup schedules")
+        migrated_backup_schedules = {}
+        for backup_schedule in backup_models.BackupSchedule.objects.all():
+            if backup_schedule.backup_source not in migrated_iaas_instances:
+                self.stdout.write('[ ] %s' % backup_schedule)
+                continue
+            migrated_backup_schedules[backup_schedule] = op_models.BackupSchedule.objects.create(
+                instance=op_models.Instance.objects.get(uuid=backup_schedule.backup_source.uuid),
+                schedule=backup_schedule.schedule,
+                next_trigger_at=backup_schedule.next_trigger_at,
+                is_active=backup_schedule.is_active,
+                timezone=backup_schedule.timezone,
+                maximal_number_of_backups=backup_schedule.maximal_number_of_backups,
+                retention_time=backup_schedule.retention_time,
+                description=backup_schedule.description,
+            )
+            self.stdout.write('[+] %s' % backup_schedule)
+
+        self.head("Step 5b: Migrate backups")
+        for backup in backup_models.Backup.objects.all():
+            if backup.backup_source not in migrated_iaas_instances:
+                self.stdout.write('[ ] %s' % backup_schedule)
+                continue
+            op_models.Backup.objects.create(
+                instance=op_models.Instance.objects.get(uuid=backup.backup_source.uuid),
+                backup_schedule=migrated_backup_schedules.get(backup.backup_schedule, None),
+                kept_until=backup.kept_until,
+                created_at=backup.created_at,
+                state=backup.state,
+                metadata=backup.metadata,
+                description=backup.description,
+            )
+            self.stdout.write('[x] %s' % backup)
+
+        self.head("Step 6: Migrate Templates")
         for tmpl in iaas_models.Template.objects.all():
-            qs = iaas_models.Instance.objects.filter(
-                template=tmpl).values_list('cloud_project_membership__cloud__auth_url', flat=True)
+            auth_urls = set([c.auth_url for c in iaas_models.Cloud.objects.all()])
+            op_settings = ServiceSettings.objects.get(
+                type=OpenStackConfig.service_name, backend_url__in=auth_urls, shared=True)
 
             descr = '%s from %s' % (tmpl, tmpl.uuid)
-            settings = set(qs)
-            if not settings:
-                self.stdout.write('[ ] %s' % tmpl)
 
             try:
                 group = TemplateGroup.objects.get(description=descr)
@@ -463,16 +526,42 @@ class Command(BaseCommand):
                 self.stdout.write('[ ] %s (%s)' % (tmpl, descr))
                 continue
 
-            group = TemplateGroup(name=tmpl.name, description=descr, is_active=tmpl.is_active)
-            templates = [Template(
+            group = TemplateGroup.objects.create(
+                name=tmpl.name,
+                description=descr,
+                is_active=tmpl.is_active,
+                icon_url=self.portal_base_url + tmpl.icon_name)
+            group.tags.add(tmpl.type)
+
+            iaas_image = tmpl.images.all().first()
+            if not iaas_image:
+                self.warn('Template %s does not have images. It will be ignored.' % tmpl.name)
+                continue
+
+            try:
+                image = op_models.Image.objects.get(settings=op_settings, backend_id=iaas_image.backend_id)
+            except ObjectDoesNotExist:
+                self.warn('Image with name %s does not exists. New template will not be created.' % iaas_image.name)
+                continue
+
+            main_template = Template.objects.create(
                 resource_content_type=ContentType.objects.get_for_model(op_models.Instance),
-                options={},
-                order_number=1)]
+                service_settings=op_settings,
+                options={
+                    'service_settings': self.get_obj_url('servicesettings-detail', op_settings),
+                    'image': self.get_obj_url('openstack-image-detail', image),
+                },
+                group=group,
+                order_number=1)
+
+            _, tags = self.license2tags(tmpl)
+            main_template.tags.add(*tags)
+            main_template.tags.add(tmpl.type)
 
             if self.zabbix_settings:
                 from nodeconductor_zabbix.models import Host, ITService, Trigger
 
-                templates.append(Template(
+                Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(Host),
                     service_settings=self.zabbix_settings,
                     options={
@@ -483,11 +572,12 @@ class Command(BaseCommand):
                         'host_group_name': 'NodeConductor',
                     },
                     use_previous_resource_project=True,
-                    order_number=2))
+                    group=group,
+                    order_number=2)
 
                 trigger = Trigger.objects.get(name='{HOST.NAME} is not reachable', settings=self.zabbix_settings)
 
-                templates.append(Template(
+                Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(ITService),
                     service_settings=self.zabbix_settings,
                     options={
@@ -501,24 +591,7 @@ class Command(BaseCommand):
                         'algorithm': 'problem, if all children have problems',
                     },
                     use_previous_resource_project=True,
-                    order_number=3))
-
-            is_app, tags = self.license2tags(tmpl)
-            group.save()
-            group.tags.add('PaaS' if is_app else 'SaaS')
-
-            for auth_url in settings:
-                try:
-                    settings_obj = ServiceSettings.objects.get(
-                        type=OpenStackConfig.service_name, backend_url=auth_url, shared=True)
-                except ObjectDoesNotExist:
-                    self.warn('DB inconsistency: missed setting URL %s' % auth_url)
-                    continue
-
-                for template in templates:
-                    template.service_settings = settings_obj
-                    template.group = group
-                    template.save()
-                    template.tags.add(*tags)
+                    group=group,
+                    order_number=3)
 
         ServiceSettings.objects.filter(id__in=new_settings).update(shared=True)

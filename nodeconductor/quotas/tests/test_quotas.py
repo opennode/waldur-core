@@ -63,8 +63,8 @@ class QuotaHistoryTest(test.APITransactionTestCase):
         version.revision.save()
 
     def test_old_version_of_quota_is_available(self):
-        old_name = self.quota.name
-        self.quota.name = 'new_quota_name'
+        old_usage = self.quota.usage
+        self.quota.usage = self.quota.usage + 1
         self.quota.save()
         history_timestamp = core_utils.datetime_to_timestamp(timezone.now()-timedelta(minutes=30))
 
@@ -73,7 +73,7 @@ class QuotaHistoryTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]['point'], history_timestamp)
-        self.assertEqual(response.data[0]['object']['name'], old_name)
+        self.assertEqual(response.data[0]['object']['usage'], old_usage)
 
     def test_endpoint_does_not_return_object_if_date(self):
         history_timestamp = core_utils.datetime_to_timestamp(timezone.now()-timedelta(hours=2))

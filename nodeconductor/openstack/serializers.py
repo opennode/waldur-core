@@ -9,6 +9,7 @@ from taggit.models import Tag
 from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers
 from nodeconductor.openstack.backend import OpenStackBackendError
@@ -173,10 +174,6 @@ class ExternalNetworkSerializer(serializers.Serializer):
 class AssignFloatingIpSerializer(serializers.Serializer):
     floating_ip_uuid = serializers.CharField()
 
-    def __init__(self, instance, *args, **kwargs):
-        self.assigned_instance = instance
-        super(AssignFloatingIpSerializer, self).__init__(*args, **kwargs)
-
     def validate(self, attrs):
         ip_uuid = attrs.get('floating_ip_uuid')
 
@@ -187,8 +184,15 @@ class AssignFloatingIpSerializer(serializers.Serializer):
 
         if floating_ip.status == 'ACTIVE':
             raise serializers.ValidationError("Floating IP status must be DOWN.")
-        elif floating_ip.service_project_link != self.assigned_instance.service_project_link:
-            raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
+        elif floating_ip.service_project_link != self.instance.service_project_link:
+            raise serializers.ValidationError("Floating IP must belong to same service project link.")
+
+        if not self.instance.service_project_link.external_network_id:
+            raise serializers.ValidationError(
+                "External network ID of the service project link is missing.")
+        elif self.instance.service_project_link.state not in SynchronizationStates.STABLE_STATES:
+            raise serializers.ValidationError(
+                "Service project link of instance should be in stable state.")
 
         return attrs
 
@@ -461,7 +465,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips', 'backups', 'backup_schedules'
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
@@ -587,26 +591,22 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         queryset=models.Flavor.objects.all(),
         required=False,
     )
-    disk_size = serializers.IntegerField(min_value=1, required=False)
-
-    def __init__(self, instance, *args, **kwargs):
-        self.resized_instance = instance
-        super(InstanceResizeSerializer, self).__init__(*args, **kwargs)
+    disk_size = serializers.IntegerField(min_value=1, required=False, label='Disk size')
 
     def get_filtered_field_names(self):
         return 'flavor',
 
     def validate_flavor(self, value):
         if value is not None:
-            spl = self.resized_instance.service_project_link
+            spl = self.instance.service_project_link
 
             if value.settings != spl.service.settings:
                 raise serializers.ValidationError(
                     "New flavor is not within the same service settings")
 
             quota_errors = spl.validate_quota_change({
-                'vcpu': value.cores - self.resized_instance.cores,
-                'ram': value.ram - self.resized_instance.ram,
+                'vcpu': value.cores - self.instance.cores,
+                'ram': value.ram - self.instance.ram,
             })
             if quota_errors:
                 raise serializers.ValidationError(
@@ -615,12 +615,12 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
 
     def validate_disk_size(self, value):
         if value is not None:
-            if value <= self.resized_instance.data_volume_size:
+            if value <= self.instance.data_volume_size:
                 raise serializers.ValidationError(
                     "Disk size must be strictly greater than the current one")
 
-            quota_errors = self.resized_instance.service_project_link.validate_quota_change({
-                'storage': value - self.resized_instance.data_volume_size,
+            quota_errors = self.instance.service_project_link.validate_quota_change({
+                'storage': value - self.instance.data_volume_size,
             })
             if quota_errors:
                 raise serializers.ValidationError(
