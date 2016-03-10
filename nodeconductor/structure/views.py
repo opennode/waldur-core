@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
+from collections import defaultdict
 
 from datetime import timedelta
 
@@ -1315,36 +1316,6 @@ class AggregatedStatsView(views.APIView):
         return Response(total_sum, status=status.HTTP_200_OK)
 
 
-class QuotaTimelineTable(object):
-    def __init__(self):
-        self.table = {}
-
-    def add_quota(self, start, end, item, limit, usage):
-        key = (start, end)
-        self.table.setdefault(key, {})
-        self.table[key].setdefault(item, [0, 0])
-        if limit == -1 or self.table[key][item][0] == -1:
-            self.table[key][item][0] = -1
-        else:
-            self.table[key][item][0] += limit
-        self.table[key][item][1] += usage
-
-    def to_dict(self):
-        table = []
-        for key, subtable in self.table.items():
-            start, end = key
-            row = {
-                'from': datetime_to_timestamp(start),
-                'to': datetime_to_timestamp(end)
-            }
-            for item, values in subtable.items():
-                limit, usage = values
-                row['%s_limit' % item] = limit
-                row['%s_usage' % item] = usage
-            table.append(row)
-        return table
-
-
 class QuotaTimelineStatsView(views.APIView):
     """
     Count quota usage and limit history statistics
@@ -1352,19 +1323,17 @@ class QuotaTimelineStatsView(views.APIView):
 
     def get(self, request, format=None):
         scopes = self.get_quota_scopes(request)
-        dates = self.get_dates(request)
+        ranges = self.get_ranges(request)
         items = request.query_params.getlist('item') or self.get_all_spls_quotas()
 
-        table = QuotaTimelineTable()
+        collector = QuotaTimelineCollector()
         for item in items:
             for scope in scopes:
-                stats = self.get_stats_for_scope(item, scope, dates)
-                for date, values in zip(dates, stats):
-                    end, start = date
-                    limit, usage = values
-                    table.add_quota(start, end, item, limit, usage)
+                values = self.get_stats_for_scope(item, scope, ranges)
+                for (end, start), (limit, usage) in zip(ranges, values):
+                    collector.add_quota(start, end, item, limit, usage)
 
-        stats = map(sort_dict, table.to_dict()[::-1])
+        stats = map(sort_dict, collector.to_dict())[::-1]
         return Response(stats, status=status.HTTP_200_OK)
 
     def get_quota_scopes(self, request):
@@ -1400,7 +1369,7 @@ class QuotaTimelineStatsView(views.APIView):
 
         return stats_data
 
-    def get_dates(self, request):
+    def get_ranges(self, request):
         mapped = {
             'start_time': request.query_params.get('from'),
             'end_time': request.query_params.get('to'),
@@ -1413,5 +1382,52 @@ class QuotaTimelineStatsView(views.APIView):
 
         date_points = serializer.get_date_points()
         reversed_dates = date_points[::-1]
-        dates = zip(reversed_dates[:-1], reversed_dates[1:])
-        return dates
+        ranges = zip(reversed_dates[:-1], reversed_dates[1:])
+        return ranges
+
+
+class QuotaTimelineCollector(object):
+    """
+    Helper class for QuotaTimelineStatsView.
+    Aggregate quotas grouped by date range and quota name.
+    Example output rendering:
+    [
+        {
+            "from": start,
+            "to" end,
+            "vcpu_limit": 10,
+            "vcpu_usage": 5,
+            "ram_limit": 4000,
+            "ran_usage": 1000
+        }
+    ]
+    """
+    def __init__(self):
+        self.ranges = set()
+        self.items = set()
+        self.limits = defaultdict(int)
+        self.usages = defaultdict(int)
+
+    def add_quota(self, start, end, item, limit, usage):
+        key = (start, end, item)
+        if limit == -1 or self.limits[key] == -1:
+            self.limits[key] = -1
+        else:
+            self.limits[key] += limit
+        self.usages[key] += usage
+        self.ranges.add((start, end))
+        self.items.add(item)
+
+    def to_dict(self):
+        table = []
+        for start, end in sorted(self.ranges):
+            row = {
+                'from': datetime_to_timestamp(start),
+                'to': datetime_to_timestamp(end)
+            }
+            for item in sorted(self.items):
+                key = (start, end, item)
+                row['%s_limit' % item] = self.limits[key]
+                row['%s_usage' % item] = self.usages[key]
+            table.append(row)
+        return table
