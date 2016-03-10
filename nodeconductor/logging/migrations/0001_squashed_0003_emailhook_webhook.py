@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
                 ('event_types', jsonfield.fields.JSONField(verbose_name=b'List of event types')),
                 ('is_active', models.BooleanField(default=True)),
                 ('last_published', models.DateTimeField(default=django.utils.timezone.now)),
-                ('email', models.EmailField(max_length=254)),
+                ('email', models.EmailField(max_length=75)),
                 ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
             ],
             options={
