@@ -45,7 +45,7 @@ class Base64Field(serializers.CharField):
         return base64.b64encode(value)
 
 
-# XXX: this field has to be replaced with default drf IPAddressField after it implementation:
+# XXX: this field has to be replaced with default DRF IPAddressField after it implementation:
 # https://github.com/tomchristie/django-rest-framework/issues/1853
 
 class IPAddressField(serializers.CharField):
