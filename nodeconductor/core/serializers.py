@@ -14,7 +14,7 @@ from nodeconductor.core.signals import pre_serializer_fields
 
 class AuthTokenSerializer(serializers.Serializer):
     """
-    Api token serializer loosely based on DRF's default AuthTokenSerializer.
+    API token serializer loosely based on DRF's default AuthTokenSerializer.
     but with the logic of authorization is extracted to view.
     """
     # Fields are both required, non-blank and don't allow nulls by default
