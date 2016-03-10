@@ -472,7 +472,7 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             queryset = queryset.filter(customer__uuid=self.request.query_params['customer'])
 
         ids = [instance.id for instance in queryset]
-        tags = self.queryset.filter(taggit_taggeditem_items__object_id__in=ids)
+        tags = self.get_queryset().filter(taggit_taggeditem_items__object_id__in=ids)
 
         tags_map = {
             Types.PriceItems.LICENSE_OS: dict(Types.Os.CHOICES),
