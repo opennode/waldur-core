@@ -24,19 +24,30 @@ class ResourceActionsMetadata(SimpleMetadata):
     def determine_metadata(self, request, view):
         self.request = request
         metadata = OrderedDict()
-        metadata['actions'] = self.get_actions_metadata(request, view)
-        metadata['actions'].update(self.determine_actions(request, view))
+        if view.lookup_field in view.kwargs:
+            metadata['actions'] = self.get_actions(request, view)
+        else:
+            metadata['actions'] = self.determine_actions(request, view)
         return metadata
 
-    def get_actions_metadata(self, request, view):
+    def get_actions(self, request, view):
+        """
+        Return metadata for resource-specific actions,
+        such as start, stop, unlink
+        """
         metadata = OrderedDict()
         model = view.get_queryset().model
         actions = SupportedServices.get_resource_actions(model)
+        resource = view.get_object()
         for name, action in actions.items():
+            reason = self.get_action_reason(action, name, request.user, resource)
             metadata[name] = {
                 'title': self.get_action_title(action, name),
                 'method': self.get_action_method(action),
                 'destructive': self.is_action_destructive(action),
+                'url': self.get_action_url(action, name),
+                'reason': reason,
+                'enabled': not reason
             }
             fields = self.get_action_fields(view, name)
             if not fields:
@@ -58,20 +69,35 @@ class ResourceActionsMetadata(SimpleMetadata):
         except AttributeError:
             return name.replace('_', ' ').title()
 
+    def get_action_reason(self, action, name, user, resource):
+        valid_state = None
+        if hasattr(action, 'valid_state'):
+            valid_state = getattr(action, 'valid_state')
+
+        try:
+            check_operation(user, resource, name, valid_state)
+        except exceptions.APIException as e:
+            return six.text_type(e)
+
+    def get_action_method(self, action):
+        return getattr(action, 'method', 'POST')
+
+    def get_action_url(self, action, name):
+        base_url = self.request.build_absolute_uri()
+        method = self.get_action_method(action)
+        return method == 'DELETE' and base_url or base_url + name + '/'
+
     def get_action_fields(self, view, name):
+        """
+        Get fields required by action's serializer
+        """
         view.action = name
         serializer_class = view.get_serializer_class()
         fields = OrderedDict()
         if serializer_class and serializer_class != view.serializer_class:
-            for field_name, field in serializer_class._declared_fields.items():
-                info = self.get_field_info(field)
-                if info:
-                    fields[field_name] = info
+            fields = self.get_fields(serializer_class._declared_fields)
         view.action = None
         return fields
-
-    def get_action_method(self, action):
-        return getattr(action, 'method', 'POST')
 
     def get_serializer_info(self, serializer):
         """
@@ -82,14 +108,20 @@ class ResourceActionsMetadata(SimpleMetadata):
             # If this is a `ListSerializer` then we want to examine the
             # underlying child serializer instance instead.
             serializer = serializer.child
+        return self.get_fields(serializer.fields)
+
+    def get_fields(self, serializer_fields):
+        """
+        Get fields metadata skipping empty fields
+        """
         fields = OrderedDict()
-        for field_name, field in serializer.fields.items():
-            info = self.get_field_info(field)
+        for field_name, field in serializer_fields.items():
+            info = self.get_field_info(field, field_name)
             if info:
                 fields[field_name] = info
         return fields
 
-    def get_field_info(self, field):
+    def get_field_info(self, field, field_name):
         """
         Given an instance of a serializer field, return a dictionary
         of metadata about it.
@@ -114,6 +146,9 @@ class ResourceActionsMetadata(SimpleMetadata):
                 return None
             del field_info['read_only']
 
+        if 'label' not in field_info:
+            field_info['label'] = field_name.replace('_', ' ').title()
+
         if isinstance(field, serializers.HyperlinkedRelatedField):
             list_view = field.view_name.replace('-detail', '-list')
             field_info['url'] = reverse(list_view, request=self.request)
@@ -128,34 +163,6 @@ class ResourceActionsMetadata(SimpleMetadata):
             ]
 
         return field_info
-
-
-def get_actions_for_resource(user, resource):
-    metadata = []
-
-    def get_info(name, valid_state=None):
-        enabled = True
-        reason = None
-        try:
-            check_operation(user, resource, name, valid_state)
-        except exceptions.APIException as e:
-            enabled = False
-            reason = six.text_type(e)
-        return {
-            'name': name,
-            'enabled': enabled,
-            'reason': reason
-        }
-
-    actions = SupportedServices.get_resource_actions(resource)
-    for name, action in actions.items():
-        valid_state = None
-        if hasattr(action, 'valid_state'):
-            valid_state = getattr(action, 'valid_state')
-        info = get_info(name, valid_state)
-        metadata.append(info)
-
-    return metadata
 
 
 # TODO: Allow to define permissions based on user and object

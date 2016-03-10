@@ -175,7 +175,7 @@ class ExternalNetworkSerializer(serializers.Serializer):
 
 
 class AssignFloatingIpSerializer(serializers.Serializer):
-    floating_ip_uuid = serializers.CharField()
+    floating_ip_uuid = serializers.CharField(label='Floating IP UUID')
 
     def validate(self, attrs):
         ip_uuid = attrs.get('floating_ip_uuid')
