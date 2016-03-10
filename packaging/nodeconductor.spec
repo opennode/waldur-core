@@ -23,16 +23,15 @@ Requires: python-ceilometerclient = 1.0.12
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-cinderclient = 1.1.1
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
-Requires: python-django >= 1.7.1
+Requires: python-django >= 1.8, python-django >= 1.9
 Requires: python-django-admin-tools = 0.7.0
 Requires: python-django-cors-headers
 Requires: python-django-filter >= 0.10
 Requires: python-django-fluent-dashboard = 0.5.1
-Requires: python-django-fsm = 2.2.0
-Requires: python-django-gm2m = 0.3
+Requires: python-django-fsm = 2.3.0
+Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.2
-Requires: python-django-permission = 0.8.2
-Requires: python-django-polymorphic >= 0.7.0
+Requires: python-django-permission = 0.9.2
 Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.17.5
@@ -44,7 +43,6 @@ Requires: python-jsonfield = 1.0.0
 Requires: python-keystoneclient = 1:0.11.1
 Requires: python-neutronclient = 2.3.9
 Requires: python-novaclient = 1:2.20.0
-Requires: python-pillow >= 2.0.0
 Requires: python-redis = 2.10.3
 Requires: python-requests = 2.6.0
 Requires: python-sqlparse >= 0.1.11
@@ -60,7 +58,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
-BuildRequires: python-django >= 1.7.1
+BuildRequires: python-django >= 1.8
 BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 BuildRequires: python-setuptools
