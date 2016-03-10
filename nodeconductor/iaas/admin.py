@@ -38,7 +38,7 @@ class CloudAdmin(admin.ModelAdmin):
 
     def sync_services(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        service_uuids = list(queryset.values_list('uuid', flat=True))
+        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
         tasks_scheduled = queryset.count()
 
         tasks.sync_services.delay(service_uuids)

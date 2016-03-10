@@ -26,7 +26,6 @@ install_requires = [
     'django-gm2m==0.4.2',
     'django-model-utils==2.2',
     'django-permission==0.9.2',
-    'django-polymorphic>=0.7',
     'django-reversion>=1.8.7,<=1.9.3',
     'django-taggit>=0.17.5',
     'django-uuidfield==0.5.0',

@@ -319,7 +319,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def sync(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        service_uuids = list(queryset.values_list('uuid', flat=True))
+        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
         tasks_scheduled = queryset.count()
 
         send_task('structure', 'sync_service_settings')(service_uuids)
@@ -337,7 +337,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def recover(self, request, queryset):
         selected_settings = queryset.count()
         queryset = queryset.filter(state=SynchronizationStates.ERRED)
-        service_uuids = list(queryset.values_list('uuid', flat=True))
+        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
         send_task('structure', 'recover_service_settings')(service_uuids)
 
         tasks_scheduled = queryset.count()
@@ -358,7 +358,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def create_spls_and_services(self, request, queryset):
         selected_settings = queryset.count()
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC, shared=True)
-        settings_uuids = list(queryset.values_list('uuid', flat=True))
+        settings_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
         send_task('structure', 'create_spls_and_services_for_shared_settings')(settings_uuids)
 
         tasks_scheduled = queryset.count()

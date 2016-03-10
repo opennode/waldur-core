@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('contenttypes', '0001_initial'),
         ('structure', '__latest__'),
-        ('template', '0004_upgrate_polymorphic_package'),
+        ('template', '0001_squashed_0004_upgrate_polymorphic_package'),
         ('cost_tracking', '__latest__'),
     ]
 
