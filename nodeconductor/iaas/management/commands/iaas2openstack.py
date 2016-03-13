@@ -353,13 +353,16 @@ class Command(BaseCommand):
                     raise Exception('There are 2 OpenStack tenants that connects service %s and project %s. This'
                                     ' conflict should be handled manually.' % (spl.service, spl.project))
                 else:
-                    spl.tenant_id = cpm.tenant_id
-                    spl.internal_network_id = cpm.internal_network_id
-                    spl.external_network_id = cpm.external_network_id
-                    spl.availability_zone = cpm.availability_zone
-                    spl.state = SynchronizationStates.IN_SYNC
-                    spl.save()
-                self.stdout.write('[ ] (only tenant id) %s' % cpm)
+                    if spl.tenant_id != cpm.tenant_id:
+                        spl.tenant_id = cpm.tenant_id
+                        spl.internal_network_id = cpm.internal_network_id
+                        spl.external_network_id = cpm.external_network_id
+                        spl.availability_zone = cpm.availability_zone
+                        spl.state = SynchronizationStates.IN_SYNC
+                        spl.save()
+                        self.stdout.write('[+] (only tenant id) %s' % cpm)
+                    else:
+                        self.stdout.write('[ ] %s' % cpm)
 
         self.head("Step 4a: Migrate FloatingIPs")
         for fip in iaas_models.FloatingIP.objects.all():
@@ -508,7 +511,7 @@ class Command(BaseCommand):
                 metadata=backup.metadata,
                 description=backup.description,
             )
-            self.stdout.write('[x] %s' % backup)
+            self.stdout.write('[+] %s' % backup)
 
         self.head("Step 6: Migrate Templates")
         for tmpl in iaas_models.Template.objects.all():
@@ -559,7 +562,19 @@ class Command(BaseCommand):
             main_template.tags.add(tmpl.type)
 
             if self.zabbix_settings:
-                from nodeconductor_zabbix.models import Host, ITService, Trigger
+                from nodeconductor_zabbix.models import Host, ITService, Trigger, Template as ZabbixTemplate
+
+                zabbix_templates = [ZabbixTemplate.objects.get(
+                    name='Template NodeConductor Instance', settings=self.zabbix_settings)]
+                if main_template.tags.filter(name__contains='zimbra'):
+                    zabbix_templates.append(ZabbixTemplate.objects.get(
+                        name='Template PaaS App Zimbra', settings=self.zabbix_settings))
+                elif main_template.tags.filter(name__contains='wordpr'):
+                    zabbix_templates.append(ZabbixTemplate.objects.get(
+                        name='Template PaaS App Wordpress', settings=self.zabbix_settings))
+                elif main_template.tags.filter(name__contains='postgre'):
+                    zabbix_templates.append(ZabbixTemplate.objects.get(
+                        name='Template PaaS App PostgreSQL', settings=self.zabbix_settings))
 
                 Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(Host),
@@ -570,6 +585,7 @@ class Command(BaseCommand):
                         'scope': '{{ response.url }}',
                         'name': '{{ response.backend_id }}',
                         'host_group_name': 'NodeConductor',
+                        'templates': [{'url': self.get_obj_url('zabbix-template-detail', t)} for t in zabbix_templates],
                     },
                     use_previous_resource_project=True,
                     group=group,
