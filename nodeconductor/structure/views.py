@@ -685,12 +685,12 @@ class ResourceViewSet(mixins.ListModelMixin,
     model = models.Resource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
         types = self.request.query_params.getlist('resource_type', None)
-        resource_models = SupportedServices.get_resource_models()
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items() if k != 'IaaS.Instance'}
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
         return managers.SummaryQuerySet(resource_models.values())
@@ -704,7 +704,6 @@ class ResourceViewSet(mixins.ListModelMixin,
             "Amazon.Instance": 0,
             "GitLab.Project": 3,
             "Azure.VirtualMachine": 0,
-            "IaaS.Instance": 10,
             "DigitalOcean.Droplet": 0,
             "OpenStack.Instance": 0,
             "GitLab.Group": 8
