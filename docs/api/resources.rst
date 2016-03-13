@@ -133,6 +133,31 @@ You may filter or order resources by monitoring item.
 
   /api/<resource_endpoint>/?o=monitoring__installation_state
 
+
+Tags
+^^^^
+
+Resource may have tags attached to it. Example of tags rendering:
+
+.. code-block:: javascript
+
+    "tags": [
+        "license-os:centos7",
+        "os-family:linux",
+        "license-application:postgresql",
+        "support:premium"
+    ]
+
+Tags filtering:
+
+ - ?tag=IaaS - filter by full tag name. Can be list.
+ - ?tag__license-os=centos7 - filter by tags with particular prefix.
+
+Tags ordering:
+
+ - ?o=tag__license-os - order by tag with particular prefix. Instances without given tag will not be returned.
+
+
 Resource actions
 ----------------
 
