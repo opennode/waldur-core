@@ -6,8 +6,8 @@ from django.db.models import Q
 from django.utils import six
 import django_filters
 from django_filters.filterset import FilterSetMetaclass
-
 from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
+import taggit
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import models as core_models
@@ -601,6 +601,13 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
         choice_mappings={representation: db_value for db_value, representation in models.Resource.States.CHOICES},
     )
     uuid = django_filters.CharFilter(lookup_type='exact')
+    tag = django_filters.ModelMultipleChoiceFilter(
+        name='tags__name',
+        to_field_name='name',
+        lookup_type='in',
+        queryset=taggit.models.Tag.objects.all(),
+        conjoined=True,
+    )
 
     strict = False
 
@@ -616,7 +623,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             # service
             'service_uuid', 'service_name',
             # resource
-            'name', 'description', 'state', 'uuid',
+            'name', 'description', 'state', 'uuid', 'tag',
         )
         order_by = [
             'name',
@@ -643,6 +650,30 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             'project_name': 'service_project_link__project__name',
             'project_group_name': 'service_project_link__project__project_groups__name',
         }
+
+
+# XXX: temporary filter for licenses filtering.
+class TagsFilter(BaseFilterBackend):
+
+    def filter_queryset(self, request, queryset, view):
+        for key in request.query_params.keys():
+            item_name = self._get_item_name(key)
+            if item_name:
+                value = request.query_params.get(key)
+                queryset = queryset.filter(tags__name__startswith=item_name, tags__name__icontains=value)
+
+        order_by = request.query_params.get('o')
+        item_name = self._get_item_name(order_by)
+        if item_name:
+            queryset = queryset.filter(tags__name__startswith=item_name)\
+                               .order_by('tags__name')
+
+        return queryset
+
+    def _get_item_name(self, key):
+        if key and key.startswith('tag__'):
+            _, item_name = key.split('__', 1)
+            return item_name
 
 
 class BaseServicePropertyFilter(django_filters.FilterSet):

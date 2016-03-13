@@ -14,12 +14,11 @@ from rest_framework.reverse import reverse
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.fields import MappedChoiceField, TimestampField
+from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
-from nodeconductor.structure.metadata import get_actions_for_resource
 from nodeconductor.structure.models import ServiceProjectLink
 
 User = auth.get_user_model()
@@ -1172,7 +1171,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url', 'actions'
+            'access_url'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1203,9 +1202,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     # an optional generic URL for accessing a resource
     def get_access_url(self, obj):
         return obj.get_access_url()
-
-    def get_actions(self, obj):
-        return get_actions_for_resource(self.context['request'].user, obj)
 
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1371,13 +1367,3 @@ class AggregateSerializer(serializers.Serializer):
         projects = self.get_projects(user)
         return [model.objects.filter(project__in=projects)
                 for model in ServiceProjectLink.get_all_models()]
-
-
-class QuotaTimelineStatsSerializer(serializers.Serializer):
-
-    INTERVAL_CHOICES = ('hour', 'day', 'week', 'month')
-
-    start_time = TimestampField(default=lambda: core_utils.timeshift(days=-1))
-    end_time = TimestampField(default=lambda: core_utils.timeshift())
-    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
-    item = serializers.CharField(required=False)

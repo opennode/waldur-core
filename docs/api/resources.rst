@@ -133,6 +133,31 @@ You may filter or order resources by monitoring item.
 
   /api/<resource_endpoint>/?o=monitoring__installation_state
 
+
+Tags
+^^^^
+
+Resource may have tags attached to it. Example of tags rendering:
+
+.. code-block:: javascript
+
+    "tags": [
+        "license-os:centos7",
+        "os-family:linux",
+        "license-application:postgresql",
+        "support:premium"
+    ]
+
+Tags filtering:
+
+ - ?tag=IaaS - filter by full tag name. Can be list.
+ - ?tag__license-os=centos7 - filter by tags with particular prefix.
+
+Tags ordering:
+
+ - ?o=tag__license-os - order by tag with particular prefix. Instances without given tag will not be returned.
+
+
 Resource actions
 ----------------
 
@@ -142,79 +167,94 @@ Example rendering of response:
 
 .. code-block:: javascript
 
-    {
-        "actions": {
-            "destroy": {
-                "destructive": true,
-                "type": "button",
-                "method": "DELETE",
-                "title": "Destroy"
-            },
-            "resize": {
-                "fields": {
-                    "flavor": {
-                        "type": "select_url",
-                        "required": false,
-                        "url": "http://example.com/api/openstack-flavors/"
-                    },
-                    "disk_size": {
-                        "type": "integer",
-                        "required": false,
-                        "label": "Disk size",
-                        "min_value": 1
-                    }
-                },
-                "destructive": false,
-                "type": "form",
-                "method": "POST",
-                "title": "Resize virtual machine"
-            },
-            "restart": {
-                "destructive": false,
-                "type": "button",
-                "method": "POST",
-                "title": "Restart"
-            },
-            "start": {
-                "destructive": false,
-                "type": "button",
-                "method": "POST",
-                "title": "Start"
-            },
-            "stop": {
-                "destructive": false,
-                "type": "button",
-                "method": "POST",
-                "title": "Stop"
-            },
-            "unlink": {
-                "destructive": true,
-                "type": "button",
-                "method": "POST",
-                "title": "Unlink"
-            },
-            "PUT": {
-                "name": {
+{
+    "actions": {
+        "assign_floating_ip": {
+            "title": "Assign floating IP",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/assign_floating_ip/",
+            "fields": {
+                "floating_ip_uuid": {
                     "type": "string",
                     "required": true,
-                    "label": "Name",
-                    "max_length": 150
-                },
-                "description": {
-                    "type": "string",
-                    "required": false,
-                    "label": "Description",
-                    "max_length": 500
-                },
-                "security_groups": {
-                    "type": "field",
-                    "required": false,
-                    "label": "Security groups",
-                    "many": true
+                    "label": "Floating IP UUID"
                 }
-            }
+            },
+            "enabled": false,
+            "reason": "Performing assign_floating_ip operation is not allowed for resource in its current state",
+            "destructive": false,
+            "type": "form",
+            "method": "POST"
+        },
+        "destroy": {
+            "title": "Destroy",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/",
+            "enabled": false,
+            "reason": "Performing destroy operation is not allowed for resource in its current state",
+            "destructive": true,
+            "type": "button",
+            "method": "DELETE"
+        },
+        "resize": {
+            "title": "Resize virtual machine",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/resize/",
+            "fields": {
+                "flavor": {
+                    "type": "select_url",
+                    "required": false,
+                    "label": "Flavor",
+                    "url": "http://example.com/api/openstack-flavors/"
+                },
+                "disk_size": {
+                    "type": "integer",
+                    "required": false,
+                    "label": "Disk size",
+                    "min_value": 1
+                }
+            },
+            "enabled": false,
+            "reason": "Performing resize operation is not allowed for resource in its current state",
+            "destructive": false,
+            "type": "form",
+            "method": "POST"
+        },
+        "restart": {
+            "title": "Restart",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/restart/",
+            "enabled": false,
+            "reason": "Performing restart operation is not allowed for resource in its current state",
+            "destructive": false,
+            "type": "button",
+            "method": "POST"
+        },
+        "start": {
+            "title": "Start",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/start/",
+            "enabled": false,
+            "reason": "Performing start operation is not allowed for resource in its current state",
+            "destructive": false,
+            "type": "button",
+            "method": "POST"
+        },
+        "stop": {
+            "title": "Stop",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/stop/",
+            "enabled": false,
+            "reason": "Performing stop operation is not allowed for resource in its current state",
+            "destructive": false,
+            "type": "button",
+            "method": "POST"
+        },
+        "unlink": {
+            "title": "Unlink",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/unlink/",
+            "enabled": true,
+            "reason": null,
+            "destructive": true,
+            "type": "button",
+            "method": "POST"
         }
     }
+}
 
 OpenStack resources list
 ------------------------
