@@ -1,6 +1,26 @@
+# Monkey-patching after Django configuration is over
+from django.conf import LazySettings
+
+
+def nc_setup(*args, **kwargs):
+    LazySettings._orig_setup(*args, **kwargs)
+
+    # XXX: GM2M & DRF are best friends from now on
+    #      required by cost_tracking & exchange ATM
+    from rest_framework.utils import model_meta
+    from gm2m.relations import GM2MTo
+
+    model_meta._orig_resolve_model = model_meta._resolve_model
+    model_meta._resolve_model = \
+        lambda obj: None if isinstance(obj, GM2MTo) else model_meta._orig_resolve_model(obj)
+
+
+LazySettings._orig_setup = LazySettings._setup
+LazySettings._setup = nc_setup
+
+
 # The dancing with the function and its deletion is done
 # to keep the namespace clean: only __version__ is going to be exposed.
-
 
 # https://gist.github.com/edufelipe/1027906
 def _check_output(*popenargs, **kwargs):
