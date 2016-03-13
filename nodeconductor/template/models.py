@@ -162,7 +162,8 @@ class Template(core_models.UuidMixin, models.Model):
         if previous_template_data is not None:
             context = django_template.Context({'response': previous_template_data})
             for key, value in options.items():
-                options[key] = django_template.Template(value).render(context)
+                if isinstance(value, basestring):
+                    options[key] = django_template.Template(value).render(context)
 
         # prepare request data: use project from previous_template_data if <use_previous_resource_project> is True
         if self.use_previous_resource_project and not options.get('project'):
