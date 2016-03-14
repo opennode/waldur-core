@@ -888,14 +888,14 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'url',
             'name', 'projects',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'settings', 'dummy',
+            'settings', 'settings_uuid', 'dummy',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
             'available_for_all'
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
         protected_fields = ('customer', 'settings', 'dummy') + settings_fields
-        related_paths = ('customer',)
+        related_paths = ('customer', 'settings')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},

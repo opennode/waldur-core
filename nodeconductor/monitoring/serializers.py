@@ -21,22 +21,20 @@ class MonitoringSerializerMixin(serializers.Serializer):
         fields = ('sla', 'monitoring_items')
 
     def get_sla(self, resource):
-        if 'sla_map' not in self.context:
-            sla_map = {}
+        if not hasattr(self, 'sla_map_cache'):
+            self.sla_map_cache = {}
             request = self.context['request']
 
             items = ResourceSla.objects.filter(scope__in=to_list(self.instance))
             items = items.filter(period=get_period(request))
-
             for item in items:
-                sla_map[item.object_id] = dict(
+                self.sla_map_cache[item.object_id] = dict(
                     value=item.value,
                     agreed_value=item.agreed_value,
                     period=item.period
                 )
 
-            self.context['sla_map'] = sla_map
-        return self.context['sla_map'].get(resource.id)
+        return self.sla_map_cache.get(resource.id)
 
     def get_monitoring_items(self, resource):
         if 'monitoring_items' not in self.context:

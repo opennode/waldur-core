@@ -1080,6 +1080,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
 def safe_operation(valid_state=None):
     def decorator(view_fn):
         view_fn.valid_state = valid_state
+
         @functools.wraps(view_fn)
         def wrapped(self, request, *args, **kwargs):
             message = "Performing %s operation is not allowed for resource in its current state"
@@ -1137,7 +1138,8 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         filters.GenericRoleFilter,
         core_filters.DjangoMappingFilterBackend,
         SlaFilter,
-        MonitoringItemFilter
+        MonitoringItemFilter,
+        filters.TagsFilter,
     )
     filter_class = filters.BaseResourceFilter
     metadata_class = ResourceActionsMetadata
