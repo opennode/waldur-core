@@ -59,7 +59,8 @@ config_defaults = {
         'protocol': 'https',
         'username': '',
         'use_ssl': True,
-        'verify_certs': False
+        'verify_certs': False,
+        'ca_certs': '',  # empty to disable CA certificates control
     },
     'events': {
         'hook': 'false',
