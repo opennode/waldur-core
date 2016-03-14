@@ -13,6 +13,7 @@ tests_requires = [
     'mock==1.0.1',
     'mock-django==0.6.6',
     'six>=1.9.0',
+    'sqlalchemy>=1.0.12',
 ]
 
 install_requires = [
@@ -33,6 +34,7 @@ install_requires = [
     'elasticsearch>=1.0.0,<2.0.0',
     'iptools>=0.6.1',
     'jsonfield==1.0.0',
+    'Pillow>=2.0.0,<3.0.0',
     'python-ceilometerclient==1.0.12',
     'python-cinderclient==1.1.1',
     'python-glanceclient==0.15.0',
