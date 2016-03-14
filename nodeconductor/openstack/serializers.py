@@ -185,15 +185,16 @@ class AssignFloatingIpSerializer(serializers.Serializer):
 
     def get_fields(self):
         fields = super(AssignFloatingIpSerializer, self).get_fields()
-        field = fields['floating_ip_uuid']
-        field.view_name = 'openstack-fip-detail'
-        field.query_params = {
-            'status': 'DOWN',
-            'project': self.instance.service_project_link.project.uuid,
-            'service': self.instance.service_project_link.service.uuid
-        }
-        field.value_field = 'uuid'
-        field.display_name_field = 'address'
+        if self.instance:
+            field = fields['floating_ip_uuid']
+            field.view_name = 'openstack-fip-detail'
+            field.query_params = {
+                'status': 'DOWN',
+                'project': self.instance.service_project_link.project.uuid,
+                'service': self.instance.service_project_link.service.uuid
+            }
+            field.value_field = 'uuid'
+            field.display_name_field = 'address'
         return fields
 
     def validate(self, attrs):
@@ -617,10 +618,11 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
 
     def get_fields(self):
         fields = super(InstanceResizeSerializer, self).get_fields()
-        fields['disk_size'].min_value = self.instance.data_volume_size
-        fields['flavor'].query_params = {
-            'settings_uuid': self.instance.service_project_link.service.settings.uuid
-        }
+        if self.instance:
+            fields['disk_size'].min_value = self.instance.data_volume_size
+            fields['flavor'].query_params = {
+                'settings_uuid': self.instance.service_project_link.service.settings.uuid
+            }
         return fields
 
     def get_filtered_field_names(self):
