@@ -1,9 +1,10 @@
 from collections import OrderedDict
 
 from django.utils.encoding import force_text
+from django.utils.http import urlencode
 from rest_framework import exceptions
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.metadata import SimpleMetadata
+from rest_framework.reverse import reverse
 
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.structure import SupportedServices
@@ -81,26 +82,28 @@ class ResourceActionsMetadata(SimpleMetadata):
         model = view.get_queryset().model
         actions = SupportedServices.get_resource_actions(model)
         resource = view.get_object()
-        for name, action in actions.items():
-            data = ActionSerializer(action, name, request, resource)
-            metadata[name] = data.serialize()
-            fields = self.get_action_fields(view, name)
+        for action_name, action in actions.items():
+            data = ActionSerializer(action, action_name, request, resource)
+            metadata[action_name] = data.serialize()
+            if not metadata[action_name]['enabled']:
+                continue
+            fields = self.get_action_fields(view, action_name, resource)
             if not fields:
-                metadata[name]['type'] = 'button'
+                metadata[action_name]['type'] = 'button'
             else:
-                metadata[name]['type'] = 'form'
-                metadata[name]['fields'] = fields
+                metadata[action_name]['type'] = 'form'
+                metadata[action_name]['fields'] = fields
         return metadata
 
-    def get_action_fields(self, view, name):
+    def get_action_fields(self, view, action_name, resource):
         """
         Get fields exposed by action's serializer
         """
-        view.action = name
-        serializer_class = view.get_serializer_class()
+        view.action = action_name
+        serializer = view.get_serializer(resource)
         fields = OrderedDict()
-        if serializer_class and serializer_class != view.serializer_class:
-            fields = self.get_fields(serializer_class._declared_fields)
+        if not isinstance(serializer, view.serializer_class):
+            fields = self.get_fields(serializer.fields)
         view.action = None
         return fields
 
@@ -152,10 +155,14 @@ class ResourceActionsMetadata(SimpleMetadata):
         if 'label' not in field_info:
             field_info['label'] = field_name.replace('_', ' ').title()
 
-        choices_view = getattr(field, 'choices_view', None)
-        if choices_view:
-            field_info['type'] = 'select'
-            field_info['url'] = self.request.build_absolute_uri() + choices_view + '/'
+        if hasattr(field, 'view_name') and hasattr(field, 'query_params'):
+            list_view = field.view_name.replace('-detail', '-list')
+            base_url = reverse(list_view, request=self.request)
+            if field.query_params:
+                field_info['type'] = 'select'
+                field_info['url'] = '%s?%s' % (base_url, urlencode(field.query_params))
+                field_info['value_field'] = getattr(field, 'value_field', 'url')
+                field_info['display_name_field'] = getattr(field, 'display_name_field', 'display_name')
 
         if hasattr(field, 'choices') and not hasattr(field, 'queryset'):
             field_info['choices'] = [
@@ -178,7 +185,7 @@ def check_operation(user, resource, operation_name, valid_state=None):
         or project.customer.has_user(user, models.CustomerRole.OWNER)
 
     if not is_admin and not user.is_staff:
-        raise PermissionDenied(
+        raise exceptions.PermissionDenied(
             "Only project administrator or staff allowed to perform this action.")
 
     if valid_state is not None:

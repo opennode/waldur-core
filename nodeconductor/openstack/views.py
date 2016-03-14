@@ -99,7 +99,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
 
 
 class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
-    queryset = models.Flavor.objects.all()
+    queryset = models.Flavor.objects.all().order_by('settings', 'cores', 'ram', 'disk')
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
     filter_class = filters.FlavorFilter
@@ -171,8 +171,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     serializers = {
         'assign_floating_ip': serializers.AssignFloatingIpSerializer,
         'resize': serializers.InstanceResizeSerializer,
-        'assign_floating_ip_choices': serializers.FloatingIPChoiceSerializer,
-        'resize_choices': serializers.FlavorChoiceSerializer
     }
 
     def perform_update(self, serializer):
@@ -208,16 +206,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
     assign_floating_ip.title = 'Assign floating IP'
 
-    @decorators.detail_route(methods=['get'])
-    def assign_floating_ip_choices(self, request, uuid=None):
-        instance = self.get_object()
-        qs = models.FloatingIP.objects.filter(
-            status='DOWN',
-            service_project_link=instance.service_project_link
-        ).order_by('address')
-        serializer = self.get_serializer(qs, many=True)
-        return response.Response(serializer.data, status=status.HTTP_200_OK)
-
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
     def resize(self, request, instance, uuid=None):
@@ -251,15 +239,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             )
 
     resize.title = 'Resize virtual machine'
-
-    @decorators.detail_route(methods=['get'])
-    def resize_choices(self, request, uuid=None):
-        instance = self.get_object()
-        qs = models.Flavor.objects.filter(
-            settings=instance.service_project_link.service.settings
-        ).order_by('cores', 'ram', 'disk')
-        serializer = self.get_serializer(qs, many=True)
-        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
