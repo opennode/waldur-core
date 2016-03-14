@@ -685,12 +685,12 @@ class ResourceViewSet(mixins.ListModelMixin,
     model = models.Resource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
         types = self.request.query_params.getlist('resource_type', None)
-        resource_models = SupportedServices.get_resource_models()
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items() if k != 'IaaS.Instance'}
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
         return managers.SummaryQuerySet(resource_models.values())
@@ -704,7 +704,6 @@ class ResourceViewSet(mixins.ListModelMixin,
             "Amazon.Instance": 0,
             "GitLab.Project": 3,
             "Azure.VirtualMachine": 0,
-            "IaaS.Instance": 10,
             "DigitalOcean.Droplet": 0,
             "OpenStack.Instance": 0,
             "GitLab.Group": 8
@@ -1081,6 +1080,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
 def safe_operation(valid_state=None):
     def decorator(view_fn):
         view_fn.valid_state = valid_state
+
         @functools.wraps(view_fn)
         def wrapped(self, request, *args, **kwargs):
             message = "Performing %s operation is not allowed for resource in its current state"
@@ -1138,7 +1138,8 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         filters.GenericRoleFilter,
         core_filters.DjangoMappingFilterBackend,
         SlaFilter,
-        MonitoringItemFilter
+        MonitoringItemFilter,
+        filters.TagsFilter,
     )
     filter_class = filters.BaseResourceFilter
     metadata_class = ResourceActionsMetadata

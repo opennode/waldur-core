@@ -137,13 +137,15 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
 
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
     # if scope is Resource:
-    #    delete -- add metadata about deleted resource
+    #    delete -- add metadata about deleted resource, set object_id to 0
     #    unlink -- delete all related estimates
     if isinstance(instance, tuple(Resource.get_all_models())):
         if getattr(instance, 'PERFORM_UNLINK', False):
             models.PriceEstimate.delete_estimates_for_resource(instance)
         else:
             models.PriceEstimate.update_metadata_for_scope(instance)
+            # deal with re-usage of primary keys in InnoDB
+            models.PriceEstimate.objects.filter(scope=instance).update(object_id=0)
 
     # otherwise delete everything in hope of django carrying out DB consistency
     # i.e. higher level scope can only be deleted if there's no any resource in it
