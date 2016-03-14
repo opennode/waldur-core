@@ -2,13 +2,16 @@ from __future__ import unicode_literals
 
 import logging
 
+from celery import shared_task, Task
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Q
-from celery import shared_task
+from django.utils import six
+from django_fsm import TransitionNotAllowed
 
-from nodeconductor.core.tasks import transition, retry_if_false, save_error_message, throttle
+from nodeconductor.core import utils as core_utils
+from nodeconductor.core.tasks import transition, retry_if_false, save_error_message, throttle, StateChangeError
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
@@ -525,3 +528,160 @@ def create_spls_and_services_for_shared_settings(settings_uuids=None):
                     if not spl.exists():
                         service_project_link_model.objects.create(
                             project=project, service=service, state=SynchronizationStates.NEW)
+
+
+class BaseExecutor(object):
+    """ Base class that corresponds logical operation with backend.
+
+    Executor describes list of low-level tasks that should be executed to
+    provide high-level operation.
+
+    Executor should handle:
+     - low-level tasks execution;
+     - models state changes;
+    """
+
+    @classmethod
+    def get_tasks(cls, serialized_instance, **kwargs):
+        """ Celery Signature or Primitive that describes executor action.
+
+        Each task should be subclass of LowLevelTask class.
+        Celery Signature and Primitives:
+         - http://docs.celeryproject.org/en/latest/userguide/canvas.html
+        Examples:
+         - to execute only one task - return Signature of necessary task: `task.si(serialized_instance)`
+         - to execute several tasks - return Chain or Chord of tasks: `chain(t1.s(), t2.s())`
+        """
+        raise NotImplementedError('Executor %s should implement method `get_tasks`' % cls.__name__)
+
+    @classmethod
+    def get_link(cls, serialized_instance, **kwargs):
+        """ Celery signature of task that should be applied on successful execution. """
+        raise NotImplementedError('Executor %s should implement method `get_link`' % cls.__name__)
+
+    @classmethod
+    def get_link_error(cls, serialized_instance, **kwargs):
+        """ Celery signature of task that should be applied on failed execution. """
+        raise NotImplementedError('Executor %s should implement method `get_link_error`' % cls.__name__)
+
+    @classmethod
+    def pre_execute(cls, instance, **kwargs):
+        """ Perform synchronous actions before tasks execution """
+        pass
+
+    @classmethod
+    def execute(cls, instance, async=True, **kwargs):
+        """ Serialize input data and run all executors tasks """
+        cls.pre_execute(instance, **kwargs)
+        serialized_instance = core_utils.serialize_instance(instance)
+        # TODO: Add ability to serialize kwargs here and deserialize them in task.
+
+        tasks = cls.get_tasks(serialized_instance, **kwargs)
+        link = cls.get_link(serialized_instance, **kwargs),
+        link_error = cls.get_link_error(serialized_instance, **kwargs)
+
+        if async:
+            result = tasks.apply_async(link=link, link_error=link_error)
+        else:
+            result = tasks.apply()
+            if not result.failed():
+                link.apply()
+            else:
+                link_error.apply()
+        return result
+
+
+class ErrorExecutorMixin(object):
+    """ Set object as erred on fail. """
+
+    @classmethod
+    def get_link_error(cls, serialized_instance, **kwargs):
+        return StateTransitionTask().si(serialized_instance, state_transition='set_erred')
+
+
+class DeleteExecutorMixin(object):
+    """ Delete object on success """
+
+    @classmethod
+    def get_link_error(cls, serialized_instance, **kwargs):
+        return DeletionTask().si(serialized_instance)
+
+
+class SynchronizableExecutorMixin(object):
+    """ Set object in sync on success """
+
+    @classmethod
+    def get_link(cls, serialized_instance, **kwargs):
+        return StateTransitionTask().si(serialized_instance, state_transition='set_in_sync')
+
+
+class DeleteExecutor(DeleteExecutorMixin, ErrorExecutorMixin, BaseExecutor):
+    pass
+
+
+class SyncExecutor(SynchronizableExecutorMixin, ErrorExecutorMixin, BaseExecutor):
+    pass
+
+
+class LowLevelTask(Task):
+    """ Base class for low-level tasks that are run by executors.
+
+    Low-level task provides standard way for input data deserialization.
+    """
+
+    def run(self, serialized_instance, *args, **kwargs):
+        """ Deserialize input data and start backend operation execution """
+        instance = core_utils.deserilize_instance(serialized_instance)
+        return self.execute(instance, *args, **kwargs)
+
+    def execute(self, instance, *args, **kwargs):
+        """ Execute backend operation """
+        raise NotImplementedError('LowLevelTask %s should implement method `execute`' % self.__class__.__name__)
+
+
+class StateTransitionTask(LowLevelTask):
+    """ Execute only instance state transition """
+
+    def state_transition(self, instance, transition_method):
+        instance_description = '%s instance `%s` (PK: %s)' % (instance.__class__.__name__, instance, instance.pk)
+        old_state = instance.human_readable_state
+        try:
+            getattr(instance, transition_method)()
+            instance.save(update_fields=['state'])
+        except IntegrityError:
+            message = (
+                'Could not change state of %s, using method `%s` due to concurrent update' %
+                (instance_description, transition_method))
+            six.reraise(StateChangeError, StateChangeError(message))
+        except TransitionNotAllowed:
+            message = (
+                'Could not change state of %s, using method `%s`. Current instance state: %s.' %
+                (instance_description, transition_method, instance.human_readable_state))
+            six.reraise(StateChangeError, StateChangeError(message))
+        else:
+            logger.info('State of instance changed from %s to %s, with method `%s`',
+                        old_state, instance.human_readable_state, transition_method)
+
+    def execute(self, instance, state_transition=None):
+        if state_transition is not None:
+            self.state_transition(instance, state_transition)
+
+
+class BackendMethodTask(StateTransitionTask):
+    """ Execute method of instance backend """
+
+    def get_backend(self, instance):
+        return instance.get_backend()
+
+    def execute(self, instance, backend_method, state_transition=None, **kwargs):
+        if state_transition is not None:
+            self.state_transition(instance, state_transition)
+        backend = self.get_backend(instance)
+        return getattr(backend, backend_method)(instance, **kwargs)
+
+
+class DeletionTask(LowLevelTask):
+    """ Delete instance """
+
+    def execute(self, instance):
+        instance.delete()
