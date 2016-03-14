@@ -23,7 +23,7 @@ Requires: python-ceilometerclient = 1.0.12
 Requires: python-celery >= 3.1.15, python-celery < 3.2
 Requires: python-cinderclient = 1.1.1
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
-Requires: python-django >= 1.8, python-django >= 1.9
+Requires: python-django >= 1.8, python-django < 1.9
 Requires: python-django-admin-tools = 0.7.0
 Requires: python-django-cors-headers
 Requires: python-django-filter >= 0.10
