@@ -1138,7 +1138,8 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         filters.GenericRoleFilter,
         core_filters.DjangoMappingFilterBackend,
         SlaFilter,
-        MonitoringItemFilter
+        MonitoringItemFilter,
+        filters.TagsFilter,
     )
     filter_class = filters.BaseResourceFilter
     metadata_class = ResourceActionsMetadata
