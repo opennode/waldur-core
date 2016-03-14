@@ -1303,7 +1303,6 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
             'user_data', 'ssh_public_key'
         )
-        write_only_fields = ('user_data',)
 
     def get_fields(self):
         fields = super(VirtualMachineSerializer, self).get_fields()
