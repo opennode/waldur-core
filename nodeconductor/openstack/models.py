@@ -100,6 +100,9 @@ class SecurityGroup(core_models.UuidMixin,
     def __str__(self):
         return '%s (%s)' % (self.name, self.service_project_link)
 
+    def get_backend(self):
+        return self.service_project_link.get_backend()
+
     @classmethod
     def get_url_name(cls):
         return 'openstack-sgp'
