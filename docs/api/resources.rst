@@ -149,9 +149,10 @@ Example rendering of response:
             "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/assign_floating_ip/",
             "fields": {
                 "floating_ip_uuid": {
-                    "type": "string",
+                    "type": "select",
                     "required": true,
-                    "label": "Floating IP UUID"
+                    "label": "Floating IP UUID",
+                    "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/assign_floating_ip_choices/"
                 }
             },
             "enabled": false,
@@ -174,10 +175,10 @@ Example rendering of response:
             "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/resize/",
             "fields": {
                 "flavor": {
-                    "type": "select_url",
+                    "type": "select",
                     "required": false,
                     "label": "Flavor",
-                    "url": "http://example.com/api/openstack-flavors/"
+                    "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/resize_choices/"
                 },
                 "disk_size": {
                     "type": "integer",
@@ -230,6 +231,7 @@ Example rendering of response:
         }
     }
 }
+
 
 OpenStack resources list
 ------------------------

@@ -168,6 +168,13 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     serializer_class = serializers.InstanceSerializer
     filter_class = filters.InstanceFilter
 
+    serializers = {
+        'assign_floating_ip': serializers.AssignFloatingIpSerializer,
+        'resize': serializers.InstanceResizeSerializer,
+        'assign_floating_ip_choices': serializers.FloatingIPChoiceSerializer,
+        'resize_choices': serializers.FlavorChoiceSerializer
+    }
+
     def perform_update(self, serializer):
         super(InstanceViewSet, self).perform_update(serializer)
         send_task('openstack', 'sync_instance_security_groups')(self.get_object().uuid.hex)
@@ -183,11 +190,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             skip_external_ip_assignment=serializer.validated_data['skip_external_ip_assignment'])
 
     def get_serializer_class(self):
-        if self.action == 'assign_floating_ip':
-            return serializers.AssignFloatingIpSerializer
-        elif self.action == 'resize':
-            return serializers.InstanceResizeSerializer
-        return super(InstanceViewSet, self).get_serializer_class()
+        serializer = self.serializers.get(self.action)
+        return serializer or super(InstanceViewSet, self).get_serializer_class()
 
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=tuple(models.Instance.States.STABLE_STATES))
@@ -203,6 +207,16 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             instance.uuid.hex, serializer.validated_data['floating_ip_uuid'])
 
     assign_floating_ip.title = 'Assign floating IP'
+
+    @decorators.detail_route(methods=['get'])
+    def assign_floating_ip_choices(self, request, uuid=None):
+        instance = self.get_object()
+        qs = models.FloatingIP.objects.filter(
+            status='DOWN',
+            service_project_link=instance.service_project_link
+        ).order_by('address')
+        serializer = self.get_serializer(qs, many=True)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
@@ -237,6 +251,15 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             )
 
     resize.title = 'Resize virtual machine'
+
+    @decorators.detail_route(methods=['get'])
+    def resize_choices(self, request, uuid=None):
+        instance = self.get_object()
+        qs = models.Flavor.objects.filter(
+            settings=instance.service_project_link.service.settings
+        ).order_by('cores', 'ram', 'disk')
+        serializer = self.get_serializer(qs, many=True)
+        return response.Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):

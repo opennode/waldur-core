@@ -175,7 +175,8 @@ class ExternalNetworkSerializer(serializers.Serializer):
 
 
 class AssignFloatingIpSerializer(serializers.Serializer):
-    floating_ip_uuid = serializers.CharField(label='Floating IP UUID')
+    floating_ip_uuid = serializers.CharField(label='Floating IP')
+    floating_ip_uuid.choices_view = 'assign_floating_ip_choices'
 
     def validate(self, attrs):
         ip_uuid = attrs.get('floating_ip_uuid')
@@ -211,6 +212,11 @@ class FloatingIPSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
         view_name = 'openstack-fip-detail'
+
+
+class FloatingIPChoiceSerializer(serializers.Serializer):
+    title = serializers.ReadOnlyField(source='address')
+    value = serializers.ReadOnlyField(source='uuid')
 
 
 class SecurityGroupSerializer(core_serializers.AugmentedSerializerMixin,
@@ -594,6 +600,7 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         queryset=models.Flavor.objects.all(),
         required=False,
     )
+    flavor.choices_view = 'resize_choices'
     disk_size = serializers.IntegerField(min_value=1, required=False, label='Disk size')
 
     def get_filtered_field_names(self):
@@ -639,6 +646,20 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         if flavor is None and disk_size is None:
             raise serializers.ValidationError("Either disk_size or flavor is required")
         return attrs
+
+
+class FlavorChoiceSerializer(serializers.Serializer):
+    title = serializers.SerializerMethodField()
+    value = serializers.SerializerMethodField()
+
+    def get_title(self, flavor):
+        return "{} ({} CPU, {} MB RAM, {} MB HDD)".format(
+            flavor.name, flavor.cores, flavor.ram, flavor.disk)
+
+    def get_value(self, flavor):
+        return reverse.reverse('openstack-flavor-detail',
+                               kwargs={'uuid': flavor.uuid},
+                               request=self.context['request'])
 
 
 class LicenseSerializer(serializers.ModelSerializer):

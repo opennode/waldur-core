@@ -185,7 +185,7 @@ class SupportedServices(object):
         actions = {}
         for key in dir(view):
             attr = getattr(view, key)
-            if hasattr(attr, 'bind_to_methods'):
+            if hasattr(attr, 'bind_to_methods') and 'post' in attr.bind_to_methods:
                 actions[key] = attr
         actions['destroy'] = view.destroy
         return sort_dict(actions)
