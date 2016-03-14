@@ -43,6 +43,7 @@ Requires: python-jsonfield = 1.0.0
 Requires: python-keystoneclient = 1:0.11.1
 Requires: python-neutronclient = 2.3.9
 Requires: python-novaclient = 1:2.20.0
+Requires: python-pillow >= 2.0.0
 Requires: python-redis = 2.10.3
 Requires: python-requests = 2.6.0
 Requires: python-sqlparse >= 0.1.11
