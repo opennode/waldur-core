@@ -781,16 +781,16 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.customer.get_vm_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_vm_count).usage
 
     def get_apps(self):
-        return self.customer.get_app_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_app_count).usage
 
     def get_projects(self):
-        return self.customer.get_project_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_project_count).usage
 
     def get_services(self):
-        return self.customer.get_service_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_service_count).usage
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
