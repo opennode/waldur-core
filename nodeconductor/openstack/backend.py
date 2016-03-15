@@ -176,9 +176,6 @@ class OpenStackBackend(ServiceBackend):
         self.settings = settings
         self.tenant_id = tenant_id
 
-    def test_security_group_method(self, security_group):
-        print 'Executing backend operation with SecurityGroup', security_group
-
     def get_client(self, name=None, admin=False):
         credentials = {
             'auth_url': self.settings.backend_url,

@@ -15,7 +15,7 @@ class BaseExecutor(object):
 
     @classmethod
     def get_tasks(cls, serialized_instance, **kwargs):
-        """ Celery Signature or Primitive that describes executor action.
+        """ Get Celery signature or primitive that describes executor action.
 
         Each task should be subclass of LowLevelTask class.
         Celery Signature and Primitives:
@@ -28,12 +28,12 @@ class BaseExecutor(object):
 
     @classmethod
     def get_link(cls, serialized_instance, **kwargs):
-        """ Celery signature of task that should be applied on successful execution. """
+        """ Get Celery signature of task that should be applied on successful execution. """
         raise NotImplementedError('Executor %s should implement method `get_link`' % cls.__name__)
 
     @classmethod
     def get_link_error(cls, serialized_instance, **kwargs):
-        """ Celery signature of task that should be applied on failed execution. """
+        """ Get Celery signature of task that should be applied on failed execution. """
         raise NotImplementedError('Executor %s should implement method `get_link_error`' % cls.__name__)
 
     @classmethod
