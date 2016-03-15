@@ -4,4 +4,4 @@
 .. include:: managed-entities.rst
 .. include:: logging.rst
 .. include:: quotas.rst
-.. include:: celery.rst
+.. include:: tasks-and-executors.rst
