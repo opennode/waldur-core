@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models, transaction
+from django.db import models, transaction, IntegrityError
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
@@ -103,7 +103,10 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
                 content_type=ContentType.objects.get_for_model(parent),
                 month=self.month, year=self.year)
             if self.is_leaf:
-                parent_estimate.leaf_estimates.add(self)
+                try:
+                    parent_estimate.leaf_estimates.add(self)
+                except IntegrityError:  # ignore duplicates
+                    pass
             parent_estimate.update_from_leaf()
 
     @classmethod
