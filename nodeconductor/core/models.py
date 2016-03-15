@@ -22,6 +22,7 @@ from uuidfield import UUIDField
 import reversion
 from reversion.models import Version
 
+from nodeconductor.core import utils
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.validators import validate_name
 from nodeconductor.logging.log import LoggableMixin
@@ -380,14 +381,7 @@ class SerializableAbstractMixin(object):
 
     def to_string(self):
         """ Dump an instance into a string preserving model name and object id """
-        model_name = force_text(self._meta)
-        return '{}:{}'.format(model_name, self.pk)
-
-    @staticmethod
-    def parse_model_string(string):
-        """ Recover model class and object id from a string"""
-        model_name, pk = string.split(':')
-        return apps.get_model(model_name), int(pk)
+        return utils.serialize_instance(self)
 
     @classmethod
     def from_string(cls, objects):
@@ -395,9 +389,8 @@ class SerializableAbstractMixin(object):
         if not isinstance(objects, (list, tuple)):
             objects = [objects]
         for obj in objects:
-            model, pk = cls.parse_model_string(obj)
             try:
-                yield model._default_manager.get(pk=pk)
+                yield utils.deserialize_instance(obj)
             except ObjectDoesNotExist:
                 continue
 
