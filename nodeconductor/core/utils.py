@@ -130,7 +130,7 @@ def serialize_instance(instance):
     return '%s:%s' % (ContentType.objects.get_for_model(instance).pk, instance.pk)
 
 
-def deserilize_instance(self, serialized_instance):
+def deserilize_instance(serialized_instance):
     """ Deserialize Django model instance """
     content_type_pk, instance_pk = serialized_instance.split(':')
     ct = ContentType.objects.get(pk=content_type_pk)

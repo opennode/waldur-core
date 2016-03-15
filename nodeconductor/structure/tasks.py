@@ -566,8 +566,8 @@ class StateTransitionTask(LowLevelTask):
                 (instance_description, transition_method, instance.human_readable_state))
             six.reraise(StateChangeError, StateChangeError(message))
         else:
-            logger.info('State of instance changed from %s to %s, with method `%s`',
-                        old_state, instance.human_readable_state, transition_method)
+            logger.info('State of %s changed from %s to %s, with method `%s`',
+                        instance_description, old_state, instance.human_readable_state, transition_method)
 
     def execute(self, instance, state_transition=None):
         if state_transition is not None:
@@ -591,7 +591,9 @@ class DeletionTask(LowLevelTask):
     """ Delete instance """
 
     def execute(self, instance):
+        instance_description = '%s instance `%s` (PK: %s)' % (instance.__class__.__name__, instance, instance.pk)
         instance.delete()
+        logger.info('%s was successfully deleted', instance_description)
 
 
 class ErrorStateTransitionTask(StateTransitionTask):
@@ -601,8 +603,12 @@ class ErrorStateTransitionTask(StateTransitionTask):
     as input argument.
     """
 
-    def execute(self, result_id, instance):
+    def run(self, result_id, serialized_instance, *args, **kwargs):
+        self.result = self.AsyncResult(result_id)
+        return super(ErrorStateTransitionTask, self).run(serialized_instance, *args, **kwargs)
+
+    def execute(self, instance):
         self.state_transition(instance, 'set_erred')
         if isinstance(instance, ErrorMessageMixin):
-            instance.error_message = self.AsyncResult(result_id).result
+            instance.error_message = self.result.result
             instance.save()
