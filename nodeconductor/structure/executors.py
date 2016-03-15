@@ -22,7 +22,8 @@ class BaseExecutor(object):
          - http://docs.celeryproject.org/en/latest/userguide/canvas.html
         Examples:
          - to execute only one task - return Signature of necessary task: `task.si(serialized_instance)`
-         - to execute several tasks - return Chain, Chord or Group of tasks: `chain(t1.s(), t2.s())`
+         - to execute several tasks - return Chain or Group of tasks: `chain(t1.s(), t2.s())`
+        Note! Celery Chord is not supported.
         """
         raise NotImplementedError('Executor %s should implement method `get_tasks`' % cls.__name__)
 
@@ -45,29 +46,29 @@ class BaseExecutor(object):
         return result
 
     @classmethod
-    def pre_apply(cls, instance, async=True, **kwargs):
-        """ Perform synchronous actions before tasks apply """
+    def pre_apply(cls, instance, **kwargs):
+        """ Perform synchronous actions before signature apply """
         pass
 
     @classmethod
-    def post_apply(cls, instance, async=True, **kwargs):
-        """ Perform synchronous actions after tasks apply """
+    def post_apply(cls, instance, **kwargs):
+        """ Perform synchronous actions after signature apply """
         pass
 
     @classmethod
     def apply_signature(cls, instance, async=True, **kwargs):
-        """ Serialize input data and apply tasks """
+        """ Serialize input data and apply signature """
         serialized_instance = core_utils.serialize_instance(instance)
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
-        tasks = cls.get_tasks(serialized_instance, **kwargs)
+        signature = cls.get_tasks(serialized_instance, **kwargs)
         link = cls.get_success_signature(serialized_instance, **kwargs),
         link_error = cls.get_failure_signature(serialized_instance, **kwargs)
 
         if async:
-            return tasks.apply_async(link=link, link_error=link_error)
+            return signature.apply_async(link=link, link_error=link_error)
         else:
-            result = tasks.apply()
+            result = signature.apply()
             callback = link if not result.failed() else link_error
             if callback is not None:
                 cls._apply_callback(callback, result)

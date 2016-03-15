@@ -585,7 +585,8 @@ class BackendMethodTask(StateTransitionTask):
     def get_backend(self, instance):
         return instance.get_backend()
 
-    def execute(self, instance, backend_method, state_transition=None, **kwargs):
+    def execute(self, instance, backend_method, *args, **kwargs):
+        state_transition = kwargs.get('state_transition')
         if state_transition is not None:
             self.state_transition(instance, state_transition)
         backend = self.get_backend(instance)
