@@ -41,7 +41,7 @@ class BaseExecutor(object):
     def execute(cls, instance, async=True, **kwargs):
         """ Execute high level-operation """
         cls.pre_apply(instance, async=async, **kwargs)
-        result = cls.apply_tasks(instance, async=async, **kwargs)
+        result = cls.apply_signature(instance, async=async, **kwargs)
         cls.post_apply(instance, async=async, **kwargs)
         return result
 
@@ -61,7 +61,7 @@ class BaseExecutor(object):
         serialized_instance = core_utils.serialize_instance(instance)
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
-        signature = cls.get_tasks(serialized_instance, **kwargs)
+        signature = cls.get_task_signature(serialized_instance, **kwargs)
         link = cls.get_success_signature(serialized_instance, **kwargs),
         link_error = cls.get_failure_signature(serialized_instance, **kwargs)
 
