@@ -37,6 +37,14 @@ class BaseExecutor(object):
         raise NotImplementedError('Executor %s should implement method `get_link_error`' % cls.__name__)
 
     @classmethod
+    def execute(cls, instance, async=True, **kwargs):
+        """ Execute high level-operation """
+        cls.pre_apply(instance, async=async, **kwargs)
+        result = cls.apply_tasks(instance, async=async, **kwargs)
+        cls.post_apply(instance, async=async, **kwargs)
+        return result
+
+    @classmethod
     def pre_apply(cls, instance, async=True, **kwargs):
         """ Perform synchronous actions before tasks apply """
         pass
@@ -45,14 +53,6 @@ class BaseExecutor(object):
     def post_apply(cls, instance, async=True, **kwargs):
         """ Perform synchronous actions after tasks apply """
         pass
-
-    @classmethod
-    def execute(cls, instance, async=True, **kwargs):
-        """ Execute high level-operation """
-        cls.pre_apply(instance, async=async, **kwargs)
-        result = cls.apply_tasks(instance, async=async, **kwargs)
-        cls.post_apply(instance, async=async, **kwargs)
-        return result
 
     @classmethod
     def apply_tasks(cls, instance, async=True, **kwargs):
@@ -68,10 +68,11 @@ class BaseExecutor(object):
             result = tasks.apply_async(link=link, link_error=link_error)
         else:
             result = tasks.apply()
-            if not result.failed():
-                link.apply()
-            else:
-                link_error.apply()
+            callback = link if not result.failed() else link_error
+            if not callback.immutable:
+                callback.args = (result.id, ) + callback.args
+            callback.apply()
+
         return result
 
 
@@ -80,7 +81,7 @@ class ErrorExecutorMixin(object):
 
     @classmethod
     def get_link_error(cls, serialized_instance, **kwargs):
-        return tasks.StateTransitionTask().si(serialized_instance, state_transition='set_erred')
+        return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
 class DeleteExecutorMixin(object):
@@ -100,10 +101,10 @@ class SynchronizableExecutorMixin(object):
 
 
 class SynchronizableCreateExecutor(SynchronizableExecutorMixin, ErrorExecutorMixin, BaseExecutor):
-    """ Default states transition for Synchronizable object update.
+    """ Default states transition for Synchronizable object creation.
 
-     - set object in sync on success update;
-     - mark object as erred on failed update;
+     - set object in sync on success creation;
+     - mark object as erred on failed creation;
     """
     pass
 

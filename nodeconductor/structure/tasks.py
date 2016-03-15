@@ -12,7 +12,7 @@ from django_fsm import TransitionNotAllowed
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import transition, retry_if_false, save_error_message, throttle, StateChangeError
-from nodeconductor.core.models import SshPublicKey, SynchronizationStates
+from nodeconductor.core.models import SshPublicKey, SynchronizationStates, ErrorMessageMixin
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
@@ -592,3 +592,17 @@ class DeletionTask(LowLevelTask):
 
     def execute(self, instance):
         instance.delete()
+
+
+class ErrorStateTransitionTask(StateTransitionTask):
+    """ Set instance as erred and save error message.
+
+    This task should not be called as immutable, because it expects result_uuid
+    as input argument.
+    """
+
+    def execute(self, result_id, instance):
+        self.state_transition(instance, 'set_erred')
+        if isinstance(instance, ErrorMessageMixin):
+            instance.error_message = self.AsyncResult(result_id).result
+            instance.save()
