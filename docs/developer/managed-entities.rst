@@ -1,6 +1,9 @@
 Managed entities
 ================
 
+Overview
+--------
+
 Managed entities are entities for which NodeConductor's database is considered an authoritative source of information.
 By means of REST API the user defines the desired state of the entities.
 NodeConductor's jobs is then to make the backend (OpenStack, GitHub, JIRA, etc) reflect
@@ -28,3 +31,31 @@ Here's a proper way to deal with managed entities:
 
 Using the above flow makes it possible for user to get immediate feedback
 from an initial REST API call and then query state changes of the entity.
+
+
+Managed entities operations flow
+--------------------------------
+
+1. View receives request for entity change.
+
+2. If request contains any data - view passes request to serializer for validation.
+
+3. View extracts operations specific information from validated data and saves entity via serializer.
+
+4. View starts executor with saved instance and operation specific information as input.
+
+5. Executor handles entity states checks and transition.
+
+6. Executor starts celery tasks to perform asynchronous operations.
+
+7. View returns response.
+
+8. Tasks asynchronously calls backend methods to perform scheduled operation.
+
+9. Callback tasks changes instance state after backend method execution.
+
+
+Simplified schema of operations flow
+------------------------------------
+
+View ---> Serializer ---> View ---> Executor ---> Tasks ---> Backend
