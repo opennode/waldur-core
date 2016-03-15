@@ -42,10 +42,16 @@ class FlavorSerializer(structure_serializers.BasePropertySerializer):
     class Meta(object):
         model = models.Flavor
         view_name = 'openstack-flavor-detail'
-        fields = ('url', 'uuid', 'name', 'cores', 'ram', 'disk')
+        fields = ('url', 'uuid', 'name', 'cores', 'ram', 'disk', 'display_name')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+    display_name = serializers.SerializerMethodField()
+
+    def get_display_name(self, flavor):
+        return "{} ({} CPU, {} MB RAM, {} MB HDD)".format(
+            flavor.name, flavor.cores, flavor.ram, flavor.disk)
 
 
 class ImageSerializer(structure_serializers.BasePropertySerializer):
@@ -175,7 +181,21 @@ class ExternalNetworkSerializer(serializers.Serializer):
 
 
 class AssignFloatingIpSerializer(serializers.Serializer):
-    floating_ip_uuid = serializers.CharField()
+    floating_ip_uuid = serializers.CharField(label='Floating IP')
+
+    def get_fields(self):
+        fields = super(AssignFloatingIpSerializer, self).get_fields()
+        if self.instance:
+            field = fields['floating_ip_uuid']
+            field.view_name = 'openstack-fip-detail'
+            field.query_params = {
+                'status': 'DOWN',
+                'project': self.instance.service_project_link.project.uuid,
+                'service': self.instance.service_project_link.service.uuid
+            }
+            field.value_field = 'uuid'
+            field.display_name_field = 'address'
+        return fields
 
     def validate(self, attrs):
         ip_uuid = attrs.get('floating_ip_uuid')
@@ -595,6 +615,15 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         required=False,
     )
     disk_size = serializers.IntegerField(min_value=1, required=False, label='Disk size')
+
+    def get_fields(self):
+        fields = super(InstanceResizeSerializer, self).get_fields()
+        if self.instance:
+            fields['disk_size'].min_value = self.instance.data_volume_size
+            fields['flavor'].query_params = {
+                'settings_uuid': self.instance.service_project_link.service.settings.uuid
+            }
+        return fields
 
     def get_filtered_field_names(self):
         return 'flavor',

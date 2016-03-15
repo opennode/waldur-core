@@ -2,10 +2,11 @@ import factory
 
 from rest_framework import test, status
 
-from nodeconductor.iaas.models import OpenStackSettings
 from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.iaas.models import OpenStackSettings
+from nodeconductor.openstack.tests.factories import InstanceFactory
 from nodeconductor.structure import SupportedServices
-from nodeconductor.structure.models import CustomerRole
+from nodeconductor.structure.models import CustomerRole, Resource
 from nodeconductor.structure.tests import factories
 
 
@@ -74,14 +75,25 @@ class ResourceQuotasTest(test.APITransactionTestCase):
                 self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)
 
 
-class ResourceUnlinkingTest(test.APITransactionTestCase):
+class ResourceRemovalTest(test.APITransactionTestCase):
     def setUp(self):
-        from nodeconductor.openstack.tests.factories import InstanceFactory
         self.user = factories.UserFactory(is_staff=True)
-        self.vm = InstanceFactory()
-        self.url = InstanceFactory.get_url(self.vm)
-
-    def test_vm_can_be_unlinked_in_erred_state(self):
         self.client.force_authenticate(user=self.user)
-        response = self.client.post(self.url + 'unlink/')
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+
+    def test_vm_unlinked_immediately_anyway(self):
+        vm = InstanceFactory(state=Resource.States.PROVISIONING_SCHEDULED)
+        url = InstanceFactory.get_url(vm, 'unlink')
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, response.data)
+
+    def test_vm_without_backend_id_removed_immediately(self):
+        vm = InstanceFactory(state=Resource.States.OFFLINE)
+        url = InstanceFactory.get_url(vm)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, response.data)
+
+    def test_vm_with_backend_id_scheduled_to_deletion(self):
+        vm = InstanceFactory(state=Resource.States.OFFLINE, backend_id=123)
+        url = InstanceFactory.get_url(vm)
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)

@@ -24,8 +24,9 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     """
     Abstract quota for any resource.
 
-    Quota can exist without scope - for example quota for all projects or all customers on site
-    If quota limit is defined as -1 quota will never be exceeded
+    Quota can exist without scope: for example, a quota for all projects or all
+    customers on site.
+    If quota limit is set to -1 quota will never be exceeded.
     """
     class Meta:
         unique_together = (('name', 'content_type', 'object_id'),)
@@ -235,13 +236,18 @@ class QuotaModelMixin(models.Model):
                 result[item['name'] + '_usage'] = item['usage']
 
         if 'limit' in fields:
-            items = Quota.objects.filter(**filter_kwargs)\
-                         .exclude(limit=-1).values('name').annotate(limit=Sum('limit'))
+            unlimited_quotas = Quota.objects.filter(limit=-1, **filter_kwargs)
+            unlimited_quotas = list(unlimited_quotas.values_list('name', flat=True))
+            for quota_name in unlimited_quotas:
+                result[quota_name] = -1
+
+            items = Quota.objects\
+                         .filter(**filter_kwargs)\
+                         .exclude(name__in=unlimited_quotas)\
+                         .values('name')\
+                         .annotate(limit=Sum('limit'))
             for item in items:
                 result[item['name']] = item['limit']
-            for name in quota_names:
-                if name not in result:
-                    result[name] = -1
 
         return result
 

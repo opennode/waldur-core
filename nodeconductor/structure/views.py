@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
-from collections import OrderedDict
+from collections import defaultdict
 
 from datetime import timedelta
 
@@ -35,7 +35,7 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView
-from nodeconductor.core.utils import request_api, datetime_to_timestamp
+from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
 from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
@@ -685,12 +685,12 @@ class ResourceViewSet(mixins.ListModelMixin,
     model = models.Resource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
         types = self.request.query_params.getlist('resource_type', None)
-        resource_models = SupportedServices.get_resource_models()
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items() if k != 'IaaS.Instance'}
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
         return managers.SummaryQuerySet(resource_models.values())
@@ -699,11 +699,11 @@ class ResourceViewSet(mixins.ListModelMixin,
     def count(self, request):
         """
         Count resources by type. Example output:
+
         {
             "Amazon.Instance": 0,
             "GitLab.Project": 3,
             "Azure.VirtualMachine": 0,
-            "IaaS.Instance": 10,
             "DigitalOcean.Droplet": 0,
             "OpenStack.Instance": 0,
             "GitLab.Group": 8
@@ -1080,6 +1080,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
 def safe_operation(valid_state=None):
     def decorator(view_fn):
         view_fn.valid_state = valid_state
+
         @functools.wraps(view_fn)
         def wrapped(self, request, *args, **kwargs):
             message = "Performing %s operation is not allowed for resource in its current state"
@@ -1102,6 +1103,9 @@ def safe_operation(valid_state=None):
             except IntegrityError:
                 return Response({'status': '%s was not scheduled' % operation_name},
                                 status=status.HTTP_400_BAD_REQUEST)
+
+            if resource.pk is None:
+                return Response(status=status.HTTP_204_NO_CONTENT)
 
             return Response({'status': '%s was scheduled' % operation_name},
                             status=status.HTTP_202_ACCEPTED)
@@ -1137,7 +1141,8 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         filters.GenericRoleFilter,
         core_filters.DjangoMappingFilterBackend,
         SlaFilter,
-        MonitoringItemFilter
+        MonitoringItemFilter,
+        filters.TagsFilter,
     )
     filter_class = filters.BaseResourceFilter
     metadata_class = ResourceActionsMetadata
@@ -1312,19 +1317,28 @@ class AggregatedStatsView(views.APIView):
         querysets = serializer.get_service_project_links(request.user)
 
         total_sum = QuotaModelMixin.get_sum_of_quotas_for_querysets(querysets, quota_names)
-        total_sum = OrderedDict(sorted(total_sum.items()))
+        total_sum = sort_dict(total_sum)
         return Response(total_sum, status=status.HTTP_200_OK)
 
 
-# XXX: This view is deprecated. It has to be replaced with quotas history endpoints
 class QuotaTimelineStatsView(views.APIView):
     """
     Count quota usage and limit history statistics
     """
 
     def get(self, request, format=None):
-        stats = self.get_stats(request)
-        stats = [OrderedDict(sorted(stat.items())) for stat in stats]
+        scopes = self.get_quota_scopes(request)
+        ranges = self.get_ranges(request)
+        items = request.query_params.getlist('item') or self.get_all_spls_quotas()
+
+        collector = QuotaTimelineCollector()
+        for item in items:
+            for scope in scopes:
+                values = self.get_stats_for_scope(item, scope, ranges)
+                for (end, start), (limit, usage) in zip(ranges, values):
+                    collector.add_quota(start, end, item, limit, usage)
+
+        stats = map(sort_dict, collector.to_dict())[::-1]
         return Response(stats, status=status.HTTP_200_OK)
 
     def get_quota_scopes(self, request):
@@ -1336,57 +1350,6 @@ class QuotaTimelineStatsView(views.APIView):
     def get_all_spls_quotas(self):
         spl_models = [m for m in models.ServiceProjectLink.get_all_models()]
         return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
-
-    def get_stats(self, request):
-        mapped = {
-            'start_time': request.query_params.get('from'),
-            'end_time': request.query_params.get('to'),
-            'interval': request.query_params.get('interval'),
-            'item': request.query_params.get('item'),
-        }
-
-        data = {key: val for (key, val) in mapped.items() if val}
-        serializer = serializers.QuotaTimelineStatsSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-
-        scopes = self.get_quota_scopes(request)
-        date_points = self.get_date_points(
-            start_time=serializer.validated_data['start_time'],
-            end_time=serializer.validated_data['end_time'],
-            interval=serializer.validated_data['interval']
-        )
-        reversed_dates = date_points[::-1]
-        dates = zip(reversed_dates[:-1], reversed_dates[1:])
-        if 'item' in serializer.validated_data:
-            items = [serializer.validated_data['item']]
-        else:
-            items = self.get_all_spls_quotas()
-
-        stats = [{'from': datetime_to_timestamp(start),
-                  'to': datetime_to_timestamp(end)}
-                 for start, end in dates]
-
-        def _add(*args):
-            args = [arg if arg is not None else (0, 0) for arg in args]
-            return [self.sum_positive(qs) for qs in zip(*args)]
-
-        for item in items:
-            item_stats = [self.get_stats_for_scope(item, scope, dates) for scope in scopes]
-            item_stats = map(_add, *item_stats)
-            for date_item_stats, date_stats in zip(item_stats, stats):
-                limit, usage = date_item_stats
-                date_stats['{}_limit'.format(item)] = limit
-                date_stats['{}_usage'.format(item)] = usage
-
-        return stats[::-1]
-
-    def sum_positive(self, xs):
-        if not xs:
-            return 0
-        positive = (x for x in xs if x != -1)
-        if not positive:
-            return -1
-        return sum(positive)
 
     def get_stats_for_scope(self, quota_name, scope, dates):
         stats_data = []
@@ -1411,26 +1374,65 @@ class QuotaTimelineStatsView(views.APIView):
 
         return stats_data
 
-    def get_date_points(self, start_time, end_time, interval):
-        if interval == 'hour':
-            start_point = start_time.replace(second=0, minute=0, microsecond=0)
-            interval = timedelta(hours=1)
-        elif interval == 'day':
-            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
-            interval = timedelta(days=1)
-        elif interval == 'week':
-            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
-            interval = timedelta(days=7)
-        elif interval == 'month':
-            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
-            interval = timedelta(days=30)
+    def get_ranges(self, request):
+        mapped = {
+            'start_time': request.query_params.get('from'),
+            'end_time': request.query_params.get('to'),
+            'interval': request.query_params.get('interval')
+        }
+        data = {key: val for (key, val) in mapped.items() if val}
 
-        points = [start_time]
-        current_point = start_point
-        while current_point <= end_time:
-            points.append(current_point)
-            current_point += interval
-        if points[-1] != end_time:
-            points.append(end_time)
+        serializer = core_serializers.TimelineSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
 
-        return [p for p in points if start_time <= p <= end_time]
+        date_points = serializer.get_date_points()
+        reversed_dates = date_points[::-1]
+        ranges = zip(reversed_dates[:-1], reversed_dates[1:])
+        return ranges
+
+
+class QuotaTimelineCollector(object):
+    """
+    Helper class for QuotaTimelineStatsView.
+    Aggregate quotas grouped by date range and quota name.
+    Example output rendering:
+    [
+        {
+            "from": start,
+            "to" end,
+            "vcpu_limit": 10,
+            "vcpu_usage": 5,
+            "ram_limit": 4000,
+            "ran_usage": 1000
+        }
+    ]
+    """
+    def __init__(self):
+        self.ranges = set()
+        self.items = set()
+        self.limits = defaultdict(int)
+        self.usages = defaultdict(int)
+
+    def add_quota(self, start, end, item, limit, usage):
+        key = (start, end, item)
+        if limit == -1 or self.limits[key] == -1:
+            self.limits[key] = -1
+        else:
+            self.limits[key] += limit
+        self.usages[key] += usage
+        self.ranges.add((start, end))
+        self.items.add(item)
+
+    def to_dict(self):
+        table = []
+        for start, end in sorted(self.ranges):
+            row = {
+                'from': datetime_to_timestamp(start),
+                'to': datetime_to_timestamp(end)
+            }
+            for item in sorted(self.items):
+                key = (start, end, item)
+                row['%s_limit' % item] = self.limits[key]
+                row['%s_usage' % item] = self.usages[key]
+            table.append(row)
+        return table
