@@ -1,14 +1,60 @@
 from collections import OrderedDict
 
-from django.utils import six
 from django.utils.encoding import force_text
-from rest_framework import serializers, exceptions
-from rest_framework.exceptions import PermissionDenied
+from django.utils.http import urlencode
+from rest_framework import exceptions
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.reverse import reverse
 
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.structure import SupportedServices
+
+
+class ActionSerializer(object):
+    def __init__(self, func, name, request, resource):
+        self.func = func
+        self.name = name
+        self.request = request
+        self.resource = resource
+
+    def serialize(self):
+        reason = self.get_reason()
+
+        return {
+            'title': self.get_title(),
+            'method': self.get_method(),
+            'destructive': self.is_destructive(),
+            'url': self.get_url(),
+            'reason': reason,
+            'enabled': not reason
+        }
+
+    def is_destructive(self):
+        return getattr(self.func, 'destructive', False)
+
+    def get_title(self):
+        try:
+            return getattr(self.func, 'title')
+        except AttributeError:
+            return self.name.replace('_', ' ').title()
+
+    def get_reason(self):
+        valid_state = None
+        if hasattr(self.func, 'valid_state'):
+            valid_state = getattr(self.func, 'valid_state')
+
+        try:
+            check_operation(self.request.user, self.resource, self.name, valid_state)
+        except exceptions.APIException as e:
+            return force_text(e)
+
+    def get_method(self):
+        return getattr(self.func, 'method', 'POST')
+
+    def get_url(self):
+        base_url = self.request.build_absolute_uri()
+        method = self.get_method()
+        return method == 'DELETE' and base_url or base_url + self.name + '/'
 
 
 class ResourceActionsMetadata(SimpleMetadata):
@@ -18,9 +64,6 @@ class ResourceActionsMetadata(SimpleMetadata):
     2) Don't expose choices for fields with queryset in order to reduce size of response.
     3) Attach actions metadata
     """
-    def __init__(self):
-        self.label_lookup[serializers.HyperlinkedRelatedField] = 'select_url'
-
     def determine_metadata(self, request, view):
         self.request = request
         metadata = OrderedDict()
@@ -39,63 +82,28 @@ class ResourceActionsMetadata(SimpleMetadata):
         model = view.get_queryset().model
         actions = SupportedServices.get_resource_actions(model)
         resource = view.get_object()
-        for name, action in actions.items():
-            reason = self.get_action_reason(action, name, request.user, resource)
-            metadata[name] = {
-                'title': self.get_action_title(action, name),
-                'method': self.get_action_method(action),
-                'destructive': self.is_action_destructive(action),
-                'url': self.get_action_url(action, name),
-                'reason': reason,
-                'enabled': not reason
-            }
-            fields = self.get_action_fields(view, name)
+        for action_name, action in actions.items():
+            data = ActionSerializer(action, action_name, request, resource)
+            metadata[action_name] = data.serialize()
+            if not metadata[action_name]['enabled']:
+                continue
+            fields = self.get_action_fields(view, action_name, resource)
             if not fields:
-                metadata[name]['type'] = 'button'
+                metadata[action_name]['type'] = 'button'
             else:
-                metadata[name]['type'] = 'form'
-                metadata[name]['fields'] = fields
+                metadata[action_name]['type'] = 'form'
+                metadata[action_name]['fields'] = fields
         return metadata
 
-    def is_action_destructive(self, action):
-        try:
-            return getattr(action, 'destructive')
-        except AttributeError:
-            return False
-
-    def get_action_title(self, action, name):
-        try:
-            return getattr(action, 'title')
-        except AttributeError:
-            return name.replace('_', ' ').title()
-
-    def get_action_reason(self, action, name, user, resource):
-        valid_state = None
-        if hasattr(action, 'valid_state'):
-            valid_state = getattr(action, 'valid_state')
-
-        try:
-            check_operation(user, resource, name, valid_state)
-        except exceptions.APIException as e:
-            return six.text_type(e)
-
-    def get_action_method(self, action):
-        return getattr(action, 'method', 'POST')
-
-    def get_action_url(self, action, name):
-        base_url = self.request.build_absolute_uri()
-        method = self.get_action_method(action)
-        return method == 'DELETE' and base_url or base_url + name + '/'
-
-    def get_action_fields(self, view, name):
+    def get_action_fields(self, view, action_name, resource):
         """
-        Get fields required by action's serializer
+        Get fields exposed by action's serializer
         """
-        view.action = name
-        serializer_class = view.get_serializer_class()
+        view.action = action_name
+        serializer = view.get_serializer(resource)
         fields = OrderedDict()
-        if serializer_class and serializer_class != view.serializer_class:
-            fields = self.get_fields(serializer_class._declared_fields)
+        if not isinstance(serializer, view.serializer_class):
+            fields = self.get_fields(serializer.fields)
         view.action = None
         return fields
 
@@ -131,27 +139,30 @@ class ResourceActionsMetadata(SimpleMetadata):
         field_info['required'] = getattr(field, 'required', False)
 
         attrs = [
-            'read_only', 'label', 'help_text',
+            'label', 'help_text',
             'min_length', 'max_length',
             'min_value', 'max_value', 'many'
         ]
+
+        if getattr(field, 'read_only', False):
+            return None
 
         for attr in attrs:
             value = getattr(field, attr, None)
             if value is not None and value != '':
                 field_info[attr] = force_text(value, strings_only=True)
 
-        if 'read_only' in field_info:
-            if field_info['read_only']:
-                return None
-            del field_info['read_only']
-
         if 'label' not in field_info:
             field_info['label'] = field_name.replace('_', ' ').title()
 
-        if isinstance(field, serializers.HyperlinkedRelatedField):
+        if hasattr(field, 'view_name') and hasattr(field, 'query_params'):
             list_view = field.view_name.replace('-detail', '-list')
-            field_info['url'] = reverse(list_view, request=self.request)
+            base_url = reverse(list_view, request=self.request)
+            if field.query_params:
+                field_info['type'] = 'select'
+                field_info['url'] = '%s?%s' % (base_url, urlencode(field.query_params))
+                field_info['value_field'] = getattr(field, 'value_field', 'url')
+                field_info['display_name_field'] = getattr(field, 'display_name_field', 'display_name')
 
         if hasattr(field, 'choices') and not hasattr(field, 'queryset'):
             field_info['choices'] = [
@@ -174,7 +185,7 @@ def check_operation(user, resource, operation_name, valid_state=None):
         or project.customer.has_user(user, models.CustomerRole.OWNER)
 
     if not is_admin and not user.is_staff:
-        raise PermissionDenied(
+        raise exceptions.PermissionDenied(
             "Only project administrator or staff allowed to perform this action.")
 
     if valid_state is not None:

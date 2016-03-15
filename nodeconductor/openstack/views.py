@@ -99,7 +99,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
 
 
 class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
-    queryset = models.Flavor.objects.all()
+    queryset = models.Flavor.objects.all().order_by('settings', 'cores', 'ram', 'disk')
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
     filter_class = filters.FlavorFilter
@@ -168,6 +168,11 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     serializer_class = serializers.InstanceSerializer
     filter_class = filters.InstanceFilter
 
+    serializers = {
+        'assign_floating_ip': serializers.AssignFloatingIpSerializer,
+        'resize': serializers.InstanceResizeSerializer,
+    }
+
     def perform_update(self, serializer):
         super(InstanceViewSet, self).perform_update(serializer)
         send_task('openstack', 'sync_instance_security_groups')(self.get_object().uuid.hex)
@@ -183,11 +188,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             skip_external_ip_assignment=serializer.validated_data['skip_external_ip_assignment'])
 
     def get_serializer_class(self):
-        if self.action == 'assign_floating_ip':
-            return serializers.AssignFloatingIpSerializer
-        elif self.action == 'resize':
-            return serializers.InstanceResizeSerializer
-        return super(InstanceViewSet, self).get_serializer_class()
+        serializer = self.serializers.get(self.action)
+        return serializer or super(InstanceViewSet, self).get_serializer_class()
 
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=tuple(models.Instance.States.STABLE_STATES))

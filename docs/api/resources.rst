@@ -174,13 +174,16 @@ Example rendering of response:
             "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/assign_floating_ip/",
             "fields": {
                 "floating_ip_uuid": {
-                    "type": "string",
+                    "type": "select",
                     "required": true,
-                    "label": "Floating IP UUID"
+                    "label": "Floating IP",
+                    "url": "http://example.com/api/openstack-floating-ips/?status=DOWN&project=590ee6202f87452aa1a7d06ffa34e169&service=f5f7c932716042478d627243e9ccfba6",
+                    "value_field": "uuid",
+                    "display_name_field": "address"
                 }
             },
-            "enabled": false,
-            "reason": "Performing assign_floating_ip operation is not allowed for resource in its current state",
+            "enabled": true,
+            "reason": null,
             "destructive": false,
             "type": "form",
             "method": "POST"
@@ -188,8 +191,8 @@ Example rendering of response:
         "destroy": {
             "title": "Destroy",
             "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/",
-            "enabled": false,
-            "reason": "Performing destroy operation is not allowed for resource in its current state",
+            "enabled": true,
+            "reason": null,
             "destructive": true,
             "type": "button",
             "method": "DELETE"
@@ -199,20 +202,22 @@ Example rendering of response:
             "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/resize/",
             "fields": {
                 "flavor": {
-                    "type": "select_url",
+                    "type": "select",
                     "required": false,
                     "label": "Flavor",
-                    "url": "http://example.com/api/openstack-flavors/"
+                    "url": "http://example.com/api/openstack-flavors/?settings_uuid=de981178fe204a8795bf97f5f112c368",
+                    "value_field": "url",
+                    "display_name_field": "display_name"
                 },
                 "disk_size": {
                     "type": "integer",
                     "required": false,
                     "label": "Disk size",
-                    "min_value": 1
+                    "min_value": 20480
                 }
             },
-            "enabled": false,
-            "reason": "Performing resize operation is not allowed for resource in its current state",
+            "enabled": true,
+            "reason": null,
             "destructive": false,
             "type": "form",
             "method": "POST"
@@ -223,14 +228,13 @@ Example rendering of response:
             "enabled": false,
             "reason": "Performing restart operation is not allowed for resource in its current state",
             "destructive": false,
-            "type": "button",
             "method": "POST"
         },
         "start": {
             "title": "Start",
             "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/start/",
-            "enabled": false,
-            "reason": "Performing start operation is not allowed for resource in its current state",
+            "enabled": true,
+            "reason": null,
             "destructive": false,
             "type": "button",
             "method": "POST"
@@ -241,7 +245,6 @@ Example rendering of response:
             "enabled": false,
             "reason": "Performing stop operation is not allowed for resource in its current state",
             "destructive": false,
-            "type": "button",
             "method": "POST"
         },
         "unlink": {
@@ -255,6 +258,7 @@ Example rendering of response:
         }
     }
 }
+
 
 OpenStack resources list
 ------------------------
