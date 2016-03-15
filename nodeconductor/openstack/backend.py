@@ -1,4 +1,3 @@
-import calendar
 import datetime
 import dateutil.parser
 import logging
@@ -29,10 +28,9 @@ from keystoneclient import exceptions as keystone_exceptions
 from neutronclient.client import exceptions as neutron_exceptions
 from novaclient import exceptions as nova_exceptions
 
-from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import ServiceBackend, ServiceBackendError
 from nodeconductor.structure.log import event_logger
 from nodeconductor.openstack import models
 
@@ -1013,29 +1011,6 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(OpenStackBackendError, e)
 
         return instance
-
-    def get_monthly_cost_estimate(self, instance):
-        if not NodeConductorExtension.is_installed('nodeconductor_killbill'):
-            raise ServiceBackendNotImplemented
-
-        from nodeconductor_killbill.backend import KillBillBackend, KillBillError
-
-        try:
-            backend = KillBillBackend(instance.customer)
-            invoice = backend.get_invoice_estimate(instance)
-        except KillBillError as e:
-            logger.error("Failed to get cost estimate for instance %s: %s", instance, e)
-            six.reraise(OpenStackBackendError, e)
-
-        today = datetime.date.today()
-        if not invoice['start_date'] <= today <= invoice['end_date']:
-            raise OpenStackBackendError("Wrong invoice estimate for instance %s: %s" % (instance, invoice))
-
-        # prorata monthly cost estimate based on daily usage cost
-        daily_cost = invoice['amount'] / ((today - invoice['start_date']).days + 1)
-        monthly_cost = daily_cost * calendar.monthrange(today.year, today.month)[1]
-
-        return monthly_cost
 
     def get_resources_for_import(self):
         cur_instances = models.Instance.objects.all().values_list('backend_id', flat=True)

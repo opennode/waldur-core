@@ -34,11 +34,6 @@ class OpenStackCostTrackingBackend(CostTrackingBackend):
         yield price_item(Types.PriceItems.STORAGE, cls.STORAGE_KEY)
 
     @classmethod
-    def get_monthly_cost_estimate(cls, resource):
-        backend = resource.get_backend()
-        return backend.get_monthly_cost_estimate(resource)
-
-    @classmethod
     def get_used_items(cls, resource):
         items = []
         tags = [t.name for t in resource.tags.all()]
