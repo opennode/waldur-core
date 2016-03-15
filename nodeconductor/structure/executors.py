@@ -5,8 +5,8 @@ from nodeconductor.structure import tasks
 class BaseExecutor(object):
     """ Base class that corresponds logical operation with backend.
 
-    Executor describes list of low-level tasks that should be executed to
-    provide high-level operation.
+    Executor describes celery signature or primitive of low-level tasks that
+    should be executed to provide high-level operation.
 
     Executor should handle:
      - low-level tasks execution;
@@ -14,7 +14,7 @@ class BaseExecutor(object):
     """
 
     @classmethod
-    def get_tasks(cls, serialized_instance, **kwargs):
+    def get_task_signature(cls, serialized_instance, **kwargs):
         """ Get Celery signature or primitive that describes executor action.
 
         Each task should be subclass of LowLevelTask class.
@@ -22,19 +22,19 @@ class BaseExecutor(object):
          - http://docs.celeryproject.org/en/latest/userguide/canvas.html
         Examples:
          - to execute only one task - return Signature of necessary task: `task.si(serialized_instance)`
-         - to execute several tasks - return Chain or Chord of tasks: `chain(t1.s(), t2.s())`
+         - to execute several tasks - return Chain, Chord or Group of tasks: `chain(t1.s(), t2.s())`
         """
         raise NotImplementedError('Executor %s should implement method `get_tasks`' % cls.__name__)
 
     @classmethod
-    def get_link(cls, serialized_instance, **kwargs):
+    def get_success_signature(cls, serialized_instance, **kwargs):
         """ Get Celery signature of task that should be applied on successful execution. """
-        raise NotImplementedError('Executor %s should implement method `get_link`' % cls.__name__)
+        return None
 
     @classmethod
-    def get_link_error(cls, serialized_instance, **kwargs):
+    def get_failure_signature(cls, serialized_instance, **kwargs):
         """ Get Celery signature of task that should be applied on failed execution. """
-        raise NotImplementedError('Executor %s should implement method `get_link_error`' % cls.__name__)
+        return None
 
     @classmethod
     def execute(cls, instance, async=True, **kwargs):
@@ -55,32 +55,38 @@ class BaseExecutor(object):
         pass
 
     @classmethod
-    def apply_tasks(cls, instance, async=True, **kwargs):
+    def apply_signature(cls, instance, async=True, **kwargs):
         """ Serialize input data and apply tasks """
         serialized_instance = core_utils.serialize_instance(instance)
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
         tasks = cls.get_tasks(serialized_instance, **kwargs)
-        link = cls.get_link(serialized_instance, **kwargs),
-        link_error = cls.get_link_error(serialized_instance, **kwargs)
+        link = cls.get_success_signature(serialized_instance, **kwargs),
+        link_error = cls.get_failure_signature(serialized_instance, **kwargs)
 
         if async:
-            result = tasks.apply_async(link=link, link_error=link_error)
+            return tasks.apply_async(link=link, link_error=link_error)
         else:
             result = tasks.apply()
             callback = link if not result.failed() else link_error
-            if not callback.immutable:
-                callback.args = (result.id, ) + callback.args
-            callback.apply()
+            if callback is not None:
+                cls._apply_callback(callback, result)
 
         return result
+
+    @classmethod
+    def _apply_callback(cls, callback, result):
+        """ Synchronously execute callback """
+        if not callback.immutable:
+            callback.args = (result.id, ) + callback.args
+        callback.apply()
 
 
 class ErrorExecutorMixin(object):
     """ Set object as erred on fail. """
 
     @classmethod
-    def get_link_error(cls, serialized_instance, **kwargs):
+    def get_failure_signature(cls, serialized_instance, **kwargs):
         return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
@@ -88,7 +94,7 @@ class DeleteExecutorMixin(object):
     """ Delete object on success """
 
     @classmethod
-    def get_link(cls, serialized_instance, **kwargs):
+    def get_success_signature(cls, serialized_instance, **kwargs):
         return tasks.DeletionTask().si(serialized_instance)
 
 
@@ -96,7 +102,7 @@ class SynchronizableExecutorMixin(object):
     """ Set object in sync on success """
 
     @classmethod
-    def get_link(cls, serialized_instance, **kwargs):
+    def get_success_signature(cls, serialized_instance, **kwargs):
         return tasks.StateTransitionTask().si(serialized_instance, state_transition='set_in_sync')
 
 
@@ -120,7 +126,7 @@ class SynchronizableUpdateExecutor(SynchronizableExecutorMixin, ErrorExecutorMix
     @classmethod
     def pre_apply(cls, instance, async=True, **kwargs):
         instance.schedule_syncing()
-        instance.save()
+        instance.save(update_fields=['state'])
 
 
 class SynchronizableDeleteExecutor(DeleteExecutorMixin, ErrorExecutorMixin, BaseExecutor):
@@ -134,4 +140,4 @@ class SynchronizableDeleteExecutor(DeleteExecutorMixin, ErrorExecutorMixin, Base
     @classmethod
     def pre_apply(cls, instance, async=True, **kwargs):
         instance.schedule_syncing()
-        instance.save()
+        instance.save(update_fields=['state'])
