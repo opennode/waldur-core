@@ -47,12 +47,12 @@ class ProtectedModelMixin(object):
 class ResourceCounterFormMixin(object):
 
     def get_vm_count(self, obj):
-        return obj.get_vm_count()
+        return obj.quotas.get(name=obj.Quotas.nc_vm_count).usage
 
     get_vm_count.short_description = 'VM count'
 
     def get_app_count(self, obj):
-        return obj.get_app_count()
+        return obj.quotas.get(name=obj.Quotas.nc_app_count).usage
 
     get_app_count.short_description = 'Application count'
 

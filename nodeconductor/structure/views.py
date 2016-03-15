@@ -840,10 +840,10 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.project.get_vm_count()
+        return self.project.quotas.get(name=models.Project.Quotas.nc_vm_count).usage
 
     def get_apps(self):
-        return self.project.get_app_count()
+        return self.project.quotas.get(name=models.Project.Quotas.nc_app_count).usage
 
     def get_users(self):
         return self.get_count('user-list', {
