@@ -548,7 +548,7 @@ class LowLevelTask(Task):
 
     def execute(self, instance, *args, **kwargs):
         """ Execute backend operation """
-        raise NotImplementedError('LowLevelTask %s should implement method `execute`' % self.__class__.__name__)
+        raise NotImplementedError('%s should implement method `execute`' % self.__class__.__name__)
 
 
 class StateTransitionTask(LowLevelTask):
