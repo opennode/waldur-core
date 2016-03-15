@@ -125,7 +125,7 @@ class SynchronizableUpdateExecutor(SynchronizableExecutorMixin, ErrorExecutorMix
     """
 
     @classmethod
-    def pre_apply(cls, instance, async=True, **kwargs):
+    def pre_apply(cls, instance, **kwargs):
         instance.schedule_syncing()
         instance.save(update_fields=['state'])
 
@@ -139,6 +139,6 @@ class SynchronizableDeleteExecutor(DeleteExecutorMixin, ErrorExecutorMixin, Base
     """
 
     @classmethod
-    def pre_apply(cls, instance, async=True, **kwargs):
+    def pre_apply(cls, instance, **kwargs):
         instance.schedule_syncing()
         instance.save(update_fields=['state'])
