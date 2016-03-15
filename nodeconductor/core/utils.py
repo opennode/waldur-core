@@ -8,7 +8,6 @@ from datetime import timedelta
 from operator import itemgetter
 
 from django.apps import apps
-from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from django.utils.crypto import get_random_string
