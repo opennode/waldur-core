@@ -1104,6 +1104,9 @@ def safe_operation(valid_state=None):
                 return Response({'status': '%s was not scheduled' % operation_name},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+            if resource.pk is None:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+
             return Response({'status': '%s was scheduled' % operation_name},
                             status=status.HTTP_202_ACCEPTED)
 
