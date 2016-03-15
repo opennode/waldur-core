@@ -304,7 +304,7 @@ class SynchronizableMixin(ErrorMessageMixin):
 
     @property
     def human_readable_state(self):
-        return dict(SynchronizationStates.CHOICES)[self.state].title()
+        return force_text(dict(SynchronizationStates.CHOICES)[self.state])
 
     @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
     def begin_creating(self):

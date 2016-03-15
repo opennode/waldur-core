@@ -7,10 +7,12 @@ from datetime import datetime
 from datetime import timedelta
 from operator import itemgetter
 
+from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.utils.encoding import force_text
 from rest_framework.authtoken.models import Token
 
 
@@ -127,11 +129,12 @@ def pwgen(pw_len=8):
 
 def serialize_instance(instance):
     """ Serialize Django model instance """
-    return '%s:%s' % (ContentType.objects.get_for_model(instance).pk, instance.pk)
+    model_name = force_text(instance._meta)
+    return '{}:{}'.format(model_name, instance.pk)
 
 
-def deserilize_instance(serialized_instance):
+def deserialize_instance(serialized_instance):
     """ Deserialize Django model instance """
-    content_type_pk, instance_pk = serialized_instance.split(':')
-    ct = ContentType.objects.get(pk=content_type_pk)
-    return ct.model_class().objects.get(pk=instance_pk)
+    model_name, pk = serialized_instance.split(':')
+    model = apps.get_model(model_name)
+    return model._default_manager.get(pk=pk)

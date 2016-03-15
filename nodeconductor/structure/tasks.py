@@ -6,7 +6,7 @@ from celery import shared_task, Task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction, IntegrityError
-from django.db.models import Q
+from django.db.models import Q, ObjectDoesNotExist
 from django.utils import six
 from django_fsm import TransitionNotAllowed
 
@@ -538,7 +538,12 @@ class LowLevelTask(Task):
 
     def run(self, serialized_instance, *args, **kwargs):
         """ Deserialize input data and start backend operation execution """
-        instance = core_utils.deserilize_instance(serialized_instance)
+        try:
+            instance = core_utils.deserialize_instance(serialized_instance)
+        except ObjectDoesNotExist:
+            message = ('Cannot restore instance from serialized object %s. Probably it was deleted.' %
+                       serialized_instance)
+            six.reraise(ObjectDoesNotExist, message)
         return self.execute(instance, *args, **kwargs)
 
     def execute(self, instance, *args, **kwargs):
@@ -611,4 +616,4 @@ class ErrorStateTransitionTask(StateTransitionTask):
         self.state_transition(instance, 'set_erred')
         if isinstance(instance, ErrorMessageMixin):
             instance.error_message = self.result.result
-            instance.save()
+            instance.save(update_fields=['error_message'])
