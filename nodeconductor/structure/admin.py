@@ -462,7 +462,7 @@ class ResourceAdmin(admin.ModelAdmin):
     get_project.admin_order_field = 'service_project_link__project__name'
 
 
-class SaaSResourceAdmin(ResourceAdmin):
+class PublishableResourceAdmin(ResourceAdmin):
     list_display = ResourceAdmin.list_display + ('publishing_state',)
 
 

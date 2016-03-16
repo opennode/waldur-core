@@ -1214,7 +1214,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return super(BaseResourceSerializer, self).create(data)
 
 
-class SaaSResourceSerializer(BaseResourceSerializer):
+class PublishableResourceSerializer(BaseResourceSerializer):
 
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + ('publishing_state',)

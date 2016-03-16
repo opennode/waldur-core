@@ -802,6 +802,23 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
         return None
 
 
+class PublishableMixin(models.Model):
+    """ Base resource for SaaS plugins """
+
+    class Meta(object):
+        abstract = True
+
+    class PublishingState(object):
+        NOT_PUBLISHED = 'not published'
+        PUBLISHED = 'published'
+        REQUESTED = 'requested'
+
+        CHOICES = ((NOT_PUBLISHED, _('Not published')), (PUBLISHED, _('Published')), (REQUESTED, _('Requested')))
+
+    publishing_state = models.CharField(
+        max_length=30, choices=PublishingState.CHOICES, default=PublishingState.NOT_PUBLISHED)
+
+
 class PaidResource(models.Model):
     """ Extend Resource model with methods to track usage cost and handle orders """
 
@@ -1070,18 +1087,5 @@ class Resource(MonitoringModelMixin,
         pass
 
 
-class SaaSResource(Resource):
-    """ Base resource for SaaS plugins """
-
-    class Meta(object):
-        abstract = True
-
-    class PublishingState(object):
-        NOT_PUBLISHED = 'not published'
-        PUBLISHED = 'published'
-        REQUESTED = 'requested'
-
-        CHOICES = ((NOT_PUBLISHED, _('Not published')), (PUBLISHED, _('Published')), (REQUESTED, _('Requested')))
-
-    publishing_state = models.CharField(
-        max_length=30, choices=PublishingState.CHOICES, default=PublishingState.NOT_PUBLISHED)
+class PublishableResource(PublishableMixin, Resource):
+    pass
