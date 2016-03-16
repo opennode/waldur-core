@@ -2,7 +2,6 @@ import logging
 
 from django.contrib import auth
 from django.db.models import ProtectedError
-from django.views.decorators.csrf import csrf_exempt
 from django.utils.encoding import force_text
 
 from rest_framework import status

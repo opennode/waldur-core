@@ -10,13 +10,12 @@ from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
-from nodeconductor.monitoring.filters import MonitoringItemFilterBackend
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.openstack.backup import BackupError
 from nodeconductor.openstack.log import event_logger
-from nodeconductor.openstack import Types, models, filters, serializers
+from nodeconductor.openstack import Types, models, filters, serializers, executors
 
 
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
@@ -100,7 +99,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
 
 
 class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
-    queryset = models.Flavor.objects.all()
+    queryset = models.Flavor.objects.all().order_by('settings', 'cores', 'ram', 'disk')
     serializer_class = serializers.FlavorSerializer
     lookup_field = 'uuid'
     filter_class = filters.FlavorFilter
@@ -168,9 +167,11 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
     filter_class = filters.InstanceFilter
-    filter_backends = structure_views.BaseResourceViewSet.filter_backends + (
-        MonitoringItemFilterBackend,
-    )
+
+    serializers = {
+        'assign_floating_ip': serializers.AssignFloatingIpSerializer,
+        'resize': serializers.InstanceResizeSerializer,
+    }
 
     def perform_update(self, serializer):
         super(InstanceViewSet, self).perform_update(serializer)
@@ -186,45 +187,40 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
             ssh_key=serializer.validated_data.get('ssh_public_key'),
             skip_external_ip_assignment=serializer.validated_data['skip_external_ip_assignment'])
 
+    def get_serializer_class(self):
+        serializer = self.serializers.get(self.action)
+        return serializer or super(InstanceViewSet, self).get_serializer_class()
+
     @decorators.detail_route(methods=['post'])
-    def assign_floating_ip(self, request, uuid):
-        instance = self.get_object()
-
-        serializer = serializers.AssignFloatingIpSerializer(instance, data=request.data)
+    @structure_views.safe_operation(valid_state=tuple(models.Instance.States.STABLE_STATES))
+    def assign_floating_ip(self, request, instance, uuid=None):
+        """
+        Assign floating IP to the instance.
+        Instance must be in stable state.
+        """
+        serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        if not instance.service_project_link.external_network_id:
-            return response.Response(
-                {'detail': 'External network ID of the service project link is missing.'},
-                status=status.HTTP_409_CONFLICT)
-        elif instance.service_project_link.state not in SynchronizationStates.STABLE_STATES:
-            raise IncorrectStateException(
-                "Service project link of instance should be in stable state.")
-        elif instance.state not in instance.States.STABLE_STATES:
-            raise IncorrectStateException(
-                "Cannot add floating IP to instance in unstable state.")
 
         send_task('openstack', 'assign_floating_ip')(
             instance.uuid.hex, serializer.validated_data['floating_ip_uuid'])
 
-        return response.Response(
-            {'detail': 'Assigning floating IP to the instance has been scheduled.'},
-            status=status.HTTP_202_ACCEPTED)
+    assign_floating_ip.title = 'Assign floating IP'
 
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
-    def resize(self, request, uuid=None):
-        """ Change Instance flavor or extend disk size.
+    def resize(self, request, instance, uuid=None):
+        """ Change instance flavor or extend disk size.
 
             Instance must be in OFFLINE state.
         """
-        instance = self.get_object()
-
-        serializer = serializers.InstanceResizeSerializer(instance, data=request.data)
+        serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
 
         flavor = serializer.validated_data.get('flavor')
         new_size = serializer.validated_data.get('disk_size')
+
+        instance.schedule_resizing()
+        instance.save()
 
         # Serializer makes sure that exactly one of the branches will match
         if flavor is not None:
@@ -242,8 +238,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
                 event_context={'resource': instance, 'volume_size': new_size}
             )
 
-        return response.Response(
-            {'detail': 'Resizing has been scheduled.'}, status=status.HTTP_202_ACCEPTED)
+    resize.title = 'Resize virtual machine'
 
 
 class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
@@ -256,20 +251,16 @@ class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelView
 
     def perform_create(self, serializer):
         security_group = serializer.save()
-        send_task('openstack', 'create_security_group')(security_group.uuid.hex)
+        executors.SecurityGroupCreateExecutor.execute(security_group)
 
     def perform_update(self, serializer):
         super(SecurityGroupViewSet, self).perform_update(serializer)
         security_group = self.get_object()
-        security_group.schedule_syncing()
-        security_group.save()
-        send_task('openstack', 'update_security_group')(security_group.uuid.hex)
+        executors.SecurityGroupUpdateExecutor.execute(security_group)
 
     def destroy(self, request, *args, **kwargs):
         security_group = self.get_object()
-        security_group.schedule_syncing()
-        security_group.save()
-        send_task('openstack', 'delete_security_group')(security_group.uuid.hex)
+        executors.SecurityGroupDeleteExecutor.execute(security_group)
         return response.Response(
             {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
@@ -479,7 +470,7 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             queryset = queryset.filter(customer__uuid=self.request.query_params['customer'])
 
         ids = [instance.id for instance in queryset]
-        tags = self.queryset.filter(taggit_taggeditem_items__object_id__in=ids)
+        tags = self.get_queryset().filter(taggit_taggeditem_items__object_id__in=ids)
 
         tags_map = {
             Types.PriceItems.LICENSE_OS: dict(Types.Os.CHOICES),

@@ -9,12 +9,11 @@ from model_utils import FieldTracker
 from urlparse import urlparse
 
 from nodeconductor.core import models as core_models
-from nodeconductor.monitoring.models import MonitoringModelMixin
-from nodeconductor.structure import models as structure_models
-from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
-from nodeconductor.openstack.managers import BackupManager
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
+from nodeconductor.openstack.managers import BackupManager
+from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.utils import get_coordinates_by_ip, Coordinates
 
 
@@ -101,6 +100,9 @@ class SecurityGroup(core_models.UuidMixin,
     def __str__(self):
         return '%s (%s)' % (self.name, self.service_project_link)
 
+    def get_backend(self):
+        return self.service_project_link.get_backend()
+
     @classmethod
     def get_url_name(cls):
         return 'openstack-sgp'
@@ -154,7 +156,6 @@ class FloatingIP(core_models.UuidMixin):
 
 class Instance(structure_models.VirtualMachineMixin,
                structure_models.PaidResource,
-               MonitoringModelMixin,
                structure_models.Resource):
 
     DEFAULT_DATA_VOLUME_SIZE = 20 * 1024

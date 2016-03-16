@@ -2,11 +2,11 @@ from __future__ import unicode_literals
 
 import logging
 
+from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Q
-from celery import shared_task
 
 from nodeconductor.core.tasks import transition, retry_if_false, save_error_message, throttle
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates

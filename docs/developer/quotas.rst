@@ -4,6 +4,7 @@ Quotas application
 Overview
 --------
 
+TODO: This documentation is out of date. We need to update it.
 ``quotas`` - Django application that provides implementation of per object resource limits and usages.
 
 

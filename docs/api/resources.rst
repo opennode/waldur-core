@@ -42,9 +42,228 @@ resources that support such filtering. For example it is possible to sort resour
 will ignore this ordering, because they do not support such option.
 
 
+SLA values
+^^^^^^^^^^
+
+Resources may have SLA attached to it. Example rendering of SLA:
+
+.. code-block:: javascript
+
+    "sla": {
+        "value": 95.0
+        "agreed_value": 99.0,
+        "period": "2016-03"
+    }
+
+You may filter or order resources by SLA. Default period is current year and month.
+
+- Example query for filtering list of resources by actual SLA:
+
+  /api/<resource_endpoint>/?actual_sla=90&period=2016-02
+
+- Warning! If resource does not have SLA attached to it, it is not included in ordered response.
+  Example query for ordering list of resources by actual SLA:
+
+  /api/<resource_endpoint>/?o=actual_sla&period=2016-02
+
+SLA periods
+^^^^^^^^^^^
+
+Service list is displaying current SLAs for each of the items. By default, SLA period is set to the current month. To
+change the period pass it as a query argument:
+
+- ?period=YYYY-MM - return a list with SLAs for a given month
+- ?period=YYYY - return a list with SLAs for a given year
+
+In all cases all currently running resources are returned, if SLA for the given period is not known or not present, it
+will be shown as **null** in the response.
+
+SLA events
+^^^^^^^^^^
+
+Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
+*/api/resource-sla-state-transition/*.
+
+Supported query arguments:
+
+- ?scope=<URL of resource>
+- ?period - use the format defined above.
+
+The output contains a list of states and timestamps when the state was reached. The list is sorted in descending order
+by the timestamp.
+
+Example output:
+
+.. code-block:: javascript
+
+    [
+        {
+            "timestamp": 1418043540,
+            "state": "U"
+        },
+        {
+            "timestamp": 1417928550,
+            "state": "D"
+        },
+        {
+            "timestamp": 1417928490,
+            "state": "U"
+        }
+    ]
+
+Monitoring items
+^^^^^^^^^^^^^^^^
+
+Resources may have monitoring items attached to it. Example rendering of monitoring items:
+
+.. code-block:: javascript
+
+    "monitoring_items": {
+       "application_state": 1
+    }
+
+You may filter or order resources by monitoring item.
+
+- Example query for filtering list of resources by installation state:
+
+  /api/<resource_endpoint>/?monitoring__installation_state=1
+
+- Warning! If resource does not have monitoring item attached to it, it is not included in ordered response.
+  Example query for ordering list of resources by installation state:
+
+  /api/<resource_endpoint>/?o=monitoring__installation_state
+
+
+Tags
+^^^^
+
+Resource may have tags attached to it. Example of tags rendering:
+
+.. code-block:: javascript
+
+    "tags": [
+        "license-os:centos7",
+        "os-family:linux",
+        "license-application:postgresql",
+        "support:premium"
+    ]
+
+Tags filtering:
+
+ - ?tag=IaaS - filter by full tag name. Can be list.
+ - ?tag__license-os=centos7 - filter by tags with particular prefix.
+
+Tags ordering:
+
+ - ?o=tag__license-os - order by tag with particular prefix. Instances without given tag will not be returned.
+
+
+Resource actions
+----------------
+
+To get a list of supported resources' actions, run OPTIONS against **/api/<resource_url>/** as an authenticated user.
+
+Example rendering of response:
+
+.. code-block:: javascript
+
+{
+    "actions": {
+        "assign_floating_ip": {
+            "title": "Assign floating IP",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/assign_floating_ip/",
+            "fields": {
+                "floating_ip_uuid": {
+                    "type": "select",
+                    "required": true,
+                    "label": "Floating IP",
+                    "url": "http://example.com/api/openstack-floating-ips/?status=DOWN&project=590ee6202f87452aa1a7d06ffa34e169&service=f5f7c932716042478d627243e9ccfba6",
+                    "value_field": "uuid",
+                    "display_name_field": "address"
+                }
+            },
+            "enabled": true,
+            "reason": null,
+            "destructive": false,
+            "type": "form",
+            "method": "POST"
+        },
+        "destroy": {
+            "title": "Destroy",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/",
+            "enabled": true,
+            "reason": null,
+            "destructive": true,
+            "type": "button",
+            "method": "DELETE"
+        },
+        "resize": {
+            "title": "Resize virtual machine",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/resize/",
+            "fields": {
+                "flavor": {
+                    "type": "select",
+                    "required": false,
+                    "label": "Flavor",
+                    "url": "http://example.com/api/openstack-flavors/?settings_uuid=de981178fe204a8795bf97f5f112c368",
+                    "value_field": "url",
+                    "display_name_field": "display_name"
+                },
+                "disk_size": {
+                    "type": "integer",
+                    "required": false,
+                    "label": "Disk size",
+                    "min_value": 20480
+                }
+            },
+            "enabled": true,
+            "reason": null,
+            "destructive": false,
+            "type": "form",
+            "method": "POST"
+        },
+        "restart": {
+            "title": "Restart",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/restart/",
+            "enabled": false,
+            "reason": "Performing restart operation is not allowed for resource in its current state",
+            "destructive": false,
+            "method": "POST"
+        },
+        "start": {
+            "title": "Start",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/start/",
+            "enabled": true,
+            "reason": null,
+            "destructive": false,
+            "type": "button",
+            "method": "POST"
+        },
+        "stop": {
+            "title": "Stop",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/stop/",
+            "enabled": false,
+            "reason": "Performing stop operation is not allowed for resource in its current state",
+            "destructive": false,
+            "method": "POST"
+        },
+        "unlink": {
+            "title": "Unlink",
+            "url": "http://example.com/api/openstack-instances/c8f2de8b137b44bc9e9ee2ef6f4f9ed1/unlink/",
+            "enabled": true,
+            "reason": null,
+            "destructive": true,
+            "type": "button",
+            "method": "POST"
+        }
+    }
+}
+
+
 OpenStack resources list
 ------------------------
 
+Deprecated. Use filtering by SLA against **api/resources** endpoint.
 Use */api/iaas-resources/* to get a list of all the resources that a user can see.
 Only resources that have agreed and actual SLA values are shown.
 
@@ -82,8 +301,6 @@ Response example:
 
 .. code-block:: http
 
-    GET /api/iaas-resources/ HTTP/1.1
-
     HTTP/1.0 200 OK
     Content-Type: application/json
     Vary: Accept
@@ -111,43 +328,3 @@ Response example:
         }
     ]
 
-
-SLA periods
-^^^^^^^^^^^
-
-Service list is displaying current SLAs for each of the items. By default, SLA period is set to the current month. To
-change the period pass it as a query argument:
-
-- ?period=YYYY-MM - return a list with SLAs for a given month
-- ?period=YYYY - return a list with SLAs for a given year
-
-In all cases all currently running resources are returned, if SLA for the given period is not known or not present, it
-will be shown as **null** in the response.
-
-SLA events
-^^^^^^^^^^
-
-Service SLAs are connected with occurrences of events. To get a list of such events issue a GET request to
-*/resources/<service_uuid>/events/*. Optionally period can be supplied using the format defined above.
-
-The output contains a list of states and timestamps when the state was reached. The list is sorted in descending order
-by the timestamp.
-
-Example output:
-
-.. code-block:: javascript
-
-    [
-        {
-            "timestamp": 1418043540,
-            "state": "U"
-        },
-        {
-            "timestamp": 1417928550,
-            "state": "D"
-        },
-        {
-            "timestamp": 1417928490,
-            "state": "U"
-        }
-    ]

@@ -35,6 +35,7 @@ Permissions for creation/deletion/update
 CRU permissions are implemented using django-permission_ . Filters for allowed modifiers are defined in ``perms.py``
 in each of the applications.
 
+
 Advanced validation for CRUD
 ----------------------------
 

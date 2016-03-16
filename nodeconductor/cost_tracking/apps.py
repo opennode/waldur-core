@@ -4,6 +4,7 @@ from django.apps import AppConfig
 from django.db.models import signals
 from django_fsm.signals import post_transition
 
+from nodeconductor.core.handlers import preserve_fields_before_update
 from nodeconductor.cost_tracking import handlers
 from nodeconductor.structure import models as structure_models
 
@@ -46,14 +47,6 @@ class CostTrackingConfig(AppConfig):
                     .format(service.__name__, index))
             )
 
-        for index, resource in enumerate(structure_models.Resource.get_all_models()):
-            post_transition.connect(
-                handlers.add_estimate_costs,
-                sender=resource,
-                dispatch_uid='nodeconductor.cost_tracking.handlers.add_estimate_costs_{}_{}'.format(
-                    resource.__name__, index),
-            )
-
         # TODO: enable once price list items start being used
         # Commented out as it's failing on the unique_together constraint when SaltStack tenants are updated
 
@@ -68,6 +61,37 @@ class CostTrackingConfig(AppConfig):
             sender=DefaultPriceListItem,
             dispatch_uid='nodeconductor.cost_tracking.handlers.delete_price_list_items_if_default_was_deleted'
         )
+
+        signals.post_save.connect(
+            handlers.update_price_estimate_ancestors,
+            sender=PriceEstimate,
+            dispatch_uid='nodeconductor.cost_tracking.handlers.update_price_estimate_ancestors'
+        )
+
+        for index, resource in enumerate(structure_models.Resource.get_all_models()):
+            post_transition.connect(
+                handlers.add_resource_price_estimate_on_provision,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.add_resource_price_estimate_on_provision_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
+            signals.pre_save.connect(
+                preserve_fields_before_update,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.preserve_fields_before_update_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
+            signals.post_save.connect(
+                handlers.update_price_estimate_on_resource_spl_change,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.update_price_estimate_on_resource_spl_change_{}_{}'
+                    .format(resource.__name__, index))
+            )
 
         for index, model in enumerate(PriceEstimate.get_estimated_models()):
             signals.pre_delete.connect(

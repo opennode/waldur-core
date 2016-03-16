@@ -11,7 +11,7 @@ class OpenStackServiceProjectLinkFilter(structure_filters.BaseServiceProjectLink
 
 class InstanceFilter(structure_filters.BaseResourceFilter):
 
-    class Meta(object):
+    class Meta(structure_filters.BaseResourceFilter.Meta):
         model = models.Instance
         order_by = structure_filters.BaseResourceFilter.Meta.order_by + [
             'ram',

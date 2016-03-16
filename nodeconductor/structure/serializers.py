@@ -1,26 +1,25 @@
 from __future__ import unicode_literals
 
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
+from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
-from django.conf import settings
 from django.utils import six
-from django.utils.encoding import force_text
 from django.utils.lru_cache import lru_cache
-from rest_framework import exceptions, metadata, serializers
+from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
-from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import models as core_models
+from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.fields import MappedChoiceField, TimestampField
+from nodeconductor.core.fields import MappedChoiceField
+from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ServiceProjectLink
-
 
 User = auth.get_user_model()
 
@@ -889,14 +888,14 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'url',
             'name', 'projects',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'settings', 'dummy',
+            'settings', 'settings_uuid', 'dummy',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
             'available_for_all'
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
         protected_fields = ('customer', 'settings', 'dummy') + settings_fields
-        related_paths = ('customer',)
+        related_paths = ('customer', 'settings')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
@@ -1113,6 +1112,7 @@ class BasicResourceSerializer(serializers.Serializer):
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
+                             MonitoringSerializerMixin,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer)):
@@ -1159,18 +1159,19 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.SerializerMethodField()
     access_url = serializers.SerializerMethodField()
+    actions = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
         view_name = NotImplemented
-        fields = (
+        fields = MonitoringSerializerMixin.Meta.fields + (
             'url', 'uuid', 'name', 'description', 'start_time',
             'service', 'service_name', 'service_uuid',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url',
+            'access_url'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1211,6 +1212,13 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                 del data[prop]
 
         return super(BaseResourceSerializer, self).create(data)
+
+
+class PublishableResourceSerializer(BaseResourceSerializer):
+
+    class Meta(BaseResourceSerializer.Meta):
+        fields = BaseResourceSerializer.Meta.fields + ('publishing_state',)
+        read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
 class SummaryResourceSerializer(serializers.BaseSerializer):
@@ -1291,17 +1299,16 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         write_only=True)
 
     class Meta(BaseResourceSerializer.Meta):
+        fields = BaseResourceSerializer.Meta.fields + (
+            'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
+            'latitude', 'longitude', 'key_name', 'key_fingerprint',
+        )
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
             'cores', 'ram', 'disk', 'external_ips', 'internal_ips',
-            'latitude', 'longitude'
+            'latitude', 'longitude', 'key_name', 'key_fingerprint',
         )
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
             'user_data', 'ssh_public_key'
-        )
-        write_only_fields = ('user_data',)
-        fields = BaseResourceSerializer.Meta.fields + (
-            'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
-            'latitude', 'longitude'
         )
 
     def get_fields(self):
@@ -1366,67 +1373,3 @@ class AggregateSerializer(serializers.Serializer):
         projects = self.get_projects(user)
         return [model.objects.filter(project__in=projects)
                 for model in ServiceProjectLink.get_all_models()]
-
-
-class ResourceProvisioningMetadata(metadata.SimpleMetadata):
-    """
-    Difference from SimpleMetadata class:
-    1) Skip read-only fields, because options are used only for provisioning new resource.
-    2) Don't expose choices for fields with queryset in order to reduce size of response.
-    """
-    def get_serializer_info(self, serializer):
-        """
-        Given an instance of a serializer, return a dictionary of metadata
-        about its fields.
-        """
-        if hasattr(serializer, 'child'):
-            # If this is a `ListSerializer` then we want to examine the
-            # underlying child serializer instance instead.
-            serializer = serializer.child
-        return OrderedDict([
-            (field_name, self.get_field_info(field))
-            for field_name, field in serializer.fields.items()
-            if not getattr(field, 'read_only', False)
-        ])
-
-    def get_field_info(self, field):
-        """
-        Given an instance of a serializer field, return a dictionary
-        of metadata about it.
-        """
-        field_info = OrderedDict()
-        field_info['type'] = self.label_lookup[field]
-        field_info['required'] = getattr(field, 'required', False)
-
-        attrs = [
-            'read_only', 'label', 'help_text',
-            'min_length', 'max_length',
-            'min_value', 'max_value'
-        ]
-
-        for attr in attrs:
-            value = getattr(field, attr, None)
-            if value is not None and value != '':
-                field_info[attr] = force_text(value, strings_only=True)
-
-        if not field_info.get('read_only') and hasattr(field, 'choices') \
-           and not hasattr(field, 'queryset'):
-            field_info['choices'] = [
-                {
-                    'value': choice_value,
-                    'display_name': force_text(choice_name, strings_only=True)
-                }
-                for choice_value, choice_name in field.choices.items()
-            ]
-
-        return field_info
-
-
-class QuotaTimelineStatsSerializer(serializers.Serializer):
-
-    INTERVAL_CHOICES = ('hour', 'day', 'week', 'month')
-
-    start_time = TimestampField(default=lambda: core_utils.timeshift(days=-1))
-    end_time = TimestampField(default=lambda: core_utils.timeshift())
-    interval = serializers.ChoiceField(choices=INTERVAL_CHOICES, default='day')
-    item = serializers.CharField(required=False)

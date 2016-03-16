@@ -225,15 +225,19 @@ class AggregatorQuotaField(QuotaField):
         quota = scope.quotas.get(name=self.name)
         current_value = getattr(child_quota, self.aggregation_field)
         if created:
-            quota.usage += current_value
+            diff = current_value
         else:
-            quota.usage += current_value - child_quota.tracker.previous(self.aggregation_field)
-        quota.save()
+            diff = current_value - child_quota.tracker.previous(self.aggregation_field)
+        if diff:
+            quota.usage += diff
+            quota.save()
 
     def pre_child_quota_delete(self, scope, child_quota):
         quota = scope.quotas.get(name=self.name)
-        quota.usage -= getattr(child_quota, self.aggregation_field)
-        quota.save()
+        diff = getattr(child_quota, self.aggregation_field)
+        if diff:
+            quota.usage -= diff
+            quota.save()
 
 
 class UsageAggregatorQuotaField(AggregatorQuotaField):

@@ -122,21 +122,3 @@ affected. Possible values depend on the plugins enabled, for example OpenStack.I
 
       Resource has been imported.
 
-------------
-
-.. glossary::
-
-    **service_settings_sync_failed**
-        Service settings has failed to sync.
-
-    **service_settings_recovered**
-        Service settings has been recovered.
-
-    **service_project_link_creation_failed**
-        Creation of service project link has failed.
-
-    **service_project_link_sync_failed**
-        Synchronization of service project link has failed.
-
-    **service_project_link_recovered**
-        Service project link has been recovered.

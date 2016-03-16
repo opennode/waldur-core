@@ -1,3 +1,4 @@
+import datetime
 import logging
 
 from django.conf import settings
@@ -8,6 +9,19 @@ from nodeconductor.monitoring.zabbix.errors import ZabbixError
 
 logger = logging.getLogger(__name__)
 ZABBIX_ENABLED = getattr(settings, 'NODECONDUCTOR', {}).get('MONITORING', {}).get('ZABBIX', {}).get('server')
+
+
+def get_period(request):
+    period = request.query_params.get('period')
+    return period or format_period(datetime.date.today())
+
+
+def format_period(date):
+    return '%d-%02d' % (date.year, date.month)
+
+
+def to_list(xs):
+    return xs if isinstance(xs, list) else [xs]
 
 
 def create_host(cloud_project_membership, warn_if_exists=True):

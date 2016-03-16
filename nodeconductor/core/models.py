@@ -20,7 +20,9 @@ from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
 from uuidfield import UUIDField
 import reversion
+from reversion.models import Version
 
+from nodeconductor.core import utils
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.validators import validate_name
 from nodeconductor.logging.log import LoggableMixin
@@ -301,6 +303,10 @@ class SynchronizableMixin(ErrorMessageMixin):
         choices=SynchronizationStates.CHOICES,
     )
 
+    @property
+    def human_readable_state(self):
+        return force_text(dict(SynchronizationStates.CHOICES)[self.state])
+
     @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
     def begin_creating(self):
         pass
@@ -333,21 +339,51 @@ class SynchronizableMixin(ErrorMessageMixin):
 
 
 class ReversionMixin(object):
+    """ Store historical values of instance, using django-reversion.
+
+        Note: `ReversionMixin` model should be registered in django-reversion,
+              using one of supported methods:
+              http://django-reversion.readthedocs.org/en/latest/api.html#registering-models-with-django-reversion
+    """
+
+    def get_version_fields(self):
+        """ Get field that are tracked in object history versions. """
+        adapter = reversion.default_revision_manager.get_adapter(self.__class__)
+        return adapter.fields or [f.name for f in self._meta.fields if f not in adapter.exclude]
+
+    def _is_version_duplicate(self):
+        """ Define should new version be created for object or no.
+
+            Reasons to provide custom check instead of default `ignore_revision_duplicates`:
+             - no need to compare all revisions - it is OK if right object version exists in any revision;
+             - need to compare object attributes (not serialized data) to avoid
+               version creation on wrong <float> vs <int> comparison;
+        """
+        if self.id is None:
+            return False
+        try:
+            latest_version = reversion.get_for_object(self).latest('revision__date_created')
+        except Version.DoesNotExist:
+            return False
+        latest_version_object = latest_version.object_version.object
+        fields = self.get_version_fields()
+        return all([getattr(self, f) == getattr(latest_version_object, f) for f in fields])
 
     def save(self, save_revision=True, ignore_revision_duplicates=True, **kwargs):
         if save_revision:
-            with reversion.create_revision():
-                reversion.revision_context_manager.set_ignore_duplicates(ignore_revision_duplicates)
-                return super(ReversionMixin, self).save(**kwargs)
+            if not ignore_revision_duplicates or not self._is_version_duplicate():
+                with reversion.create_revision():
+                    return super(ReversionMixin, self).save(**kwargs)
         return super(ReversionMixin, self).save(**kwargs)
 
 
+# XXX: Deprecated. Serialization should be automatically processed in executors
+#                  or use serialize and deserialize_instance methods from utils.
 class SerializableAbstractMixin(object):
 
     def to_string(self):
         """ Dump an instance into a string preserving model name and object id """
-        model_name = force_text(self._meta)
-        return '{}:{}'.format(model_name, self.pk)
+        return utils.serialize_instance(self)
 
     @staticmethod
     def parse_model_string(string):
@@ -361,20 +397,23 @@ class SerializableAbstractMixin(object):
         if not isinstance(objects, (list, tuple)):
             objects = [objects]
         for obj in objects:
-            model, pk = cls.parse_model_string(obj)
             try:
-                yield model._default_manager.get(pk=pk)
+                yield utils.deserialize_instance(obj)
             except ObjectDoesNotExist:
                 continue
 
 
+# XXX: consider renaming it to AffinityMixin
 class DescendantMixin(object):
     """ Mixin to provide child-parent relationships.
-
-    Each descendant model can provide list of its parents.
+        Each related model can provide list of its parents/children.
     """
     def get_parents(self):
         """ Return list instance parents. """
+        return []
+
+    def get_children(self):
+        """ Return list instance children. """
         return []
 
     def get_ancestors(self):
@@ -387,6 +426,14 @@ class DescendantMixin(object):
                 if (parent.__class__, parent.id) not in ancestor_unique_attributes:
                     ancestors.append(parent)
         return ancestors
+
+    def get_descendants(self):
+        def traverse(obj):
+            for child in obj.get_children():
+                yield child
+                for baby in child.get_descendants():
+                    yield baby
+        return list(set(traverse(self)))
 
 
 class AbstractFieldTracker(FieldTracker):

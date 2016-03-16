@@ -4,14 +4,16 @@ import functools
 import logging
 import sys
 
-from django.db import transaction, IntegrityError, DatabaseError
+from celery import current_app, current_task, Task as CeleryTask
+from celery.execute import send_task as send_celery_task
+from celery.exceptions import MaxRetriesExceededError
 from django.conf import settings
+from django.db import transaction, IntegrityError, DatabaseError
+from django.db.models import ObjectDoesNotExist
 from django.utils import six
 from django_fsm import TransitionNotAllowed
 
-from celery import current_app, current_task
-from celery.execute import send_task as send_celery_task
-from celery.exceptions import MaxRetriesExceededError
+from nodeconductor.core import models, utils
 
 
 logger = logging.getLogger(__name__)
@@ -402,3 +404,93 @@ def send_task(app_label, task_name):
         send_celery_task(full_task_name, args, kwargs, countdown=2)
 
     return delay
+
+
+class Task(CeleryTask):
+    """ Base class for tasks that are run by executors.
+
+    Provides standard way for input data deserialization.
+    """
+
+    def run(self, serialized_instance, *args, **kwargs):
+        """ Deserialize input data and start backend operation execution """
+        try:
+            instance = utils.deserialize_instance(serialized_instance)
+        except ObjectDoesNotExist:
+            message = ('Cannot restore instance from serialized object %s. Probably it was deleted.' %
+                       serialized_instance)
+            six.reraise(ObjectDoesNotExist, message)
+        return self.execute(instance, *args, **kwargs)
+
+    def execute(self, instance, *args, **kwargs):
+        """ Execute backend operation """
+        raise NotImplementedError('%s should implement method `execute`' % self.__class__.__name__)
+
+
+class StateTransitionTask(Task):
+    """ Execute only instance state transition """
+
+    def state_transition(self, instance, transition_method):
+        instance_description = '%s instance `%s` (PK: %s)' % (instance.__class__.__name__, instance, instance.pk)
+        old_state = instance.human_readable_state
+        try:
+            getattr(instance, transition_method)()
+            instance.save(update_fields=['state'])
+        except IntegrityError:
+            message = (
+                'Could not change state of %s, using method `%s` due to concurrent update' %
+                (instance_description, transition_method))
+            six.reraise(StateChangeError, StateChangeError(message))
+        except TransitionNotAllowed:
+            message = (
+                'Could not change state of %s, using method `%s`. Current instance state: %s.' %
+                (instance_description, transition_method, instance.human_readable_state))
+            six.reraise(StateChangeError, StateChangeError(message))
+        else:
+            logger.info('State of %s changed from %s to %s, with method `%s`',
+                        instance_description, old_state, instance.human_readable_state, transition_method)
+
+    def execute(self, instance, state_transition=None):
+        if state_transition is not None:
+            self.state_transition(instance, state_transition)
+
+
+class BackendMethodTask(StateTransitionTask):
+    """ Execute method of instance backend """
+
+    def get_backend(self, instance):
+        return instance.get_backend()
+
+    def execute(self, instance, backend_method, *args, **kwargs):
+        state_transition = kwargs.pop('state_transition', None)
+        if state_transition is not None:
+            self.state_transition(instance, state_transition)
+        backend = self.get_backend(instance)
+        return getattr(backend, backend_method)(instance, *args, **kwargs)
+
+
+class DeletionTask(Task):
+    """ Delete instance """
+
+    def execute(self, instance):
+        instance_description = '%s instance `%s` (PK: %s)' % (instance.__class__.__name__, instance, instance.pk)
+        instance.delete()
+        logger.info('%s was successfully deleted', instance_description)
+
+
+class ErrorStateTransitionTask(StateTransitionTask):
+    """ Set instance as erred and save error message.
+
+    This task should not be called as immutable, because it expects result_uuid
+    as input argument.
+    """
+
+    def run(self, result_id, serialized_instance, *args, **kwargs):
+        self.result = self.AsyncResult(result_id)
+        return super(ErrorStateTransitionTask, self).run(serialized_instance, *args, **kwargs)
+
+    def execute(self, instance):
+        self.state_transition(instance, 'set_erred')
+        if isinstance(instance, models.ErrorMessageMixin):
+            instance.error_message = self.result.result
+            instance.save(update_fields=['error_message'])

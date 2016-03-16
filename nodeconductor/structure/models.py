@@ -1,27 +1,31 @@
 from __future__ import unicode_literals
 
 import yaml
+import itertools
 
 from django.apps import apps
-from django.core.validators import MaxLengthValidator
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.core.validators import MaxLengthValidator
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Q, F
-from django.utils.lru_cache import lru_cache
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.lru_cache import lru_cache
+from django.utils.translation import ugettext_lazy as _
 from django_fsm import FSMIntegerField
 from django_fsm import transition
-from taggit.managers import TaggableManager
-from model_utils.fields import AutoCreatedField
-from model_utils.models import TimeStampedModel
-from model_utils import FieldTracker
 from jsonfield import JSONField
+from model_utils import FieldTracker
+from model_utils.models import TimeStampedModel
+from model_utils.fields import AutoCreatedField
+from taggit.managers import TaggableManager
+
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
+from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user
@@ -76,6 +80,7 @@ class StructureModel(models.Model):
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
+               core_models.DescendantMixin,
                quotas_models.QuotaModelMixin,
                LoggableMixin,
                ImageModelMixin,
@@ -217,6 +222,10 @@ class Customer(core_models.UuidMixin,
     def can_user_update_quotas(self, user):
         return user.is_staff
 
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(customer=self) for m in [Project] + Service.get_all_models())
+
     @classmethod
     def get_permitted_objects_uuids(cls, user):
         if user.is_staff:
@@ -231,18 +240,6 @@ class Customer(core_models.UuidMixin,
             'name': self.name,
             'abbreviation': self.abbreviation
         }
-
-    def get_project_count(self):
-        return self.get_quota_usage('nc_project_count')
-
-    def get_service_count(self):
-        return self.get_quota_usage('nc_service_count')
-
-    def get_app_count(self):
-        return self.get_quota_usage('nc_app_count')
-
-    def get_vm_count(self):
-        return self.get_quota_usage('nc_vm_count')
 
 
 class BalanceHistory(models.Model):
@@ -430,18 +427,16 @@ class Project(core_models.DescribableMixin,
     def get_parents(self):
         return [self.customer]
 
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(project=self) for m in ServiceProjectLink.get_all_models())
+
     def get_links(self):
         """
         Get all service project links connected to current project
         """
         return [link for model in SupportedServices.get_service_models().values()
                      for link in model['service_project_link'].objects.filter(project=self)]
-
-    def get_app_count(self):
-        return self.get_quota_usage('nc_app_count')
-
-    def get_vm_count(self):
-        return self.get_quota_usage('nc_vm_count')
 
 
 @python_2_unicode_compatible
@@ -660,6 +655,12 @@ class Service(core_models.SerializableAbstractMixin,
     def get_parents(self):
         return [self.settings]
 
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(**{
+                'cloud' if 'cloud' in m._meta.get_all_field_names() else 'service': self
+            }) for m in ServiceProjectLink.get_all_models())
+
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
@@ -746,6 +747,10 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
     def get_parents(self):
         return [self.project, self.service]
 
+    def get_children(self):
+        return itertools.chain.from_iterable(
+            m.objects.filter(service_project_link=self) for m in Resource.get_all_models())
+
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
 
@@ -797,6 +802,23 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
         return None
 
 
+class PublishableMixin(models.Model):
+    """ Base resource for SaaS plugins """
+
+    class Meta(object):
+        abstract = True
+
+    class PublishingState(object):
+        NOT_PUBLISHED = 'not published'
+        PUBLISHED = 'published'
+        REQUESTED = 'requested'
+
+        CHOICES = ((NOT_PUBLISHED, _('Not published')), (PUBLISHED, _('Published')), (REQUESTED, _('Requested')))
+
+    publishing_state = models.CharField(
+        max_length=30, choices=PublishingState.CHOICES, default=PublishingState.NOT_PUBLISHED)
+
+
 class PaidResource(models.Model):
     """ Extend Resource model with methods to track usage cost and handle orders """
 
@@ -813,7 +835,8 @@ class PaidResource(models.Model):
 
 
 @python_2_unicode_compatible
-class Resource(core_models.UuidMixin,
+class Resource(MonitoringModelMixin,
+               core_models.UuidMixin,
                core_models.DescribableMixin,
                core_models.NameMixin,
                core_models.ErrorMessageMixin,
@@ -1062,3 +1085,9 @@ class Resource(core_models.UuidMixin,
                 target=States.ERRED)
     def set_erred(self):
         pass
+
+
+class PublishableResource(PublishableMixin, Resource):
+
+    class Meta(object):
+        abstract = True
