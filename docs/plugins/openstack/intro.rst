@@ -35,6 +35,7 @@ Correspondence between IaaS endpoints and OpenStack endpoints:
 - /api/backups/                   => `/api/openstack-backups/`_
 - /api/backup-schedules/          => `/api/openstack-backup-schedules/`_
 - /api/flavors/                   => /api/openstack-flavors/
+- /api/iaas-resources/            => /api/resources/ (with SLA filtering) + /api/resource-sla-state-transition/
 
 .. _/api/openstack/: service.html
 .. _/api/openstack-instances/: resource.html

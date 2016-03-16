@@ -1,5 +1,6 @@
 import pytz
 
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils import timezone
 from netaddr import IPNetwork
@@ -9,7 +10,7 @@ from taggit.models import Tag
 from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.monitoring.serializers import MonitoringItemSerializer
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import serializers as structure_serializers
 from nodeconductor.openstack.backend import OpenStackBackendError
@@ -41,10 +42,16 @@ class FlavorSerializer(structure_serializers.BasePropertySerializer):
     class Meta(object):
         model = models.Flavor
         view_name = 'openstack-flavor-detail'
-        fields = ('url', 'uuid', 'name', 'cores', 'ram', 'disk')
+        fields = ('url', 'uuid', 'name', 'cores', 'ram', 'disk', 'display_name')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+    display_name = serializers.SerializerMethodField()
+
+    def get_display_name(self, flavor):
+        return "{} ({} CPU, {} MB RAM, {} MB HDD)".format(
+            flavor.name, flavor.cores, flavor.ram, flavor.disk)
 
 
 class ImageSerializer(structure_serializers.BasePropertySerializer):
@@ -174,11 +181,21 @@ class ExternalNetworkSerializer(serializers.Serializer):
 
 
 class AssignFloatingIpSerializer(serializers.Serializer):
-    floating_ip_uuid = serializers.CharField()
+    floating_ip_uuid = serializers.CharField(label='Floating IP')
 
-    def __init__(self, instance, *args, **kwargs):
-        self.assigned_instance = instance
-        super(AssignFloatingIpSerializer, self).__init__(*args, **kwargs)
+    def get_fields(self):
+        fields = super(AssignFloatingIpSerializer, self).get_fields()
+        if self.instance:
+            field = fields['floating_ip_uuid']
+            field.view_name = 'openstack-fip-detail'
+            field.query_params = {
+                'status': 'DOWN',
+                'project': self.instance.service_project_link.project.uuid,
+                'service': self.instance.service_project_link.service.uuid
+            }
+            field.value_field = 'uuid'
+            field.display_name_field = 'address'
+        return fields
 
     def validate(self, attrs):
         ip_uuid = attrs.get('floating_ip_uuid')
@@ -190,8 +207,15 @@ class AssignFloatingIpSerializer(serializers.Serializer):
 
         if floating_ip.status == 'ACTIVE':
             raise serializers.ValidationError("Floating IP status must be DOWN.")
-        elif floating_ip.service_project_link != self.assigned_instance.service_project_link:
-            raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
+        elif floating_ip.service_project_link != self.instance.service_project_link:
+            raise serializers.ValidationError("Floating IP must belong to same service project link.")
+
+        if not self.instance.service_project_link.external_network_id:
+            raise serializers.ValidationError(
+                "External network ID of the service project link is missing.")
+        elif self.instance.service_project_link.state not in SynchronizationStates.STABLE_STATES:
+            raise serializers.ValidationError(
+                "Service project link of instance should be in stable state.")
 
         return attrs
 
@@ -459,14 +483,12 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     skip_external_ip_assignment = serializers.BooleanField(write_only=True, default=False)
 
-    monitoring_items = MonitoringItemSerializer(many=True, read_only=True)
-
     class Meta(structure_serializers.VirtualMachineSerializer.Meta):
         model = models.Instance
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips', 'backups', 'backup_schedules', 'monitoring_items'
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
@@ -592,26 +614,31 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         queryset=models.Flavor.objects.all(),
         required=False,
     )
-    disk_size = serializers.IntegerField(min_value=1, required=False)
+    disk_size = serializers.IntegerField(min_value=1, required=False, label='Disk size')
 
-    def __init__(self, instance, *args, **kwargs):
-        self.resized_instance = instance
-        super(InstanceResizeSerializer, self).__init__(*args, **kwargs)
+    def get_fields(self):
+        fields = super(InstanceResizeSerializer, self).get_fields()
+        if self.instance:
+            fields['disk_size'].min_value = self.instance.data_volume_size
+            fields['flavor'].query_params = {
+                'settings_uuid': self.instance.service_project_link.service.settings.uuid
+            }
+        return fields
 
     def get_filtered_field_names(self):
         return 'flavor',
 
     def validate_flavor(self, value):
         if value is not None:
-            spl = self.resized_instance.service_project_link
+            spl = self.instance.service_project_link
 
             if value.settings != spl.service.settings:
                 raise serializers.ValidationError(
                     "New flavor is not within the same service settings")
 
             quota_errors = spl.validate_quota_change({
-                'vcpu': value.cores - self.resized_instance.cores,
-                'ram': value.ram - self.resized_instance.ram,
+                'vcpu': value.cores - self.instance.cores,
+                'ram': value.ram - self.instance.ram,
             })
             if quota_errors:
                 raise serializers.ValidationError(
@@ -620,12 +647,12 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
 
     def validate_disk_size(self, value):
         if value is not None:
-            if value <= self.resized_instance.data_volume_size:
+            if value <= self.instance.data_volume_size:
                 raise serializers.ValidationError(
                     "Disk size must be strictly greater than the current one")
 
-            quota_errors = self.resized_instance.service_project_link.validate_quota_change({
-                'storage': value - self.resized_instance.data_volume_size,
+            quota_errors = self.instance.service_project_link.validate_quota_change({
+                'storage': value - self.instance.data_volume_size,
             })
             if quota_errors:
                 raise serializers.ValidationError(
@@ -655,7 +682,8 @@ class LicenseSerializer(serializers.ModelSerializer):
         fields = ('instance', 'group', 'type', 'name')
 
     def get_instance(self, obj):
-        instance = obj.taggit_taggeditem_items.filter(tag=obj).first().content_object
+        instance_ct = ContentType.objects.get_for_model(models.Instance)
+        instance = obj.taggit_taggeditem_items.filter(tag=obj, content_type=instance_ct).first().content_object
         url_name = instance.get_url_name() + '-detail'
         return reverse.reverse(
             url_name, request=self.context['request'], kwargs={'uuid': instance.uuid.hex})

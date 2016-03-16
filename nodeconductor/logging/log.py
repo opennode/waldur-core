@@ -11,7 +11,6 @@ from django.contrib.contenttypes import models as ct_models
 from django.db import transaction, IntegrityError
 from django.utils import six
 
-from nodeconductor.core.tasks import send_task
 from nodeconductor.logging import models
 from nodeconductor.logging.middleware import get_event_context
 
@@ -430,7 +429,9 @@ class HookHandler(logging.Handler):
                 'type': record.event_type,
                 'context': record.event_context
             }
-
+            # XXX: This import provides circular dependencies between core and
+            #      logging applications.
+            from nodeconductor.core.tasks import send_task
             # Perform hook processing in background thread
             send_task('logging', 'process_event')(event)
 

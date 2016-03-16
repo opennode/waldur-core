@@ -31,8 +31,9 @@ Price estimates in response are sorted from latest to earliest.
             "scope": "http://example.com/api/instances/0424c7746059458ab9a5ad4d097c1d31/",
             "scope_name": "Example Virtual Machine #100",
             "scope_type": "resource",
+            "resource_type": "OpenStack.Instance",
             "total": 1114.0,
-            "details": "{u'disk': 52, u'ram': 84, u'cpu': 192}",
+            "consumed": 1027.0,
             "month": 7,
             "year": 2015,
             "is_manually_inputed": false
@@ -62,7 +63,7 @@ Request example:
     {
         "scope": "http://example.com/api/instances/ab2e3d458e8a4ecb9dded36f3e46878d/",
         "total": 1000,
-        "details": "",
+        "consumed": 800,
         "month": 8,
         "year": 2015
     }
@@ -72,7 +73,7 @@ Update manually created price estimate
 --------------------------------------
 
 Run PATCH request against */api/price-estimates/<uuid>/* to update manually created price estimate. Only fields "total"
-and "details" could be updated. Only customer owner and staff can update price estimates.
+and "consumed" could be updated. Only customer owner and staff can update price estimates.
 
 
 Delete manually created price estimate

@@ -1247,3 +1247,6 @@ class AssignFloatingIpSerializer(serializers.Serializer):
             raise serializers.ValidationError("Floating IP must belong to same cloud project membership.")
 
         return attrs
+
+
+SupportedServices.register_resource_serializer(models.Instance, InstanceSerializer)

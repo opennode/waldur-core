@@ -11,6 +11,7 @@ from django.db.models import Sum
 from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
+import reversion
 
 from nodeconductor.logging.log import LoggableMixin
 from nodeconductor.quotas import exceptions, managers, fields
@@ -18,12 +19,14 @@ from nodeconductor.core.models import UuidMixin, ReversionMixin, DescendantMixin
 
 
 @python_2_unicode_compatible
+@reversion.register(fields=['usage', 'limit'])
 class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
     """
     Abstract quota for any resource.
 
-    Quota can exist without scope - for example quota for all projects or all customers on site
-    If quota limit is defined as -1 quota will never be exceeded
+    Quota can exist without scope: for example, a quota for all projects or all
+    customers on site.
+    If quota limit is set to -1 quota will never be exceeded.
     """
     class Meta:
         unique_together = (('name', 'content_type', 'object_id'),)
@@ -128,17 +131,6 @@ class QuotaModelMixin(models.Model):
 
     quotas = ct_fields.GenericRelation('quotas.Quota', related_query_name='quotas')
 
-    def get_quota_usage(self, quota_name, default=0):
-        """
-        Get quota usage by quota_name if it exists or return default value.
-        """
-        if quota_name not in self.Quotas.__dict__:
-            raise ValueError('Invalid quota name {}'.format(quota_name))
-        try:
-            return self.quotas.get(name=quota_name).usage
-        except Quota.DoesNotExist:
-            return default
-
     @_fail_silently
     def set_quota_limit(self, quota_name, limit, fail_silently=False):
         quota = self.quotas.get(name=quota_name)
@@ -233,13 +225,18 @@ class QuotaModelMixin(models.Model):
                 result[item['name'] + '_usage'] = item['usage']
 
         if 'limit' in fields:
-            items = Quota.objects.filter(**filter_kwargs)\
-                         .exclude(limit=-1).values('name').annotate(limit=Sum('limit'))
+            unlimited_quotas = Quota.objects.filter(limit=-1, **filter_kwargs)
+            unlimited_quotas = list(unlimited_quotas.values_list('name', flat=True))
+            for quota_name in unlimited_quotas:
+                result[quota_name] = -1
+
+            items = Quota.objects\
+                         .filter(**filter_kwargs)\
+                         .exclude(name__in=unlimited_quotas)\
+                         .values('name')\
+                         .annotate(limit=Sum('limit'))
             for item in items:
                 result[item['name']] = item['limit']
-            for name in quota_names:
-                if name not in result:
-                    result[name] = -1
 
         return result
 

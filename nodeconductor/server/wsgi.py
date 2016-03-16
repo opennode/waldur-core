@@ -8,6 +8,7 @@ https://docs.djangoproject.com/en/1.6/howto/deployment/wsgi/
 """
 
 import os
+import nodeconductor  # pre-load NC monkey-patching methods
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "nodeconductor.server.settings")
 
 from django.core.wsgi import get_wsgi_application

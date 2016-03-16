@@ -99,10 +99,11 @@ class InstanceFactory(factory.DjangoModelFactory):
     service_project_link = factory.SubFactory(OpenStackServiceProjectLinkFactory)
 
     @classmethod
-    def get_url(cls, instance=None):
+    def get_url(cls, instance=None, action=None):
         if instance is None:
             instance = InstanceFactory()
-        return 'http://testserver' + reverse('openstack-instance-detail', kwargs={'uuid': instance.uuid})
+        url = 'http://testserver' + reverse('openstack-instance-detail', kwargs={'uuid': instance.uuid})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_list_url(cls):

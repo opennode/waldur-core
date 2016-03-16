@@ -449,26 +449,11 @@ def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
         logger.error(
             "Service settings %s has failed to sync with an error: %s", settings.uuid.hex, message)
 
-        event_logger.service_settings.error(
-            'Service settings {service_settings_name} has failed to sync.',
-            event_type='service_settings_sync_failed',
-            event_context={
-                'service_settings': settings,
-                'error_message': message
-            }
-        )
-
 
 def log_service_recovered(sender, instance, name, source, target, **kwargs):
     settings = instance
     if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
         logger.info('Service settings %s has been recovered.' % settings)
-        event_logger.service_settings.info(
-            'Service settings {service_settings_name} has been recovered.',
-            event_type='service_settings_recovered',
-            event_context={'service_settings': settings}
-        )
-
 
 def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
     if created:
@@ -488,41 +473,17 @@ def log_service_project_link_sync_failed(sender, instance, name, source, target,
             "Creation of service project link %s has failed with an error: %s",
             service_project_link.to_string(),
             message)
-
-        event_logger.service_project_link.error(
-            'Creation of service project link has failed.',
-            event_type='service_project_link_creation_failed',
-            event_context={
-                'service_project_link': service_project_link,
-                'error_message': message
-            }
-        )
     elif source == SynchronizationStates.SYNCING:
         logger.error(
             "Synchronization of service project link %s has failed with an error: %s",
             service_project_link.to_string(),
             message)
 
-        event_logger.service_project_link.error(
-            'Synchronization of service project link has failed.',
-            event_type='service_project_link_sync_failed',
-            event_context={
-                'service_project_link': service_project_link,
-                'error_message': message
-            }
-        )
-
 
 def log_service_project_link_recovered(sender, instance, name, source, target, **kwargs):
     service_project_link = instance
     if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
         logger.info('Service project link %s has been recovered.' % service_project_link.to_string())
-        event_logger.service_project_link.info(
-            'Service project link has been recovered.',
-            event_type='service_project_link_recovered',
-            event_context={'service_project_link': service_project_link,
-                           'error_message': ''}
-        )
 
 
 def remove_service_project_link_from_backend(sender, instance, **kwargs):

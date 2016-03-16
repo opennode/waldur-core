@@ -47,12 +47,12 @@ class ProtectedModelMixin(object):
 class ResourceCounterFormMixin(object):
 
     def get_vm_count(self, obj):
-        return obj.get_vm_count()
+        return obj.quotas.get(name=obj.Quotas.nc_vm_count).usage
 
     get_vm_count.short_description = 'VM count'
 
     def get_app_count(self, obj):
-        return obj.get_app_count()
+        return obj.quotas.get(name=obj.Quotas.nc_app_count).usage
 
     get_app_count.short_description = 'Application count'
 
@@ -460,6 +460,10 @@ class ResourceAdmin(admin.ModelAdmin):
 
     get_project.short_description = 'Project'
     get_project.admin_order_field = 'service_project_link__project__name'
+
+
+class PublishableResourceAdmin(ResourceAdmin):
+    list_display = ResourceAdmin.list_display + ('publishing_state',)
 
 
 class VirtualMachineAdmin(ResourceAdmin):

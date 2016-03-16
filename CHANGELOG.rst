@@ -6,6 +6,18 @@ Release NEXT
 
 <add here>
 
+Release 0.90.0
+--------------
+- Introduced Executor layer for a single point of backend logic.
+- Added migration script for moving iaas VMs to openstack module.
+- Reworked price estimates to keep historical resource values and metadata.
+- Exposed available resource actions through REST.
+- Fixed quota duplication error.
+- Dropped emitting of events about structure unit changes.
+- Added tags filtering to resource views.
+- Dropped Killbill dependency for OpenStack price estimates.
+- Bugfixes.
+
 Release 0.89.0
 --------------
 - Extracted Jira support app to plugin.

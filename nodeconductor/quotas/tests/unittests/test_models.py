@@ -39,7 +39,7 @@ class QuotaModelMixinTest(TestCase):
 
         sum_of_quotas = iaas_models.CloudProjectMembership.get_sum_of_quotas_as_dict(
             memberships, quota_names=['vcpu'], fields=['limit'])
-        self.assertEqual({'vcpu': 40}, sum_of_quotas)
+        self.assertEqual({'vcpu': -1}, sum_of_quotas)
 
     def test_quotas_sum_calculation_if_all_limits_are_negative(self):
         memberships = iaas_factories.CloudProjectMembershipFactory.create_batch(3)

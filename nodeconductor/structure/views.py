@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
-from collections import OrderedDict
+from collections import defaultdict
 
 from datetime import timedelta
 
@@ -11,7 +11,7 @@ from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import transaction, IntegrityError
 from django.db.models import Q
-from django.utils import timezone
+from django.utils import six, timezone
 from django_fsm import TransitionNotAllowed
 
 from rest_framework import filters as rf_filters
@@ -35,7 +35,8 @@ from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView
-from nodeconductor.core.utils import request_api, datetime_to_timestamp
+from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
+from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 from nodeconductor.structure import filters
@@ -45,7 +46,7 @@ from nodeconductor.structure import serializers
 from nodeconductor.structure import managers
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
-
+from nodeconductor.structure.metadata import check_operation, ResourceActionsMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -684,12 +685,12 @@ class ResourceViewSet(mixins.ListModelMixin,
     model = models.Resource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
         types = self.request.query_params.getlist('resource_type', None)
-        resource_models = SupportedServices.get_resource_models()
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items() if k != 'IaaS.Instance'}
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
         return managers.SummaryQuerySet(resource_models.values())
@@ -698,11 +699,11 @@ class ResourceViewSet(mixins.ListModelMixin,
     def count(self, request):
         """
         Count resources by type. Example output:
+
         {
             "Amazon.Instance": 0,
             "GitLab.Project": 3,
             "Azure.VirtualMachine": 0,
-            "IaaS.Instance": 10,
             "DigitalOcean.Droplet": 0,
             "OpenStack.Instance": 0,
             "GitLab.Group": 8
@@ -780,16 +781,16 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.customer.get_vm_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_vm_count).usage
 
     def get_apps(self):
-        return self.customer.get_app_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_app_count).usage
 
     def get_projects(self):
-        return self.customer.get_project_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_project_count).usage
 
     def get_services(self):
-        return self.customer.get_service_count()
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_service_count).usage
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -839,10 +840,10 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.project.get_vm_count()
+        return self.project.quotas.get(name=models.Project.Quotas.nc_vm_count).usage
 
     def get_apps(self):
-        return self.project.get_app_count()
+        return self.project.quotas.get(name=models.Project.Quotas.nc_app_count).usage
 
     def get_users(self):
         return self.get_count('user-list', {
@@ -1037,7 +1038,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 event_context={'resource': resource})
 
             send_task('cost_tracking', 'update_projected_estimate')(
-                resource_uuid=resource.uuid.hex)
+                resource_str=resource.to_string())
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -1078,6 +1079,8 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
 
 def safe_operation(valid_state=None):
     def decorator(view_fn):
+        view_fn.valid_state = valid_state
+
         @functools.wraps(view_fn)
         def wrapped(self, request, *args, **kwargs):
             message = "Performing %s operation is not allowed for resource in its current state"
@@ -1086,18 +1089,7 @@ def safe_operation(valid_state=None):
             try:
                 with transaction.atomic():
                     resource = self.get_object()
-                    project = resource.service_project_link.project
-                    is_admin = project.has_user(request.user, models.ProjectRole.ADMINISTRATOR) \
-                        or project.customer.has_user(request.user, models.CustomerRole.OWNER)
-
-                    if not is_admin and not request.user.is_staff:
-                        raise PermissionDenied(
-                            "Only project administrator or staff allowed to perform this action.")
-
-                    if valid_state is not None:
-                        state = valid_state if isinstance(valid_state, (list, tuple)) else [valid_state]
-                        if state and resource.state not in state:
-                            raise core_exceptions.IncorrectStateException(message % operation_name)
+                    check_operation(request.user, resource, operation_name, valid_state)
 
                     # Important! We are passing back the instance from current transaction to a view
                     try:
@@ -1112,6 +1104,9 @@ def safe_operation(valid_state=None):
                 return Response({'status': '%s was not scheduled' % operation_name},
                                 status=status.HTTP_400_BAD_REQUEST)
 
+            if resource.pk is None:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+
             return Response({'status': '%s was scheduled' % operation_name},
                             status=status.HTTP_202_ACCEPTED)
 
@@ -1119,9 +1114,20 @@ def safe_operation(valid_state=None):
     return decorator
 
 
-class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
-                          core_mixins.UserContextMixin,
-                          viewsets.ModelViewSet):
+class ResourceViewMetaclass(type):
+    """ Store view in registry """
+    def __new__(cls, name, bases, args):
+        resource_view = super(ResourceViewMetaclass, cls).__new__(cls, name, bases, args)
+        queryset = args.get('queryset')
+        if hasattr(queryset, 'model'):
+            SupportedServices.register_resource_view(queryset.model, resource_view)
+        return resource_view
+
+
+class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                              UpdateOnlyByPaidCustomerMixin,
+                                              core_mixins.UserContextMixin,
+                                              viewsets.ModelViewSet)):
 
     class PaidControl:
         customer_path = 'service_project_link__service__customer'
@@ -1131,9 +1137,15 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_backends = (
+        filters.GenericRoleFilter,
+        core_filters.DjangoMappingFilterBackend,
+        SlaFilter,
+        MonitoringItemFilter,
+        filters.TagsFilter,
+    )
     filter_class = filters.BaseResourceFilter
-    metadata_class = serializers.ResourceProvisioningMetadata
+    metadata_class = ResourceActionsMetadata
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
@@ -1148,10 +1160,10 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
                 raise core_exceptions.IncorrectStateException(
                     'Provisioning scheduled. Disabled modifications.')
 
-        super(BaseResourceViewSet, self).initial(request, *args, **kwargs)
+        super(_BaseResourceViewSet, self).initial(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = super(BaseResourceViewSet, self).get_queryset()
+        queryset = super(_BaseResourceViewSet, self).get_queryset()
 
         order = self.request.query_params.get('o', None)
         if order == 'start_time':
@@ -1224,17 +1236,23 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
         else:
             self.perform_destroy(resource)
 
-    @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
-    def destroy(self, request, resource, uuid=None):
-        self.perform_managed_resource_destroy(
-            resource, force=resource.state == models.Resource.States.ERRED)
-
     @detail_route(methods=['post'])
     @safe_operation()
     def unlink(self, request, resource, uuid=None):
         # XXX: add special attribute to an instance in order to be tracked by signal handler
         setattr(resource, 'PERFORM_UNLINK', True)
         self.perform_destroy(resource)
+    unlink.destructive = True
+
+
+# TODO: Consider renaming to BaseVirtualMachineViewSet
+class BaseResourceViewSet(_BaseResourceViewSet):
+    @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
+    def destroy(self, request, resource, uuid=None):
+        self.perform_managed_resource_destroy(
+            resource, force=resource.state == models.Resource.States.ERRED)
+    destroy.method = 'DELETE'
+    destroy.destructive = True
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.OFFLINE)
@@ -1267,7 +1285,7 @@ class BaseResourceViewSet(UpdateOnlyByPaidCustomerMixin,
             event_context={'resource': resource})
 
 
-class BaseOnlineResourceViewSet(BaseResourceViewSet):
+class BaseOnlineResourceViewSet(_BaseResourceViewSet):
 
     # User can only create and delete this resource. He cannot stop them.
     @safe_operation(valid_state=[models.Resource.States.ONLINE, models.Resource.States.ERRED])
@@ -1276,6 +1294,9 @@ class BaseOnlineResourceViewSet(BaseResourceViewSet):
             resource.state = resource.States.OFFLINE
             resource.save()
         self.perform_managed_resource_destroy(resource, force=resource.state == models.Resource.States.ERRED)
+
+    destroy.method = 'DELETE'
+    destroy.destructive = True
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1296,19 +1317,28 @@ class AggregatedStatsView(views.APIView):
         querysets = serializer.get_service_project_links(request.user)
 
         total_sum = QuotaModelMixin.get_sum_of_quotas_for_querysets(querysets, quota_names)
-        total_sum = OrderedDict(sorted(total_sum.items()))
+        total_sum = sort_dict(total_sum)
         return Response(total_sum, status=status.HTTP_200_OK)
 
 
-# XXX: This view is deprecated. It has to be replaced with quotas history endpoints
 class QuotaTimelineStatsView(views.APIView):
     """
     Count quota usage and limit history statistics
     """
 
     def get(self, request, format=None):
-        stats = self.get_stats(request)
-        stats = [OrderedDict(sorted(stat.items())) for stat in stats]
+        scopes = self.get_quota_scopes(request)
+        ranges = self.get_ranges(request)
+        items = request.query_params.getlist('item') or self.get_all_spls_quotas()
+
+        collector = QuotaTimelineCollector()
+        for item in items:
+            for scope in scopes:
+                values = self.get_stats_for_scope(item, scope, ranges)
+                for (end, start), (limit, usage) in zip(ranges, values):
+                    collector.add_quota(start, end, item, limit, usage)
+
+        stats = map(sort_dict, collector.to_dict())[::-1]
         return Response(stats, status=status.HTTP_200_OK)
 
     def get_quota_scopes(self, request):
@@ -1320,57 +1350,6 @@ class QuotaTimelineStatsView(views.APIView):
     def get_all_spls_quotas(self):
         spl_models = [m for m in models.ServiceProjectLink.get_all_models()]
         return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
-
-    def get_stats(self, request):
-        mapped = {
-            'start_time': request.query_params.get('from'),
-            'end_time': request.query_params.get('to'),
-            'interval': request.query_params.get('interval'),
-            'item': request.query_params.get('item'),
-        }
-
-        data = {key: val for (key, val) in mapped.items() if val}
-        serializer = serializers.QuotaTimelineStatsSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-
-        scopes = self.get_quota_scopes(request)
-        date_points = self.get_date_points(
-            start_time=serializer.validated_data['start_time'],
-            end_time=serializer.validated_data['end_time'],
-            interval=serializer.validated_data['interval']
-        )
-        reversed_dates = date_points[::-1]
-        dates = zip(reversed_dates[:-1], reversed_dates[1:])
-        if 'item' in serializer.validated_data:
-            items = [serializer.validated_data['item']]
-        else:
-            items = self.get_all_spls_quotas()
-
-        stats = [{'from': datetime_to_timestamp(start),
-                  'to': datetime_to_timestamp(end)}
-                 for start, end in dates]
-
-        def _add(*args):
-            args = [arg if arg is not None else (0, 0) for arg in args]
-            return [self.sum_positive(qs) for qs in zip(*args)]
-
-        for item in items:
-            item_stats = [self.get_stats_for_scope(item, scope, dates) for scope in scopes]
-            item_stats = map(_add, *item_stats)
-            for date_item_stats, date_stats in zip(item_stats, stats):
-                limit, usage = date_item_stats
-                date_stats['{}_limit'.format(item)] = limit
-                date_stats['{}_usage'.format(item)] = usage
-
-        return stats[::-1]
-
-    def sum_positive(self, xs):
-        if not xs:
-            return 0
-        positive = (x for x in xs if x != -1)
-        if not positive:
-            return -1
-        return sum(positive)
 
     def get_stats_for_scope(self, quota_name, scope, dates):
         stats_data = []
@@ -1395,26 +1374,65 @@ class QuotaTimelineStatsView(views.APIView):
 
         return stats_data
 
-    def get_date_points(self, start_time, end_time, interval):
-        if interval == 'hour':
-            start_point = start_time.replace(second=0, minute=0, microsecond=0)
-            interval = timedelta(hours=1)
-        elif interval == 'day':
-            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
-            interval = timedelta(days=1)
-        elif interval == 'week':
-            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
-            interval = timedelta(days=7)
-        elif interval == 'month':
-            start_point = start_time.replace(hour=0, second=0, minute=0, microsecond=0)
-            interval = timedelta(days=30)
+    def get_ranges(self, request):
+        mapped = {
+            'start_time': request.query_params.get('from'),
+            'end_time': request.query_params.get('to'),
+            'interval': request.query_params.get('interval')
+        }
+        data = {key: val for (key, val) in mapped.items() if val}
 
-        points = [start_time]
-        current_point = start_point
-        while current_point <= end_time:
-            points.append(current_point)
-            current_point += interval
-        if points[-1] != end_time:
-            points.append(end_time)
+        serializer = core_serializers.TimelineSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
 
-        return [p for p in points if start_time <= p <= end_time]
+        date_points = serializer.get_date_points()
+        reversed_dates = date_points[::-1]
+        ranges = zip(reversed_dates[:-1], reversed_dates[1:])
+        return ranges
+
+
+class QuotaTimelineCollector(object):
+    """
+    Helper class for QuotaTimelineStatsView.
+    Aggregate quotas grouped by date range and quota name.
+    Example output rendering:
+    [
+        {
+            "from": start,
+            "to" end,
+            "vcpu_limit": 10,
+            "vcpu_usage": 5,
+            "ram_limit": 4000,
+            "ran_usage": 1000
+        }
+    ]
+    """
+    def __init__(self):
+        self.ranges = set()
+        self.items = set()
+        self.limits = defaultdict(int)
+        self.usages = defaultdict(int)
+
+    def add_quota(self, start, end, item, limit, usage):
+        key = (start, end, item)
+        if limit == -1 or self.limits[key] == -1:
+            self.limits[key] = -1
+        else:
+            self.limits[key] += limit
+        self.usages[key] += usage
+        self.ranges.add((start, end))
+        self.items.add(item)
+
+    def to_dict(self):
+        table = []
+        for start, end in sorted(self.ranges):
+            row = {
+                'from': datetime_to_timestamp(start),
+                'to': datetime_to_timestamp(end)
+            }
+            for item in sorted(self.items):
+                key = (start, end, item)
+                row['%s_limit' % item] = self.limits[key]
+                row['%s_usage' % item] = self.usages[key]
+            table.append(row)
+        return table

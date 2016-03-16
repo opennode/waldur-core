@@ -79,6 +79,7 @@ class PriceListItemsHandlersTest(TestCase):
 
         self.assertFalse(models.PriceListItem.objects.filter(id=item.id).exists())
 
+    @unittest.skip('Obsolete')
     def test_ancestor_price_estimate_will_be_decreased_after_descendor_deletion(self):
         instance = openstack_factories.InstanceFactory()
         total = 77

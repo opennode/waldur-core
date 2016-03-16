@@ -6,11 +6,11 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from rest_framework import test, status
 
-# This test contains dependencies from iaas and backup app,
-# but it will be moved to separate app 'stats' in future, so this is ok
 from nodeconductor.core import utils as core_utils
 from nodeconductor.structure import models
 from nodeconductor.structure.tests import factories
+
+from nodeconductor.openstack.tests import factories as openstack_factories
 
 
 class CreationTimeStatsTest(test.APITransactionTestCase):
@@ -111,3 +111,89 @@ class CreationTimeStatsTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data), 2, 'Response has to contain 2 datapoints')
         self.assertEqual(response.data[0]['value'], 0, 'First datapoint has to contain 0 project_groups')
         self.assertEqual(response.data[1]['value'], 0, 'Second datapoint has to contain 0 project_groups')
+
+
+class BaseQuotaAggregationTest(test.APITransactionTestCase):
+    def setUp(self):
+        user = factories.UserFactory()
+        self.client.force_authenticate(user)
+
+        customer = factories.CustomerFactory()
+        customer.add_user(user, models.CustomerRole.OWNER)
+
+        self.project = factories.ProjectFactory(customer=customer)
+
+    def create_links(self, limit1, usage1, limit2, usage2):
+        link1 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        link1.set_quota_limit('vcpu', limit1)
+        link1.set_quota_usage('vcpu', usage1)
+
+        link2 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        link2.set_quota_limit('vcpu', limit2)
+        link2.set_quota_usage('vcpu', usage2)
+
+
+class StatsQuotaTimelineTest(BaseQuotaAggregationTest):
+    def test_negative_limit(self):
+        """
+        If any quota limit is -1, total limit is -1
+        """
+        self.create_links(limit1=-1, usage1=10, limit2=2, usage2=1)
+
+        response = self.get_response()
+
+        self.assertEqual(-1, response.data[0]['vcpu_limit'])
+        self.assertEqual(11, response.data[0]['vcpu_usage'])
+
+    def test_positive_limit(self):
+        """
+        If all limits are positive they are summed up
+        """
+        self.create_links(limit1=10, usage1=2, limit2=100, usage2=10)
+
+        response = self.get_response()
+
+        self.assertEqual(110, response.data[0]['vcpu_limit'])
+        self.assertEqual(12, response.data[0]['vcpu_usage'])
+
+    def get_response(self):
+        response = self.client.get(reverse('stats_quota_timeline'), data={
+            'aggregate': 'project',
+            'uuid': self.project.uuid.hex,
+            'item': 'vcpu',
+            'from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(minutes=1)),
+            'to': core_utils.datetime_to_timestamp(timezone.now() + timedelta(minutes=1))
+        })
+        return response
+
+
+class StatsQuotaTest(BaseQuotaAggregationTest):
+
+    def test_negative_limit(self):
+        """
+        If any quota limit is -1, total limit is -1
+        """
+        self.create_links(limit1=-1, usage1=10, limit2=2, usage2=1)
+
+        response = self.get_response()
+
+        self.assertEqual(-1, response.data['vcpu'])
+        self.assertEqual(11, response.data['vcpu_usage'])
+
+    def test_positive_limit(self):
+        """
+        If all limits are positive they are summed up
+        """
+        self.create_links(limit1=10, usage1=2, limit2=100, usage2=10)
+
+        response = self.get_response()
+
+        self.assertEqual(110, response.data['vcpu'])
+        self.assertEqual(12, response.data['vcpu_usage'])
+
+    def get_response(self):
+        response = self.client.get(reverse('stats_quota'), data={
+            'aggregate': 'project',
+            'uuid': self.project.uuid.hex
+        })
+        return response

@@ -72,15 +72,13 @@ class SecurityGroupCreateTest(test.APITransactionTestCase):
     def test_security_group_creation_starts_sync_task(self):
         self.client.force_authenticate(self.admin)
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
+        with patch('nodeconductor.openstack.executors.SecurityGroupCreateExecutor.execute') as mocked_execute:
             response = self.client.post(self.url, data=self.valid_data)
 
             self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
             security_group = models.SecurityGroup.objects.get(name=self.valid_data['name'])
 
-            mocked_task.assert_called_once_with(
-                'nodeconductor.openstack.create_security_group',
-                (security_group.uuid.hex,), {}, countdown=2)
+            mocked_execute.assert_called_once_with(security_group)
 
     def test_security_group_raises_validation_error_on_wrong_membership_in_request(self):
         del self.valid_data['service_project_link']['url']
@@ -181,13 +179,11 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
     def test_security_group_update_starts_sync_task(self):
         self.client.force_authenticate(self.admin)
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
+        with patch('nodeconductor.openstack.executors.SecurityGroupUpdateExecutor.execute') as mocked_execute:
             response = self.client.patch(self.url, data={'name': 'new_name'})
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            mocked_task.assert_called_once_with(
-                'nodeconductor.openstack.update_security_group',
-                (self.security_group.uuid.hex,), {}, countdown=2)
+            mocked_execute.assert_called_once_with(self.security_group)
 
     def test_user_can_remove_rule_from_security_group(self):
         rule1 = factories.SecurityGroupRuleFactory(security_group=self.security_group)
@@ -240,13 +236,11 @@ class SecurityGroupDeleteTest(test.APITransactionTestCase):
     def test_project_administrator_can_delete_security_group(self):
         self.client.force_authenticate(self.admin)
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
+        with patch('nodeconductor.openstack.executors.SecurityGroupDeleteExecutor.execute') as mocked_execute:
             response = self.client.delete(self.url)
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
-            mocked_task.assert_called_once_with(
-                'nodeconductor.openstack.delete_security_group',
-                (self.security_group.uuid.hex,), {}, countdown=2)
+            mocked_execute.assert_called_once_with(self.security_group)
 
     def test_security_group_can_not_be_deleted_in_unstable_state(self):
         self.security_group.state = SynchronizationStates.ERRED
