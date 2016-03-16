@@ -1088,4 +1088,6 @@ class Resource(MonitoringModelMixin,
 
 
 class PublishableResource(PublishableMixin, Resource):
-    pass
+
+    class Meta(object):
+        abstract = True
