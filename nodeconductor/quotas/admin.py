@@ -41,7 +41,7 @@ class QuotaAdmin(QuotaFieldTypeLimit, ReversionAdmin):
 class QuotaInline(QuotaFieldTypeLimit, generic.GenericTabularInline):
     model = models.Quota
     fields = ('name', 'limit', 'usage', 'quota_field_type')
-    readonly_fields = ('name', ) + QuotaFieldTypeLimit.readonly_fields
+    readonly_fields = ('name', 'usage') + QuotaFieldTypeLimit.readonly_fields
     extra = 0
     can_delete = False
 

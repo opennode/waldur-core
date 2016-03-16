@@ -455,6 +455,7 @@ def log_service_recovered(sender, instance, name, source, target, **kwargs):
     if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
         logger.info('Service settings %s has been recovered.' % settings)
 
+
 def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
     if created:
         if instance.state != SynchronizationStates.NEW:
