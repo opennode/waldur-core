@@ -1,27 +1,23 @@
 Tasks and executors
 ===================
 
-
-NodeConductor performs logical operations using executors that combines several
+NodeConductor performs logical operations using executors that combine several
 tasks.
-
 
 Executors
 ---------
 
-Executor represents logical operation like instance deletion or creation. 
-Using tasks it handles instances states changing, backend methods executing
-and exceptions handling.
-
+Executor represents a logical operation on a backend, like VM creation or resize.
+It executes one or more background tasks and takes care of resource state updates
+and exception handling.
 
 Tasks
 -----
 
-Each task corresponds particular action - like state transition, object 
+Each task corresponds to a particular granular action - like state transition, object
 deletion or backend method execution. They are supposed to be combined and 
-called in executors. It is strictly not recommended to call tasks directly from 
+called in executors. It is not allowed to schedule tasks directly from
 views or serializer.
-
 
 Throttle and route 'heavy' tasks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
