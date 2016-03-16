@@ -457,6 +457,10 @@ class Command(BaseCommand):
                 # XXX: duplicate UUIDs due to killbill
                 inst.uuid = instance.uuid
                 inst.created = instance.created
+                image = instance.template.images.first()
+                if image:
+                    inst.min_disk = image.min_disk
+                    inst.min_ram = image.min_ram
                 inst.save()
 
                 for sgrp in instance.security_groups.all():

@@ -2,20 +2,20 @@ import os
 import tempfile
 
 from django.db import models
-from django.utils.image import Image
+
 
 def get_upload_path(instance, filename):
     path = '%s/%s' % (instance._meta.model_name, instance.uuid.hex)
     _, ext = os.path.splitext(filename)
     return '%s%s' % (path, ext)
 
+
 def dummy_image(filetype='gif'):
-    """
-    Generate empty image in temporary file for testing
-    """
+    """ Generate empty image in temporary file for testing """
+    # 1x1px Transparent GIF
+    GIF = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
     tmp_file = tempfile.NamedTemporaryFile(suffix='.%s' % filetype)
-    image = Image.new('RGB', (100, 100))
-    image.save(tmp_file)
+    tmp_file.write(GIF.decode('base64'))
     return open(tmp_file.name)
 
 

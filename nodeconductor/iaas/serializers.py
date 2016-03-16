@@ -138,6 +138,7 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
         }
+        related_paths = 'customer',
 
     def get_fields(self):
         # TODO: Extract to a proper mixin
@@ -155,9 +156,6 @@ class CloudSerializer(structure_serializers.PermissionFieldFilteringMixin,
         return fields
 
     def get_filtered_field_names(self):
-        return 'customer',
-
-    def get_related_paths(self):
         return 'customer',
 
     def get_resources_count(self, obj):
@@ -202,6 +200,7 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             'service_name', 'service_uuid',
             'external_network_id', 'internal_network_id',
         )
+        related_paths = 'project', 'cloud'
         read_only_fields = ('external_network_id', 'internal_network_id',)
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
@@ -229,9 +228,6 @@ class CloudProjectMembershipSerializer(structure_serializers.PermissionFieldFilt
             return obj.project.project_group.uuid.hex
 
     def get_filtered_field_names(self):
-        return 'project', 'cloud'
-
-    def get_related_paths(self):
         return 'project', 'cloud'
 
     def validate(self, attrs):
@@ -268,6 +264,7 @@ class NestedCloudProjectMembershipSerializer(structure_serializers.PermissionFie
             'quotas',
             'state',
         )
+        related_paths = 'project', 'cloud'
         view_name = 'cloudproject_membership-detail'
         extra_kwargs = {
             'cloud': {'lookup_field': 'uuid'},
@@ -279,9 +276,6 @@ class NestedCloudProjectMembershipSerializer(structure_serializers.PermissionFie
         pass
 
     def get_filtered_field_names(self):
-        return 'project', 'cloud'
-
-    def get_related_paths(self):
         return 'project', 'cloud'
 
 

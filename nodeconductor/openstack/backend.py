@@ -283,6 +283,8 @@ class OpenStackBackend(ServiceBackend):
         instance.cores = flavor.cores
         instance.ram = flavor.ram
         instance.disk = instance.system_volume_size + instance.data_volume_size
+        instance.min_disk = image.min_disk
+        instance.min_ram = image.min_ram
         instance.save()
 
         send_task('openstack', 'provision')(

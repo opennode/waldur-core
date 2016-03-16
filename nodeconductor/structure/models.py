@@ -762,6 +762,7 @@ def validate_yaml(value):
         raise ValidationError('A valid YAML value is required.')
 
 
+# This extra class required in order not to get into a mess with current iaas implementation
 class BaseVirtualMachineMixin(models.Model):
     key_name = models.CharField(max_length=50, blank=True)
     key_fingerprint = models.CharField(max_length=47, blank=True)
@@ -779,10 +780,11 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
         AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
         super(VirtualMachineMixin, self).__init__(*args, **kwargs)
 
-    # This extra class required in order not to get into a mess with current iaas implementation
     cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
     ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
     disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
+    min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
+    min_disk = models.PositiveIntegerField(default=0, help_text='Minimum disk size in MiB')
 
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
@@ -803,7 +805,7 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
 
 
 class PublishableMixin(models.Model):
-    """ Base resource for SaaS plugins """
+    """ Provide publishing_state field """
 
     class Meta(object):
         abstract = True
@@ -925,8 +927,7 @@ class Resource(MonitoringModelMixin,
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED,
         choices=States.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing.",
-        max_length=1)
+        help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
 
     def get_backend(self, **kwargs):
         return self.service_project_link.get_backend(**kwargs)

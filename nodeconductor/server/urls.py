@@ -45,8 +45,9 @@ urlpatterns = patterns(
 
 if settings.NODECONDUCTOR.get('EXTENSIONS_AUTOREGISTER'):
     for ext in NodeConductorExtension.get_extensions():
-        urlpatterns += ext.django_urls()
-        ext.rest_urls()(router)
+        if ext.django_app() in settings.INSTALLED_APPS:
+            urlpatterns += ext.django_urls()
+            ext.rest_urls()(router)
 
 urlpatterns += patterns(
     '',
