@@ -2,7 +2,7 @@ from nodeconductor.core import utils, tasks
 
 
 class BaseExecutor(object):
-    """ Base class that corresponds logical operation with backend.
+    """ Base class for describing logical operation with backend.
 
     Executor describes celery signature or primitive of low-level tasks that
     should be executed to provide high-level operation.
