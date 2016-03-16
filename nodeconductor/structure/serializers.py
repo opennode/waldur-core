@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from django.conf import settings
 from django.contrib import auth
@@ -323,6 +323,47 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
 
     def get_project_groups(self, obj):
         return self._get_filtered_data(obj.project_groups, BasicProjectGroupSerializer)
+
+
+class CustomerUserSerializer(serializers.ModelSerializer):
+    role = serializers.ReadOnlyField(source='group.customerrole.get_role_type_display')
+    permission = serializers.HyperlinkedRelatedField(
+        source='perm.pk',
+        view_name='customer_permission-detail',
+        queryset=User.groups.through.objects.all(),
+    )
+    projects = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['uuid', 'username', 'full_name', 'role', 'permission', 'projects']
+
+    def to_representation(self, user):
+        customer = self.context['customer']
+        try:
+            group = user.groups.get(customerrole__customer=customer)
+        except user.groups.model.DoesNotExist:
+            group = None
+            perm = None
+        else:
+            perm = User.groups.through.objects.get(user=user, group=group)
+
+        setattr(user, 'group', group)
+        setattr(user, 'perm', perm)
+        return super(CustomerUserSerializer, self).to_representation(user)
+
+    def get_projects(self, user):
+        projectrole = {r.projectrole.project_id: r.projectrole.get_role_type_display()
+                       for r in user.groups.exclude(projectrole=None)}
+        projects = filter_queryset_for_user(
+            models.Project.objects.filter(id__in=projectrole.keys()),
+            self.context['request'].user)
+
+        return [OrderedDict([
+            ('uuid', proj.uuid),
+            ('name', proj.name),
+            ('role', projectrole.get(proj.id)),
+        ]) for proj in projects]
 
 
 class BalanceHistorySerializer(serializers.ModelSerializer):

@@ -67,6 +67,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.CustomerFilter
 
+    def get_serializer_class(self):
+        if self.action == 'users':
+            return serializers.CustomerUserSerializer
+        return super(CustomerViewSet, self).get_serializer_class()
+
+    def get_serializer_context(self):
+        context = super(CustomerViewSet, self).get_serializer_context()
+        if self.action == 'users':
+            context['customer'] = self.get_object()
+        return context
+
     def get_queryset(self):
         queryset = super(CustomerViewSet, self).get_queryset()
         if self.action in ('list', 'retrieve'):
@@ -94,6 +105,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         serializer = serializers.BalanceHistorySerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @detail_route()
+    def users(self, request, uuid=None):
+        """ A list of users connected to the customer """
+        customer = self.get_object()
+        serializer = self.get_serializer(customer.get_users(), many=True)
+        return Response(serializer.data)
 
 
 class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
