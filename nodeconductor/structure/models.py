@@ -217,7 +217,7 @@ class Customer(core_models.UuidMixin,
         return get_user_model().objects.filter(
             Q(groups__customerrole__customer=self) |
             Q(groups__projectrole__project__customer=self) |
-            Q(groups__projectgrouprole__project_group__customer=self))
+            Q(groups__projectgrouprole__project_group__customer=self)).distinct()
 
     def can_user_update_quotas(self, user):
         return user.is_staff
