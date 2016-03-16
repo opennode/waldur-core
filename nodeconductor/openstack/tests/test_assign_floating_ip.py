@@ -70,7 +70,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
         with self.get_task() as mocked_task:
             response = self.get_response(instance, '12345')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertEqual(response.data['non_field_errors'], ['Floating IP does not exist.'])
+            self.assertEqual(response.data['floating_ip_uuid'], ['Floating IP does not exist.'])
             self.assertFalse(mocked_task.called)
 
     def test_user_cannot_assign_used_ip_to_the_instance(self):
@@ -88,7 +88,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
         with self.get_task() as mocked_task:
             response = self.get_response(instance, floating_ip.uuid.hex)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertEqual(response.data['non_field_errors'], ['Floating IP status must be DOWN.'])
+            self.assertEqual(response.data['floating_ip_uuid'], ['Floating IP status must be DOWN.'])
             self.assertFalse(mocked_task.called)
 
     def test_user_cannot_assign_ip_from_different_link_to_the_instance(self):
@@ -102,7 +102,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
         with self.get_task() as mocked_task:
             response = self.get_response(instance, floating_ip.uuid.hex)
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            self.assertEqual(response.data['non_field_errors'],
+            self.assertEqual(response.data['floating_ip_uuid'],
                              ['Floating IP must belong to same service project link.'])
             self.assertFalse(mocked_task.called)
 
@@ -120,6 +120,31 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
 
         with self.get_task() as mocked_task:
             response = self.get_response(instance, floating_ip.uuid.hex)
+            self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+            self.assertEqual(response.data['status'], 'assign_floating_ip was scheduled')
+            self.assert_task_called(mocked_task, instance, floating_ip)
+
+    def test_user_can_assign_floating_ip_by_url(self):
+        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC, external_network_id='12345')
+        floating_ip = factories.FloatingIPFactory(
+            service_project_link=service_project_link,
+            status='DOWN',
+            backend_network_id=service_project_link.external_network_id
+        )
+        instance = factories.InstanceFactory(
+            service_project_link=service_project_link,
+            state=Instance.States.OFFLINE
+        )
+
+        with self.get_task() as mocked_task:
+            # authenticate
+            staff = structure_factories.UserFactory(is_staff=True)
+            self.client.force_authenticate(user=staff)
+
+            url = factories.InstanceFactory.get_url(instance, action='assign_floating_ip')
+            data = {'floating_ip': factories.FloatingIPFactory.get_url(floating_ip)}
+            response = self.client.post(url, data)
+
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
             self.assertEqual(response.data['status'], 'assign_floating_ip was scheduled')
             self.assert_task_called(mocked_task, instance, floating_ip)

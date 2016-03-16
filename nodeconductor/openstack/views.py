@@ -202,7 +202,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         serializer.is_valid(raise_exception=True)
 
         send_task('openstack', 'assign_floating_ip')(
-            instance.uuid.hex, serializer.validated_data['floating_ip_uuid'])
+            instance.uuid.hex, serializer.get_floating_ip_uuid())
 
     assign_floating_ip.title = 'Assign floating IP'
 
