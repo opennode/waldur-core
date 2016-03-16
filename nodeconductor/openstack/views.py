@@ -15,7 +15,7 @@ from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.openstack.backup import BackupError
 from nodeconductor.openstack.log import event_logger
-from nodeconductor.openstack import Types, models, filters, serializers
+from nodeconductor.openstack import Types, models, filters, serializers, executors
 
 
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
@@ -251,20 +251,16 @@ class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelView
 
     def perform_create(self, serializer):
         security_group = serializer.save()
-        send_task('openstack', 'create_security_group')(security_group.uuid.hex)
+        executors.SecurityGroupCreateExecutor.execute(security_group)
 
     def perform_update(self, serializer):
         super(SecurityGroupViewSet, self).perform_update(serializer)
         security_group = self.get_object()
-        security_group.schedule_syncing()
-        security_group.save()
-        send_task('openstack', 'update_security_group')(security_group.uuid.hex)
+        executors.SecurityGroupUpdateExecutor.execute(security_group)
 
     def destroy(self, request, *args, **kwargs):
         security_group = self.get_object()
-        security_group.schedule_syncing()
-        security_group.save()
-        send_task('openstack', 'delete_security_group')(security_group.uuid.hex)
+        executors.SecurityGroupDeleteExecutor.execute(security_group)
         return response.Response(
             {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
 

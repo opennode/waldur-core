@@ -22,6 +22,7 @@ from uuidfield import UUIDField
 import reversion
 from reversion.models import Version
 
+from nodeconductor.core import utils
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.validators import validate_name
 from nodeconductor.logging.log import LoggableMixin
@@ -302,6 +303,10 @@ class SynchronizableMixin(ErrorMessageMixin):
         choices=SynchronizationStates.CHOICES,
     )
 
+    @property
+    def human_readable_state(self):
+        return force_text(dict(SynchronizationStates.CHOICES)[self.state])
+
     @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
     def begin_creating(self):
         pass
@@ -372,12 +377,13 @@ class ReversionMixin(object):
         return super(ReversionMixin, self).save(**kwargs)
 
 
+# XXX: Deprecated. Serialization should be automatically processed in executors
+#                  or use serialize and deserialize_instance methods from utils.
 class SerializableAbstractMixin(object):
 
     def to_string(self):
         """ Dump an instance into a string preserving model name and object id """
-        model_name = force_text(self._meta)
-        return '{}:{}'.format(model_name, self.pk)
+        return utils.serialize_instance(self)
 
     @staticmethod
     def parse_model_string(string):
@@ -391,9 +397,8 @@ class SerializableAbstractMixin(object):
         if not isinstance(objects, (list, tuple)):
             objects = [objects]
         for obj in objects:
-            model, pk = cls.parse_model_string(obj)
             try:
-                yield model._default_manager.get(pk=pk)
+                yield utils.deserialize_instance(obj)
             except ObjectDoesNotExist:
                 continue
 
