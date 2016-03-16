@@ -318,7 +318,7 @@ def check_cloud_memberships_quotas():
 def sync_instances_with_zabbix():
     instances = models.Instance.objects.exclude(backend_id='').values_list('uuid', flat=True)
     for instance_uuid in instances:
-        sync_instance_with_zabbix.delay(instance_uuid)
+        sync_instance_with_zabbix.delay(instance_uuid.hex)
 
 
 @shared_task

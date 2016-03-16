@@ -6,15 +6,17 @@ from django.db import models, migrations
 
 class Migration(migrations.Migration):
 
+    replaces = [('logging', '0002_index_alert_type')]
+
     dependencies = [
-        ('core', '0002_user_organization_approved'),
+        ('logging', '0001_squashed_0003_emailhook_webhook'),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='sshpublickey',
-            name='name',
-            field=models.CharField(max_length=150, blank=True),
+            model_name='alert',
+            name='alert_type',
+            field=models.CharField(max_length=50, db_index=True),
             preserve_default=True,
         ),
     ]

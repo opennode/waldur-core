@@ -146,7 +146,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     organization_approved = models.BooleanField(_('organization approved'), default=False,
                                                 help_text=_('Designates whether user organization was approved.'))
     job_title = models.CharField(_('job title'), max_length=40, blank=True)
-    email = models.EmailField(_('email address'), blank=True)
+    email = models.EmailField(_('email address'), max_length=75, blank=True)
 
     is_staff = models.BooleanField(_('staff status'), default=False,
                                    help_text=_('Designates whether the user can log into this admin '
@@ -185,7 +185,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     @classmethod
     def get_permitted_objects_uuids(cls, user):
         if user.is_staff:
-            return {'user_uuid': cls.objects.all().values_list('uuid', flat=True)}
+            return {'user_uuid': cls.objects.values_list('uuid', flat=True)}
         else:
             return {'user_uuid': [user.uuid.hex]}
 

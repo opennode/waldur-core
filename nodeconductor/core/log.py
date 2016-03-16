@@ -34,20 +34,3 @@ class SshPublicKeyEventLogger(EventLogger):
 event_logger.register('auth', AuthEventLogger)
 event_logger.register('user', UserEventLogger)
 event_logger.register('sshkey', SshPublicKeyEventLogger)
-
-
-# Backward compatibility imports
-from nodeconductor.logging.log import TCPEventHandler, RequireEvent, RequireNotEvent
-import warnings
-
-
-class NodeConductorDeprecationWarning(PendingDeprecationWarning):
-    pass
-
-
-warnings.simplefilter('always', NodeConductorDeprecationWarning)
-warnings.warn(
-    "TCPEventHandler and RequireEvent/RequireNotEvent classes have been moved to "
-    "nodeconductor.logging.log and will be removed from nodeconductor.core.log "
-    "in further releases, consider updating your settings",
-    NodeConductorDeprecationWarning)

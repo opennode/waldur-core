@@ -49,6 +49,9 @@ def _template_license_stats_url():
     return 'http://testserver' + reverse('templatelicense-stats')
 
 
+decode_uuid = lambda obj: {k: v.hex if k == 'uuid' else v for k, v in obj.items()}
+
+
 class LicenseApiManipulationTest(test.APISimpleTestCase):
 
     def setUp(self):
@@ -204,8 +207,8 @@ class LicenseStatsTests(test.APITransactionTestCase):
         self.client.force_authenticate(self.staff)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertItemsEqual(response.data, models.InstanceLicense.objects.values().annotate(
-            count=django_models.Count('id', distinct=True)))
+        self.assertItemsEqual(response.data, map(decode_uuid, models.InstanceLicense.objects.values().annotate(
+            count=django_models.Count('id', distinct=True))))
 
     def test_licenses_stats_aggregated_by_name_and_type(self):
         self.client.force_authenticate(self.staff)
@@ -303,17 +306,17 @@ class LicenseStatsTests(test.APITransactionTestCase):
         self.client.force_authenticate(self.staff)
         response = self.client.get(self.url, {'name': self.first_template_license.name})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertItemsEqual(response.data, models.InstanceLicense.objects.filter(
+        self.assertItemsEqual(response.data, map(decode_uuid, models.InstanceLicense.objects.filter(
             template_license=self.first_template_license).values().annotate(
-            count=django_models.Count('id', distinct=True)))
+            count=django_models.Count('id', distinct=True))))
 
     def test_licenses_stats_filtering_by_license_type(self):
         self.client.force_authenticate(self.staff)
         response = self.client.get(self.url, {'type': self.first_template_license.license_type})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertItemsEqual(response.data, models.InstanceLicense.objects.filter(
+        self.assertItemsEqual(response.data, map(decode_uuid, models.InstanceLicense.objects.filter(
             template_license=self.first_template_license).values().annotate(
-            count=django_models.Count('id', distinct=True)))
+            count=django_models.Count('id', distinct=True))))
 
     def test_admin_can_see_stats_only_for_his_projects(self):
         self.client.force_authenticate(self.admin)

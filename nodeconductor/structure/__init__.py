@@ -259,9 +259,8 @@ class SupportedServices(object):
 
     @classmethod
     def get_service_project_link(cls, service_model):
-        return next(m[0].model for m in service_model._meta.get_all_related_objects_with_model()
-                    if m[0].var_name == 'cloudprojectmembership' or
-                    m[0].var_name.endswith('serviceprojectlink'))
+        return next(m.related_model for m in service_model._meta.get_all_related_objects()
+                    if m.name == 'cloudprojectmembership' or m.name.endswith('serviceprojectlink'))
 
     @classmethod
     @lru_cache(maxsize=1)

@@ -112,6 +112,7 @@ class NestedServiceProjectLinkSerializer(structure_serializers.PermissionFieldFi
             'quotas',
             'state',
         )
+        related_paths = 'project', 'service'
         view_name = 'openstack-spl-detail'
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
@@ -123,9 +124,6 @@ class NestedServiceProjectLinkSerializer(structure_serializers.PermissionFieldFi
         pass
 
     def get_filtered_field_names(self):
-        return 'project', 'service'
-
-    def get_related_paths(self):
         return 'project', 'service'
 
 

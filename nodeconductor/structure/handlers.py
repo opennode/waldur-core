@@ -80,7 +80,7 @@ def propagate_user_to_his_projects_services(sender, instance=None, created=False
         link = Link(instance)
 
         users = get_user_model().objects.filter(groups__projectrole__project=instance.project)
-        users = list(users.values_list('uuid', flat=True))
+        users = [uuid.hex for uuid in users.values_list('uuid', flat=True)]
 
         for user in users:
             link.add_user(user)
