@@ -1,4 +1,4 @@
-from nodeconductor.structure import tasks, executors
+from nodeconductor.core import tasks, executors
 
 
 class SecurityGroupCreateExecutor(executors.SynchronizableCreateExecutor):

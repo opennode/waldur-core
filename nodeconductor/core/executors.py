@@ -1,5 +1,4 @@
-from nodeconductor.core import utils as core_utils
-from nodeconductor.structure import tasks
+from nodeconductor.core import utils, tasks
 
 
 class BaseExecutor(object):
@@ -58,7 +57,7 @@ class BaseExecutor(object):
     @classmethod
     def apply_signature(cls, instance, async=True, **kwargs):
         """ Serialize input data and apply signature """
-        serialized_instance = core_utils.serialize_instance(instance)
+        serialized_instance = utils.serialize_instance(instance)
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
         signature = cls.get_task_signature(serialized_instance, **kwargs)
