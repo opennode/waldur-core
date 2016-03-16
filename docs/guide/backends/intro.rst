@@ -15,13 +15,13 @@ SaaS, the common denominator is the ability to control services over APIs. Curre
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 | GitLab *         | Group, Project | yes    | yes     | –                         | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
-| JIRA             | –              | –      | –       | –                         | –        | –          |
+| JIRA *           | –              | –      | –       | –                         | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
-| OpenStack        | VirtualMachine | yes    | yes     | start/stop/restart/resize | zabbix   | snapshots  |
+| OpenStack *      | VirtualMachine | yes    | yes     | start/stop/restart/resize | zabbix   | snapshots  |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
-| Oracle           | Database       | –      | –       | start/stop/restart        | –        | –          |
+| Oracle *         | Database       | –      | –       | start/stop/restart        | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
-| SugarCRM         | CRM            | –      | yes     | –                         | –        | –          |
+| SugarCRM *       | CRM            | –      | yes     | user CRUD                 | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 
 \* available via NodeConductor extensions
