@@ -353,16 +353,22 @@ class CustomerUserSerializer(serializers.ModelSerializer):
         return super(CustomerUserSerializer, self).to_representation(user)
 
     def get_projects(self, user):
-        projectrole = {r.projectrole.project_id: r.projectrole.get_role_type_display()
-                       for r in user.groups.exclude(projectrole=None)}
+        request = self.context['request']
+        projectrole = {
+            g.projectrole.project_id: (g.projectrole.get_role_type_display(),
+                                       User.groups.through.objects.get(user=user, group=g).pk)
+            for g in user.groups.exclude(projectrole=None)
+        }
         projects = filter_queryset_for_user(
-            models.Project.objects.filter(id__in=projectrole.keys()),
-            self.context['request'].user)
+            models.Project.objects.filter(id__in=projectrole.keys()), request.user)
 
         return [OrderedDict([
             ('uuid', proj.uuid),
             ('name', proj.name),
-            ('role', projectrole.get(proj.id)),
+            ('role', projectrole[proj.id][0]),
+            ('permission', reverse('project_permission-detail',
+                                   kwargs={'pk': projectrole[proj.id][1]},
+                                   request=request))
         ]) for proj in projects]
 
 
