@@ -35,7 +35,7 @@ def run_tests():
     except ImportError:
         print "Not generating XML reports, run 'pip install unittest-xml-reporting' to enable XML report generation"
 
-    test_runner = test_runner_class(verbosity=1, interactive=True)
+    test_runner = test_runner_class(verbosity=2, interactive=True)
 
     failures = test_runner.run_tests([])
     sys.exit(bool(failures))
