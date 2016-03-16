@@ -1,12 +1,9 @@
 Tasks and executors
 ===================
 
-Introduction
-------------
 
 NodeConductor performs logical operations using executors that combines several
-tasks. Each of the tasks corresponds particular action - like state
-transition, object deletion or backend method execution.
+tasks.
 
 
 Executors
@@ -20,9 +17,11 @@ and exceptions handling.
 Tasks
 -----
 
-Each task corresponds particular action. They are supposed to be combined and 
+Each task corresponds particular action - like state transition, object 
+deletion or backend method execution. They are supposed to be combined and 
 called in executors. It is strictly not recommended to call tasks directly from 
 views or serializer.
+
 
 Throttle and route 'heavy' tasks
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
