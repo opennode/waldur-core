@@ -1214,6 +1214,13 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return super(BaseResourceSerializer, self).create(data)
 
 
+class SaaSResourceSerializer(BaseResourceSerializer):
+
+    class Meta(BaseResourceSerializer.Meta):
+        fields = BaseResourceSerializer.Meta.fields + ('publishing_state',)
+        read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
+
+
 class SummaryResourceSerializer(serializers.BaseSerializer):
 
     def to_representation(self, instance):
