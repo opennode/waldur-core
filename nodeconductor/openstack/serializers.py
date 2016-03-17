@@ -179,34 +179,72 @@ class ExternalNetworkSerializer(serializers.Serializer):
 
 
 class AssignFloatingIpSerializer(serializers.Serializer):
-    floating_ip_uuid = serializers.CharField(label='Floating IP')
+    # TODO: Remove floating_ip_uuid field after migration to floating_ip field
+    floating_ip_uuid = serializers.CharField(label='Floating IP', required=False)
+
+    floating_ip = serializers.HyperlinkedRelatedField(
+        label='Floating IP',
+        required=False,
+        view_name='openstack-fip-detail',
+        lookup_field='uuid',
+        queryset=models.FloatingIP.objects.all()
+    )
 
     def get_fields(self):
         fields = super(AssignFloatingIpSerializer, self).get_fields()
         if self.instance:
-            field = fields['floating_ip_uuid']
-            field.view_name = 'openstack-fip-detail'
-            field.query_params = {
+            query_params = {
                 'status': 'DOWN',
                 'project': self.instance.service_project_link.project.uuid,
                 'service': self.instance.service_project_link.service.uuid
             }
+
+            field = fields['floating_ip_uuid']
+            field.view_name = 'openstack-fip-detail'
+            field.query_params = query_params
             field.value_field = 'uuid'
+            field.display_name_field = 'address'
+            field.deprecated = True
+
+            field = fields['floating_ip']
+            field.query_params = query_params
+            field.value_field = 'url'
             field.display_name_field = 'address'
         return fields
 
+    def get_floating_ip_uuid(self):
+        floating_ip_uuid = self.validated_data.get('floating_ip_uuid')
+        if floating_ip_uuid:
+            return floating_ip_uuid
+
+        floating_ip = self.validated_data.get('floating_ip')
+        return floating_ip.uuid.hex
+
+    def validate_floating_ip_uuid(self, value):
+        if value is not None:
+            try:
+                floating_ip = models.FloatingIP.objects.get(uuid=value)
+            except models.FloatingIP.DoesNotExist:
+                raise serializers.ValidationError("Floating IP does not exist.")
+
+            self.validate_floating_ip(floating_ip)
+        return value
+
+    def validate_floating_ip(self, value):
+        if value is not None:
+            if value.status == 'ACTIVE':
+                raise serializers.ValidationError("Floating IP status must be DOWN.")
+            elif value.service_project_link != self.instance.service_project_link:
+                raise serializers.ValidationError("Floating IP must belong to same service project link.")
+        return value
+
     def validate(self, attrs):
-        ip_uuid = attrs.get('floating_ip_uuid')
+        floating_ip_uuid = attrs.get('floating_ip_uuid')
+        floating_ip = attrs.get('floating_ip')
 
-        try:
-            floating_ip = models.FloatingIP.objects.get(uuid=ip_uuid)
-        except models.FloatingIP.DoesNotExist:
-            raise serializers.ValidationError("Floating IP does not exist.")
-
-        if floating_ip.status == 'ACTIVE':
-            raise serializers.ValidationError("Floating IP status must be DOWN.")
-        elif floating_ip.service_project_link != self.instance.service_project_link:
-            raise serializers.ValidationError("Floating IP must belong to same service project link.")
+        if floating_ip_uuid is not None and floating_ip is not None or \
+           floating_ip_uuid is None and floating_ip is None:
+            raise serializers.ValidationError("Either floating_ip_uuid or floating_ip URL should be specified.")
 
         if not self.instance.service_project_link.external_network_id:
             raise serializers.ValidationError(
