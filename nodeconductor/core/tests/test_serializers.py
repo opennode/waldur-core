@@ -1,11 +1,16 @@
 from __future__ import unicode_literals
 
 import unittest
+from collections import namedtuple
 
 from rest_framework import serializers
+from rest_framework.response import Response
+from rest_framework.test import APIRequestFactory, APISimpleTestCase, force_authenticate
+from rest_framework.views import APIView
+
 from nodeconductor.core.fields import JsonField
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.serializers import Base64Field
+from nodeconductor.core.serializers import Base64Field, RestrictedSerializerMixin
 from nodeconductor.core import utils
 
 
@@ -96,3 +101,28 @@ class TimestampFieldTest(unittest.TestCase):
                       'There should be errors for content field')
         self.assertIn('Value "NOT_A_UNIX_TIMESTAMP" should be valid UNIX timestamp.',
                       serializer.errors['content'])
+
+
+class RestrictedSerializer(RestrictedSerializerMixin, serializers.Serializer):
+    name = serializers.ReadOnlyField()
+    url = serializers.ReadOnlyField()
+    id = serializers.ReadOnlyField()
+
+
+class RestrictedSerializerView(APIView):
+    def get(self, request):
+        User = namedtuple('User', ('name', 'url', 'id'))
+        user = User(name='Walter', url='http://example.com/Walter', id=1)
+        serializer = RestrictedSerializer(user, context={'request': request})
+        return Response(serializer.data)
+
+
+class RestrictedSerializerTest(APISimpleTestCase):
+    def test_serializer_returns_fields_required_in_request(self):
+        from nodeconductor.structure.tests.factories import UserFactory
+
+        fields = ['name', 'url']
+        request = APIRequestFactory().get('/', {'field': fields})
+        force_authenticate(request, UserFactory())
+        response = RestrictedSerializerView.as_view()(request)
+        self.assertEqual(fields, response.data.keys(), response.data)

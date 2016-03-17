@@ -1159,6 +1159,7 @@ class BasicResourceSerializer(serializers.Serializer):
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
+                             core_serializers.RestrictedSerializerMixin,
                              MonitoringSerializerMixin,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
@@ -1360,8 +1361,9 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     def get_fields(self):
         fields = super(VirtualMachineSerializer, self).get_fields()
-        fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
-            user=self.context['request'].user)
+        if 'ssh_public_key' in fields:
+            fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
+                user=self.context['request'].user)
         return fields
 
 

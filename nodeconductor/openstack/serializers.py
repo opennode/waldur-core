@@ -532,7 +532,8 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     def get_fields(self):
         fields = super(InstanceSerializer, self).get_fields()
-        fields['system_volume_size'].required = True
+        if 'system_volume_size' in fields:
+            fields['system_volume_size'].required = True
         return fields
 
     def validate(self, attrs):
