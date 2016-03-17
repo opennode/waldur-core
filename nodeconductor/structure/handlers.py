@@ -362,13 +362,8 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
     elif sender in (Project, ProjectGroup):
         customer = structure.customer
 
-    customer_users_counter = Counter(customer.get_users())
-
-    if customer_users_counter.get(user, 0) == 1:
-        if signal == signals.structure_role_granted:
-            customer.add_quota_usage('nc_user_count', 1)
-        else:
-            customer.add_quota_usage('nc_user_count', -1)
+    customer_users = customer.get_users()
+    customer.set_quota_usage(Customer.Quotas.nc_user_count, customer_users.count())
 
 
 def log_resource_deleted(sender, instance, **kwargs):
