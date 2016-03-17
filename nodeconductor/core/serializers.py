@@ -1,4 +1,5 @@
 import base64
+from collections import OrderedDict
 from datetime import timedelta
 
 from django.core import validators
@@ -302,6 +303,24 @@ class AugmentedSerializerMixin(object):
             return serializers.ReadOnlyField, {'source': related_field_source_map[field_name]}
         except KeyError:
             return super(AugmentedSerializerMixin, self).build_unknown_field(field_name, model_class)
+
+
+class RestrictedSerializerMixin(object):
+    """
+    This mixin allows to specify list of fields to be rendered by serializer.
+    It expects that request is available in serializer's context.
+    """
+
+    FIELDS_PARAM_NAME = 'field'
+
+    def get_fields(self):
+        fields = super(RestrictedSerializerMixin, self).get_fields()
+        query_params = self.context['request'].query_params
+        keys = query_params.getlist(self.FIELDS_PARAM_NAME)
+        keys = set(key for key in keys if key in fields.keys())
+        if not keys:
+            return fields
+        return OrderedDict(((key, value) for key, value in fields.items() if key in keys))
 
 
 class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
