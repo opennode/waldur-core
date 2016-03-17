@@ -336,7 +336,10 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['uuid', 'username', 'full_name', 'role', 'permission', 'projects']
+        fields = ['url', 'uuid', 'username', 'full_name', 'role', 'permission', 'projects']
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
     def to_representation(self, user):
         customer = self.context['customer']
@@ -363,6 +366,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
             models.Project.objects.filter(id__in=projectrole.keys()), request.user)
 
         return [OrderedDict([
+            ('url', reverse('project-detail', kwargs={'uuid': proj.uuid}, request=request)),
             ('uuid', proj.uuid),
             ('name', proj.name),
             ('role', projectrole[proj.id][0]),
