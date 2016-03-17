@@ -767,17 +767,12 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             "projects": 1
         }
         """
-        self.request = request
-
         self.customer = self.get_object()
         self.customer_uuid = self.customer.uuid.hex
-        self.customer_url = reverse('customer-detail', kwargs={'uuid': self.customer_uuid})
-
+        self.customer_url = reverse('customer-detail', kwargs={'uuid': self.customer_uuid}, request=request)
         self.exclude_features = request.query_params.getlist('exclude_features')
-        self.shared = request.query_params.get('shared', 'True')
 
         return Response({
-            'events': self.get_events(),
             'alerts': self.get_alerts(),
             'vms': self.get_vms(),
             'apps': self.get_apps(),
@@ -785,17 +780,12 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             'services': self.get_services()
         })
 
-    def get_events(self):
-        return self.get_count('event-list', {
-            'scope': self.customer_url,
-            'exclude_features': self.exclude_features
-        })
-
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'customer',
             'uuid': self.customer_uuid,
-            'exclude_features': self.exclude_features
+            'exclude_features': self.exclude_features,
+            'opened': True
         })
 
     def get_vms(self):
@@ -824,19 +814,13 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             "apps": 0,
             "vms": 1,
             "premium_support_contracts": 0,
-            "events": 0
         }
         """
-        self.request = request
-
         self.project = self.get_object()
         self.project_uuid = self.project.uuid.hex
-        self.project_url = reverse('project-detail', kwargs={'uuid': self.project_uuid})
-
         self.exclude_features = request.query_params.getlist('exclude_features')
 
         return Response({
-            'events': self.get_events(),
             'alerts': self.get_alerts(),
             'vms': self.get_vms(),
             'apps': self.get_apps(),
@@ -844,17 +828,12 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'premium_support_contracts': self.get_premium_support_contracts()
         })
 
-    def get_events(self):
-        return self.get_count('event-list', {
-            'scope': self.project_url,
-            'exclude_features': self.exclude_features
-        })
-
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'project',
             'uuid': self.project_uuid,
-            'exclude_features': self.exclude_features
+            'exclude_features': self.exclude_features,
+            'opened': True
         })
 
     def get_vms(self):
@@ -879,28 +858,15 @@ class UserCountersView(CounterMixin, viewsets.GenericViewSet):
         """
         Count number of entities related to current user
         {
-            "events": 2,
             "keys": 1,
             "hooks": 1
         }
         """
-        self.request = request
-
-        self.user_uuid = self.request.user.uuid.hex
-        self.user_url = reverse('user-detail', kwargs={'uuid': self.user_uuid})
-
-        self.exclude_features = request.query_params.getlist('exclude_features')
+        self.user_uuid = request.user.uuid.hex
 
         return Response({
-            'events': self.get_events(),
             'keys': self.get_keys(),
             'hooks': self.get_hooks()
-        })
-
-    def get_events(self):
-        return self.get_count('event-list', {
-            'scope': self.user_url,
-            'exclude_features': self.exclude_features
         })
 
     def get_keys(self):
