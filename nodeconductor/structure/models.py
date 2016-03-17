@@ -188,6 +188,7 @@ class Customer(core_models.UuidMixin,
 
             for membership in memberships.iterator():
                 role = membership.group.customerrole
+                membership.delete()
 
                 structure_role_revoked.send(
                     sender=Customer,
@@ -195,8 +196,6 @@ class Customer(core_models.UuidMixin,
                     user=membership.user,
                     role=role.role_type,
                 )
-
-                membership.delete()
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -388,14 +387,14 @@ class Project(core_models.DescribableMixin,
     def remove_memberships(self, memberships):
         for membership in memberships.iterator():
             role = membership.group.projectrole
+            membership.delete()
+
             structure_role_revoked.send(
                 sender=Project,
                 structure=self,
                 user=membership.user,
                 role=role.role_type,
             )
-
-            membership.delete()
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
@@ -520,14 +519,14 @@ class ProjectGroup(core_models.UuidMixin,
 
             for membership in memberships.iterator():
                 role = membership.group.projectgrouprole
+                membership.delete()
+
                 structure_role_revoked.send(
                     sender=ProjectGroup,
                     structure=self,
                     user=membership.user,
                     role=role.role_type,
                 )
-
-                membership.delete()
 
     def has_user(self, user, role_type=None):
         queryset = self.roles.filter(permission_group__user=user)
