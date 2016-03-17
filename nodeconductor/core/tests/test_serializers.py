@@ -119,10 +119,14 @@ class RestrictedSerializerView(APIView):
 
 class RestrictedSerializerTest(APISimpleTestCase):
     def test_serializer_returns_fields_required_in_request(self):
+        fields = ['name', 'url']
+        response = self.make_request(fields)
+        self.assertEqual(fields, response.data.keys())
+
+    def make_request(self, fields):
         from nodeconductor.structure.tests.factories import UserFactory
 
-        fields = ['name', 'url']
         request = APIRequestFactory().get('/', {'field': fields})
         force_authenticate(request, UserFactory())
         response = RestrictedSerializerView.as_view()(request)
-        self.assertEqual(fields, response.data.keys(), response.data)
+        return response

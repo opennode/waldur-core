@@ -316,7 +316,8 @@ class RestrictedSerializerMixin(object):
     def get_fields(self):
         fields = super(RestrictedSerializerMixin, self).get_fields()
         query_params = self.context['request'].query_params
-        keys = set(query_params.getlist(self.FIELDS_PARAM_NAME))
+        keys = query_params.getlist(self.FIELDS_PARAM_NAME)
+        keys = set(key for key in keys if key in fields.keys())
         if not keys:
             return fields
         return OrderedDict(((key, value) for key, value in fields.items() if key in keys))
