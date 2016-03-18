@@ -53,26 +53,41 @@ class PermissionFieldFilteringMixin(object):
 
         for field_name in self.get_filtered_field_names():
             field = fields[field_name]
-            if hasattr(field, 'child'):
-                self._patch_list_serializer(field, user)
-            else:
-                field.queryset = filter_queryset_for_user(field.queryset, user)
+            field.queryset = filter_queryset_for_user(field.queryset, user)
 
         return fields
-
-    def _patch_list_serializer(self, field, user):
-        def to_representation(data):
-            if isinstance(data, (django_models.Manager, django_models.query.QuerySet)):
-                iterable = filter_queryset_for_user(data.all(), user)
-            else:
-                iterable = [data]
-            return [field.child.to_representation(child) for child in iterable]
-        field.to_representation = to_representation
 
     def get_filtered_field_names(self):
         raise NotImplementedError(
             'Implement get_filtered_field_names() '
             'to return list of filtered fields')
+
+
+class PermissionListSerializer(serializers.ListSerializer):
+    """
+    Allows to filter related queryset by user.
+    Counterpart of PermissionFieldFilteringMixin.
+
+    In order to use it set Meta.list_serializer_class. Example:
+
+    >>> class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
+    >>>     class Meta(BasicProjectGroupSerializer.Meta):
+    >>>         list_serializer_class = PermissionListSerializer
+    >>>
+    >>> class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+    >>>     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
+    """
+    def to_representation(self, data):
+        try:
+            request = self.context['request']
+            user = request.user
+        except (KeyError, AttributeError):
+            pass
+        else:
+            if isinstance(data, (django_models.Manager, django_models.query.QuerySet)):
+                data = filter_queryset_for_user(data.all(), user)
+
+        return super(PermissionListSerializer, self).to_representation(data)
 
 
 class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
@@ -90,11 +105,21 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
         fields = ('url', 'uuid', 'name')
 
 
+class PermissionProjectSerializer(BasicProjectSerializer):
+    class Meta(BasicProjectSerializer.Meta):
+        list_serializer_class = PermissionListSerializer
+
+
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
         fields = ('url', 'name', 'uuid')
         read_only_fields = ('name', 'uuid')
+
+
+class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
+    class Meta(BasicProjectGroupSerializer.Meta):
+        list_serializer_class = PermissionListSerializer
 
 
 class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
@@ -290,11 +315,10 @@ class CustomerImageSerializer(serializers.ModelSerializer):
         fields = ['image']
 
 
-class CustomerSerializer(PermissionFieldFilteringMixin,
-                         core_serializers.AugmentedSerializerMixin,
+class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
-    projects = BasicProjectSerializer(many=True, read_only=True)
-    project_groups = BasicProjectGroupSerializer(many=True, read_only=True)
+    projects = PermissionProjectSerializer(many=True, read_only=True)
+    project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     image = DefaultImageField(required=False, read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
@@ -316,9 +340,6 @@ class CustomerSerializer(PermissionFieldFilteringMixin,
         }
         # Balance should be modified by nodeconductor_paypal app
         read_only_fields = ('balance', )
-
-    def get_filtered_field_names(self):
-        return 'projects', 'project_groups'
 
     @staticmethod
     def eager_load(queryset):
@@ -381,7 +402,7 @@ class BalanceHistorySerializer(serializers.ModelSerializer):
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
-    projects = BasicProjectSerializer(many=True, read_only=True)
+    projects = PermissionProjectSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ProjectGroup
@@ -403,7 +424,7 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
         protected_fields = ('customer',)
 
     def get_filtered_field_names(self):
-        return 'customer', 'projects'
+        return 'customer',
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
