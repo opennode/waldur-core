@@ -338,6 +338,71 @@ class SynchronizableMixin(ErrorMessageMixin):
         self.error_message = ''
 
 
+# This Mixin should replace SynchronizableMixin after NC-1237 implementation.
+class StateMixin(ErrorMessageMixin):
+    class States(object):
+        CREATION_SCHEDULED = 5
+        CREATING = 6
+        UPDATE_SCHEDULED = 1
+        UPDATING = 2
+        DELETION_SCHEDULED = 7
+        DELETING = 8
+        OK = 3
+        ERRED = 4
+
+        CHOICES = (
+            (CREATION_SCHEDULED, _('Creation Scheduled')),
+            (CREATING, _('Creating')),
+            (UPDATE_SCHEDULED, _('Update Scheduled')),
+            (UPDATING, _('Updating')),
+            (DELETION_SCHEDULED, _('Deletion Scheduled')),
+            (DELETING, _('Deleting')),
+            (OK, _('OK')),
+            (ERRED, _('Erred')),
+        )
+
+    class Meta(object):
+        abstract = True
+
+    state = FSMIntegerField(
+        default=States.CREATION_SCHEDULED,
+        choices=States.CHOICES,
+    )
+
+    @property
+    def human_readable_state(self):
+        return force_text(dict(self.States.CHOICES)[self.state])
+
+    @transition(field=state, source=States.CREATION_SCHEDULED, target=States.CREATING)
+    def begin_creating(self):
+        pass
+
+    @transition(field=state, source=States.UPDATE_SCHEDULED, target=States.UPDATING)
+    def begin_updating(self):
+        pass
+
+    @transition(field=state, source=States.DELETION_SCHEDULED, target=States.DELETING)
+    def begin_deleting(self):
+        pass
+
+    @transition(field=state, source=States.OK, target=States.UPDATE_SCHEDULED)
+    def schedule_updating(self):
+        pass
+
+    @transition(field=state, source=[States.OK, States.ERRED], target=States.DELETION_SCHEDULED)
+    def schedule_deleting(self):
+        pass
+
+    @transition(field=state, source=[States.UPDATING, States.CREATING],
+                target=States.OK)
+    def set_ok(self):
+        pass
+
+    @transition(field=state, source='*', target=States.ERRED)
+    def set_erred(self):
+        pass
+
+
 class ReversionMixin(object):
     """ Store historical values of instance, using django-reversion.
 

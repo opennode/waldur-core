@@ -90,6 +90,14 @@ class ErrorExecutorMixin(object):
         return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
+class SuccessExecutorMixin(object):
+    """ Set object as OK on success """
+
+    @classmethod
+    def get_success_signature(cls, serialized_instance, **kwargs):
+        return tasks.StateTransitionTask().si(serialized_instance, state_transition='set_ok')
+
+
 class DeleteExecutorMixin(object):
     """ Delete object on success """
 
@@ -98,46 +106,38 @@ class DeleteExecutorMixin(object):
         return tasks.DeletionTask().si(serialized_instance)
 
 
-class SynchronizableExecutorMixin(object):
-    """ Set object in sync on success """
-
-    @classmethod
-    def get_success_signature(cls, serialized_instance, **kwargs):
-        return tasks.StateTransitionTask().si(serialized_instance, state_transition='set_in_sync')
-
-
-class SynchronizableCreateExecutor(SynchronizableExecutorMixin, ErrorExecutorMixin, BaseExecutor):
+class CreateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     """ Default states transition for Synchronizable object creation.
 
-     - set object in sync on success creation;
+     - mark object as OK on success creation;
      - mark object as erred on failed creation;
     """
     pass
 
 
-class SynchronizableUpdateExecutor(SynchronizableExecutorMixin, ErrorExecutorMixin, BaseExecutor):
+class UpdateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     """ Default states transition for Synchronizable object update.
 
-     - schedule syncing before update;
-     - set object in sync on success update;
+     - schedule updating before update;
+     - mark object as OK on success update;
      - mark object as erred on failed update;
     """
 
     @classmethod
     def pre_apply(cls, instance, **kwargs):
-        instance.schedule_syncing()
+        instance.schedule_updating()
         instance.save(update_fields=['state'])
 
 
-class SynchronizableDeleteExecutor(DeleteExecutorMixin, ErrorExecutorMixin, BaseExecutor):
+class DeleteExecutor(DeleteExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     """ Default states transition for Synchronizable object deletion.
 
-     - schedule syncing before deletion;
+     - schedule deleting before deletion;
      - delete object on success deletion;
      - mark object as erred on failed deletion;
     """
 
     @classmethod
     def pre_apply(cls, instance, **kwargs):
-        instance.schedule_syncing()
+        instance.schedule_deleting()
         instance.save(update_fields=['state'])
