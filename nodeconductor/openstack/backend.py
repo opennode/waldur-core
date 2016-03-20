@@ -940,6 +940,41 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
+    def create_tenant(self, tenant):
+        logger.debug('About to create tenant "%s" (PK: %s).', tenant.name, tenant.pk)
+        keystone = self.keystone_admin_client
+
+        try:
+            tenant = keystone.tenants.create(tenant_name=tenant.name, description=tenant.description)
+            tenant.backend_id = tenant.id
+            tenant.save(update_fields=['backend_id'])
+        except keystone_exceptions.ClientException as e:
+            logger.error('Failed to provision tenant "%s" (PK: %s).', tenant.name, tenant.pk)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Successfully to created tenant "%s" (PK: %s).', tenant.name, tenant.pk)
+
+    def add_admin_user_to_tenant(self, tenant):
+        """ Add user from openstack settings to new tenant """
+        logger.debug('About to add admin user to tenant "%s" (PK: %s).', tenant.name, tenant.pk)
+        keystone = self.keystone_admin_client
+
+        try:
+            admin_user = keystone.users.find(name=self.settings.username)
+            admin_role = keystone.roles.find(name='admin')
+            try:
+                keystone.roles.add_user_role(
+                    user=admin_user.id,
+                    role=admin_role.id,
+                    tenant=tenant.id)
+            except keystone_exceptions.Conflict:
+                pass
+        except keystone_exceptions.ClientException as e:
+            logger.error('Failed to add admin user to tenant "%s" (PK: %s).', tenant.name, tenant.pk)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Successfully added admin user to tenant "%s" (PK: %s).', tenant.name, tenant.pk)
+
     def get_instance(self, instance_id):
         try:
             nova = self.nova_client
@@ -1680,6 +1715,48 @@ class OpenStackBackend(ServiceBackend):
             self.get_or_create_router(network_name, create_response['subnets'][0]['id'])
 
         return service_project_link.internal_network_id
+
+    def create_internal_network(self, tenant):
+        neutron = self.neutron_admin_client
+        logger.debug('About to create internal network for tenant "%s" (PK: %s).', tenant.name, tenant.pk)
+
+        network_name = '{0}-int-net'.format(tenant.name)
+        try:
+            network = {
+                'name': network_name,
+                'tenant_id': self.tenant_id,
+            }
+
+            create_response = neutron.create_network({'networks': [network]})
+            internal_network_id = create_response['networks'][0]['id']
+
+            subnet_name = 'nc-{0}-subnet01'.format(network_name)
+
+            logger.info('Creating subnet %s for tenant "%s" (PK: %s).', subnet_name, tenant.name, tenant.pk)
+            subnet_data = {
+                'network_id': internal_network_id,
+                'tenant_id': tenant.backend_id,
+                'cidr': '192.168.42.0/24',
+                'allocation_pools': [
+                    {
+                        'start': '192.168.42.10',
+                        'end': '192.168.42.250'
+                    }
+                ],
+                'name': subnet_name,
+                'ip_version': 4,
+                'enable_dhcp': True,
+            }
+            create_response = neutron.create_subnet({'subnets': [subnet_data]})
+            self.get_or_create_router(network_name, create_response['subnets'][0]['id'])
+        except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
+            logger.error('Failed to created internal "%s" network for tenant "%s" (PK: %s).',
+                         network_name, tenant.name, tenant.pk)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            tenant.internal_network_id = internal_network_id
+            tenant.save(update_fields=['internal_network_id'])
+            logger.info('Successfully created internal network for tenant "%s" (PK: %s).', tenant.name, tenant.pk)
 
     def allocate_floating_ip_address(self, service_project_link):
         neutron = self.neutron_admin_client
