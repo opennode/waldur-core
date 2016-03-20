@@ -76,7 +76,7 @@ class AlertViewSet(mixins.CreateModelMixin,
     queryset = models.Alert.objects.all()
     serializer_class = serializers.AlertSerializer
     lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_backends = (
         core_filters.DjangoMappingFilterBackend,
         filters.AdditionalAlertFilterBackend,
