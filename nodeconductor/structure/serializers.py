@@ -52,8 +52,8 @@ class PermissionFieldFilteringMixin(object):
             return fields
 
         for field_name in self.get_filtered_field_names():
-            fields[field_name].queryset = filter_queryset_for_user(
-                fields[field_name].queryset, user)
+            field = fields[field_name]
+            field.queryset = filter_queryset_for_user(field.queryset, user)
 
         return fields
 
@@ -61,6 +61,33 @@ class PermissionFieldFilteringMixin(object):
         raise NotImplementedError(
             'Implement get_filtered_field_names() '
             'to return list of filtered fields')
+
+
+class PermissionListSerializer(serializers.ListSerializer):
+    """
+    Allows to filter related queryset by user.
+    Counterpart of PermissionFieldFilteringMixin.
+
+    In order to use it set Meta.list_serializer_class. Example:
+
+    >>> class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
+    >>>     class Meta(BasicProjectGroupSerializer.Meta):
+    >>>         list_serializer_class = PermissionListSerializer
+    >>>
+    >>> class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+    >>>     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
+    """
+    def to_representation(self, data):
+        try:
+            request = self.context['request']
+            user = request.user
+        except (KeyError, AttributeError):
+            pass
+        else:
+            if isinstance(data, (django_models.Manager, django_models.query.QuerySet)):
+                data = filter_queryset_for_user(data.all(), user)
+
+        return super(PermissionListSerializer, self).to_representation(data)
 
 
 class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
@@ -78,11 +105,21 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
         fields = ('url', 'uuid', 'name')
 
 
+class PermissionProjectSerializer(BasicProjectSerializer):
+    class Meta(BasicProjectSerializer.Meta):
+        list_serializer_class = PermissionListSerializer
+
+
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
         fields = ('url', 'name', 'uuid')
         read_only_fields = ('name', 'uuid')
+
+
+class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
+    class Meta(BasicProjectGroupSerializer.Meta):
+        list_serializer_class = PermissionListSerializer
 
 
 class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
@@ -280,8 +317,8 @@ class CustomerImageSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
-    projects = serializers.SerializerMethodField()
-    project_groups = serializers.SerializerMethodField()
+    projects = PermissionProjectSerializer(many=True, read_only=True)
+    project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     image = DefaultImageField(required=False, read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
@@ -307,22 +344,6 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     @staticmethod
     def eager_load(queryset):
         return queryset.prefetch_related('quotas', 'projects', 'project_groups')
-
-    def _get_filtered_data(self, objects, serializer):
-        try:
-            user = self.context['request'].user
-            queryset = filter_queryset_for_user(objects, user)
-        except (KeyError, AttributeError):
-            pass
-
-        serializer_instance = serializer(queryset, many=True, context=self.context)
-        return serializer_instance.data
-
-    def get_projects(self, obj):
-        return self._get_filtered_data(obj.projects, BasicProjectSerializer)
-
-    def get_project_groups(self, obj):
-        return self._get_filtered_data(obj.project_groups, BasicProjectGroupSerializer)
 
 
 class CustomerUserSerializer(serializers.ModelSerializer):
@@ -385,7 +406,7 @@ class BalanceHistorySerializer(serializers.ModelSerializer):
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
-    projects = serializers.SerializerMethodField()
+    projects = PermissionProjectSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ProjectGroup
@@ -404,38 +425,10 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
+        protected_fields = ('customer',)
 
     def get_filtered_field_names(self):
         return 'customer',
-
-    def get_fields(self):
-        # TODO: Extract to a proper mixin
-        fields = super(ProjectGroupSerializer, self).get_fields()
-
-        try:
-            method = self.context['view'].request.method
-        except (KeyError, AttributeError):
-            return fields
-
-        if method in ('PUT', 'PATCH'):
-            fields['customer'].read_only = True
-
-        return fields
-
-    def _get_filtered_data(self, objects, serializer):
-        # XXX: this method completely duplicates _get_filtered_data in CustomerSerializer.
-        # We need to create mixin to follow DRY principle. (NC-578)
-        try:
-            user = self.context['request'].user
-            queryset = filter_queryset_for_user(objects, user)
-        except (KeyError, AttributeError):
-            queryset = objects.all()
-
-        serializer_instance = serializer(queryset, many=True, context=self.context)
-        return serializer_instance.data
-
-    def get_projects(self, obj):
-        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
