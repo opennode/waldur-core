@@ -241,13 +241,26 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     resize.title = 'Resize virtual machine'
 
 
-class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
+class SecurityGroupViewSet(viewsets.ModelViewSet):
     queryset = models.SecurityGroup.objects.all()
     serializer_class = serializers.SecurityGroupSerializer
     lookup_field = 'uuid'
     filter_class = filters.SecurityGroupFilter
     filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+
+    def initial(self, request, *args, **kwargs):
+        acceptable_states = {
+            'update': [models.SecurityGroup.States.OK],
+            'partial_update': [models.SecurityGroup.States.OK],
+            'destroy': [models.SecurityGroup.States.OK, models.SecurityGroup.States.ERRED],
+        }
+        if self.action in ('update', 'partial_update', 'destroy'):
+            obj = self.get_object()
+            if obj.state not in acceptable_states[self.action]:
+                raise IncorrectStateException('Modification allowed in stable states only.')
+
+        return super(SecurityGroupViewSet, self).initial(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         security_group = serializer.save()
