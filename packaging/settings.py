@@ -668,6 +668,7 @@ NODECONDUCTOR.update({
         'protocol': config.get('elasticsearch', 'protocol'),
         'use_ssl': config.get('elasticsearch', 'use_ssl'),
         'verify_certs': config.get('elasticsearch', 'verify_certs'),
+        'ca_certs': config.get('elasticsearch', 'ca_certs'),
     },
 
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
