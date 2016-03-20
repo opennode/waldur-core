@@ -228,7 +228,7 @@ class StateFilter(MappedMultipleChoiceFilter):
     def __init__(self, choices=DEFAULT_CHOICES, choice_mappings=None, **kwargs):
         if choice_mappings is None:
             choice_mappings = self.DEFAULT_CHOICE_MAPPING
-        super(SynchronizationStateFilter, self).__init__(choices=choices, choice_mappings=choice_mappings, **kwargs)
+        super(StateFilter, self).__init__(choices=choices, choice_mappings=choice_mappings, **kwargs)
 
 
 class URLFilter(django_filters.CharFilter):
