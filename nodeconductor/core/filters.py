@@ -200,6 +200,37 @@ class SynchronizationStateFilter(MappedMultipleChoiceFilter):
         super(SynchronizationStateFilter, self).__init__(choices=choices, choice_mappings=choice_mappings, **kwargs)
 
 
+class StateFilter(MappedMultipleChoiceFilter):
+
+    DEFAULT_CHOICES = (
+        ('Creation Scheduled', 'Creation Scheduled'),
+        ('Creating', 'Creating'),
+        ('Update Scheduled', 'Update Scheduled'),
+        ('Updating', 'Updating'),
+        ('Deletion Scheduled', 'Deletion Scheduled'),
+        ('Deleting', 'Deleting'),
+        ('OK', 'OK'),
+        ('Erred', 'Erred'),
+    )
+
+    States = core_models.StateMixin.States
+    DEFAULT_CHOICE_MAPPING = {
+        'Creation Scheduled': States.CREATION_SCHEDULED,
+        'Creating': States.CREATING,
+        'Update Scheduled': States.UPDATE_SCHEDULED,
+        'Updating': States.UPDATING,
+        'Deletion Scheduled': States.DELETION_SCHEDULED,
+        'Deleting': States.DELETING,
+        'OK': States.OK,
+        'Erred': States.ERRED,
+    }
+
+    def __init__(self, choices=DEFAULT_CHOICES, choice_mappings=None, **kwargs):
+        if choice_mappings is None:
+            choice_mappings = self.DEFAULT_CHOICE_MAPPING
+        super(SynchronizationStateFilter, self).__init__(choices=choices, choice_mappings=choice_mappings, **kwargs)
+
+
 class URLFilter(django_filters.CharFilter):
     """ Filter by hyperlinks. ViewSet name must be supplied in order to validate URL. """
 

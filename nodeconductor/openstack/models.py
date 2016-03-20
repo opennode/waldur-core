@@ -85,7 +85,7 @@ class Image(structure_models.ServiceProperty):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.NameMixin,
                     core_models.DescribableMixin,
-                    core_models.SynchronizableMixin):
+                    core_models.StateMixin):
 
     class Permissions(object):
         customer_path = 'service_project_link__project__customer'
@@ -106,9 +106,6 @@ class SecurityGroup(core_models.UuidMixin,
     @classmethod
     def get_url_name(cls):
         return 'openstack-sgp'
-
-
-SecurityGroup._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
 
 
 @python_2_unicode_compatible
