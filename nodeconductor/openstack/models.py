@@ -306,3 +306,12 @@ class Backup(core_models.UuidMixin,
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
         pass
+
+
+class Tenant(core_models.StateMixin, structure_models.ResourceMixin):
+    internal_network_id = models.CharField(max_length=64, blank=True)
+    external_network_id = models.CharField(max_length=64, blank=True)
+    availability_zone = models.CharField(
+        max_length=100, blank=True,
+        help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
+    )

@@ -835,21 +835,9 @@ class PaidResource(models.Model):
         abstract = True
 
 
-@python_2_unicode_compatible
-class Resource(MonitoringModelMixin,
-               core_models.UuidMixin,
-               core_models.DescribableMixin,
-               core_models.NameMixin,
-               core_models.ErrorMessageMixin,
-               core_models.SerializableAbstractMixin,
-               core_models.DescendantMixin,
-               LoggableMixin,
-               TimeStampedModel,
-               StructureModel):
-
-    """ Base resource class. Resource is a provisioned entity of a service,
-        for example: a VM in OpenStack or AWS, or a repository in Github.
-    """
+# XXX: This class should be deleted after NC-1237 implementation
+class OldStateResourceMixin(models.Model):
+    """ Provides old-style states for resources """
 
     class Meta(object):
         abstract = True
@@ -912,83 +900,10 @@ class Resource(MonitoringModelMixin,
             if s not in STABLE_STATES
         ])
 
-    class Permissions(object):
-        customer_path = 'service_project_link__project__customer'
-        project_path = 'service_project_link__project'
-        project_group_path = 'service_project_link__project__project_groups'
-        service_path = 'service_project_link__service'
-
-    service_project_link = NotImplemented
-    backend_id = models.CharField(max_length=255, blank=True)
-    tags = TaggableManager(related_name='+', blank=True)
-
-    start_time = models.DateTimeField(blank=True, null=True)
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED,
         choices=States.CHOICES,
         help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
-
-    def get_backend(self, **kwargs):
-        return self.service_project_link.get_backend(**kwargs)
-
-    def get_cost(self, start_date, end_date):
-        raise NotImplementedError(
-            "Please refer to nodeconductor.billing.tasks.debit_customers while implementing it")
-
-    def get_access_url(self):
-        # default behaviour. Override in subclasses if applicable
-        return None
-
-    def get_access_url_name(self):
-        return None
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_all_models(cls):
-        return [model for model in apps.get_models() if issubclass(model, cls)]
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_vm_models(cls):
-        # TODO: remove once iaas has been deprecated
-        from nodeconductor.iaas.models import Instance
-        return [resource for resource in cls.get_all_models()
-                if issubclass(resource, VirtualMachineMixin) or issubclass(resource, Instance)]
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_app_models(cls):
-        # TODO: remove once iaas has been deprecated
-        from nodeconductor.iaas.models import Instance
-        return [resource for resource in cls.get_all_models()
-                if not issubclass(resource, VirtualMachineMixin) and not issubclass(resource, Instance)]
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_url_name(cls):
-        """ This name will be used by generic relationships to membership model for URL creation """
-        return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
-
-    def get_log_fields(self):
-        return ('uuid', 'name', 'service_project_link', 'full_name')
-
-    @property
-    def full_name(self):
-        return '%s %s' % (SupportedServices.get_name_for_model(self).replace('.', ' '), self.name)
-
-    def _get_log_context(self, entity_name):
-        context = super(Resource, self)._get_log_context(entity_name)
-        # XXX: Add resource_full_name here, because event context does not support properties as fields
-        context['resource_full_name'] = self.full_name
-        # required for lookups in ElasticSearch by the client
-        context['resource_type'] = SupportedServices.get_name_for_model(self)
-        return context
-
-    def get_parents(self):
-        return [self.service_project_link]
-
-    def __str__(self):
-        return self.name
 
     @transition(field=state,
                 source=States.PROVISIONING_SCHEDULED,
@@ -1085,6 +1000,106 @@ class Resource(MonitoringModelMixin,
                 target=States.ERRED)
     def set_erred(self):
         pass
+
+
+@python_2_unicode_compatible
+class ResourceMixin(MonitoringModelMixin,
+                    core_models.UuidMixin,
+                    core_models.DescribableMixin,
+                    core_models.NameMixin,
+                    core_models.ErrorMessageMixin,
+                    core_models.SerializableAbstractMixin,
+                    core_models.DescendantMixin,
+                    LoggableMixin,
+                    TimeStampedModel,
+                    StructureModel):
+
+    """ Base resource class. Resource is a provisioned entity of a service,
+        for example: a VM in OpenStack or AWS, or a repository in Github.
+    """
+
+    class Meta(object):
+        abstract = True
+
+    class Permissions(object):
+        customer_path = 'service_project_link__project__customer'
+        project_path = 'service_project_link__project'
+        project_group_path = 'service_project_link__project__project_groups'
+        service_path = 'service_project_link__service'
+
+    service_project_link = NotImplemented
+    backend_id = models.CharField(max_length=255, blank=True)
+    tags = TaggableManager(related_name='+', blank=True)
+
+    start_time = models.DateTimeField(blank=True, null=True)
+
+    def get_backend(self, **kwargs):
+        return self.service_project_link.get_backend(**kwargs)
+
+    def get_cost(self, start_date, end_date):
+        raise NotImplementedError(
+            "Please refer to nodeconductor.billing.tasks.debit_customers while implementing it")
+
+    def get_access_url(self):
+        # default behaviour. Override in subclasses if applicable
+        return None
+
+    def get_access_url_name(self):
+        return None
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_vm_models(cls):
+        # TODO: remove once iaas has been deprecated
+        from nodeconductor.iaas.models import Instance
+        return [resource for resource in cls.get_all_models()
+                if issubclass(resource, VirtualMachineMixin) or issubclass(resource, Instance)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_app_models(cls):
+        # TODO: remove once iaas has been deprecated
+        from nodeconductor.iaas.models import Instance
+        return [resource for resource in cls.get_all_models()
+                if not issubclass(resource, VirtualMachineMixin) and not issubclass(resource, Instance)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        """ This name will be used by generic relationships to membership model for URL creation """
+        return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
+
+    def get_log_fields(self):
+        return ('uuid', 'name', 'service_project_link', 'full_name')
+
+    @property
+    def full_name(self):
+        return '%s %s' % (SupportedServices.get_name_for_model(self).replace('.', ' '), self.name)
+
+    def _get_log_context(self, entity_name):
+        context = super(ResourceMixin, self)._get_log_context(entity_name)
+        # XXX: Add resource_full_name here, because event context does not support properties as fields
+        context['resource_full_name'] = self.full_name
+        # required for lookups in ElasticSearch by the client
+        context['resource_type'] = SupportedServices.get_name_for_model(self)
+        return context
+
+    def get_parents(self):
+        return [self.service_project_link]
+
+    def __str__(self):
+        return self.name
+
+
+class Resource(OldStateResourceMixin, ResourceMixin):
+
+    class Meta(object):
+        abstract = True
 
 
 class PublishableResource(PublishableMixin, Resource):
