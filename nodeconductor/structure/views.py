@@ -760,11 +760,11 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         Count number of entities related to customer
         {
             "alerts": 12,
-            "events": 0,
             "vms": 1,
             "apps": 0,
             "services": 1,
-            "projects": 1
+            "projects": 1,
+            "users": 3
         }
         """
         self.customer = self.get_object()
@@ -777,7 +777,8 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             'vms': self.get_vms(),
             'apps': self.get_apps(),
             'projects': self.get_projects(),
-            'services': self.get_services()
+            'services': self.get_services(),
+            'users': self.get_users()
         })
 
     def get_alerts(self):
@@ -799,6 +800,9 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
 
     def get_services(self):
         return self.customer.quotas.get(name=models.Customer.Quotas.nc_service_count).usage
+
+    def get_users(self):
+        return self.customer.quotas.get(name=models.Customer.Quotas.nc_user_count).usage
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
