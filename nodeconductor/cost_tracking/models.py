@@ -58,9 +58,6 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
 
     objects = managers.PriceEstimateManager('scope')
 
-    class Meta:
-        unique_together = ('content_type', 'object_id', 'month', 'year', 'is_manually_input')
-
     @classmethod
     @lru_cache(maxsize=1)
     def get_estimated_models(cls):
