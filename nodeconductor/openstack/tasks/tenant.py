@@ -15,4 +15,4 @@ def update_tenant_name(service_project_link_str):
 def remove_tenant(settings_uuid, tenant_id):
     settings = ServiceSettings.objects.get(uuid=settings_uuid)
     backend = settings.get_backend(tenant_id=tenant_id)
-    backend.cleanup(dryrun=False)
+    backend.cleanup_tenant(dryrun=False)

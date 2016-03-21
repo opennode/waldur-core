@@ -486,8 +486,7 @@ class BackupRestorationSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
-
+class OpenStackResourceSerializerMixin(object):
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
         view_name='openstack-detail',
@@ -498,6 +497,9 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         view_name='openstack-spl-detail',
         queryset=models.OpenStackServiceProjectLink.objects.all(),
         write_only=True)
+
+
+class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     flavor = serializers.HyperlinkedRelatedField(
         view_name='openstack-flavor-detail',

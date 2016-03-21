@@ -315,3 +315,6 @@ class Tenant(core_models.StateMixin, structure_models.ResourceMixin):
         max_length=100, blank=True,
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
     )
+
+    def get_backend(self):
+        return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)

@@ -1243,7 +1243,7 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
-    def cleanup(self, dryrun=True):
+    def cleanup_tenant(elf, dryrun=True):
         if not self.tenant_id:
             logger.info("Nothing to cleanup, tenant_id of %s is not set" % self)
             return
@@ -1866,6 +1866,31 @@ class OpenStackBackend(ServiceBackend):
             logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
                            ' option is not defined in settings %s option', service_project_link.service.settings.name)
             return None
+
+    def connect_tenant_to_external_network(self, tenant, external_network_id):
+        neutron = self.neutron_admin_client
+        logger.debug('About to create external network for tenant %s')
+
+        try:
+            # check if the network actually exists
+            response = neutron.show_network(external_network_id)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('External network %s does not exist. Stale data in database?', external_network_id)
+            six.reraise(OpenStackBackendError, e)
+
+        network_name = response['network']['name']
+        subnet_id = response['network']['subnets'][0]
+        # XXX: refactor function call, split get_or_create_router into more fine grained
+        self.get_or_create_router(network_name, subnet_id,
+                                  external=True, network_id=response['network']['id'])
+
+        tenant.external_network_id = external_network_id
+        tenant.save()
+
+        logger.info('Router between external network %s and tenant %s was successfully created',
+                    external_network_id, tenant.backend_id)
+
+        return external_network_id
 
     def get_or_create_router(self, network_name, subnet_id, external=False, network_id=None):
         neutron = self.neutron_admin_client
