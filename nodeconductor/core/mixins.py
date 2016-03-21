@@ -79,9 +79,12 @@ class UpdateExecutorMixin(object):
     update_executor = NotImplemented
 
     def perform_update(self, serializer):
+        old_instance = self.get_object()
         super(UpdateExecutorMixin, self).perform_update(serializer)
         instance = self.get_object()
-        self.update_executor.execute(instance)
+        updated_fields = [f.name for f in instance._meta.fields
+                          if getattr(instance, f.name) != getattr(old_instance, f.name)]
+        self.update_executor.execute(instance, updated_fields=updated_fields)
 
 
 class DeleteExecutorMixin(object):

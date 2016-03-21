@@ -52,7 +52,11 @@ class TenantUpdateExecutor(executors.UpdateExecutor):
 
     @classmethod
     def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
-        return tasks.BackendMethodTask().si(serialized_tenant, 'update_tenant', state_transition='begin_updating')
+        updated_fields = kwargs['updated_fields']
+        if 'name' in updated_fields or 'description' in updated_fields:
+            return tasks.BackendMethodTask().si(serialized_tenant, 'update_tenant', state_transition='begin_updating')
+        else:
+            return tasks.StateTransitionTask().si(serialized_tenant, state_transition='begin_updating')
 
 
 class TenantDeleteExecutor(executors.DeleteExecutor):

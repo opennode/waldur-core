@@ -319,5 +319,7 @@ class Tenant(core_models.StateMixin, structure_models.ResourceMixin):
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
     )
 
+    tracker = FieldTracker()
+
     def get_backend(self):
         return self.service_project_link.service.get_backend(tenant_id=self.backend_id)

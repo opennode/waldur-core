@@ -82,11 +82,15 @@ class BaseExecutor(object):
         callback.apply()
 
 
+class ExecutorException(Exception):
+    pass
+
+
 class ErrorExecutorMixin(object):
     """ Set object as erred on fail. """
 
     @classmethod
-    def get_failure_signature(cls, instance,  serialized_instance, **kwargs):
+    def get_failure_signature(cls, instance, serialized_instance, **kwargs):
         return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
@@ -94,19 +98,19 @@ class SuccessExecutorMixin(object):
     """ Set object as OK on success """
 
     @classmethod
-    def get_success_signature(cls, instance,  serialized_instance, **kwargs):
+    def get_success_signature(cls, instance, serialized_instance, **kwargs):
         return tasks.StateTransitionTask().si(serialized_instance, state_transition='set_ok')
 
 
 class DeleteExecutorMixin(object):
-    """ Delete object on success """
+    """ Delete object on success or if force flag is enabled """
 
     @classmethod
-    def get_success_signature(cls, instance,  serialized_instance, **kwargs):
+    def get_success_signature(cls, instance, serialized_instance, **kwargs):
         return tasks.DeletionTask().si(serialized_instance)
 
     @classmethod
-    def get_failure_signature(cls, instance,  serialized_instance, force=False, **kwargs):
+    def get_failure_signature(cls, instance, serialized_instance, force=False, **kwargs):
         if force:
             return tasks.DeletionTask().si(serialized_instance)
         else:
@@ -134,6 +138,12 @@ class UpdateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     def pre_apply(cls, instance, **kwargs):
         instance.schedule_updating()
         instance.save(update_fields=['state'])
+
+    @classmethod
+    def execute(cls, instance, async=True, **kwargs):
+        if 'updated_fields' not in kwargs:
+            raise ExecutorException('updated_fields keyword argument should be defined for UpdateExecutor.')
+        super(UpdateExecutor, cls).execute(instance, async=async, **kwargs)
 
 
 class DeleteExecutor(DeleteExecutorMixin, BaseExecutor):
