@@ -2252,6 +2252,17 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.warning('Cannot update tenant name for link %s without tenant ID', service_project_link)
 
+    def update_tenant(self, tenant):
+        keystone = self.keystone_admin_client
+        logger.debug('About to update tenant `%s` (PK: %s)', tenant.name, tenant.backend_id)
+        try:
+            keystone.tenants.update(tenant.backend_id, name=tenant.name, description=tenant.description)
+        except keystone_exceptions.NotFound as e:
+            logger.error('Tenant with id %s does not exist', tenant.backend_id)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Successfully updated `%s` (PK: %s)', tenant.name, tenant.backend_id)
+
     def create_snapshot(self, volume_id, cinder):
         """
         Create snapshot from volume

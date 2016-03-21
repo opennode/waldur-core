@@ -730,6 +730,12 @@ class TenantSerializer(structure_serializers.BaseResourceSerializer):
             'internal_network_id', 'external_network_id',
         )
 
+    def create(self, validated_data):
+        spl = validated_data['service_project_link']
+        if not validated_data.get('availability_zone'):
+            validated_data['availability_zone'] = spl.service.settings.options.get('availability_zone', '')
+        return super(TenantSerializer, self).create(validated_data)
+
 
 class LicenseSerializer(serializers.ModelSerializer):
 

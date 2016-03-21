@@ -531,5 +531,5 @@ class TenantViewSet(StateExecutorViewSet):
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     create_executor = executors.TenantCreateExecutor
-    update_executor = executors.TenantDeleteExecutor  # XXX
+    update_executor = executors.TenantUpdateExecutor
     delete_executor = executors.TenantDeleteExecutor
