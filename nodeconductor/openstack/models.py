@@ -309,6 +309,9 @@ class Backup(core_models.UuidMixin,
 
 
 class Tenant(core_models.StateMixin, structure_models.ResourceMixin):
+    service_project_link = models.ForeignKey(
+        OpenStackServiceProjectLink, related_name='tenants', on_delete=models.PROTECT)
+
     internal_network_id = models.CharField(max_length=64, blank=True)
     external_network_id = models.CharField(max_length=64, blank=True)
     availability_zone = models.CharField(
@@ -317,4 +320,4 @@ class Tenant(core_models.StateMixin, structure_models.ResourceMixin):
     )
 
     def get_backend(self):
-        return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
+        return self.service_project_link.service.get_backend(tenant_id=self.backend_id)

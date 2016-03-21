@@ -945,8 +945,8 @@ class OpenStackBackend(ServiceBackend):
         keystone = self.keystone_admin_client
 
         try:
-            tenant = keystone.tenants.create(tenant_name=tenant.name, description=tenant.description)
-            tenant.backend_id = tenant.id
+            backend_tenant = keystone.tenants.create(tenant_name=tenant.name, description=tenant.description)
+            tenant.backend_id = backend_tenant.id
             tenant.save(update_fields=['backend_id'])
         except keystone_exceptions.ClientException as e:
             logger.error('Failed to provision tenant "%s" (PK: %s).', tenant.name, tenant.pk)
@@ -966,7 +966,7 @@ class OpenStackBackend(ServiceBackend):
                 keystone.roles.add_user_role(
                     user=admin_user.id,
                     role=admin_role.id,
-                    tenant=tenant.id)
+                    tenant=tenant.backend_id)
             except keystone_exceptions.Conflict:
                 pass
         except keystone_exceptions.ClientException as e:
@@ -1243,7 +1243,8 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
-    def cleanup_tenant(elf, dryrun=True):
+    # XXX: This method should be deleted after tenant separation from SPL.
+    def cleanup(self, dryrun=True):
         if not self.tenant_id:
             logger.info("Nothing to cleanup, tenant_id of %s is not set" % self)
             return
@@ -1336,6 +1337,99 @@ class OpenStackBackend(ServiceBackend):
         logger.info("Deleting tenant %s", self.tenant_id)
         if not dryrun:
             keystone.tenants.delete(self.tenant_id)
+
+    def cleanup_tenant(self, tenant, dryrun=True):
+        logger.debug('About to cleanup tenant "%s" (PK: %s)', tenant.name, tenant.pk)
+        if not tenant.backend_id:
+            return
+        # floatingips
+        neutron = self.neutron_admin_client
+        floatingips = neutron.list_floatingips(tenant_id=tenant.backend_id)
+        if floatingips:
+            for floatingip in floatingips['floatingips']:
+                logger.info("Deleting floating IP %s from tenant %s", floatingip['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.delete_floatingip(floatingip['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Floating IP %s is already gone from tenant %s", floatingip['id'], tenant.backend_id)
+
+        # ports
+        ports = neutron.list_ports(tenant_id=tenant.backend_id)
+        if ports:
+            for port in ports['ports']:
+                logger.info("Deleting port %s from tenant %s", port['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Port %s is already gone from tenant %s", port['id'], tenant.backend_id)
+
+        # routers
+        routers = neutron.list_routers(tenant_id=tenant.backend_id)
+        if routers:
+            for router in routers['routers']:
+                logger.info("Deleting router %s from tenant %s", router['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.delete_router(router['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Router %s is already gone from tenant %s", router['id'], tenant.backend_id)
+
+        # networks
+        networks = neutron.list_networks(tenant_id=tenant.backend_id)
+        if networks:
+            for network in networks['networks']:
+                for subnet in network['subnets']:
+                    logger.info("Deleting subnetwork %s from tenant %s", subnet, tenant.backend_id)
+                    if not dryrun:
+                        try:
+                            neutron.delete_subnet(subnet)
+                        except neutron_exceptions.NotFound:
+                            logger.info("Subnetwork %s is already gone from tenant %s", subnet, tenant.backend_id)
+
+                logger.info("Deleting network %s from tenant %s", network['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.delete_network(network['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Network %s is already gone from tenant %s", network['id'], tenant.backend_id)
+
+        # security groups
+        nova = self.nova_client
+        sgroups = nova.security_groups.list()
+        for sgroup in sgroups:
+            logger.info("Deleting security group %s from tenant %s", sgroup.id, tenant.backend_id)
+            if not dryrun:
+                sgroup.delete()
+
+        # servers (instances)
+        servers = nova.servers.list()
+        for server in servers:
+            logger.info("Deleting server %s from tenant %s", server.id, tenant.backend_id)
+            if not dryrun:
+                server.delete()
+
+        # snapshots
+        cinder = self.cinder_client
+        snapshots = cinder.volume_snapshots.list()
+        for snapshot in snapshots:
+            logger.info("Deleting snapshots %s from tenant %s", snapshot.id, tenant.backend_id)
+            if not dryrun:
+                snapshot.delete()
+
+        # volumes
+        volumes = cinder.volumes.list()
+        for volume in volumes:
+            logger.info("Deleting volume %s from tenant %s", volume.id, tenant.backend_id)
+            if not dryrun:
+                volume.delete()
+
+        # tenant
+        keystone = self.keystone_admin_client
+        logger.info("Deleting tenant %s", tenant.backend_id)
+        if not dryrun:
+            keystone.tenants.delete(tenant.backend_id)
 
     def cleanup_instance(self, backend_id=None, external_ips=None, internal_ips=None,
                          system_volume_id=None, data_volume_id=None):
@@ -1869,7 +1963,7 @@ class OpenStackBackend(ServiceBackend):
 
     def connect_tenant_to_external_network(self, tenant, external_network_id):
         neutron = self.neutron_admin_client
-        logger.debug('About to create external network for tenant %s')
+        logger.debug('About to create external network for tenant "%s" (PK: %s)', tenant.name, tenant.pk)
 
         try:
             # check if the network actually exists

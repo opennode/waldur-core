@@ -486,7 +486,8 @@ class BackupRestorationSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class OpenStackResourceSerializerMixin(object):
+class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
+
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
         view_name='openstack-detail',
@@ -497,9 +498,6 @@ class OpenStackResourceSerializerMixin(object):
         view_name='openstack-spl-detail',
         queryset=models.OpenStackServiceProjectLink.objects.all(),
         write_only=True)
-
-
-class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     flavor = serializers.HyperlinkedRelatedField(
         view_name='openstack-flavor-detail',
@@ -707,6 +705,30 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         if flavor is None and disk_size is None:
             raise serializers.ValidationError("Either disk_size or flavor is required")
         return attrs
+
+
+class TenantSerializer(structure_serializers.BaseResourceSerializer):
+
+    service = serializers.HyperlinkedRelatedField(
+        source='service_project_link.service',
+        view_name='openstack-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    service_project_link = serializers.HyperlinkedRelatedField(
+        view_name='openstack-spl-detail',
+        queryset=models.OpenStackServiceProjectLink.objects.all(),
+        write_only=True)
+
+    class Meta(structure_serializers.BaseResourceSerializer.Meta):
+        model = models.Tenant
+        view_name = 'openstack-tenant-detail'
+        fields = structure_serializers.BaseResourceSerializer.Meta.fields + (
+            'availability_zone', 'internal_network_id', 'external_network_id',
+        )
+        read_only_fields = structure_serializers.BaseResourceSerializer.Meta.read_only_fields + (
+            'internal_network_id', 'external_network_id',
+        )
 
 
 class LicenseSerializer(serializers.ModelSerializer):

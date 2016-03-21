@@ -836,7 +836,7 @@ class PaidResource(models.Model):
 
 
 # XXX: This class should be deleted after NC-1237 implementation
-class OldStateResourceMixin(models.Model):
+class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
     """ Provides old-style states for resources """
 
     class Meta(object):
@@ -1007,7 +1007,6 @@ class ResourceMixin(MonitoringModelMixin,
                     core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
-                    core_models.ErrorMessageMixin,
                     core_models.SerializableAbstractMixin,
                     core_models.DescendantMixin,
                     LoggableMixin,
