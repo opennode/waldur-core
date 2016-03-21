@@ -727,14 +727,14 @@ class OpenStackBackend(ServiceBackend):
                 if nc_group.state in SynchronizationStates.STABLE_STATES:
                     nc_group.schedule_syncing()
                     nc_group.save()
-                send_task('openstack', 'update_security_group')(nc_group.uuid.hex)
+                self.update_security_group(nc_group)
 
             # creating nonexistent and unsynchronized security groups
             for nc_group in nonexistent_groups:
                 if nc_group.state in SynchronizationStates.STABLE_STATES:
                     nc_group.schedule_syncing()
                     nc_group.save()
-                send_task('openstack', 'create_security_group')(nc_group.uuid.hex)
+                self.create_security_group(nc_group)
 
         except Exception as e:
             event_logger.service_project_link.warning(
