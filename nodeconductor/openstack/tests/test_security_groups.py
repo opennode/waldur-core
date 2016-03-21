@@ -242,14 +242,14 @@ class SecurityGroupDeleteTest(test.APITransactionTestCase):
 
             mocked_execute.assert_called_once_with(self.security_group)
 
-    def test_security_group_can_not_be_deleted_in_unstable_state(self):
+    def test_security_group_can_be_deleted_from_erred_state(self):
         self.security_group.state = SynchronizationStates.ERRED
         self.security_group.save()
 
         self.client.force_authenticate(self.admin)
         response = self.client.delete(self.url)
 
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
 
 class SecurityGroupRetreiveTest(test.APITransactionTestCase):
