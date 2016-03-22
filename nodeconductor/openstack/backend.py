@@ -183,7 +183,7 @@ def log_backend_action(action=None):
             except OpenStackBackendError:
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
             else:
-                logger.info('Action `` was executed successfully for %s `%s` (PK: %s).',
+                logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
                             action_name, str(instance), instance.pk)
                 return result
         return wrapped
