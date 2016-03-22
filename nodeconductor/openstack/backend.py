@@ -1,5 +1,6 @@
 import datetime
 import dateutil.parser
+import functools
 import logging
 import re
 import sys
@@ -164,6 +165,29 @@ class OpenStackClient(object):
         }
 
         return ceilometer_client.Client('2', **kwargs)
+
+
+def log_backend_action(action=None):
+    """ Logging for backend method.
+
+    Expects django model instance as first argument.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapped(instance, *args, **kwargs):
+            action_name = func.func_name.replace('_', ' ') if action is None else action
+
+            logger.debug('About to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
+            try:
+                result = func(instance, *args, **kwargs)
+            except OpenStackBackendError:
+                logger.error('Failed to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
+            else:
+                logger.info('Action `` was executed successfully for %s `%s` (PK: %s).',
+                            action_name, str(instance), instance.pk)
+                return result
+        return wrapped
+    return decorator
 
 
 class OpenStackBackend(ServiceBackend):
@@ -940,23 +964,19 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
+    @log_backend_action()
     def create_tenant(self, tenant):
-        logger.debug('About to create tenant "%s" (PK: %s).', tenant.name, tenant.pk)
         keystone = self.keystone_admin_client
-
         try:
             backend_tenant = keystone.tenants.create(tenant_name=tenant.name, description=tenant.description)
             tenant.backend_id = backend_tenant.id
             tenant.save(update_fields=['backend_id'])
         except keystone_exceptions.ClientException as e:
-            logger.error('Failed to provision tenant "%s" (PK: %s).', tenant.name, tenant.pk)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Successfully to created tenant "%s" (PK: %s).', tenant.name, tenant.pk)
 
+    @log_backend_action()
     def add_admin_user_to_tenant(self, tenant):
         """ Add user from openstack settings to new tenant """
-        logger.debug('About to add admin user to tenant "%s" (PK: %s).', tenant.name, tenant.pk)
         keystone = self.keystone_admin_client
 
         try:
@@ -970,10 +990,7 @@ class OpenStackBackend(ServiceBackend):
             except keystone_exceptions.Conflict:
                 pass
         except keystone_exceptions.ClientException as e:
-            logger.error('Failed to add admin user to tenant "%s" (PK: %s).', tenant.name, tenant.pk)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Successfully added admin user to tenant "%s" (PK: %s).', tenant.name, tenant.pk)
 
     def get_instance(self, instance_id):
         try:
@@ -1338,8 +1355,8 @@ class OpenStackBackend(ServiceBackend):
         if not dryrun:
             keystone.tenants.delete(self.tenant_id)
 
+    @log_backend_action()
     def cleanup_tenant(self, tenant, dryrun=True):
-        logger.debug('About to cleanup tenant "%s" (PK: %s)', tenant.name, tenant.pk)
         if not tenant.backend_id:
             return
         # floatingips
@@ -1429,7 +1446,10 @@ class OpenStackBackend(ServiceBackend):
         keystone = self.keystone_admin_client
         logger.info("Deleting tenant %s", tenant.backend_id)
         if not dryrun:
-            keystone.tenants.delete(tenant.backend_id)
+            try:
+                keystone.tenants.delete(tenant.backend_id)
+            except keystone_exceptions.ClientException as e:
+                six.reraise(OpenStackBackendError, e)
 
     def cleanup_instance(self, backend_id=None, external_ips=None, internal_ips=None,
                          system_volume_id=None, data_volume_id=None):
@@ -1599,34 +1619,28 @@ class OpenStackBackend(ServiceBackend):
             else:
                 logger.info('Security group rule with id %s successfully created in backend', nc_rule.id)
 
+    @log_backend_action()
     def create_security_group(self, security_group):
         nova = self.nova_client
-        logger.debug('About to create security group %s in backend', security_group.uuid)
         try:
             backend_security_group = nova.security_groups.create(name=security_group.name, description='')
             security_group.backend_id = backend_security_group.id
             security_group.save()
             self.push_security_group_rules(security_group)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to create openstack security group with for %s in backend', security_group.uuid)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Security group %s successfully created in backend', security_group.uuid)
 
+    @log_backend_action()
     def delete_security_group(self, security_group):
         nova = self.nova_client
-        logger.debug('About to delete security group %s from backend', security_group.uuid)
         try:
             nova.security_groups.delete(security_group.backend_id)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to remove openstack security group %s from backend', security_group.uuid)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Security group %s successfully deleted from backend', security_group.uuid)
 
+    @log_backend_action()
     def update_security_group(self, security_group):
         nova = self.nova_client
-        logger.debug('About to update security group %s in backend', security_group.uuid)
         try:
             backend_security_group = nova.security_groups.find(id=security_group.backend_id)
             if backend_security_group.name != security_group.name:
@@ -1634,10 +1648,7 @@ class OpenStackBackend(ServiceBackend):
                     backend_security_group, name=security_group.name, description='')
             self.push_security_group_rules(security_group)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to update security group %s in backend', security_group.uuid)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.debug('Security group %s successfully updated in backend', security_group.uuid)
 
     def create_external_network(self, service_project_link, neutron, network_ip, network_prefix,
                                 vlan_id=None, vxlan_id=None, ips_count=None):
@@ -1810,9 +1821,9 @@ class OpenStackBackend(ServiceBackend):
 
         return service_project_link.internal_network_id
 
+    @log_backend_action('create internal network for tenant')
     def create_internal_network(self, tenant):
         neutron = self.neutron_admin_client
-        logger.debug('About to create internal network for tenant "%s" (PK: %s).', tenant.name, tenant.pk)
 
         network_name = '{0}-int-net'.format(tenant.name)
         try:
@@ -1844,13 +1855,10 @@ class OpenStackBackend(ServiceBackend):
             create_response = neutron.create_subnet({'subnets': [subnet_data]})
             self.get_or_create_router(network_name, create_response['subnets'][0]['id'])
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
-            logger.error('Failed to created internal "%s" network for tenant "%s" (PK: %s).',
-                         network_name, tenant.name, tenant.pk)
             six.reraise(OpenStackBackendError, e)
         else:
             tenant.internal_network_id = internal_network_id
             tenant.save(update_fields=['internal_network_id'])
-            logger.info('Successfully created internal network for tenant "%s" (PK: %s).', tenant.name, tenant.pk)
 
     def allocate_floating_ip_address(self, service_project_link):
         neutron = self.neutron_admin_client
