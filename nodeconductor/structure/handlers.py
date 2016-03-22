@@ -438,7 +438,7 @@ def sync_service_settings_with_backend(sender, instance, created=False, **kwargs
 
     backend = instance.get_backend()
     if backend.has_global_properties():
-        instance.set_in_sync()
+        instance.state = SynchronizationStates.IN_SYNC
         instance.save(update_fields=['state'])
         return
 
