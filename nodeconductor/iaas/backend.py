@@ -267,6 +267,10 @@ class OpenStackBackend(OpenStackClient):
 
     MAX_USERNAME_LENGTH = 64
 
+    # For compatibility with ServiceBackend
+    def __init__(self, *args, **kwargs):
+        pass
+
     @classmethod
     def create_session(
             cls, keystone_url=None, instance_uuid=None, membership_id=None, check_tenant=True, membership=None,
@@ -308,7 +312,7 @@ class OpenStackBackend(OpenStackClient):
     def get_core_ram_size(self, backend_ram_size):
         return backend_ram_size
 
-    # ServiceBackend compability methods
+    # ServiceBackend compatibility methods
     def stop(self, instance):
         instance.schedule_stopping()
         instance.save()
