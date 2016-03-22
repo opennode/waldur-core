@@ -10,7 +10,7 @@ from nodeconductor.iaas.models import OpenStackSettings
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure import SupportedServices, signals
-from nodeconductor.structure.models import Customer, CustomerRole
+from nodeconductor.structure.models import Customer, CustomerRole, VirtualMachineMixin
 from nodeconductor.structure.tests import factories
 
 
@@ -127,5 +127,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
                     resource_url = self._get_url(
                         SupportedServices.get_detail_view_for_model(resource_model), uuid=resource.uuid.hex)
 
-                    response = self.client.post(resource_url + 'start/')
-                    self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+                    if isinstance(resource, VirtualMachineMixin):
+                        response = self.client.post(resource_url + 'start/')
+                        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)

@@ -2,7 +2,7 @@ from mock import patch
 
 from rest_framework import test, status
 
-from nodeconductor.core.mixins import SynchronizationStates
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas import models
 from nodeconductor.iaas.tests import factories
 from nodeconductor.structure import models as structure_models
