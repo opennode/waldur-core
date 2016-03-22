@@ -10,6 +10,8 @@ All done. NodeConductor API should be available at http://myserver/api/ (port 80
 
 Note that MySQL and Redis may run on a separate servers -- in this case modify installation process accordingly.
 
+For plugin installation instructions see NodeConductor's plugin `section <../index.html#nodeconductor-plugins>`_.
+
 Configuration
 +++++++++++++
 
