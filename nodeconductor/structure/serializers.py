@@ -1266,7 +1266,7 @@ class PublishableResourceSerializer(BaseResourceSerializer):
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
-class SummaryResourceSerializer(serializers.BaseSerializer):
+class SummaryResourceSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         serializer = SupportedServices.get_resource_serializer(instance.__class__)
