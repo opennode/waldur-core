@@ -81,7 +81,8 @@ class UpdateExecutorMixin(object):
     def perform_update(self, serializer):
         old_instance = self.get_object()
         super(UpdateExecutorMixin, self).perform_update(serializer)
-        instance = self.get_object()
+        instance = old_instance.refresh_from_db()
+        # Warning! M2M field will not be returned in updated_fields.
         updated_fields = [f.name for f in instance._meta.fields
                           if getattr(instance, f.name) != getattr(old_instance, f.name)]
         self.update_executor.execute(instance, updated_fields=updated_fields)
