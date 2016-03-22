@@ -180,8 +180,9 @@ def log_backend_action(action=None):
             logger.debug('About to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
             try:
                 result = func(instance, *args, **kwargs)
-            except OpenStackBackendError:
+            except OpenStackBackendError as e:
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
+                six.reraise(OpenStackBackendError, e)
             else:
                 logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
                             action_name, str(instance), instance.pk)
