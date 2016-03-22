@@ -174,12 +174,12 @@ def log_backend_action(action=None):
     """
     def decorator(func):
         @functools.wraps(func)
-        def wrapped(instance, *args, **kwargs):
+        def wrapped(self, instance, *args, **kwargs):
             action_name = func.func_name.replace('_', ' ') if action is None else action
 
             logger.debug('About to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
             try:
-                result = func(instance, *args, **kwargs)
+                result = func(self, instance, *args, **kwargs)
             except OpenStackBackendError as e:
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
                 six.reraise(OpenStackBackendError, e)
