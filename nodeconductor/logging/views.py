@@ -76,7 +76,7 @@ class AlertViewSet(mixins.CreateModelMixin,
     queryset = models.Alert.objects.all()
     serializer_class = serializers.AlertSerializer
     lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (
         core_filters.DjangoMappingFilterBackend,
         filters.AdditionalAlertFilterBackend,
@@ -131,6 +131,12 @@ class AlertViewSet(mixins.CreateModelMixin,
                 alerts_severities_count[severity_name.lower()] = 0
 
         return response.Response(alerts_severities_count, status=status.HTTP_200_OK)
+
+    def perform_create(self, serializer):
+        if not self.request.user.is_staff:
+            raise PermissionDenied('You do not have permission to perform this action.')
+
+        super(AlertViewSet, self).perform_create(serializer)
 
 
 class BaseHookViewSet(viewsets.ModelViewSet):
