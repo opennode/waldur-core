@@ -84,7 +84,7 @@ class UpdateExecutorMixin(object):
         before_update_fields = {f.name: getattr(instance, f.name) for f in instance._meta.fields}
         instance.refresh_from_db()
         # Warning! M2M field will not be returned in updated_fields.
-        updated_fields = {k for k, v in before_update_fields if v != getattr(instance, k)}
+        updated_fields = {k for k, v in before_update_fields.items() if v != getattr(instance, k)}
         self.update_executor.execute(instance, updated_fields=updated_fields)
 
 
