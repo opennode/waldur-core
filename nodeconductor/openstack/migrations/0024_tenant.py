@@ -2,9 +2,10 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+import django.utils.timezone
 import django_fsm
 import nodeconductor.core.models
-import django.utils.timezone
+import django.db.models.deletion
 import nodeconductor.logging.log
 import uuidfield.fields
 import taggit.managers
@@ -36,6 +37,7 @@ class Migration(migrations.Migration):
                 ('internal_network_id', models.CharField(max_length=64, blank=True)),
                 ('external_network_id', models.CharField(max_length=64, blank=True)),
                 ('availability_zone', models.CharField(help_text='Optional availability group. Will be used for all instances provisioned in this tenant', max_length=100, blank=True)),
+                ('service_project_link', models.ForeignKey(related_name='tenants', on_delete=django.db.models.deletion.PROTECT, to='openstack.OpenStackServiceProjectLink')),
                 ('tags', taggit.managers.TaggableManager(to='taggit.Tag', through='taggit.TaggedItem', blank=True, help_text='A comma-separated list of tags.', verbose_name='Tags')),
             ],
             options={
