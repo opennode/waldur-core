@@ -40,7 +40,7 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
     """
 
     content_type = models.ForeignKey(ContentType, null=True, related_name='+')
-    object_id = models.PositiveIntegerField()
+    object_id = models.PositiveIntegerField(null=True)
     scope = GenericForeignKey('content_type', 'object_id')
 
     scope_customer = models.ForeignKey(structure_models.Customer, null=True, related_name='+')
@@ -57,6 +57,9 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
     is_visible = models.BooleanField(default=True)
 
     objects = managers.PriceEstimateManager('scope')
+
+    class Meta:
+        unique_together = ('content_type', 'object_id', 'month', 'year', 'is_manually_input')
 
     @classmethod
     @lru_cache(maxsize=1)

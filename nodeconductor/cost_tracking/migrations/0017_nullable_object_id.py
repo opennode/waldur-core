@@ -11,8 +11,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterUniqueTogether(
-            name='priceestimate',
-            unique_together=set([]),
+        migrations.AlterField(
+            model_name='priceestimate',
+            name='object_id',
+            field=models.PositiveIntegerField(null=True),
         ),
     ]
