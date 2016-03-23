@@ -13,3 +13,10 @@ from .network import *
 from .security_group import *
 from .tenant import *
 from .volume import *
+
+from celery import shared_task
+
+@shared_task
+def test(a, b):
+    print a + b
+    return a + b

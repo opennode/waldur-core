@@ -583,6 +583,46 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
+    @log_backend_action('push quotas for tenant')
+    def push_tenant_quotas(self, tenant, quotas):
+        cinder_quotas = {
+            'gigabytes': self.mb2gb(quotas.get('storage')) if 'storage' in quotas else None,
+            'volumes': quotas.get('volumes'),
+            'snapshots': quotas.get('snapshots'),
+        }
+        cinder_quotas = {k: v for k, v in cinder_quotas.items() if v is not None}
+
+        nova_quotas = {
+            'instances': quotas.get('instances'),
+            'cores': quotas.get('vcpu'),
+        }
+        nova_quotas = {k: v for k, v in nova_quotas.items() if v is not None}
+
+        neutron_quotas = {
+            'security_group': quotas.get('security_group_count'),
+            'security_group_rule': quotas.get('security_group_rule_count'),
+        }
+        neutron_quotas = {k: v for k, v in neutron_quotas.items() if v is not None}
+
+        try:
+            if cinder_quotas:
+                self.cinder_client.quotas.update(tenant.backend_id, **cinder_quotas)
+            if nova_quotas:
+                self.nova_client.quotas.update(tenant.backend_id, **nova_quotas)
+            if neutron_quotas:
+                self.neutron_client.update_quota(tenant.backend_id, {'quota': neutron_quotas})
+        except Exception as e:
+            # XXX: event logging should be moved executors level
+            event_logger.service_project_link.warning(
+                'Failed to push quotas to backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': tenant.service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(OpenStackBackendError, e)
+
     def pull_quotas(self, service_project_link):
         nova = self.nova_client
         neutron = self.neutron_client
@@ -1731,29 +1771,35 @@ class OpenStackBackend(ServiceBackend):
             service_project_link.save()
             logger.info('Found and set external network with id %s', ext_gw['network_id'])
 
-    def delete_external_network(self, service_project_link):
+    @log_backend_action('delete tenant external network')
+    def delete_external_network(self, tenant):
         neutron = self.neutron_admin_client
-        floating_ips = neutron.list_floatingips(
-            floating_network_id=service_project_link.external_network_id)['floatingips']
 
-        for ip in floating_ips:
-            neutron.delete_floatingip(ip['id'])
-            logger.info('Floating IP with id %s has been deleted.', ip['id'])
+        try:
+            floating_ips = neutron.list_floatingips(
+                floating_network_id=tenant.external_network_id)['floatingips']
 
-        ports = neutron.list_ports(network_id=service_project_link.external_network_id)['ports']
-        for port in ports:
-            neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
-            logger.info('Port with id %s has been deleted.', port['id'])
+            for ip in floating_ips:
+                neutron.delete_floatingip(ip['id'])
+                logger.info('Floating IP with id %s has been deleted.', ip['id'])
 
-        subnets = neutron.list_subnets(network_id=service_project_link.external_network_id)['subnets']
-        for subnet in subnets:
-            neutron.delete_subnet(subnet['id'])
-            logger.info('Subnet with id %s has been deleted.', subnet['id'])
+            ports = neutron.list_ports(network_id=tenant.external_network_id)['ports']
+            for port in ports:
+                neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+                logger.info('Port with id %s has been deleted.', port['id'])
 
-        neutron.delete_network(service_project_link.external_network_id)
-        logger.info('External network with id %s has been deleted.', service_project_link.external_network_id)
-        service_project_link.external_network_id = ''
-        service_project_link.save()
+            subnets = neutron.list_subnets(network_id=tenant.external_network_id)['subnets']
+            for subnet in subnets:
+                neutron.delete_subnet(subnet['id'])
+                logger.info('Subnet with id %s has been deleted.', subnet['id'])
+
+            neutron.delete_network(tenant.external_network_id)
+            logger.info('External network with id %s has been deleted.', tenant.external_network_id)
+        except (neutron_exceptions.NeutronClientException, keystone_exceptions.ClientException) as e:
+            six.reraise(OpenStackBackendError, e)
+        else:
+            tenant.external_network_id = ''
+            tenant.save()
 
     def get_or_create_internal_network(self, service_project_link):
         neutron = self.neutron_admin_client
@@ -1861,28 +1907,25 @@ class OpenStackBackend(ServiceBackend):
             tenant.internal_network_id = internal_network_id
             tenant.save(update_fields=['internal_network_id'])
 
-    def allocate_floating_ip_address(self, service_project_link):
+    @log_backend_action('allocate floating IP for tenant')
+    def allocate_floating_ip_address(self, tenant):
         neutron = self.neutron_admin_client
         try:
             ip_address = neutron.create_floatingip({
                 'floatingip': {
-                    'floating_network_id': service_project_link.external_network_id,
-                    'tenant_id': self.tenant_id,
+                    'floating_network_id': tenant.external_network_id,
+                    'tenant_id': tenant.backend_id,
                 }
             })['floatingip']
         except neutron_exceptions.NeutronClientException as e:
-            logger.exception('Unable to allocate floating IP address in external network %s',
-                             service_project_link.external_network_id)
             six.reraise(OpenStackBackendError, e)
         else:
-            service_project_link.floating_ips.create(
+            tenant.service_project_link.floating_ips.create(
                 status='DOWN',
                 address=ip_address['floating_ip_address'],
                 backend_id=ip_address['id'],
                 backend_network_id=ip_address['floating_network_id']
             )
-            logger.info('Floating IP %s for external network with id %s has been created.',
-                        ip_address['floating_ip_address'], service_project_link.external_network_id)
 
     def prepare_floating_ip(self, service_project_link):
         """ Allocate new floating_ip to service project link tenant if it does not have any free ips """

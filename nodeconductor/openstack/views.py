@@ -6,7 +6,6 @@ from rest_framework import filters as rf_filters
 from taggit.models import Tag
 
 from nodeconductor.core.exceptions import IncorrectStateException
-from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import StateExecutorViewSet
@@ -29,69 +28,86 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
     serializer_class = serializers.ServiceProjectLinkSerializer
     filter_class = filters.OpenStackServiceProjectLinkFilter
 
+    serializers = {
+        'set_quotas': serializers.TenantQuotaSerializer,
+        'external_network': serializers.ExternalNetworkSerializer,
+    }
+
+    def get_serializer_class(self):
+        serializer = self.serializers.get(self.action)
+        return serializer or super(OpenStackServiceProjectLinkViewSet, self).get_serializer_class()
+
+    # XXX: This method and backend quotas should be moved to tenant.
     @decorators.detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
         if not request.user.is_staff:
             raise exceptions.PermissionDenied()
 
         spl = self.get_object()
-        if spl.state != SynchronizationStates.IN_SYNC:
-            return IncorrectStateException(
-                "Service project link must be in stable state.")
+        tenant = spl.tenant
+        if tenant.state != models.Tenant.States.OK:
+            raise IncorrectStateException("Tenant should be in state OK.")
 
-        serializer = serializers.ServiceProjectLinkQuotaSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        data = dict(serializer.validated_data)
-        if data.get('instances') is not None:
-            quotas = settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
-            volume_ratio = quotas.get('volumes', 4)
-            snapshots_ratio = quotas.get('snapshots', 20)
-
-            data['volumes'] = volume_ratio * data['instances']
-            data['snapshots'] = snapshots_ratio * data['instances']
-
-        send_task('structure', 'sync_service_project_links')(spl.to_string(), quotas=data)
+        quotas = dict(serializer.validated_data)
+        for quota_name, limit in quotas.items():
+            spl.set_quota_limit(quota_name, limit)
+        executors.TenantPushQuotasExecutor.execute(tenant, quotas=quotas)
 
         return response.Response(
-            {'detail': 'Quota update was scheduled'}, status=status.HTTP_202_ACCEPTED)
+            {'detail': 'Quota update has been scheduled'}, status=status.HTTP_202_ACCEPTED)
 
+    # XXX: This method should be moved to tenant endpoint.
+    #      Also it should be replaced by two methods - create external network and delete external network.
     @decorators.detail_route(methods=['post', 'delete'])
     def external_network(self, request, pk=None):
         spl = self.get_object()
+        tenant = spl.tenant
+
+        if tenant.state != models.Tenant.States.OK:
+            raise IncorrectStateException("Tenant should be in state OK.")
+
         if request.method == 'DELETE':
-            if spl.external_network_id:
-                send_task('openstack', 'sync_external_network')(spl.to_string(), 'delete')
-                return response.Response(
-                    {'detail': 'External network deletion has been scheduled.'},
-                    status=status.HTTP_202_ACCEPTED)
-            else:
-                return response.Response(
-                    {'detail': 'External network does not exist.'},
-                    status=status.HTTP_204_NO_CONTENT)
+            return self._delete_external_network(request, tenant)
+        else:
+            return self._create_external_network(request, tenant)
 
-        serializer = serializers.ExternalNetworkSerializer(data=request.data)
+    def _create_external_network(self, request, tenant):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        send_task('openstack', 'sync_external_network')(spl.to_string(), 'create', serializer.data)
-
+        executors.TenantCreateExternalNetworkExecutor.execute(tenant, external_network_data=serializer.data)
         return response.Response(
             {'detail': 'External network creation has been scheduled.'},
             status=status.HTTP_202_ACCEPTED)
 
+    def _delete_external_network(self, request, tenant):
+        if tenant.external_network_id:
+            executors.TenantDeleteExternalNetworkExecutor.execute(tenant)
+            return response.Response(
+                {'detail': 'External network deletion has been scheduled.'},
+                status=status.HTTP_202_ACCEPTED)
+        else:
+            return response.Response(
+                {'detail': 'External network does not exist.'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+    # XXX: This method should be moved to tenant endpoint.
     @decorators.detail_route(methods=['post'])
     def allocate_floating_ip(self, request, pk=None):
         spl = self.get_object()
-        if not spl.external_network_id:
+        tenant = spl.tenant
+
+        if tenant.state != models.Tenant.States.OK:
+            raise IncorrectStateException("Tenant should be in state OK.")
+
+        if not tenant.external_network_id:
             return response.Response(
-                {'detail': 'Service project link should have an external network ID.'},
+                {'detail': 'Tenant should have an external network ID.'},
                 status=status.HTTP_409_CONFLICT)
 
-        elif spl.state not in SynchronizationStates.STABLE_STATES:
-            raise IncorrectStateException(
-                "Service project link must be in stable state.")
-
-        send_task('openstack', 'allocate_floating_ip')(spl.to_string())
+        executors.TenantAllocateFloatingIPExecutor.execute(tenant)
 
         return response.Response(
             {'detail': 'Floating IP allocation has been scheduled.'},

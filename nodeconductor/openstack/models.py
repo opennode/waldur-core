@@ -67,7 +67,11 @@ class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
         return self.service.settings.password
 
     def get_backend(self):
-        return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
+        return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant.backend_id)
+
+    @property
+    def tenant(self):
+        return self.tenants.first()
 
 
 class Flavor(LoggableMixin, structure_models.ServiceProperty):
@@ -308,7 +312,7 @@ class Backup(core_models.UuidMixin,
         pass
 
 
-class Tenant(core_models.StateMixin, structure_models.ResourceMixin):
+class Tenant(core_models.RuntimeStateMixin, core_models.StateMixin, structure_models.ResourceMixin):
     service_project_link = models.ForeignKey(
         OpenStackServiceProjectLink, related_name='tenants', on_delete=models.PROTECT)
 
