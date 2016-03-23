@@ -1,5 +1,6 @@
 import datetime
 import dateutil.parser
+import functools
 import logging
 import re
 import sys
@@ -164,6 +165,30 @@ class OpenStackClient(object):
         }
 
         return ceilometer_client.Client('2', **kwargs)
+
+
+def log_backend_action(action=None):
+    """ Logging for backend method.
+
+    Expects django model instance as first argument.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapped(self, instance, *args, **kwargs):
+            action_name = func.func_name.replace('_', ' ') if action is None else action
+
+            logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
+            try:
+                result = func(self, instance, *args, **kwargs)
+            except OpenStackBackendError as e:
+                logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
+                six.reraise(OpenStackBackendError, e)
+            else:
+                logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
+                            action_name, instance, instance.pk)
+                return result
+        return wrapped
+    return decorator
 
 
 class OpenStackBackend(ServiceBackend):
@@ -940,6 +965,34 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
+    @log_backend_action()
+    def create_tenant(self, tenant):
+        keystone = self.keystone_admin_client
+        try:
+            backend_tenant = keystone.tenants.create(tenant_name=tenant.name, description=tenant.description)
+            tenant.backend_id = backend_tenant.id
+            tenant.save(update_fields=['backend_id'])
+        except keystone_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
+
+    @log_backend_action()
+    def add_admin_user_to_tenant(self, tenant):
+        """ Add user from openstack settings to new tenant """
+        keystone = self.keystone_admin_client
+
+        try:
+            admin_user = keystone.users.find(name=self.settings.username)
+            admin_role = keystone.roles.find(name='admin')
+            try:
+                keystone.roles.add_user_role(
+                    user=admin_user.id,
+                    role=admin_role.id,
+                    tenant=tenant.backend_id)
+            except keystone_exceptions.Conflict:
+                pass
+        except keystone_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
+
     def get_instance(self, instance_id):
         try:
             nova = self.nova_client
@@ -1208,6 +1261,7 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
+    # XXX: This method should be deleted after tenant separation from SPL.
     def cleanup(self, dryrun=True):
         if not self.tenant_id:
             logger.info("Nothing to cleanup, tenant_id of %s is not set" % self)
@@ -1301,6 +1355,103 @@ class OpenStackBackend(ServiceBackend):
         logger.info("Deleting tenant %s", self.tenant_id)
         if not dryrun:
             keystone.tenants.delete(self.tenant_id)
+
+    @log_backend_action()
+    def cleanup_tenant(self, tenant, dryrun=True):
+        if not tenant.backend_id:
+            # This method will remove all floating IPs if tenant `backend_id` is not defined.
+            raise OpenStackBackendError('Method `cleanup_tenant` should not be called if tenant has no backend_id')
+        # floatingips
+        neutron = self.neutron_admin_client
+        floatingips = neutron.list_floatingips(tenant_id=tenant.backend_id)
+        if floatingips:
+            for floatingip in floatingips['floatingips']:
+                logger.info("Deleting floating IP %s from tenant %s", floatingip['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.delete_floatingip(floatingip['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Floating IP %s is already gone from tenant %s", floatingip['id'], tenant.backend_id)
+
+        # ports
+        ports = neutron.list_ports(tenant_id=tenant.backend_id)
+        if ports:
+            for port in ports['ports']:
+                logger.info("Deleting port %s from tenant %s", port['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Port %s is already gone from tenant %s", port['id'], tenant.backend_id)
+
+        # routers
+        routers = neutron.list_routers(tenant_id=tenant.backend_id)
+        if routers:
+            for router in routers['routers']:
+                logger.info("Deleting router %s from tenant %s", router['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.delete_router(router['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Router %s is already gone from tenant %s", router['id'], tenant.backend_id)
+
+        # networks
+        networks = neutron.list_networks(tenant_id=tenant.backend_id)
+        if networks:
+            for network in networks['networks']:
+                for subnet in network['subnets']:
+                    logger.info("Deleting subnetwork %s from tenant %s", subnet, tenant.backend_id)
+                    if not dryrun:
+                        try:
+                            neutron.delete_subnet(subnet)
+                        except neutron_exceptions.NotFound:
+                            logger.info("Subnetwork %s is already gone from tenant %s", subnet, tenant.backend_id)
+
+                logger.info("Deleting network %s from tenant %s", network['id'], tenant.backend_id)
+                if not dryrun:
+                    try:
+                        neutron.delete_network(network['id'])
+                    except neutron_exceptions.NotFound:
+                        logger.debug("Network %s is already gone from tenant %s", network['id'], tenant.backend_id)
+
+        # security groups
+        nova = self.nova_client
+        sgroups = nova.security_groups.list()
+        for sgroup in sgroups:
+            logger.info("Deleting security group %s from tenant %s", sgroup.id, tenant.backend_id)
+            if not dryrun:
+                sgroup.delete()
+
+        # servers (instances)
+        servers = nova.servers.list()
+        for server in servers:
+            logger.info("Deleting server %s from tenant %s", server.id, tenant.backend_id)
+            if not dryrun:
+                server.delete()
+
+        # snapshots
+        cinder = self.cinder_client
+        snapshots = cinder.volume_snapshots.list()
+        for snapshot in snapshots:
+            logger.info("Deleting snapshots %s from tenant %s", snapshot.id, tenant.backend_id)
+            if not dryrun:
+                snapshot.delete()
+
+        # volumes
+        volumes = cinder.volumes.list()
+        for volume in volumes:
+            logger.info("Deleting volume %s from tenant %s", volume.id, tenant.backend_id)
+            if not dryrun:
+                volume.delete()
+
+        # tenant
+        keystone = self.keystone_admin_client
+        logger.info("Deleting tenant %s", tenant.backend_id)
+        if not dryrun:
+            try:
+                keystone.tenants.delete(tenant.backend_id)
+            except keystone_exceptions.ClientException as e:
+                six.reraise(OpenStackBackendError, e)
 
     def cleanup_instance(self, backend_id=None, external_ips=None, internal_ips=None,
                          system_volume_id=None, data_volume_id=None):
@@ -1470,34 +1621,28 @@ class OpenStackBackend(ServiceBackend):
             else:
                 logger.info('Security group rule with id %s successfully created in backend', nc_rule.id)
 
+    @log_backend_action()
     def create_security_group(self, security_group):
         nova = self.nova_client
-        logger.debug('About to create security group %s in backend', security_group.uuid)
         try:
             backend_security_group = nova.security_groups.create(name=security_group.name, description='')
             security_group.backend_id = backend_security_group.id
             security_group.save()
             self.push_security_group_rules(security_group)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to create openstack security group with for %s in backend', security_group.uuid)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Security group %s successfully created in backend', security_group.uuid)
 
+    @log_backend_action()
     def delete_security_group(self, security_group):
         nova = self.nova_client
-        logger.debug('About to delete security group %s from backend', security_group.uuid)
         try:
             nova.security_groups.delete(security_group.backend_id)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to remove openstack security group %s from backend', security_group.uuid)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Security group %s successfully deleted from backend', security_group.uuid)
 
+    @log_backend_action()
     def update_security_group(self, security_group):
         nova = self.nova_client
-        logger.debug('About to update security group %s in backend', security_group.uuid)
         try:
             backend_security_group = nova.security_groups.find(id=security_group.backend_id)
             if backend_security_group.name != security_group.name:
@@ -1505,10 +1650,7 @@ class OpenStackBackend(ServiceBackend):
                     backend_security_group, name=security_group.name, description='')
             self.push_security_group_rules(security_group)
         except nova_exceptions.ClientException as e:
-            logger.exception('Failed to update security group %s in backend', security_group.uuid)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.debug('Security group %s successfully updated in backend', security_group.uuid)
 
     def create_external_network(self, service_project_link, neutron, network_ip, network_prefix,
                                 vlan_id=None, vxlan_id=None, ips_count=None):
@@ -1681,6 +1823,45 @@ class OpenStackBackend(ServiceBackend):
 
         return service_project_link.internal_network_id
 
+    @log_backend_action('create internal network for tenant')
+    def create_internal_network(self, tenant):
+        neutron = self.neutron_admin_client
+
+        network_name = '{0}-int-net'.format(tenant.name)
+        try:
+            network = {
+                'name': network_name,
+                'tenant_id': self.tenant_id,
+            }
+
+            create_response = neutron.create_network({'networks': [network]})
+            internal_network_id = create_response['networks'][0]['id']
+
+            subnet_name = 'nc-{0}-subnet01'.format(network_name)
+
+            logger.info('Creating subnet %s for tenant "%s" (PK: %s).', subnet_name, tenant.name, tenant.pk)
+            subnet_data = {
+                'network_id': internal_network_id,
+                'tenant_id': tenant.backend_id,
+                'cidr': '192.168.42.0/24',
+                'allocation_pools': [
+                    {
+                        'start': '192.168.42.10',
+                        'end': '192.168.42.250'
+                    }
+                ],
+                'name': subnet_name,
+                'ip_version': 4,
+                'enable_dhcp': True,
+            }
+            create_response = neutron.create_subnet({'subnets': [subnet_data]})
+            self.get_or_create_router(network_name, create_response['subnets'][0]['id'])
+        except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
+            six.reraise(OpenStackBackendError, e)
+        else:
+            tenant.internal_network_id = internal_network_id
+            tenant.save(update_fields=['internal_network_id'])
+
     def allocate_floating_ip_address(self, service_project_link):
         neutron = self.neutron_admin_client
         try:
@@ -1789,6 +1970,31 @@ class OpenStackBackend(ServiceBackend):
             logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
                            ' option is not defined in settings %s option', service_project_link.service.settings.name)
             return None
+
+    def connect_tenant_to_external_network(self, tenant, external_network_id):
+        neutron = self.neutron_admin_client
+        logger.debug('About to create external network for tenant "%s" (PK: %s)', tenant.name, tenant.pk)
+
+        try:
+            # check if the network actually exists
+            response = neutron.show_network(external_network_id)
+        except neutron_exceptions.NeutronClientException as e:
+            logger.exception('External network %s does not exist. Stale data in database?', external_network_id)
+            six.reraise(OpenStackBackendError, e)
+
+        network_name = response['network']['name']
+        subnet_id = response['network']['subnets'][0]
+        # XXX: refactor function call, split get_or_create_router into more fine grained
+        self.get_or_create_router(network_name, subnet_id,
+                                  external=True, network_id=response['network']['id'])
+
+        tenant.external_network_id = external_network_id
+        tenant.save()
+
+        logger.info('Router between external network %s and tenant %s was successfully created',
+                    external_network_id, tenant.backend_id)
+
+        return external_network_id
 
     def get_or_create_router(self, network_name, subnet_id, external=False, network_id=None):
         neutron = self.neutron_admin_client
@@ -2055,6 +2261,17 @@ class OpenStackBackend(ServiceBackend):
                 six.reraise(OpenStackBackendError, e)
         else:
             logger.warning('Cannot update tenant name for link %s without tenant ID', service_project_link)
+
+    def update_tenant(self, tenant):
+        keystone = self.keystone_admin_client
+        logger.debug('About to update tenant `%s` (PK: %s)', tenant.name, tenant.backend_id)
+        try:
+            keystone.tenants.update(tenant.backend_id, name=tenant.name, description=tenant.description)
+        except keystone_exceptions.NotFound as e:
+            logger.error('Tenant with id %s does not exist', tenant.backend_id)
+            six.reraise(OpenStackBackendError, e)
+        else:
+            logger.info('Successfully updated `%s` (PK: %s)', tenant.name, tenant.backend_id)
 
     def create_snapshot(self, volume_id, cinder):
         """

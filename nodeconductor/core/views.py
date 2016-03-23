@@ -12,9 +12,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from nodeconductor import __version__
+from nodeconductor.core import mixins
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.serializers import AuthTokenSerializer
 from nodeconductor.core.utils import request_api
@@ -153,3 +154,12 @@ class BaseSummaryView(GenericViewSet):
         if not field:
             return qs
         return sorted(qs, key=lambda x: x.get(field))
+
+
+class StateExecutorViewSet(mixins.StateMixin,
+                           mixins.CreateExecutorMixin,
+                           mixins.UpdateExecutorMixin,
+                           mixins.DeleteExecutorMixin,
+                           ModelViewSet):
+    """ Create/Update/Delete operations via executors """
+    pass

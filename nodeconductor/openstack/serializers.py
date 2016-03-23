@@ -707,6 +707,36 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         return attrs
 
 
+class TenantSerializer(structure_serializers.BaseResourceSerializer):
+
+    service = serializers.HyperlinkedRelatedField(
+        source='service_project_link.service',
+        view_name='openstack-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    service_project_link = serializers.HyperlinkedRelatedField(
+        view_name='openstack-spl-detail',
+        queryset=models.OpenStackServiceProjectLink.objects.all(),
+        write_only=True)
+
+    class Meta(structure_serializers.BaseResourceSerializer.Meta):
+        model = models.Tenant
+        view_name = 'openstack-tenant-detail'
+        fields = structure_serializers.BaseResourceSerializer.Meta.fields + (
+            'availability_zone', 'internal_network_id', 'external_network_id',
+        )
+        read_only_fields = structure_serializers.BaseResourceSerializer.Meta.read_only_fields + (
+            'internal_network_id', 'external_network_id',
+        )
+
+    def create(self, validated_data):
+        spl = validated_data['service_project_link']
+        if not validated_data.get('availability_zone'):
+            validated_data['availability_zone'] = spl.service.settings.options.get('availability_zone', '')
+        return super(TenantSerializer, self).create(validated_data)
+
+
 class LicenseSerializer(serializers.ModelSerializer):
 
     instance = serializers.SerializerMethodField()

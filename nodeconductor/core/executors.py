@@ -13,7 +13,7 @@ class BaseExecutor(object):
     """
 
     @classmethod
-    def get_task_signature(cls, serialized_instance, **kwargs):
+    def get_task_signature(cls, instance, serialized_instance, **kwargs):
         """ Get Celery signature or primitive that describes executor action.
 
         Each task should be subclass of LowLevelTask class.
@@ -27,12 +27,12 @@ class BaseExecutor(object):
         raise NotImplementedError('Executor %s should implement method `get_tasks`' % cls.__name__)
 
     @classmethod
-    def get_success_signature(cls, serialized_instance, **kwargs):
+    def get_success_signature(cls, instance, serialized_instance, **kwargs):
         """ Get Celery signature of task that should be applied on successful execution. """
         return None
 
     @classmethod
-    def get_failure_signature(cls, serialized_instance, **kwargs):
+    def get_failure_signature(cls, instance, serialized_instance, **kwargs):
         """ Get Celery signature of task that should be applied on failed execution. """
         return None
 
@@ -60,9 +60,9 @@ class BaseExecutor(object):
         serialized_instance = utils.serialize_instance(instance)
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
-        signature = cls.get_task_signature(serialized_instance, **kwargs)
-        link = cls.get_success_signature(serialized_instance, **kwargs),
-        link_error = cls.get_failure_signature(serialized_instance, **kwargs)
+        signature = cls.get_task_signature(instance, serialized_instance, **kwargs)
+        link = cls.get_success_signature(instance, serialized_instance, **kwargs),
+        link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
         if async:
             return signature.apply_async(link=link, link_error=link_error)
@@ -82,11 +82,15 @@ class BaseExecutor(object):
         callback.apply()
 
 
+class ExecutorException(Exception):
+    pass
+
+
 class ErrorExecutorMixin(object):
     """ Set object as erred on fail. """
 
     @classmethod
-    def get_failure_signature(cls, serialized_instance, **kwargs):
+    def get_failure_signature(cls, instance, serialized_instance, **kwargs):
         return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
@@ -94,16 +98,23 @@ class SuccessExecutorMixin(object):
     """ Set object as OK on success """
 
     @classmethod
-    def get_success_signature(cls, serialized_instance, **kwargs):
+    def get_success_signature(cls, instance, serialized_instance, **kwargs):
         return tasks.StateTransitionTask().si(serialized_instance, state_transition='set_ok')
 
 
 class DeleteExecutorMixin(object):
-    """ Delete object on success """
+    """ Delete object on success or if force flag is enabled """
 
     @classmethod
-    def get_success_signature(cls, serialized_instance, **kwargs):
+    def get_success_signature(cls, instance, serialized_instance, **kwargs):
         return tasks.DeletionTask().si(serialized_instance)
+
+    @classmethod
+    def get_failure_signature(cls, instance, serialized_instance, force=False, **kwargs):
+        if force:
+            return tasks.DeletionTask().si(serialized_instance)
+        else:
+            return tasks.ErrorStateTransitionTask().si(serialized_instance)
 
 
 class CreateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
@@ -128,8 +139,14 @@ class UpdateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
         instance.schedule_updating()
         instance.save(update_fields=['state'])
 
+    @classmethod
+    def execute(cls, instance, async=True, **kwargs):
+        if 'updated_fields' not in kwargs:
+            raise ExecutorException('updated_fields keyword argument should be defined for UpdateExecutor.')
+        super(UpdateExecutor, cls).execute(instance, async=async, **kwargs)
 
-class DeleteExecutor(DeleteExecutorMixin, ErrorExecutorMixin, BaseExecutor):
+
+class DeleteExecutor(DeleteExecutorMixin, BaseExecutor):
     """ Default states transition for Synchronizable object deletion.
 
      - schedule deleting before deletion;

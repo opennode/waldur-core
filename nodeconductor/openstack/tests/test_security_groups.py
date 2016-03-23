@@ -3,7 +3,7 @@ from mock import patch
 
 from rest_framework import test, status
 
-from nodeconductor.core.mixins import SynchronizationStates
+from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack import models
 from nodeconductor.openstack.tests import factories
 from nodeconductor.structure import models as structure_models
@@ -183,7 +183,7 @@ class SecurityGroupUpdateTest(test.APITransactionTestCase):
             response = self.client.patch(self.url, data={'name': 'new_name'})
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            mocked_execute.assert_called_once_with(self.security_group)
+            mocked_execute.assert_called_once_with(self.security_group, updated_fields={'name'})
 
     def test_user_can_remove_rule_from_security_group(self):
         rule1 = factories.SecurityGroupRuleFactory(security_group=self.security_group)
@@ -240,7 +240,7 @@ class SecurityGroupDeleteTest(test.APITransactionTestCase):
             response = self.client.delete(self.url)
             self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
 
-            mocked_execute.assert_called_once_with(self.security_group)
+            mocked_execute.assert_called_once_with(self.security_group, force=False)
 
     def test_security_group_can_be_deleted_from_erred_state(self):
         self.security_group.state = SynchronizationStates.ERRED
