@@ -40,7 +40,7 @@ from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas import models
-from nodeconductor.structure import ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +262,7 @@ class OpenStackClient(object):
         return ceilometer_client.Client('2', **kwargs)
 
 
-class OpenStackBackend(OpenStackClient):
+class OpenStackBackend(ServiceBackend, OpenStackClient):
     """ NodeConductor interface to OpenStack. """
 
     MAX_USERNAME_LENGTH = 64
