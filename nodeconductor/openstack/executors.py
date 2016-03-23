@@ -23,8 +23,11 @@ class SecurityGroupDeleteExecutor(executors.DeleteExecutor):
 
     @classmethod
     def get_task_signature(cls, security_group, serialized_security_group, **kwargs):
-        return tasks.BackendMethodTask().si(
-            serialized_security_group, 'delete_security_group', state_transition='begin_deleting')
+        if security_group.backend_id:
+            return tasks.BackendMethodTask().si(
+                serialized_security_group, 'delete_security_group', state_transition='begin_deleting')
+        else:
+            return tasks.StateTransitionTask().si(serialized_security_group, state_transition='begin_deleting')
 
 
 class TenantCreateExecutor(executors.CreateExecutor):
