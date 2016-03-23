@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.admindocs.views import simplify_regex
 from django.core.urlresolvers import RegexURLResolver, RegexURLPattern
+from django.http import QueryDict
 from django_filters import ModelMultipleChoiceFilter
 
 from rest_framework.fields import ChoiceField, ReadOnlyField, ModelField
@@ -249,7 +250,7 @@ class ApiEndpoint(object):
         if isinstance(cls, type):
             user = get_user_model()()
             serializer = cls(context={
-                'request': type('R', (object,), {'method': 'GET', 'user': user}),
+                'request': self.fake_request(user),
                 'user': user})
         else:
             serializer = cls
@@ -268,6 +269,9 @@ class ApiEndpoint(object):
             } for key, field in serializer.get_fields().items()]
 
         return []
+
+    def fake_request(self, user):
+        return type('R', (object,), {'method': 'GET', 'user': user, 'query_params': QueryDict()})
 
     def get_filter_fields(self):
         try:
