@@ -59,7 +59,7 @@ config_defaults = {
         'protocol': 'https',
         'username': '',
         'verify_certs': False,
-        'ca_certs': '',  # empty to disable CA certificates control
+        'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # RHEL7-specific, may be different on other platforms
     },
     'events': {
         'hook': 'false',
