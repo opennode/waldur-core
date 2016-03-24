@@ -55,8 +55,8 @@ config_defaults = {
     'elasticsearch': {
         'host': '',
         'password': '',
-        'port': '443',
-        'protocol': 'https',
+        'port': '9200',
+        'protocol': 'http',
         'username': '',
         'verify_certs': 'true',
         'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # RHEL7-specific, may be different on other platforms
