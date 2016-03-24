@@ -80,7 +80,7 @@ def propagate_user_to_his_projects_services(sender, instance=None, created=False
         link = Link(instance)
 
         users = get_user_model().objects.filter(groups__projectrole__project=instance.project)
-        users = list(users.values_list('uuid', flat=True))
+        users = [uuid.hex for uuid in users.values_list('uuid', flat=True)]
 
         for user in users:
             link.add_user(user)
@@ -362,13 +362,8 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
     elif sender in (Project, ProjectGroup):
         customer = structure.customer
 
-    customer_users_counter = Counter(customer.get_users())
-
-    if customer_users_counter.get(user, 0) == 1:
-        if signal == signals.structure_role_granted:
-            customer.add_quota_usage('nc_user_count', 1)
-        else:
-            customer.add_quota_usage('nc_user_count', -1)
+    customer_users = customer.get_users()
+    customer.set_quota_usage(Customer.Quotas.nc_user_count, customer_users.count())
 
 
 def log_resource_deleted(sender, instance, **kwargs):
@@ -438,8 +433,16 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
 
 
 def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
-    if created:
-        send_task('structure', 'sync_service_settings')(instance.uuid.hex)
+    if not created:
+        return
+
+    backend = instance.get_backend()
+    if backend.has_global_properties():
+        instance.state = SynchronizationStates.IN_SYNC
+        instance.save(update_fields=['state'])
+        return
+
+    send_task('structure', 'sync_service_settings')(instance.uuid.hex)
 
 
 def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
@@ -454,6 +457,7 @@ def log_service_recovered(sender, instance, name, source, target, **kwargs):
     settings = instance
     if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
         logger.info('Service settings %s has been recovered.' % settings)
+
 
 def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
     if created:

@@ -67,6 +67,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.CustomerFilter
 
+    def get_serializer_class(self):
+        if self.action == 'users':
+            return serializers.CustomerUserSerializer
+        return super(CustomerViewSet, self).get_serializer_class()
+
+    def get_serializer_context(self):
+        context = super(CustomerViewSet, self).get_serializer_context()
+        if self.action == 'users':
+            context['customer'] = self.get_object()
+        return context
+
     def get_queryset(self):
         queryset = super(CustomerViewSet, self).get_queryset()
         if self.action in ('list', 'retrieve'):
@@ -94,6 +105,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         serializer = serializers.BalanceHistorySerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @detail_route()
+    def users(self, request, uuid=None):
+        """ A list of users connected to the customer """
+        customer = self.get_object()
+        serializer = self.get_serializer(customer.get_users(), many=True)
+        return Response(serializer.data)
 
 
 class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
@@ -742,55 +760,36 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         Count number of entities related to customer
         {
             "alerts": 12,
-            "events": 0,
             "vms": 1,
             "apps": 0,
             "services": 1,
-            "projects": 1
+            "projects": 1,
+            "users": 3
         }
         """
-        self.request = request
-
         self.customer = self.get_object()
         self.customer_uuid = self.customer.uuid.hex
-        self.customer_url = reverse('customer-detail', kwargs={'uuid': self.customer_uuid})
-
         self.exclude_features = request.query_params.getlist('exclude_features')
-        self.shared = request.query_params.get('shared', 'True')
+
+        quotas = {quota['name']: quota['usage']
+                  for quota in self.customer.quotas.values('name', 'usage')}
 
         return Response({
-            'events': self.get_events(),
             'alerts': self.get_alerts(),
-            'vms': self.get_vms(),
-            'apps': self.get_apps(),
-            'projects': self.get_projects(),
-            'services': self.get_services()
-        })
-
-    def get_events(self):
-        return self.get_count('event-list', {
-            'scope': self.customer_url,
-            'exclude_features': self.exclude_features
+            'vms': quotas.get(models.Customer.Quotas.nc_vm_count.name, 0),
+            'apps': quotas.get(models.Customer.Quotas.nc_app_count.name, 0),
+            'projects': quotas.get(models.Customer.Quotas.nc_project_count.name, 0),
+            'services': quotas.get(models.Customer.Quotas.nc_service_count.name, 0),
+            'users': quotas.get(models.Customer.Quotas.nc_user_count.name, 0)
         })
 
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'customer',
             'uuid': self.customer_uuid,
-            'exclude_features': self.exclude_features
+            'exclude_features': self.exclude_features,
+            'opened': True
         })
-
-    def get_vms(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_vm_count).usage
-
-    def get_apps(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_app_count).usage
-
-    def get_projects(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_project_count).usage
-
-    def get_services(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_service_count).usage
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -806,19 +805,13 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             "apps": 0,
             "vms": 1,
             "premium_support_contracts": 0,
-            "events": 0
         }
         """
-        self.request = request
-
         self.project = self.get_object()
         self.project_uuid = self.project.uuid.hex
-        self.project_url = reverse('project-detail', kwargs={'uuid': self.project_uuid})
-
         self.exclude_features = request.query_params.getlist('exclude_features')
 
         return Response({
-            'events': self.get_events(),
             'alerts': self.get_alerts(),
             'vms': self.get_vms(),
             'apps': self.get_apps(),
@@ -826,17 +819,12 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'premium_support_contracts': self.get_premium_support_contracts()
         })
 
-    def get_events(self):
-        return self.get_count('event-list', {
-            'scope': self.project_url,
-            'exclude_features': self.exclude_features
-        })
-
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'project',
             'uuid': self.project_uuid,
-            'exclude_features': self.exclude_features
+            'exclude_features': self.exclude_features,
+            'opened': True
         })
 
     def get_vms(self):
@@ -861,28 +849,15 @@ class UserCountersView(CounterMixin, viewsets.GenericViewSet):
         """
         Count number of entities related to current user
         {
-            "events": 2,
             "keys": 1,
             "hooks": 1
         }
         """
-        self.request = request
-
-        self.user_uuid = self.request.user.uuid.hex
-        self.user_url = reverse('user-detail', kwargs={'uuid': self.user_uuid})
-
-        self.exclude_features = request.query_params.getlist('exclude_features')
+        self.user_uuid = request.user.uuid.hex
 
         return Response({
-            'events': self.get_events(),
             'keys': self.get_keys(),
             'hooks': self.get_hooks()
-        })
-
-    def get_events(self):
-        return self.get_count('event-list', {
-            'scope': self.user_url,
-            'exclude_features': self.exclude_features
         })
 
     def get_keys(self):

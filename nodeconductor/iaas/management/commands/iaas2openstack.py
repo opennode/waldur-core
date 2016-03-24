@@ -457,6 +457,10 @@ class Command(BaseCommand):
                 # XXX: duplicate UUIDs due to killbill
                 inst.uuid = instance.uuid
                 inst.created = instance.created
+                image = instance.template.images.first()
+                if image:
+                    inst.min_disk = image.min_disk
+                    inst.min_ram = image.min_ram
                 inst.save()
 
                 for sgrp in instance.security_groups.all():
@@ -569,12 +573,17 @@ class Command(BaseCommand):
                 if main_template.tags.filter(name__contains='zimbra'):
                     zabbix_templates.append(ZabbixTemplate.objects.get(
                         name='Template PaaS App Zimbra', settings=self.zabbix_settings))
+                    trigger_name = 'Zimbra is not available'
                 elif main_template.tags.filter(name__contains='wordpr'):
                     zabbix_templates.append(ZabbixTemplate.objects.get(
                         name='Template PaaS App Wordpress', settings=self.zabbix_settings))
+                    trigger_name = 'Wordpress is not available'
                 elif main_template.tags.filter(name__contains='postgre'):
                     zabbix_templates.append(ZabbixTemplate.objects.get(
                         name='Template PaaS App PostgreSQL', settings=self.zabbix_settings))
+                    trigger_name = 'PostgreSQL is not available'
+                else:
+                    trigger_name = 'Missing data about the VM'
 
                 Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(Host),
@@ -591,7 +600,8 @@ class Command(BaseCommand):
                     group=group,
                     order_number=2)
 
-                trigger = Trigger.objects.get(name='Missing data about the VM', template__name='Template NodeConductor Instance', settings=self.zabbix_settings)
+                trigger = Trigger.objects.get(
+                    name=trigger_name, template__name='Template NodeConductor Instance', settings=self.zabbix_settings)
 
                 Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(ITService),

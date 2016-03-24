@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import models, migrations
+from django.db import migrations, models
 import uuidfield.fields
 
 
 class Migration(migrations.Migration):
+
+    replaces = [(b'template', '0001_initial'), (b'template', '0002_inherit_namemixin'), (b'template', '0003_rename_tamplate_field'), (b'template', '0004_upgrate_polymorphic_package')]
 
     dependencies = [
         ('contenttypes', '0001_initial'),
@@ -25,7 +27,6 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=(models.Model,),
         ),
         migrations.CreateModel(
             name='TemplateService',
@@ -35,12 +36,28 @@ class Migration(migrations.Migration):
                 ('polymorphic_ctype', models.ForeignKey(related_name='polymorphic_template.templateservice_set', editable=False, to='contenttypes.ContentType', null=True)),
                 ('template', models.ForeignKey(related_name='services', to='template.Template')),
             ],
-            options={
-            },
-            bases=(models.Model,),
         ),
         migrations.AlterUniqueTogether(
             name='templateservice',
             unique_together=set([('template', 'name')]),
+        ),
+        migrations.AlterField(
+            model_name='template',
+            name='name',
+            field=models.CharField(unique=True, max_length=150),
+        ),
+        migrations.AlterField(
+            model_name='templateservice',
+            name='name',
+            field=models.CharField(max_length=150, verbose_name='name'),
+        ),
+        migrations.RenameField(
+            model_name='templateservice',
+            old_name='template',
+            new_name='base_template',
+        ),
+        migrations.AlterUniqueTogether(
+            name='templateservice',
+            unique_together=set([('base_template', 'name', 'polymorphic_ctype')]),
         ),
     ]

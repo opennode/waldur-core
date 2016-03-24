@@ -85,7 +85,7 @@ class Image(structure_models.ServiceProperty):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.NameMixin,
                     core_models.DescribableMixin,
-                    core_models.SynchronizableMixin):
+                    core_models.StateMixin):
 
     class Permissions(object):
         customer_path = 'service_project_link__project__customer'
@@ -106,9 +106,6 @@ class SecurityGroup(core_models.UuidMixin,
     @classmethod
     def get_url_name(cls):
         return 'openstack-sgp'
-
-
-SecurityGroup._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
 
 
 @python_2_unicode_compatible
@@ -309,3 +306,20 @@ class Backup(core_models.UuidMixin,
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
         pass
+
+
+class Tenant(core_models.StateMixin, structure_models.ResourceMixin):
+    service_project_link = models.ForeignKey(
+        OpenStackServiceProjectLink, related_name='tenants', on_delete=models.PROTECT)
+
+    internal_network_id = models.CharField(max_length=64, blank=True)
+    external_network_id = models.CharField(max_length=64, blank=True)
+    availability_zone = models.CharField(
+        max_length=100, blank=True,
+        help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
+    )
+
+    tracker = FieldTracker()
+
+    def get_backend(self):
+        return self.service_project_link.service.get_backend(tenant_id=self.backend_id)

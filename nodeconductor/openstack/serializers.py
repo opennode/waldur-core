@@ -112,6 +112,7 @@ class NestedServiceProjectLinkSerializer(structure_serializers.PermissionFieldFi
             'quotas',
             'state',
         )
+        related_paths = 'project', 'service'
         view_name = 'openstack-spl-detail'
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
@@ -123,9 +124,6 @@ class NestedServiceProjectLinkSerializer(structure_serializers.PermissionFieldFi
         pass
 
     def get_filtered_field_names(self):
-        return 'project', 'service'
-
-    def get_related_paths(self):
         return 'project', 'service'
 
 
@@ -181,35 +179,41 @@ class ExternalNetworkSerializer(serializers.Serializer):
 
 
 class AssignFloatingIpSerializer(serializers.Serializer):
-    floating_ip_uuid = serializers.CharField(label='Floating IP')
+    floating_ip = serializers.HyperlinkedRelatedField(
+        label='Floating IP',
+        required=True,
+        view_name='openstack-fip-detail',
+        lookup_field='uuid',
+        queryset=models.FloatingIP.objects.all()
+    )
 
     def get_fields(self):
         fields = super(AssignFloatingIpSerializer, self).get_fields()
         if self.instance:
-            field = fields['floating_ip_uuid']
-            field.view_name = 'openstack-fip-detail'
-            field.query_params = {
+            query_params = {
                 'status': 'DOWN',
                 'project': self.instance.service_project_link.project.uuid,
                 'service': self.instance.service_project_link.service.uuid
             }
-            field.value_field = 'uuid'
+
+            field = fields['floating_ip']
+            field.query_params = query_params
+            field.value_field = 'url'
             field.display_name_field = 'address'
         return fields
 
+    def get_floating_ip_uuid(self):
+        return self.validated_data.get('floating_ip').uuid.hex
+
+    def validate_floating_ip(self, value):
+        if value is not None:
+            if value.status == 'ACTIVE':
+                raise serializers.ValidationError("Floating IP status must be DOWN.")
+            elif value.service_project_link != self.instance.service_project_link:
+                raise serializers.ValidationError("Floating IP must belong to same service project link.")
+        return value
+
     def validate(self, attrs):
-        ip_uuid = attrs.get('floating_ip_uuid')
-
-        try:
-            floating_ip = models.FloatingIP.objects.get(uuid=ip_uuid)
-        except models.FloatingIP.DoesNotExist:
-            raise serializers.ValidationError("Floating IP does not exist.")
-
-        if floating_ip.status == 'ACTIVE':
-            raise serializers.ValidationError("Floating IP status must be DOWN.")
-        elif floating_ip.service_project_link != self.instance.service_project_link:
-            raise serializers.ValidationError("Floating IP must belong to same service project link.")
-
         if not self.instance.service_project_link.external_network_id:
             raise serializers.ValidationError(
                 "External network ID of the service project link is missing.")
@@ -496,7 +500,8 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     def get_fields(self):
         fields = super(InstanceSerializer, self).get_fields()
-        fields['system_volume_size'].required = True
+        if 'system_volume_size' in fields:
+            fields['system_volume_size'].required = True
         return fields
 
     def validate(self, attrs):
@@ -668,6 +673,36 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
         if flavor is None and disk_size is None:
             raise serializers.ValidationError("Either disk_size or flavor is required")
         return attrs
+
+
+class TenantSerializer(structure_serializers.BaseResourceSerializer):
+
+    service = serializers.HyperlinkedRelatedField(
+        source='service_project_link.service',
+        view_name='openstack-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    service_project_link = serializers.HyperlinkedRelatedField(
+        view_name='openstack-spl-detail',
+        queryset=models.OpenStackServiceProjectLink.objects.all(),
+        write_only=True)
+
+    class Meta(structure_serializers.BaseResourceSerializer.Meta):
+        model = models.Tenant
+        view_name = 'openstack-tenant-detail'
+        fields = structure_serializers.BaseResourceSerializer.Meta.fields + (
+            'availability_zone', 'internal_network_id', 'external_network_id',
+        )
+        read_only_fields = structure_serializers.BaseResourceSerializer.Meta.read_only_fields + (
+            'internal_network_id', 'external_network_id',
+        )
+
+    def create(self, validated_data):
+        spl = validated_data['service_project_link']
+        if not validated_data.get('availability_zone'):
+            validated_data['availability_zone'] = spl.service.settings.options.get('availability_zone', '')
+        return super(TenantSerializer, self).create(validated_data)
 
 
 class LicenseSerializer(serializers.ModelSerializer):

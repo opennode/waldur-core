@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.contrib.contenttypes import models as ct_models, generic
+from django.contrib.contenttypes.admin import GenericTabularInline
+from django.contrib.contenttypes import models as ct_models
 
 from nodeconductor.core.admin import ReversionAdmin
 from nodeconductor.quotas import models, utils
@@ -38,10 +39,10 @@ class QuotaAdmin(QuotaFieldTypeLimit, ReversionAdmin):
     list_filter = ['name', QuotaScopeClassListFilter]
 
 
-class QuotaInline(QuotaFieldTypeLimit, generic.GenericTabularInline):
+class QuotaInline(QuotaFieldTypeLimit, GenericTabularInline):
     model = models.Quota
     fields = ('name', 'limit', 'usage', 'quota_field_type')
-    readonly_fields = ('name', ) + QuotaFieldTypeLimit.readonly_fields
+    readonly_fields = ('name', 'usage') + QuotaFieldTypeLimit.readonly_fields
     extra = 0
     can_delete = False
 

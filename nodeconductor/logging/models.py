@@ -109,7 +109,7 @@ class WebHook(BaseHook):
 
 
 class EmailHook(BaseHook):
-    email = models.EmailField()
+    email = models.EmailField(max_length=75)
 
     def process(self, event):
         subject = 'Notifications from NodeConductor'

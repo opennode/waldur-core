@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
-from rest_framework import mixins
+from rest_framework import mixins, status, response
 
-from nodeconductor.core.models import SynchronizableMixin, SynchronizationStates
+from nodeconductor.core import models
 from nodeconductor.core.exceptions import IncorrectStateException
 
 
@@ -26,13 +26,13 @@ class UpdateOnlyStableMixin(object):
 
     def initial(self, request, *args, **kwargs):
         acceptable_states = {
-            'update': SynchronizationStates.STABLE_STATES,
-            'partial_update': SynchronizationStates.STABLE_STATES,
-            'destroy': SynchronizationStates.STABLE_STATES | {SynchronizationStates.NEW},
+            'update': models.SynchronizationStates.STABLE_STATES,
+            'partial_update': models.SynchronizationStates.STABLE_STATES,
+            'destroy': models.SynchronizationStates.STABLE_STATES | {models.SynchronizationStates.NEW},
         }
         if self.action in acceptable_states.keys():
             obj = self.get_object()
-            if obj and isinstance(obj, SynchronizableMixin):
+            if obj and isinstance(obj, models.SynchronizableMixin):
                 if obj.state not in acceptable_states[self.action]:
                     raise IncorrectStateException(
                         'Modification allowed in stable states only.')
@@ -47,3 +47,54 @@ class UserContextMixin(object):
         context = super(UserContextMixin, self).get_serializer_context()
         context['user'] = self.request.user
         return context
+
+
+class StateMixin(object):
+    """ Raise exception if object is not in correct state for action """
+
+    def initial(self, request, *args, **kwargs):
+        States = models.StateMixin.States
+        acceptable_states = {
+            'update': [States.OK],
+            'partial_update': [States.OK],
+            'destroy': [States.OK, States.ERRED],
+        }
+        if self.action in ('update', 'partial_update', 'destroy'):
+            obj = self.get_object()
+            if obj.state not in acceptable_states[self.action]:
+                raise IncorrectStateException('Modification allowed in stable states only.')
+
+        return super(StateMixin, self).initial(request, *args, **kwargs)
+
+
+class CreateExecutorMixin(object):
+    create_executor = NotImplemented
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        self.create_executor.execute(instance)
+
+
+class UpdateExecutorMixin(object):
+    update_executor = NotImplemented
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        # Save all instance fields before update.
+        # To avoid additional DB queries - store foreign keys as ids.
+        # Warning! M2M fields will be ignored.
+        before_update_fields = {f: getattr(instance, f.attname) for f in instance._meta.fields}
+        super(UpdateExecutorMixin, self).perform_update(serializer)
+        instance.refresh_from_db()
+        updated_fields = {f.name for f, v in before_update_fields.items() if v != getattr(instance, f.attname)}
+        self.update_executor.execute(instance, updated_fields=updated_fields)
+
+
+class DeleteExecutorMixin(object):
+    delete_executor = NotImplemented
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.delete_executor.execute(instance, force=instance.state == models.StateMixin.States.ERRED)
+        return response.Response(
+            {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)

@@ -5,11 +5,11 @@ from rest_framework import viewsets, decorators, exceptions, response, permissio
 from rest_framework import filters as rf_filters
 from taggit.models import Tag
 
-from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.views import StateExecutorViewSet
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -202,7 +202,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         serializer.is_valid(raise_exception=True)
 
         send_task('openstack', 'assign_floating_ip')(
-            instance.uuid.hex, serializer.validated_data['floating_ip_uuid'])
+            instance.uuid.hex, serializer.get_floating_ip_uuid())
 
     assign_floating_ip.title = 'Assign floating IP'
 
@@ -241,28 +241,16 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     resize.title = 'Resize virtual machine'
 
 
-class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
+class SecurityGroupViewSet(StateExecutorViewSet):
     queryset = models.SecurityGroup.objects.all()
     serializer_class = serializers.SecurityGroupSerializer
     lookup_field = 'uuid'
     filter_class = filters.SecurityGroupFilter
     filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
-
-    def perform_create(self, serializer):
-        security_group = serializer.save()
-        executors.SecurityGroupCreateExecutor.execute(security_group)
-
-    def perform_update(self, serializer):
-        super(SecurityGroupViewSet, self).perform_update(serializer)
-        security_group = self.get_object()
-        executors.SecurityGroupUpdateExecutor.execute(security_group)
-
-    def destroy(self, request, *args, **kwargs):
-        security_group = self.get_object()
-        executors.SecurityGroupDeleteExecutor.execute(security_group)
-        return response.Response(
-            {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
+    create_executor = executors.SecurityGroupCreateExecutor
+    update_executor = executors.SecurityGroupUpdateExecutor
+    delete_executor = executors.SecurityGroupDeleteExecutor
 
 
 class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
@@ -535,3 +523,13 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             results.append(tag)
 
         return response.Response(results)
+
+
+class TenantViewSet(StateExecutorViewSet):
+    queryset = models.Tenant.objects.all()
+    serializer_class = serializers.TenantSerializer
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    create_executor = executors.TenantCreateExecutor
+    update_executor = executors.TenantUpdateExecutor
+    delete_executor = executors.TenantDeleteExecutor
