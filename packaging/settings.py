@@ -58,7 +58,7 @@ config_defaults = {
         'port': '443',
         'protocol': 'https',
         'username': '',
-        'verify_certs': False,
+        'verify_certs': 'true',
         'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # RHEL7-specific, may be different on other platforms
     },
     'events': {
@@ -666,7 +666,7 @@ NODECONDUCTOR.update({
         'port': config.get('elasticsearch', 'port'),
         'protocol': config.get('elasticsearch', 'protocol'),
         'use_ssl': True if config.get('elasticsearch', 'protocol') == 'https' else False,
-        'verify_certs': config.get('elasticsearch', 'verify_certs'),
+        'verify_certs': config.getboolean('elasticsearch', 'verify_certs'),
         'ca_certs': config.get('elasticsearch', 'ca_certs'),
     },
 
