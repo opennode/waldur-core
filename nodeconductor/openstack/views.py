@@ -196,7 +196,9 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     @decorators.detail_route(methods=['post'])
     def allocate_floating_ip(self, request, uuid=None):
         """
-        Proxy request to allocate floating IP to instance's service project link
+        Proxy request to allocate floating IP to instance's service project link.
+
+        TODO: Move method after migration from service project link to tenant resource.
         """
         instance = self.get_object()
         kwargs = {'pk': instance.service_project_link.pk}
