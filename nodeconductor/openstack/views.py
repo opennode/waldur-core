@@ -3,12 +3,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
+from rest_framework.reverse import reverse
 from taggit.models import Tag
 
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.utils import request_api
 from nodeconductor.core.views import StateExecutorViewSet
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
@@ -190,6 +192,21 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     def get_serializer_class(self):
         serializer = self.serializers.get(self.action)
         return serializer or super(InstanceViewSet, self).get_serializer_class()
+
+    @decorators.detail_route(methods=['post'])
+    def allocate_floating_ip(self, request, uuid=None):
+        """
+        Proxy request to allocate floating IP to instance's service project link.
+
+        TODO: Move method after migration from service project link to tenant resource.
+        """
+        instance = self.get_object()
+        kwargs = {'pk': instance.service_project_link.pk}
+        url = reverse('openstack-spl-detail', kwargs=kwargs, request=request) + 'allocate_floating_ip/'
+        result = request_api(request, url, 'POST')
+        return response.Response(result.data, result.status)
+
+    allocate_floating_ip.title = 'Allocate floating IP'
 
     @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=tuple(models.Instance.States.STABLE_STATES))
