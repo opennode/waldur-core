@@ -271,6 +271,7 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info('Successfully synchronized OpenStack service %s', self.settings.backend_url)
 
+    # XXX: This method will be removed. Pulling will be implemented as separate action.
     def sync_link(self, service_project_link, is_initial=False):
         # Migration status:
         # [x] push_membership()
