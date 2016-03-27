@@ -651,7 +651,7 @@ class OpenStackBackend(ServiceBackend):
             snapshots = cinder.volume_snapshots.list()
             instances = nova.servers.list()
             security_groups = nova.security_groups.list()
-            floating_ips = neutron.list_floatingips(tenant_id=tenant.backend_id)
+            floating_ips = neutron.list_floatingips(tenant_id=tenant.backend_id)['floatingips']
 
             flavors = {flavor.id: flavor for flavor in nova.flavors.list()}
 
