@@ -177,15 +177,15 @@ def log_backend_action(action=None):
         def wrapped(self, instance, *args, **kwargs):
             action_name = func.func_name.replace('_', ' ') if action is None else action
 
-            logger.debug('About to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
+            logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
             try:
                 result = func(self, instance, *args, **kwargs)
             except OpenStackBackendError as e:
-                logger.error('Failed to %s `%s` (PK: %s).', action_name, str(instance), instance.pk)
+                logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
                 six.reraise(OpenStackBackendError, e)
             else:
                 logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
-                            action_name, str(instance), instance.pk)
+                            action_name, instance, instance.pk)
                 return result
         return wrapped
     return decorator
@@ -781,14 +781,14 @@ class OpenStackBackend(ServiceBackend):
                 if nc_group.state in SynchronizationStates.STABLE_STATES:
                     nc_group.schedule_syncing()
                     nc_group.save()
-                send_task('openstack', 'update_security_group')(nc_group.uuid.hex)
+                self.update_security_group(nc_group)
 
             # creating nonexistent and unsynchronized security groups
             for nc_group in nonexistent_groups:
                 if nc_group.state in SynchronizationStates.STABLE_STATES:
                     nc_group.schedule_syncing()
                     nc_group.save()
-                send_task('openstack', 'create_security_group')(nc_group.uuid.hex)
+                self.create_security_group(nc_group)
 
         except Exception as e:
             event_logger.service_project_link.warning(
@@ -1453,7 +1453,8 @@ class OpenStackBackend(ServiceBackend):
     @log_backend_action()
     def cleanup_tenant(self, tenant, dryrun=True):
         if not tenant.backend_id:
-            return
+            # This method will remove all floating IPs if tenant `backend_id` is not defined.
+            raise OpenStackBackendError('Method `cleanup_tenant` should not be called if tenant has no backend_id')
         # floatingips
         neutron = self.neutron_admin_client
         floatingips = neutron.list_floatingips(tenant_id=tenant.backend_id)

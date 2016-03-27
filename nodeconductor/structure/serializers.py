@@ -378,13 +378,14 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
     def get_projects(self, user):
         request = self.context['request']
+        customer = self.context['customer']
         projectrole = {
             g.projectrole.project_id: (g.projectrole.get_role_type_display(),
                                        User.groups.through.objects.get(user=user, group=g).pk)
             for g in user.groups.exclude(projectrole=None)
         }
         projects = filter_queryset_for_user(
-            models.Project.objects.filter(id__in=projectrole.keys()), request.user)
+            models.Project.objects.filter(customer=customer).filter(id__in=projectrole.keys()), request.user)
 
         return [OrderedDict([
             ('url', reverse('project-detail', kwargs={'uuid': proj.uuid}, request=request)),
@@ -1266,7 +1267,7 @@ class PublishableResourceSerializer(BaseResourceSerializer):
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
-class SummaryResourceSerializer(serializers.BaseSerializer):
+class SummaryResourceSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         serializer = SupportedServices.get_resource_serializer(instance.__class__)

@@ -132,6 +132,12 @@ class AlertViewSet(mixins.CreateModelMixin,
 
         return response.Response(alerts_severities_count, status=status.HTTP_200_OK)
 
+    def perform_create(self, serializer):
+        if not self.request.user.is_staff:
+            raise PermissionDenied('You do not have permission to perform this action.')
+
+        super(AlertViewSet, self).perform_create(serializer)
+
 
 class BaseHookViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)

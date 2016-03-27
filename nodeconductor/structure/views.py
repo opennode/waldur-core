@@ -760,24 +760,27 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         Count number of entities related to customer
         {
             "alerts": 12,
-            "events": 0,
             "vms": 1,
             "apps": 0,
             "services": 1,
-            "projects": 1
+            "projects": 1,
+            "users": 3
         }
         """
         self.customer = self.get_object()
         self.customer_uuid = self.customer.uuid.hex
-        self.customer_url = reverse('customer-detail', kwargs={'uuid': self.customer_uuid}, request=request)
         self.exclude_features = request.query_params.getlist('exclude_features')
+
+        quotas = {quota['name']: quota['usage']
+                  for quota in self.customer.quotas.values('name', 'usage')}
 
         return Response({
             'alerts': self.get_alerts(),
-            'vms': self.get_vms(),
-            'apps': self.get_apps(),
-            'projects': self.get_projects(),
-            'services': self.get_services()
+            'vms': quotas.get(models.Customer.Quotas.nc_vm_count.name, 0),
+            'apps': quotas.get(models.Customer.Quotas.nc_app_count.name, 0),
+            'projects': quotas.get(models.Customer.Quotas.nc_project_count.name, 0),
+            'services': quotas.get(models.Customer.Quotas.nc_service_count.name, 0),
+            'users': quotas.get(models.Customer.Quotas.nc_user_count.name, 0)
         })
 
     def get_alerts(self):
@@ -787,18 +790,6 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             'exclude_features': self.exclude_features,
             'opened': True
         })
-
-    def get_vms(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_vm_count).usage
-
-    def get_apps(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_app_count).usage
-
-    def get_projects(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_project_count).usage
-
-    def get_services(self):
-        return self.customer.quotas.get(name=models.Customer.Quotas.nc_service_count).usage
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):

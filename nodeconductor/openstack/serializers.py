@@ -176,12 +176,9 @@ class ExternalNetworkSerializer(serializers.Serializer):
 
 
 class AssignFloatingIpSerializer(serializers.Serializer):
-    # TODO: Remove floating_ip_uuid field after migration to floating_ip field
-    floating_ip_uuid = serializers.CharField(label='Floating IP', required=False)
-
     floating_ip = serializers.HyperlinkedRelatedField(
         label='Floating IP',
-        required=False,
+        required=True,
         view_name='openstack-fip-detail',
         lookup_field='uuid',
         queryset=models.FloatingIP.objects.all()
@@ -196,13 +193,6 @@ class AssignFloatingIpSerializer(serializers.Serializer):
                 'service': self.instance.service_project_link.service.uuid
             }
 
-            field = fields['floating_ip_uuid']
-            field.view_name = 'openstack-fip-detail'
-            field.query_params = query_params
-            field.value_field = 'uuid'
-            field.display_name_field = 'address'
-            field.deprecated = True
-
             field = fields['floating_ip']
             field.query_params = query_params
             field.value_field = 'url'
@@ -210,22 +200,7 @@ class AssignFloatingIpSerializer(serializers.Serializer):
         return fields
 
     def get_floating_ip_uuid(self):
-        floating_ip_uuid = self.validated_data.get('floating_ip_uuid')
-        if floating_ip_uuid:
-            return floating_ip_uuid
-
-        floating_ip = self.validated_data.get('floating_ip')
-        return floating_ip.uuid.hex
-
-    def validate_floating_ip_uuid(self, value):
-        if value is not None:
-            try:
-                floating_ip = models.FloatingIP.objects.get(uuid=value)
-            except models.FloatingIP.DoesNotExist:
-                raise serializers.ValidationError("Floating IP does not exist.")
-
-            self.validate_floating_ip(floating_ip)
-        return value
+        return self.validated_data.get('floating_ip').uuid.hex
 
     def validate_floating_ip(self, value):
         if value is not None:
@@ -236,13 +211,6 @@ class AssignFloatingIpSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        floating_ip_uuid = attrs.get('floating_ip_uuid')
-        floating_ip = attrs.get('floating_ip')
-
-        if floating_ip_uuid is not None and floating_ip is not None or \
-           floating_ip_uuid is None and floating_ip is None:
-            raise serializers.ValidationError("Either floating_ip_uuid or floating_ip URL should be specified.")
-
         if not self.instance.service_project_link.external_network_id:
             raise serializers.ValidationError(
                 "External network ID of the service project link is missing.")

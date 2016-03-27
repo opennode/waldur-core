@@ -396,6 +396,9 @@ class ServiceBackend(object):
     def sync(self):
         raise ServiceBackendNotImplemented
 
+    def has_global_properties(self):
+        return False
+
     def sync_quotas(self, service_project_link):
         raise ServiceBackendNotImplemented
 
