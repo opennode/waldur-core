@@ -32,7 +32,8 @@ class TenantCreateExecutor(executors.CreateExecutor):
 
     @classmethod
     def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
-        # create tenant, add user to it, create internal network
+        # create tenant, add user to it, create internal network,
+        # pull quotas and security groups.
         creation_tasks = [
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'create_tenant',
@@ -43,7 +44,13 @@ class TenantCreateExecutor(executors.CreateExecutor):
                 runtime_state='adding user to tenant'),
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'create_internal_network',
-                runtime_state='creating internal network for tenant',
+                runtime_state='creating internal network for tenant'),
+            tasks.BackendMethodTask().si(
+                serialized_tenant, 'pull_tenant_quotas',
+                runtime_state='pulling tenant quotas'),
+            tasks.BackendMethodTask().si(
+                serialized_tenant, 'pull_tenant_security_groups',
+                runtime_state='pulling tenant security groups',
                 success_runtime_state='online'),
         ]
         # initialize external network if it defined in service settings

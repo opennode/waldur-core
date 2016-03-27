@@ -282,7 +282,7 @@ class OpenStackBackend(ServiceBackend):
         try:
             self.push_link(service_project_link)
             self.push_security_groups(service_project_link, is_initial=is_initial)
-            self.pull_quotas(service_project_link)
+            # self.pull_quotas(service_project_link)
             self.pull_floating_ips(service_project_link)
             self.connect_link_to_external_network(service_project_link)
         except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
@@ -623,21 +623,20 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(OpenStackBackendError, e)
 
-    def pull_quotas(self, service_project_link):
+    @log_backend_action('Pull quotas for tenant')
+    def pull_tenant_quotas(self, tenant):
+        # XXX: backend quotas should be moved to tenant from SPL in future.
         nova = self.nova_client
         neutron = self.neutron_client
         cinder = self.cinder_client
+        service_project_link = tenant.service_project_link
 
-        logger.debug('About to get quotas for tenant %s', self.tenant_id)
         try:
-            nova_quotas = nova.quotas.get(tenant_id=self.tenant_id)
-            cinder_quotas = cinder.quotas.get(tenant_id=self.tenant_id)
-            neutron_quotas = neutron.show_quota(tenant_id=self.tenant_id)['quota']
+            nova_quotas = nova.quotas.get(tenant_id=tenant.backend_id)
+            cinder_quotas = cinder.quotas.get(tenant_id=tenant.backend_id)
+            neutron_quotas = neutron.show_quota(tenant_id=tenant.backend_id)['quota']
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
-            logger.exception('Failed to get quotas for tenant %s', self.tenant_id)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Successfully got quotas for tenant %s', self.tenant_id)
 
         service_project_link.set_quota_limit('ram', nova_quotas.ram)
         service_project_link.set_quota_limit('vcpu', nova_quotas.cores)
@@ -647,13 +646,12 @@ class OpenStackBackend(ServiceBackend):
         service_project_link.set_quota_limit('security_group_rule_count', neutron_quotas['security_group_rule'])
         service_project_link.set_quota_limit('floating_ip_count', neutron_quotas['floatingip'])
 
-        logger.debug('About to get volumes, snapshots, flavors and instances for tenant %s', self.tenant_id)
         try:
             volumes = cinder.volumes.list()
             snapshots = cinder.volume_snapshots.list()
             instances = nova.servers.list()
             security_groups = nova.security_groups.list()
-            floating_ips = neutron.list_floatingips(tenant_id=self.tenant_id)
+            floating_ips = neutron.list_floatingips(tenant_id=tenant.backend_id)
 
             flavors = {flavor.id: flavor for flavor in nova.flavors.list()}
 
@@ -669,16 +667,7 @@ class OpenStackBackend(ServiceBackend):
                 vcpu += getattr(flavor, 'vcpus', 0)
 
         except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
-            logger.exception(
-                'Failed to get volumes, snapshots, flavors, '
-                'instances or security_groups for tenant %s',
-                self.tenant_id)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info(
-                'Successfully got volumes, snapshots, flavors, '
-                'instances or security_groups for tenant %s',
-                self.tenant_id)
 
         service_project_link.set_quota_usage('ram', ram)
         service_project_link.set_quota_usage('vcpu', vcpu)
@@ -876,6 +865,71 @@ class OpenStackBackend(ServiceBackend):
                 }
             )
             six.reraise(*sys.exc_info())
+
+    @log_backend_action('Pull security groups for tenant')
+    def pull_tenant_security_groups(self, tenant):
+        nova = self.nova_client
+        service_project_link = tenant.service_project_link
+
+        try:
+            try:
+                backend_security_groups = nova.security_groups.list()
+            except nova_exceptions.ClientException as e:
+                six.reraise(OpenStackBackendError, e)
+
+            # list of openstack security groups that do not exist in nc
+            nonexistent_groups = []
+            # list of openstack security groups that have wrong parameters in in nc
+            unsynchronized_groups = []
+            # list of nc security groups that do not exist in openstack
+
+            extra_groups = service_project_link.security_groups.exclude(
+                backend_id__in=[g.id for g in backend_security_groups],
+            )
+
+            with transaction.atomic():
+                for backend_group in backend_security_groups:
+                    try:
+                        nc_group = service_project_link.security_groups.get(backend_id=backend_group.id)
+                        if not self._are_security_groups_equal(backend_group, nc_group):
+                            unsynchronized_groups.append(backend_group)
+                    except models.SecurityGroup.DoesNotExist:
+                        nonexistent_groups.append(backend_group)
+
+                # deleting extra security groups
+                extra_groups.delete()
+                logger.debug('Deleted stale security groups in database')
+
+                # synchronizing unsynchronized security groups
+                for backend_group in unsynchronized_groups:
+                    nc_security_group = service_project_link.security_groups.get(backend_id=backend_group.id)
+                    if backend_group.name != nc_security_group.name:
+                        nc_security_group.name = backend_group.name
+                        nc_security_group.state = SynchronizationStates.IN_SYNC
+                        nc_security_group.save()
+                    self.pull_security_group_rules(nc_security_group)
+                logger.debug('Updated existing security groups in database')
+
+                # creating non-existed security groups
+                for backend_group in nonexistent_groups:
+                    nc_security_group = service_project_link.security_groups.create(
+                        backend_id=backend_group.id,
+                        name=backend_group.name,
+                        state=SynchronizationStates.IN_SYNC
+                    )
+                    self.pull_security_group_rules(nc_security_group)
+                    logger.debug('Created new security group %s in database', nc_security_group.uuid)
+
+        except Exception as e:
+            event_logger.service_project_link.warning(
+                'Failed to pull security groups from backend.',
+                event_type='service_project_link_sync_failed',
+                event_context={
+                    'service_project_link': service_project_link,
+                    'error_message': six.text_type(e),
+                }
+            )
+            six.reraise(OpenStackBackendError, e)
 
     def pull_security_group_rules(self, security_group):
         nova = self.nova_client
@@ -1409,7 +1463,7 @@ class OpenStackBackend(ServiceBackend):
                 if not dryrun:
                     try:
                         neutron.delete_floatingip(floatingip['id'])
-                    except neutron_exceptions.NotFound:
+                    except (neutron_exceptions.NotFound, keystone_exceptions.ClientException):
                         logger.debug("Floating IP %s is already gone from tenant %s", floatingip['id'], tenant.backend_id)
 
         # ports
@@ -1420,7 +1474,7 @@ class OpenStackBackend(ServiceBackend):
                 if not dryrun:
                     try:
                         neutron.remove_interface_router(port['device_id'], {'port_id': port['id']})
-                    except neutron_exceptions.NotFound:
+                    except (neutron_exceptions.NotFound, keystone_exceptions.ClientException):
                         logger.debug("Port %s is already gone from tenant %s", port['id'], tenant.backend_id)
 
         # routers
@@ -1431,7 +1485,7 @@ class OpenStackBackend(ServiceBackend):
                 if not dryrun:
                     try:
                         neutron.delete_router(router['id'])
-                    except neutron_exceptions.NotFound:
+                    except (neutron_exceptions.NotFound, keystone_exceptions.ClientException):
                         logger.debug("Router %s is already gone from tenant %s", router['id'], tenant.backend_id)
 
         # networks
@@ -1443,14 +1497,14 @@ class OpenStackBackend(ServiceBackend):
                     if not dryrun:
                         try:
                             neutron.delete_subnet(subnet)
-                        except neutron_exceptions.NotFound:
+                        except (neutron_exceptions.NotFound, keystone_exceptions.ClientException):
                             logger.info("Subnetwork %s is already gone from tenant %s", subnet, tenant.backend_id)
 
                 logger.info("Deleting network %s from tenant %s", network['id'], tenant.backend_id)
                 if not dryrun:
                     try:
                         neutron.delete_network(network['id'])
-                    except neutron_exceptions.NotFound:
+                    except (neutron_exceptions.NotFound, keystone_exceptions.ClientException):
                         logger.debug("Network %s is already gone from tenant %s", network['id'], tenant.backend_id)
 
         # security groups
@@ -1459,7 +1513,10 @@ class OpenStackBackend(ServiceBackend):
         for sgroup in sgroups:
             logger.info("Deleting security group %s from tenant %s", sgroup.id, tenant.backend_id)
             if not dryrun:
-                sgroup.delete()
+                try:
+                    sgroup.delete()
+                except (nova_exceptions.ClientException, keystone_exceptions.ClientException):
+                    logger.debug("Cannot delete %s from tenant %s", sgroup, tenant.backend_id)
 
         # servers (instances)
         servers = nova.servers.list()

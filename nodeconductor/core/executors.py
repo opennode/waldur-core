@@ -114,7 +114,7 @@ class DeleteExecutorMixin(object):
         if force:
             return tasks.DeletionTask().si(serialized_instance)
         else:
-            return tasks.ErrorStateTransitionTask().si(serialized_instance)
+            return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
 class CreateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
