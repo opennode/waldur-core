@@ -624,7 +624,7 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(OpenStackBackendError, e)
 
-    @log_backend_action('Pull quotas for tenant')
+    @log_backend_action('pull quotas for tenant')
     def pull_tenant_quotas(self, tenant):
         # XXX: backend quotas should be moved to tenant from SPL in future.
         nova = self.nova_client
@@ -867,7 +867,7 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
-    @log_backend_action('Pull security groups for tenant')
+    @log_backend_action('pull security groups for tenant')
     def pull_tenant_security_groups(self, tenant):
         nova = self.nova_client
         service_project_link = tenant.service_project_link
