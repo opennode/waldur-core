@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from uuid import uuid4
 
-from django.db import migrations
+from django.db import migrations, models
 
 
 OK_STATE = 3
@@ -31,6 +31,7 @@ def create_tenants(apps, schema_editor):
             availability_zone=spl.availability_zone,
             service_project_link=spl,
             state=OK_STATE,
+            runtime_state='online',
         )
 
 
@@ -41,5 +42,26 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AddField(
+            model_name='tenant',
+            name='runtime_state',
+            field=models.CharField(max_length=150, verbose_name='runtime state', blank=True),
+        ),
         migrations.RunPython(create_tenants),
+        migrations.RemoveField(
+            model_name='openstackserviceprojectlink',
+            name='availability_zone',
+        ),
+        migrations.RemoveField(
+            model_name='openstackserviceprojectlink',
+            name='external_network_id',
+        ),
+        migrations.RemoveField(
+            model_name='openstackserviceprojectlink',
+            name='internal_network_id',
+        ),
+        migrations.RemoveField(
+            model_name='openstackserviceprojectlink',
+            name='tenant_id',
+        ),
     ]
