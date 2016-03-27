@@ -95,26 +95,6 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
                 {'detail': 'External network does not exist.'},
                 status=status.HTTP_400_BAD_REQUEST)
 
-    # XXX: This method should be moved to tenant endpoint.
-    @decorators.detail_route(methods=['post'])
-    def allocate_floating_ip(self, request, pk=None):
-        spl = self.get_object()
-        tenant = spl.tenant
-
-        if not tenant or tenant.state != models.Tenant.States.OK:
-            raise IncorrectStateException("Tenant should be in state OK.")
-
-        if not tenant.external_network_id:
-            return response.Response(
-                {'detail': 'Tenant should have an external network ID.'},
-                status=status.HTTP_409_CONFLICT)
-
-        executors.TenantAllocateFloatingIPExecutor.execute(tenant)
-
-        return response.Response(
-            {'detail': 'Floating IP allocation has been scheduled.'},
-            status=status.HTTP_202_ACCEPTED)
-
 
 class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Flavor.objects.all().order_by('settings', 'cores', 'ram', 'disk')
@@ -217,8 +197,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         TODO: Move method after migration from service project link to tenant resource.
         """
         instance = self.get_object()
-        kwargs = {'pk': instance.service_project_link.pk}
-        url = reverse('openstack-spl-detail', kwargs=kwargs, request=request) + 'allocate_floating_ip/'
+        kwargs = {'uuid': instance.service_project_link.tenant.uuid.hex}
+        url = reverse('openstack-tenant-detail', kwargs=kwargs, request=request) + 'allocate_floating_ip/'
         result = request_api(request, url, 'POST')
         return response.Response(result.data, result.status)
 
@@ -566,3 +546,23 @@ class TenantViewSet(StateExecutorViewSet):
     create_executor = executors.TenantCreateExecutor
     update_executor = executors.TenantUpdateExecutor
     delete_executor = executors.TenantDeleteExecutor
+
+    @decorators.detail_route(methods=['post'])
+    def allocate_floating_ip(self, request, uuid=None):
+        tenant = self.get_object()
+
+        if not tenant or tenant.state != models.Tenant.States.OK:
+            raise IncorrectStateException("Tenant should be in state OK.")
+
+        if not tenant.external_network_id:
+            return response.Response(
+                {'detail': 'Tenant should have an external network ID.'},
+                status=status.HTTP_409_CONFLICT)
+
+        executors.TenantAllocateFloatingIPExecutor.execute(tenant)
+
+        return response.Response(
+            {'detail': 'Floating IP allocation has been scheduled.'},
+            status=status.HTTP_202_ACCEPTED)
+
+    allocate_floating_ip.title = 'Allocate floating IP'
