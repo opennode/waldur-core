@@ -374,7 +374,6 @@ def log_resource_deleted(sender, instance, **kwargs):
 
 
 def detect_vm_coordinates(sender, instance=None, created=False, **kwargs):
-    return
     if created or instance.tracker.has_changed('external_ips'):
         send_task('structure', 'detect_vm_coordinates')(instance.to_string())
 
