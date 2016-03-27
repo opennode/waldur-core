@@ -75,15 +75,12 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + (
             'quotas', 'tenant_id', 'external_network_id', 'internal_network_id'
         )
-        read_only_fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.read_only_fields + (
-            'tenant_id', 'external_network_id', 'internal_network_id'
-        )
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
         }
 
 
-class ServiceProjectLinkQuotaSerializer(serializers.Serializer):
+class TenantQuotaSerializer(serializers.Serializer):
     instances = serializers.IntegerField(min_value=1, required=False)
     ram = serializers.IntegerField(min_value=1, required=False)
     vcpu = serializers.IntegerField(min_value=1, required=False)

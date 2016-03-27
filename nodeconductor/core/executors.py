@@ -61,7 +61,7 @@ class BaseExecutor(object):
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
         signature = cls.get_task_signature(instance, serialized_instance, **kwargs)
-        link = cls.get_success_signature(instance, serialized_instance, **kwargs),
+        link = cls.get_success_signature(instance, serialized_instance, **kwargs)
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
         if async:
@@ -114,11 +114,11 @@ class DeleteExecutorMixin(object):
         if force:
             return tasks.DeletionTask().si(serialized_instance)
         else:
-            return tasks.ErrorStateTransitionTask().si(serialized_instance)
+            return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
 class CreateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
-    """ Default states transition for Synchronizable object creation.
+    """ Default states transition for object creation.
 
      - mark object as OK on success creation;
      - mark object as erred on failed creation;
@@ -127,7 +127,7 @@ class CreateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
 
 
 class UpdateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
-    """ Default states transition for Synchronizable object update.
+    """ Default states transition for object update.
 
      - schedule updating before update;
      - mark object as OK on success update;
@@ -147,7 +147,7 @@ class UpdateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
 
 
 class DeleteExecutor(DeleteExecutorMixin, BaseExecutor):
-    """ Default states transition for Synchronizable object deletion.
+    """ Default states transition for object deletion.
 
      - schedule deleting before deletion;
      - delete object on success deletion;
@@ -157,4 +157,18 @@ class DeleteExecutor(DeleteExecutorMixin, BaseExecutor):
     @classmethod
     def pre_apply(cls, instance, **kwargs):
         instance.schedule_deleting()
+        instance.save(update_fields=['state'])
+
+
+class ActionExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
+    """ Default states transition for executing action with object.
+
+     - schedule updating before action execution;
+     - mark object as OK on success action execution;
+     - mark object as erred on failed action execution;
+    """
+
+    @classmethod
+    def pre_apply(cls, instance, **kwargs):
+        instance.schedule_updating()
         instance.save(update_fields=['state'])

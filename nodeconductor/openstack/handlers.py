@@ -12,9 +12,9 @@ from nodeconductor.openstack.models import SecurityGroup, SecurityGroupRule, Ope
 logger = logging.getLogger(__name__)
 
 
-def set_spl_default_availability_zone(sender, instance=None, **kwargs):
+def set_tenant_default_availability_zone(sender, instance=None, **kwargs):
     if not instance.availability_zone:
-        settings = instance.service.settings
+        settings = instance.service_project_link.service.settings
         if settings.options:
             instance.availability_zone = settings.options.get('availability_zone', '')
 

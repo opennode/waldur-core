@@ -4,7 +4,7 @@ from mock import patch
 from rest_framework import test, status
 
 from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.openstack.models import Instance
+from nodeconductor.openstack.models import Instance, Tenant
 from nodeconductor.openstack.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -12,7 +12,7 @@ from nodeconductor.structure.tests import factories as structure_factories
 class AssignFloatingIPTestCase(test.APITransactionTestCase):
 
     def test_user_cannot_assign_floating_ip_to_instance_in_unstable_state(self):
-        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC, external_network_id='12345')
+        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC)
         floating_ip = factories.FloatingIPFactory(
             service_project_link=service_project_link,
             status='DOWN',
@@ -168,7 +168,14 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
         customer = structure_factories.CustomerFactory()
         project = structure_factories.ProjectFactory(customer=customer)
         service = factories.OpenStackServiceFactory(customer=customer)
-        return factories.OpenStackServiceProjectLinkFactory(service=service, project=project, **kwargs)
+        spl = factories.OpenStackServiceProjectLinkFactory(service=service, project=project, **kwargs)
+        # hotfix: create tenant
+        tenant = spl.create_tenant()
+        tenant.state = Tenant.States.OK
+        if 'external_network_id' in kwargs:
+            tenant.external_network_id = kwargs['external_network_id']
+        tenant.save()
+        return spl
 
     def get_response(self, instance, floating_ip):
         # authenticate
