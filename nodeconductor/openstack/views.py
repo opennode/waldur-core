@@ -47,7 +47,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
 
         spl = self.get_object()
         tenant = spl.tenant
-        if tenant.state != models.Tenant.States.OK:
+        if not tenant or tenant.state != models.Tenant.States.OK:
             raise IncorrectStateException("Tenant should be in state OK.")
 
         serializer = self.get_serializer(data=request.data)
@@ -68,7 +68,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
         spl = self.get_object()
         tenant = spl.tenant
 
-        if tenant.state != models.Tenant.States.OK:
+        if not tenant or tenant.state != models.Tenant.States.OK:
             raise IncorrectStateException("Tenant should be in state OK.")
 
         if request.method == 'DELETE':
@@ -101,7 +101,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
         spl = self.get_object()
         tenant = spl.tenant
 
-        if tenant.state != models.Tenant.States.OK:
+        if not tenant or tenant.state != models.Tenant.States.OK:
             raise IncorrectStateException("Tenant should be in state OK.")
 
         if not tenant.external_network_id:

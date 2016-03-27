@@ -25,7 +25,7 @@ def provision(instance_uuid, **kwargs):
         tenant.refresh_from_db()
         if tenant.state != Tenant.States.OK:
             instance.set_erred()
-            instance.error_message = 'Cannot create tenant for instance.'
+            instance.error_message = 'Tenant %s (PK: %s) creation failed.' % (tenant, tenant.pk)
             instance.save()
             return
 

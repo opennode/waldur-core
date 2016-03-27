@@ -1197,6 +1197,8 @@ class OpenStackBackend(ServiceBackend):
 
             # verify if the internal network to connect to exists
             service_project_link = instance.service_project_link
+            # XXX: In the future instance should depend on tenant. Now SPL can have only one tenant.
+            tenant = service_project_link.tenant
             try:
                 neutron.show_network(service_project_link.internal_network_id)
             except neutron_exceptions.NeutronClientException:
@@ -1206,7 +1208,8 @@ class OpenStackBackend(ServiceBackend):
 
             if not skip_external_ip_assignment:
                 # TODO: check availability and quota
-                self.prepare_floating_ip(service_project_link)
+                if not service_project_link.floating_ips.filter(status='DOWN').exists():
+                    self.allocate_floating_ip_address(tenant)
                 floating_ip = service_project_link.floating_ips.filter(status='DOWN').first()
                 instance.external_ips = floating_ip.address
                 floating_ip.status = 'BOOKED'
@@ -1988,8 +1991,7 @@ class OpenStackBackend(ServiceBackend):
 
     def prepare_floating_ip(self, service_project_link):
         """ Allocate new floating_ip to service project link tenant if it does not have any free ips """
-        if not service_project_link.floating_ips.filter(status='DOWN').exists():
-            self.allocate_floating_ip_address(service_project_link.tenant)
+        
 
     def assign_floating_ip_to_instance(self, instance, floating_ip):
         nova = self.nova_admin_client
