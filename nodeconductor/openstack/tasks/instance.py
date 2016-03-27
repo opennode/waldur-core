@@ -5,13 +5,9 @@ from celery import shared_task
 from django.utils import six
 
 from nodeconductor.core.tasks import save_error_message, transition, throttle
-from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.openstack.models import Instance, FloatingIP
+from nodeconductor.openstack.models import Instance, FloatingIP, Tenant
+from nodeconductor.openstack import executors
 from nodeconductor.structure.log import event_logger
-from nodeconductor.structure.tasks import (
-    begin_syncing_service_project_links,
-    sync_service_project_link_succeeded,
-    sync_service_project_link_failed)
 
 
 logger = logging.getLogger(__name__)
@@ -21,25 +17,17 @@ logger = logging.getLogger(__name__)
 def provision(instance_uuid, **kwargs):
     instance = Instance.objects.get(uuid=instance_uuid)
     spl = instance.service_project_link
-    if spl.state == SynchronizationStates.NEW:
-        # Sync NEW SPL before instance provision
-        spl.schedule_creating()
-        spl.save()
+    tenant = spl.tenant
 
-        begin_syncing_service_project_links.apply_async(
-            args=(spl.to_string(),),
-            kwargs={'initial': True, 'transition_method': 'begin_creating'},
-            link=start_provision.si(spl.to_string(), instance_uuid, **kwargs),
-            link_error=set_spl_and_instance_as_erred.si(spl.to_string(), instance_uuid),
-        )
-    else:
-        start_provision.delay(None, instance_uuid, **kwargs)
-
-
-@shared_task
-def start_provision(service_project_link_str, instance_uuid, **kwargs):
-    if service_project_link_str:
-        sync_service_project_link_succeeded(service_project_link_str)
+    if tenant is None:
+        tenant = spl.create_tenant()
+        executors.TenantCreateExecutor.execute(tenant, async=False)
+        tenant.refresh_from_db()
+        if tenant.state != Tenant.States.OK:
+            instance.set_erred()
+            instance.error_message = 'Cannot create tenant for instance.'
+            instance.save()
+            return
 
     provision_instance.apply_async(
         args=(instance_uuid,),
@@ -47,12 +35,6 @@ def start_provision(service_project_link_str, instance_uuid, **kwargs):
         link=set_online.si(instance_uuid),
         link_error=set_erred.si(instance_uuid)
     )
-
-
-@shared_task
-def set_spl_and_instance_as_erred(service_project_link_str, instance_uuid):
-    sync_service_project_link_failed(service_project_link_str)
-    set_erred(instance_uuid)
 
 
 @shared_task(name='nodeconductor.openstack.destroy')

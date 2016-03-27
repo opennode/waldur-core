@@ -68,9 +68,6 @@ class ImageSerializer(structure_serializers.BasePropertySerializer):
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
 
     quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
-    tenant_id = serializers.ReadOnlyField(source='tenant.backend_id')
-    external_network_id = serializers.ReadOnlyField(source='tenant.external_network_id')
-    internal_network_id = serializers.ReadOnlyField(source='tenant.internal_network_id')
 
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
         model = models.OpenStackServiceProjectLink

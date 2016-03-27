@@ -1930,7 +1930,7 @@ class OpenStackBackend(ServiceBackend):
     def prepare_floating_ip(self, service_project_link):
         """ Allocate new floating_ip to service project link tenant if it does not have any free ips """
         if not service_project_link.floating_ips.filter(status='DOWN').exists():
-            self.allocate_floating_ip_address(service_project_link)
+            self.allocate_floating_ip_address(service_project_link.tenant)
 
     def assign_floating_ip_to_instance(self, instance, floating_ip):
         nova = self.nova_admin_client

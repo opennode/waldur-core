@@ -61,7 +61,7 @@ class BaseExecutor(object):
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
         signature = cls.get_task_signature(instance, serialized_instance, **kwargs)
-        link = cls.get_success_signature(instance, serialized_instance, **kwargs),
+        link = cls.get_success_signature(instance, serialized_instance, **kwargs)
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
         if async:
