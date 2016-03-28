@@ -24,27 +24,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
     def _get_url(self, view_name, **kwargs):
         return 'http://testserver' + reverse(view_name, kwargs=kwargs)
 
-    def test_debit_customer(self):
-        amount = 9.99
-        customer = factories.CustomerFactory()
-
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
-            with mock_signal_receiver(signals.customer_account_debited) as receiver:
-                customer.debit_account(amount)
-
-                receiver.assert_called_once_with(
-                    instance=customer,
-                    amount=amount,
-                    sender=Customer,
-                    signal=signals.customer_account_debited,
-                )
-
-                mocked_task.assert_called_once_with(
-                    'nodeconductor.structure.stop_customer_resources',
-                    (customer.uuid.hex,), {}, countdown=2)
-
-                self.assertEqual(customer.balance, -1 * amount)
-
     def test_credit_customer(self):
         amount = 7.45
         customer = factories.CustomerFactory()

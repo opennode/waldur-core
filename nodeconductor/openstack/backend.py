@@ -29,7 +29,7 @@ from keystoneclient import exceptions as keystone_exceptions
 from neutronclient.client import exceptions as neutron_exceptions
 from novaclient import exceptions as nova_exceptions
 
-from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.models import StateMixin
 from nodeconductor.core.tasks import send_task
 from nodeconductor.structure import ServiceBackend, ServiceBackendError
 from nodeconductor.structure.log import event_logger
@@ -271,35 +271,6 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info('Successfully synchronized OpenStack service %s', self.settings.backend_url)
 
-    # XXX: This method will be removed. Pulling will be implemented as separate action.
-    def sync_link(self, service_project_link, is_initial=False):
-        # Migration status:
-        # [x] push_membership()
-        # [ ] pull_instances()
-        # [x] pull_floating_ips()
-        # [x] push_security_groups()
-        # [x] pull_resource_quota() & pull_resource_quota_usage()
-
-        try:
-            self.push_link(service_project_link)
-            self.push_security_groups(service_project_link, is_initial=is_initial)
-            # self.pull_quotas(service_project_link)
-            self.pull_floating_ips(service_project_link)
-            self.connect_link_to_external_network(service_project_link)
-        except (keystone_exceptions.ClientException, neutron_exceptions.NeutronException) as e:
-            logger.exception('Failed to synchronize ServiceProjectLink %s', service_project_link.to_string())
-            six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Successfully synchronized ServiceProjectLink %s', service_project_link.to_string())
-
-    def remove_link(self, service_project_link):
-        settings = service_project_link.service.settings
-        send_task('openstack', 'remove_tenant')(settings.uuid.hex, service_project_link.tenant_id)
-
-    def sync_quotas(self, service_project_link, quotas):
-        self.push_quotas(service_project_link, quotas)
-        self.pull_quotas(service_project_link)
-
     def provision(self, instance, flavor=None, image=None, ssh_key=None, **kwargs):
         if ssh_key:
             instance.key_name = ssh_key.name
@@ -406,13 +377,6 @@ class OpenStackBackend(ServiceBackend):
             'VERIFY_RESIZE': models.Instance.States.OFFLINE,
         }
         return nova_to_nodeconductor.get(instance.status, models.Instance.States.ERRED)
-
-    def _get_tenant_name(self, service_project_link):
-        proj = service_project_link.project
-        return '%(project_name)s-%(project_uuid)s' % {
-            'project_name': ''.join([c for c in proj.name if ord(c) < 128])[:15],
-            'project_uuid': proj.uuid.hex[:4]
-        }
 
     def _get_current_properties(self, model):
         return {p.backend_id: p for p in model.objects.filter(settings=self.settings)}
@@ -552,37 +516,6 @@ class OpenStackBackend(ServiceBackend):
                         })
 
             models.Image.objects.filter(backend_id__in=cur_images.keys()).delete()
-
-    def push_quotas(self, service_project_link, quotas):
-        cinder_quotas = {
-            'gigabytes': self.mb2gb(quotas['storage']),
-            'volumes': quotas['volumes'],
-            'snapshots': quotas['snapshots'],
-        }
-        nova_quotas = {
-            'instances': quotas['instances'],
-            'instances': quotas['instances'],
-            'cores': quotas['vcpu'],
-        }
-        neutron_quotas = {
-            'security_group': quotas['security_group_count'],
-            'security_group_rule': quotas['security_group_rule_count'],
-        }
-
-        try:
-            self.cinder_client.quotas.update(self.tenant_id, **cinder_quotas)
-            self.nova_client.quotas.update(self.tenant_id, **nova_quotas)
-            self.neutron_client.update_quota(self.tenant_id, {'quota': neutron_quotas})
-        except Exception as e:
-            event_logger.service_project_link.warning(
-                'Failed to push quotas to backend.',
-                event_type='service_project_link_sync_failed',
-                event_context={
-                    'service_project_link': service_project_link,
-                    'error_message': six.text_type(e),
-                }
-            )
-            six.reraise(*sys.exc_info())
 
     @log_backend_action('push quotas for tenant')
     def push_tenant_quotas(self, tenant, quotas):
@@ -737,136 +670,6 @@ class OpenStackBackend(ServiceBackend):
             )
             six.reraise(*sys.exc_info())
 
-    def push_security_groups(self, service_project_link, is_initial=False):
-        nova = self.nova_client
-        logger.debug('About to push security groups for tenant %s', self.tenant_id)
-
-        try:
-            nc_security_groups = service_project_link.security_groups.all()
-            if not is_initial:
-                nc_security_groups = nc_security_groups.filter(
-                    state__in=SynchronizationStates.STABLE_STATES)
-            try:
-                backend_security_groups = {
-                    str(g.id): g for g in nova.security_groups.list() if g.name != 'default'}
-            except nova_exceptions.ClientException as e:
-                logger.exception('Failed to get openstack security groups for tenant %s', self.tenant_id)
-                six.reraise(OpenStackBackendError, e)
-
-            # list of nc security groups, that do not exist in openstack
-            nonexistent_groups = []
-            # list of nc security groups, that have wrong parameters in openstack
-            unsynchronized_groups = []
-            # list of os security groups ids, that exist in openstack and do not exist in nc
-            extra_group_ids = backend_security_groups.keys()
-
-            for nc_group in nc_security_groups:
-                if nc_group.backend_id not in backend_security_groups:
-                    nonexistent_groups.append(nc_group)
-                else:
-                    backend_group = backend_security_groups[nc_group.backend_id]
-                    if not self._are_security_groups_equal(backend_group, nc_group):
-                        unsynchronized_groups.append(nc_group)
-                    extra_group_ids.remove(nc_group.backend_id)
-
-            # deleting extra security groups
-            for backend_group_id in extra_group_ids:
-                try:
-                    nova.security_groups.delete(backend_group_id)
-                except nova_exceptions.ClientException as e:
-                    logger.exception(
-                        'Failed to remove openstack security group with id %s in backend', backend_group_id)
-
-            # updating unsynchronized security groups
-            for nc_group in unsynchronized_groups:
-                if nc_group.state in SynchronizationStates.STABLE_STATES:
-                    nc_group.schedule_syncing()
-                    nc_group.save()
-                self.update_security_group(nc_group)
-
-            # creating nonexistent and unsynchronized security groups
-            for nc_group in nonexistent_groups:
-                if nc_group.state in SynchronizationStates.STABLE_STATES:
-                    nc_group.schedule_syncing()
-                    nc_group.save()
-                self.create_security_group(nc_group)
-
-        except Exception as e:
-            event_logger.service_project_link.warning(
-                'Failed to push security groups to backend.',
-                event_type='service_project_link_sync_failed',
-                event_context={
-                    'service_project_link': service_project_link,
-                    'error_message': six.text_type(e),
-                }
-            )
-            six.reraise(*sys.exc_info())
-
-    def pull_security_groups(self, service_project_link):
-        nova = self.nova_client
-        logger.debug('About to pull security groups from tenant %s', self.tenant_id)
-
-        try:
-            try:
-                backend_security_groups = nova.security_groups.list()
-            except nova_exceptions.ClientException as e:
-                logger.exception('Failed to get openstack security groups for link %s', service_project_link.id)
-                six.reraise(OpenStackBackendError, e)
-
-            # list of openstack security groups that do not exist in nc
-            nonexistent_groups = []
-            # list of openstack security groups that have wrong parameters in in nc
-            unsynchronized_groups = []
-            # list of nc security groups that do not exist in openstack
-
-            extra_groups = service_project_link.security_groups.exclude(
-                backend_id__in=[g.id for g in backend_security_groups],
-            )
-
-            with transaction.atomic():
-                for backend_group in backend_security_groups:
-                    try:
-                        nc_group = service_project_link.security_groups.get(backend_id=backend_group.id)
-                        if not self._are_security_groups_equal(backend_group, nc_group):
-                            unsynchronized_groups.append(backend_group)
-                    except models.SecurityGroup.DoesNotExist:
-                        nonexistent_groups.append(backend_group)
-
-                # deleting extra security groups
-                extra_groups.delete()
-                logger.info('Deleted stale security groups in database')
-
-                # synchronizing unsynchronized security groups
-                for backend_group in unsynchronized_groups:
-                    nc_security_group = service_project_link.security_groups.get(backend_id=backend_group.id)
-                    if backend_group.name != nc_security_group.name:
-                        nc_security_group.name = backend_group.name
-                        nc_security_group.state = SynchronizationStates.IN_SYNC
-                        nc_security_group.save()
-                    self.pull_security_group_rules(nc_security_group)
-                logger.debug('Updated existing security groups in database')
-
-                # creating non-existed security groups
-                for backend_group in nonexistent_groups:
-                    nc_security_group = service_project_link.security_groups.create(
-                        backend_id=backend_group.id,
-                        name=backend_group.name,
-                        state=SynchronizationStates.IN_SYNC
-                    )
-                    self.pull_security_group_rules(nc_security_group)
-                    logger.info('Created new security group %s in database', nc_security_group.uuid)
-
-        except Exception as e:
-            event_logger.service_project_link.warning(
-                'Failed to pull security groups from backend.',
-                event_type='service_project_link_sync_failed',
-                event_context={
-                    'service_project_link': service_project_link,
-                    'error_message': six.text_type(e),
-                }
-            )
-            six.reraise(*sys.exc_info())
-
     @log_backend_action('pull security groups for tenant')
     def pull_tenant_security_groups(self, tenant):
         nova = self.nova_client
@@ -906,7 +709,7 @@ class OpenStackBackend(ServiceBackend):
                     nc_security_group = service_project_link.security_groups.get(backend_id=backend_group.id)
                     if backend_group.name != nc_security_group.name:
                         nc_security_group.name = backend_group.name
-                        nc_security_group.state = SynchronizationStates.IN_SYNC
+                        nc_security_group.state = StateMixin.States.OK
                         nc_security_group.save()
                     self.pull_security_group_rules(nc_security_group)
                 logger.debug('Updated existing security groups in database')
@@ -916,7 +719,7 @@ class OpenStackBackend(ServiceBackend):
                     nc_security_group = service_project_link.security_groups.create(
                         backend_id=backend_group.id,
                         name=backend_group.name,
-                        state=SynchronizationStates.IN_SYNC
+                        state=StateMixin.States.OK
                     )
                     self.pull_security_group_rules(nc_security_group)
                     logger.debug('Created new security group %s in database', nc_security_group.uuid)
@@ -1013,52 +816,6 @@ class OpenStackBackend(ServiceBackend):
             else:
                 logger.info('Added security group %s to instance %s',
                             group_id, server_id)
-
-    def push_link(self, service_project_link):
-        keystone = self.keystone_admin_client
-
-        if service_project_link.tenant_id:
-            logger.info('Trying to get connected tenant with id %s', service_project_link.tenant_id)
-            try:
-                return keystone.tenants.get(service_project_link.tenant_id)
-            except keystone_exceptions.NotFound:
-                logger.warning('Tenant with id %s does not exist', service_project_link.tenant_id)
-
-        try:
-            tenant_name = self._get_tenant_name(service_project_link)
-            try:
-                tenant = keystone.tenants.create(
-                    tenant_name=tenant_name,
-                    description=service_project_link.project.description)
-            except keystone_exceptions.Conflict:
-                tenant = keystone.tenants.find(name=tenant_name)
-
-            service_project_link.tenant_id = self.tenant_id = tenant.id
-            service_project_link.save(update_fields=['tenant_id'])
-
-            # Ensure user is tenant admin
-            admin_user = keystone.users.find(name=self.settings.username)
-            admin_role = keystone.roles.find(name='admin')
-            try:
-                keystone.roles.add_user_role(
-                    user=admin_user.id,
-                    role=admin_role.id,
-                    tenant=tenant.id)
-            except keystone_exceptions.Conflict:
-                pass
-
-            self.get_or_create_internal_network(service_project_link)
-
-        except Exception as e:
-            event_logger.service_project_link.warning(
-                'Failed to create service project link on backend.',
-                event_type='service_project_link_sync_failed',
-                event_context={
-                    'service_project_link': service_project_link,
-                    'error_message': six.text_type(e),
-                }
-            )
-            six.reraise(*sys.exc_info())
 
     @log_backend_action()
     def create_tenant(self, tenant):
@@ -1651,7 +1408,8 @@ class OpenStackBackend(ServiceBackend):
                 event_context={'resource': instance, 'volume_size': new_core_size_gib},
             )
 
-    def push_security_group_rules(self, security_group):
+    def _push_security_group_rules(self, security_group):
+        """ Helper method  """
         nova = self.nova_client
         backend_security_group = nova.security_groups.get(group_id=security_group.backend_id)
         backend_rules = {
@@ -1729,7 +1487,7 @@ class OpenStackBackend(ServiceBackend):
             backend_security_group = nova.security_groups.create(name=security_group.name, description='')
             security_group.backend_id = backend_security_group.id
             security_group.save()
-            self.push_security_group_rules(security_group)
+            self._push_security_group_rules(security_group)
         except nova_exceptions.ClientException as e:
             six.reraise(OpenStackBackendError, e)
 
@@ -1749,16 +1507,17 @@ class OpenStackBackend(ServiceBackend):
             if backend_security_group.name != security_group.name:
                 nova.security_groups.update(
                     backend_security_group, name=security_group.name, description='')
-            self.push_security_group_rules(security_group)
+            self._push_security_group_rules(security_group)
         except nova_exceptions.ClientException as e:
             six.reraise(OpenStackBackendError, e)
 
-    def create_external_network(self, service_project_link, neutron, network_ip, network_prefix,
+    @log_backend_action('create external network for tenant')
+    def create_external_network(self, tenant, neutron, network_ip, network_prefix,
                                 vlan_id=None, vxlan_id=None, ips_count=None):
+        service_project_link = tenant.service_project_link
 
-        if service_project_link.external_network_id:
-            self.connect_link_to_external_network(
-                service_project_link, service_project_link.external_network_id)
+        if tenant.external_network_id:
+            self.connect_tenant_to_external_network(tenant, tenant.external_network_id)
 
         neutron = self.neutron_admin_client
 
@@ -1784,8 +1543,8 @@ class OpenStackBackend(ServiceBackend):
         create_response = neutron.create_network({'networks': [network]})
         network_id = create_response['networks'][0]['id']
         logger.info('External network with name %s has been created.', network_name)
-        service_project_link.external_network_id = network_id
-        service_project_link.save()
+        tenant.external_network_id = network_id
+        tenant.save(update_fields=['external_network_id'])
 
         # Subnet creation
         subnet_name = '{0}-sn01'.format(network_name)
@@ -1863,73 +1622,6 @@ class OpenStackBackend(ServiceBackend):
             tenant.external_network_id = ''
             tenant.save()
 
-    def get_or_create_internal_network(self, service_project_link):
-        neutron = self.neutron_admin_client
-        logger.info('Checking internal network of tenant %s', self.tenant_id)
-        if service_project_link.internal_network_id:
-            try:
-                # check if the network actually exists
-                response = neutron.show_network(service_project_link.internal_network_id)
-            except neutron_exceptions.NeutronClientException as e:
-                logger.exception('Internal network with id %s does not exist. Stale data in database?',
-                                 service_project_link.internal_network_id)
-                six.reraise(OpenStackBackendError, e)
-            else:
-                logger.info('Internal network with id %s exists.', service_project_link.internal_network_id)
-
-                network_name = response['network']['name']
-                subnet_id = response['network']['subnets'][0]
-                self.get_or_create_router(network_name, subnet_id)
-
-            return service_project_link.internal_network_id
-
-        tenant_name = self._get_tenant_name(service_project_link)
-        network_name = '{0}-int-net'.format(tenant_name)
-        networks = neutron.list_networks(name=network_name)['networks']
-
-        if networks:
-            network = networks[0]
-            service_project_link.internal_network_id = network['id']
-            service_project_link.save()
-            logger.info('Internal network %s for tenant %s already exists.', network_name, self.tenant_id)
-
-            subnet_id = network['subnets'][0]
-            self.get_or_create_router(network_name, subnet_id)
-        else:
-            network = {
-                'name': network_name,
-                'tenant_id': self.tenant_id,
-            }
-
-            # in case nothing fits, create and persist internal network
-            create_response = neutron.create_network({'networks': [network]})
-            network_id = create_response['networks'][0]['id']
-            service_project_link.internal_network_id = network_id
-            service_project_link.save()
-            logger.info('Internal network %s was created for tenant %s.', network_name, self.tenant_id)
-
-            subnet_name = 'nc-{0}-subnet01'.format(network_name)
-
-            logger.info('Creating subnet %s', subnet_name)
-            subnet_data = {
-                'network_id': service_project_link.internal_network_id,
-                'tenant_id': self.tenant_id,
-                'cidr': '192.168.42.0/24',
-                'allocation_pools': [
-                    {
-                        'start': '192.168.42.10',
-                        'end': '192.168.42.250'
-                    }
-                ],
-                'name': subnet_name,
-                'ip_version': 4,
-                'enable_dhcp': True,
-            }
-            create_response = neutron.create_subnet({'subnets': [subnet_data]})
-            self.get_or_create_router(network_name, create_response['subnets'][0]['id'])
-
-        return service_project_link.internal_network_id
-
     @log_backend_action('create internal network for tenant')
     def create_internal_network(self, tenant):
         neutron = self.neutron_admin_client
@@ -1989,10 +1681,6 @@ class OpenStackBackend(ServiceBackend):
                 backend_network_id=ip_address['floating_network_id']
             )
 
-    def prepare_floating_ip(self, service_project_link):
-        """ Allocate new floating_ip to service project link tenant if it does not have any free ips """
-        
-
     def assign_floating_ip_to_instance(self, instance, floating_ip):
         nova = self.nova_admin_client
         nova.servers.add_floating_ip(server=instance.backend_id, address=floating_ip.address)
@@ -2039,40 +1727,6 @@ class OpenStackBackend(ServiceBackend):
             floating_ip.save()
             logger.info('Successfully added external ip %s to instance %s',
                         instance.external_ips, instance.uuid)
-
-    def connect_link_to_external_network(self, service_project_link, external_network_id=None):
-        neutron = self.neutron_admin_client
-
-        if not external_network_id:
-            options = service_project_link.service.settings.options or {}
-            external_network_id = options.get('external_network_id')
-
-        if external_network_id:
-            try:
-                # check if the network actually exists
-                response = neutron.show_network(external_network_id)
-            except neutron_exceptions.NeutronClientException as e:
-                logger.exception('External network %s does not exist. Stale data in database?', external_network_id)
-                six.reraise(OpenStackBackendError, e)
-
-            network_name = response['network']['name']
-            subnet_id = response['network']['subnets'][0]
-            # XXX: refactor function call, split get_or_create_router into more fine grained
-            self.get_or_create_router(network_name, subnet_id,
-                                      external=True, network_id=response['network']['id'])
-
-            service_project_link.external_network_id = external_network_id
-            service_project_link.save()
-
-            logger.info('Router between external network %s and tenant %s was successfully created',
-                        external_network_id, service_project_link.tenant_id)
-
-            return external_network_id
-
-        else:
-            logger.warning('OpenStack service project link was not connected to external network: "external_network_id"'
-                           ' option is not defined in settings %s option', service_project_link.service.settings.name)
-            return None
 
     def connect_tenant_to_external_network(self, tenant, external_network_id):
         neutron = self.neutron_admin_client
@@ -2348,22 +2002,6 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info('Successfully promoted volumes %s', ', '.join(promoted_volume_ids))
         return promoted_volume_ids
-
-    def update_tenant_name(self, service_project_link):
-        keystone = self.keystone_admin_client
-        tenant_name = self._get_tenant_name(service_project_link)
-
-        if service_project_link.tenant_id:
-            logger.info('Trying to update name for tenant with id %s', service_project_link.tenant_id)
-            try:
-                keystone.tenants.update(service_project_link.tenant_id, name=tenant_name)
-                logger.info("Successfully updated name for tenant with id %s. Tenant's new name is %s",
-                            service_project_link.tenant_id, tenant_name)
-            except keystone_exceptions.NotFound as e:
-                logger.warning('Tenant with id %s does not exist', service_project_link.tenant_id)
-                six.reraise(OpenStackBackendError, e)
-        else:
-            logger.warning('Cannot update tenant name for link %s without tenant ID', service_project_link)
 
     def update_tenant(self, tenant):
         keystone = self.keystone_admin_client

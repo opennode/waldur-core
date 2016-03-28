@@ -3,24 +3,12 @@ import logging
 from celery import shared_task
 
 from nodeconductor.openstack.backend import OpenStackBackendError
-from nodeconductor.openstack.models import Instance, OpenStackServiceProjectLink
+from nodeconductor.openstack.models import Instance
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='nodeconductor.openstack.allocate_floating_ip')
-def allocate_floating_ip(service_project_link_str):
-    service_project_link = next(OpenStackServiceProjectLink.from_string(service_project_link_str))
-    backend = service_project_link.get_backend()
-
-    try:
-        backend.allocate_floating_ip_address(service_project_link)
-    except OpenStackBackendError:
-        logger.warning(
-            "Failed to allocate floating IP for service project link %s.",
-            service_project_link_str)
-
-
+# XXX: This task should be replaced with executor
 @shared_task(name='nodeconductor.openstack.assign_floating_ip')
 def assign_floating_ip(instance_uuid, floating_ip_uuid):
     instance = Instance.objects.get(uuid=instance_uuid)

@@ -3,10 +3,8 @@ from __future__ import unicode_literals
 import logging
 
 from celery import shared_task
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Q
 
 from nodeconductor.core.tasks import transition, retry_if_false, save_error_message, throttle
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
@@ -16,57 +14,6 @@ from nodeconductor.structure import (SupportedServices, ServiceBackendError,
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user, GeoIpException
 
 logger = logging.getLogger(__name__)
-
-
-@shared_task(name='nodeconductor.structure.stop_customer_resources')
-def stop_customer_resources(customer_uuid):
-    if not settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
-        return
-
-    customer = models.Customer.objects.get(uuid=customer_uuid)
-    for model_name, model in SupportedServices.get_resource_models().items():
-        # Shutdown active resources for debtors
-        # TODO: Consider supporting another states (like 'STARTING')
-        # TODO: Remove IaaS support (NC-645)
-        if model_name == 'IaaS.Instance':
-            resources = model.objects.filter(
-                state=model.States.ONLINE,
-                cloud_project_membership__cloud__customer=customer)
-        else:
-            resources = model.objects.filter(
-                state=model.States.ONLINE,
-                service_project_link__service__customer=customer)
-
-        for resource in resources:
-            try:
-                backend = resource.get_backend()
-                backend.stop()
-            except NotImplementedError:
-                continue
-
-
-@shared_task(name='nodeconductor.structure.recover_erred_services')
-def recover_erred_services(service_project_links=None):
-    if service_project_links is not None:
-        erred_spls = models.ServiceProjectLink.from_string(service_project_links)
-
-        for spl in erred_spls:
-            recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
-    else:
-        for service_type, service in SupportedServices.get_service_models().items():
-            # TODO: Remove IaaS support (NC-645)
-            is_iaas = service_type == SupportedServices.Types.IaaS
-
-            query = Q(state=SynchronizationStates.ERRED)
-            if is_iaas:
-                query |= Q(cloud__state=SynchronizationStates.ERRED)
-            else:
-                query |= Q(service__settings__state=SynchronizationStates.ERRED)
-
-            erred_spls = service['service_project_link'].objects.filter(query)
-
-            for spl in erred_spls:
-                recover_erred_service.delay(spl.to_string(), is_iaas=spl._meta.app_label == 'iaas')
 
 
 @shared_task(name='nodeconductor.structure.sync_service_settings', heavy_task=True)
@@ -116,13 +63,6 @@ def begin_recovering_erred_service_settings(settings_uuid, transition_entity=Non
                 args=(settings_uuid,),
                 link=sync_service_settings_succeeded.si(settings_uuid, recovering=True),
                 link_error=sync_service_settings_failed.si(settings_uuid, recovering=True))
-        try:
-            spl_model = SupportedServices.get_service_models()[settings.type]['service_project_link']
-            erred_spls = spl_model.objects.filter(service__settings=settings,
-                                                  state=SynchronizationStates.ERRED)
-            recover_erred_services.delay([spl.to_string() for spl in erred_spls])
-        except KeyError:
-            logger.warning('Failed to recover service project links for settings %s', settings)
     else:
         settings.set_erred()
         settings.error_message = 'Failed to ping service settings %s' % settings.name
@@ -146,63 +86,6 @@ def recover_erred_service_settings(settings_uuids=None):
             begin_recovering_erred_service_settings.delay(settings_uuid)
         else:
             logger.warning('Cannot recover service settings %s from state %s', settings.name, settings.state)
-
-
-@shared_task(name='nodeconductor.structure.sync_service_project_links',
-             max_retries=120, default_retry_delay=5, is_heavy_task=True)
-@retry_if_false
-@throttle(concurrency=2, key='service_project_links_sync')
-def sync_service_project_links(service_project_links=None, quotas=None, initial=False):
-    if service_project_links is not None:
-        link_objects = models.ServiceProjectLink.from_string(service_project_links)
-        # Ignore iaas cloud project membership because it does not support default sync flow
-        link_objects = [lo for lo in link_objects if lo._meta.app_label != 'iaas']
-    else:
-        # Ignore iaas cloud project membership because it does not support default sync flow
-        spl_models = [model for model in models.ServiceProjectLink.get_all_models() if model._meta.app_label != 'iaas']
-        link_objects = sum(
-            [list(model.objects.filter(state=SynchronizationStates.IN_SYNC)) for model in spl_models], [])
-
-    if not link_objects:
-        return True
-
-    for obj in link_objects:
-        service_project_link_str = obj.to_string()
-        if initial:
-            # Ignore SPLs with ERRED service settings
-            if obj.service.settings.state == SynchronizationStates.ERRED:
-                break
-            # For newly created SPLs make sure their settings in stable state, retry otherwise
-            if obj.service.settings.state != SynchronizationStates.IN_SYNC:
-                return False
-
-            if obj.state == SynchronizationStates.NEW:
-                obj.schedule_creating()
-                obj.save()
-            elif obj.state != SynchronizationStates.CREATION_SCHEDULED:
-                # Don't sync already created SPL during initial phase
-                return True
-
-            begin_syncing_service_project_links.apply_async(
-                args=(service_project_link_str,),
-                kwargs={'quotas': quotas, 'initial': True, 'transition_method': 'begin_creating'},
-                link=sync_service_project_link_succeeded.si(service_project_link_str),
-                link_error=sync_service_project_link_failed.si(service_project_link_str))
-
-        elif obj.state == SynchronizationStates.IN_SYNC:
-            obj.schedule_syncing()
-            obj.save()
-
-            begin_syncing_service_project_links.apply_async(
-                args=(service_project_link_str,),
-                kwargs={'quotas': quotas, 'initial': False},
-                link=sync_service_project_link_succeeded.si(service_project_link_str),
-                link_error=sync_service_project_link_failed.si(service_project_link_str))
-
-        else:
-            logger.warning('Cannot sync SPL %s from state %s', obj.id, obj.state)
-
-    return True
 
 
 @shared_task
@@ -244,49 +127,6 @@ def sync_service_settings_succeeded(settings_uuid, transition_entity=None, recov
 def sync_service_settings_failed(settings_uuid, transition_entity=None, recovering=False):
     if recovering:
         logger.info('Failed to recover service settings %s.' % transition_entity.name)
-
-
-@shared_task
-def begin_syncing_service_project_links(service_project_link_str, quotas=None, initial=False,
-                                        transition_entity=None, transition_method='begin_syncing'):
-    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
-
-    @transition(spl_model, transition_method)
-    @save_error_message
-    def process(service_project_link_pk, quotas=None, transition_entity=None):
-        service_project_link = transition_entity
-        try:
-            backend = service_project_link.get_backend()
-            if quotas:
-                backend.sync_quotas(service_project_link, quotas)
-            else:
-                backend.sync_link(service_project_link, is_initial=initial)
-        except ServiceBackendNotImplemented:
-            pass
-
-    process(spl_pk, quotas=quotas)
-
-
-@shared_task
-def sync_service_project_link_succeeded(service_project_link_str):
-    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
-
-    @transition(spl_model, 'set_in_sync')
-    def process(service_project_link_pk, transition_entity=None):
-        pass
-
-    process(spl_pk)
-
-
-@shared_task
-def sync_service_project_link_failed(service_project_link_str):
-    spl_model, spl_pk = models.ServiceProjectLink.parse_model_string(service_project_link_str)
-
-    @transition(spl_model, 'set_erred')
-    def process(service_project_link_pk, transition_entity=None):
-        pass
-
-    process(spl_pk)
 
 
 @shared_task
@@ -523,5 +363,4 @@ def create_spls_and_services_for_shared_settings(settings_uuids=None):
                 for project in service.customer.projects.all():
                     spl = service_project_link_model.objects.filter(project=project, service=service)
                     if not spl.exists():
-                        service_project_link_model.objects.create(
-                            project=project, service=service, state=SynchronizationStates.NEW)
+                        service_project_link_model.objects.create(project=project, service=service)

@@ -88,15 +88,16 @@ class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
         return self.tenant.backend_id if self.tenant else None
 
     # XXX: temporary method, should be removed after instance will have tenant as field
-    def create_tenant(self):
-        def _get_tenant_name(service_project_link):
-            proj = service_project_link.project
-            return '%(project_name)s-%(project_uuid)s' % {
-                'project_name': ''.join([c for c in proj.name if ord(c) < 128])[:15],
-                'project_uuid': proj.uuid.hex[:4]
-            }
+    def get_tenant_name(self):
+        proj = self.project
+        return '%(project_name)s-%(project_uuid)s' % {
+            'project_name': ''.join([c for c in proj.name if ord(c) < 128])[:15],
+            'project_uuid': proj.uuid.hex[:4]
+        }
 
-        return Tenant.objects.create(name=_get_tenant_name(self), service_project_link=self)
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    def create_tenant(self):
+        return Tenant.objects.create(name=self.get_tenant_name(self), service_project_link=self)
 
 
 class Flavor(LoggableMixin, structure_models.ServiceProperty):
