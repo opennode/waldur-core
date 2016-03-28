@@ -55,12 +55,11 @@ config_defaults = {
     'elasticsearch': {
         'host': '',
         'password': '',
-        'port': '443',
-        'protocol': 'https',
+        'port': '9200',
+        'protocol': 'http',
         'username': '',
-        'use_ssl': True,
-        'verify_certs': False,
-        'ca_certs': '',  # empty to disable CA certificates control
+        'verify_certs': 'true',
+        'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # RHEL7-specific, may be different on other platforms
     },
     'events': {
         'hook': 'false',
@@ -666,8 +665,8 @@ NODECONDUCTOR.update({
         'host': config.get('elasticsearch', 'host'),
         'port': config.get('elasticsearch', 'port'),
         'protocol': config.get('elasticsearch', 'protocol'),
-        'use_ssl': config.get('elasticsearch', 'use_ssl'),
-        'verify_certs': config.get('elasticsearch', 'verify_certs'),
+        'use_ssl': True if config.get('elasticsearch', 'protocol') == 'https' else False,
+        'verify_certs': config.getboolean('elasticsearch', 'verify_certs'),
         'ca_certs': config.get('elasticsearch', 'ca_certs'),
     },
 
