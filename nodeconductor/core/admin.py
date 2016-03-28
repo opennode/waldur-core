@@ -86,6 +86,20 @@ class ReversionAdmin(reversion.VersionAdmin):
 
 
 class ExecutorAdminAction(object):
+    """ Add executor as action to admin model.
+
+    Usage example:
+        class PullSecurityGroups(ExecutorAdminAction):
+            executor = executors.TenantPullSecurityGroupsExecutor  # define executor
+            short_description = 'Pull security groups'  # description for admin page
+
+            def validate(self, tenant):
+                if tenant.state != Tenant.States.OK:
+                    raise ValidationError('Tenant has to be in state OK to pull security groups.')
+
+        pull_security_groups = PullSecurityGroups()  # this action could be registered as admin action
+
+    """
     executor = NotImplemented
 
     def __call__(self, admin_class, request, queryset):
@@ -111,4 +125,5 @@ class ExecutorAdminAction(object):
             admin_class.message_user(request, message, level=messages.ERROR)
 
     def validate(self, instance):
+        """ Raise validation error if action cannot be performed for given instance """
         pass
