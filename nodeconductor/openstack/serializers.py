@@ -461,8 +461,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name='openstack-spl-detail',
-        queryset=models.OpenStackServiceProjectLink.objects.all(),
-        write_only=True)
+        queryset=models.OpenStackServiceProjectLink.objects.all())
 
     flavor = serializers.HyperlinkedRelatedField(
         view_name='openstack-flavor-detail',
