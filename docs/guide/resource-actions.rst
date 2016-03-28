@@ -127,12 +127,20 @@ Each object rendered by this endpoint should have attributes corresponding to va
 
 In order to display only valid field choices to user in action's dialog,
 ensure that serializer's field has the following attributes:
-`view_name`, `query_params`, `value_field` and `display_name_field` attributes.
+`view_name`, `query_params`, `value_field` and `display_name_field`.
 For example:
 
 .. code-block:: python
 
     class AssignFloatingIpSerializer(serializers.Serializer):
+        floating_ip = serializers.HyperlinkedRelatedField(
+            label='Floating IP',
+            required=True,
+            view_name='openstack-fip-detail',
+            lookup_field='uuid',
+            queryset=models.FloatingIP.objects.all()
+        )
+
         def get_fields(self):
             fields = super(AssignFloatingIpSerializer, self).get_fields()
             if self.instance:
