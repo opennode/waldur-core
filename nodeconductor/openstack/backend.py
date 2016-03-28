@@ -2061,8 +2061,9 @@ class OpenStackBackend(ServiceBackend):
             self.get_or_create_router(network_name, subnet_id,
                                       external=True, network_id=response['network']['id'])
 
-            service_project_link.external_network_id = external_network_id
-            service_project_link.save()
+            tenant = service_project_link.tenant
+            tenant.external_network_id = external_network_id
+            tenant.save()
 
             logger.info('Router between external network %s and tenant %s was successfully created',
                         external_network_id, service_project_link.tenant_id)
