@@ -1,7 +1,10 @@
+from collections import defaultdict
+
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 import reversion
@@ -80,3 +83,32 @@ class ReversionAdmin(reversion.VersionAdmin):
     def log_addition(self, request, object):
         # Revision creation is ignored in this method because it has to be implemented in model.save method
         super(reversion.VersionAdmin, self).log_addition(request, object)
+
+
+class ExecutorAdminAction(object):
+    executor = NotImplemented
+
+    def __call__(self, admin_class, request, queryset):
+        errors = defaultdict(list)
+        successfully_executed = []
+        for instance in queryset:
+            try:
+                self.validate(instance)
+            except ValidationError as e:
+                errors[str(e)].append(instance)
+            else:
+                self.executor.execute(instance)
+                successfully_executed.append(instance)
+
+        if successfully_executed:
+            message = 'Operation was successfully scheduled for %s instances: %s' % (
+                len(successfully_executed), ', '.join([str(i) for i in successfully_executed]))
+            admin_class.message_user(request, message)
+
+        for error, instances in errors.items():
+            message = 'Failed to schedule operation for %s instances: %s. Error: %s' % (
+                len(instances), ', '.join([str(i) for i in instances]), error)
+            admin_class.message_user(request, message, level=messages.ERROR)
+
+    def validate(self, instance):
+        pass

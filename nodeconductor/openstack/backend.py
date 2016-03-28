@@ -1577,20 +1577,21 @@ class OpenStackBackend(ServiceBackend):
 
         return service_project_link.external_network_id
 
-    def detect_external_network(self, service_project_link):
+    def detect_external_network(self, tenant):
         neutron = self.neutron_admin_client
-        routers = neutron.list_routers(tenant_id=service_project_link.tenant_id)['routers']
+        routers = neutron.list_routers(tenant_id=tenant.backend_id)['routers']
         if bool(routers):
             router = routers[0]
         else:
-            logger.warning('Service project link %s does not have connected routers.', service_project_link)
+            logger.warning('Tenant %s (PK: %s) does not have connected routers.', tenant, tenant.pk)
             return
 
         ext_gw = router.get('external_gateway_info', {})
         if 'network_id' in ext_gw:
-            service_project_link.external_network_id = ext_gw['network_id']
-            service_project_link.save()
-            logger.info('Found and set external network with id %s', ext_gw['network_id'])
+            tenant.external_network_id = ext_gw['network_id']
+            tenant.save()
+            logger.info('Found and set external network with id %s for tenant %s (PK: %s)',
+                        ext_gw['network_id'], tenant, tenant.pk)
 
     @log_backend_action('delete tenant external network')
     def delete_external_network(self, tenant):
