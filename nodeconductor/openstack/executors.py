@@ -147,3 +147,21 @@ class TenantPushQuotasExecutor(executors.ActionExecutor):
             state_transition='begin_updating',
             runtime_state='updating quotas',
             success_runtime_state='online')
+
+
+class TenantPullSecurityGroupsExecutor(executors.ActionExecutor):
+
+    @classmethod
+    def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
+        return tasks.BackendMethodTask().si(
+            serialized_tenant, 'pull_tenant_security_groups',
+            state_transition='begin_updating')
+
+
+class TenantDetectExternalNetworkExecutor(executors.ActionExecutor):
+
+    @classmethod
+    def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
+        return tasks.BackendMethodTask().si(
+            serialized_tenant, 'detect_external_network',
+            state_transition='begin_updating')

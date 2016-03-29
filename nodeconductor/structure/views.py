@@ -1154,9 +1154,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
 
     def perform_create(self, serializer):
         service_project_link = serializer.validated_data['service_project_link']
-        if service_project_link.state == core_models.SynchronizationStates.ERRED:
-            raise core_exceptions.IncorrectStateException(
-                detail='Cannot create resource if its service project link is in erred state.')
 
         if service_project_link.service.settings.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
@@ -1173,11 +1170,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
             event_context={'resource': serializer.instance})
 
     def perform_update(self, serializer):
-        spl = self.get_object().service_project_link
-        if spl.state == core_models.SynchronizationStates.ERRED:
-            raise core_exceptions.IncorrectStateException(
-                detail='Cannot modify resource if its service project link is in erred state.')
-
         old_name = serializer.instance.name
         resource = serializer.save()
 

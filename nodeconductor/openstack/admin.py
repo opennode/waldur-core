@@ -1,17 +1,18 @@
-from django.contrib import admin, messages
-from django.utils.translation import ungettext
+from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 
-from nodeconductor.core.tasks import send_task
-from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.admin import ExecutorAdminAction
 from nodeconductor.structure import admin as structure_admin
+from nodeconductor.openstack import executors
 from nodeconductor.openstack.forms import BackupScheduleForm, InstanceForm
 from nodeconductor.openstack.models import OpenStackService, OpenStackServiceProjectLink, Instance, \
-                                           Backup, BackupSchedule
+                                           Backup, BackupSchedule, Tenant
 
 
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
-    readonly_fields = ('get_service_settings_username', 'get_service_settings_password') + \
-                      structure_admin.ServiceSettingsAdmin.readonly_fields
+    readonly_fields = ('get_service_settings_username', 'get_service_settings_password', 'get_tenant') + \
+                      structure_admin.ServiceProjectLinkAdmin.readonly_fields
 
     def get_service_settings_username(self, obj):
         return obj.service.settings.username
@@ -23,105 +24,15 @@ class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
 
     get_service_settings_password.short_description = 'Password'
 
-    actions = structure_admin.ServiceProjectLinkAdmin.actions + \
-              ['detect_external_networks', 'allocate_floating_ip',
-               'pull_security_groups', 'push_security_groups']
+    def get_tenant(self, obj):
+        tenant = obj.tenant
+        if tenant is not None:
+            url = reverse('admin:%s_%s_change' % (tenant._meta.app_label,  tenant._meta.model_name),  args=[tenant.id])
+            return '<a href="%s">%s</a>' % (url, tenant.name)
+        return
 
-    def detect_external_networks(self, request, queryset):
-        queryset = queryset.exclude(state=SynchronizationStates.ERRED)
-
-        tasks_scheduled = 0
-
-        for spl in queryset.iterator():
-            send_task('openstack', 'sync_external_network')(spl.to_string(), 'detect')
-            tasks_scheduled += 1
-
-        message = ungettext(
-            'One service project link scheduled for detection',
-            '%(tasks_scheduled)d service project links scheduled for detection',
-            tasks_scheduled
-        )
-        message = message % {
-            'tasks_scheduled': tasks_scheduled,
-        }
-
-        self.message_user(request, message)
-
-    detect_external_networks.short_description = "Attempt to lookup and set external network id of the connected router"
-
-    def allocate_floating_ip(self, request, queryset):
-        queryset = queryset.exclude(state=SynchronizationStates.ERRED).exclude(external_network_id='')
-
-        tasks_scheduled = 0
-
-        for spl in queryset.iterator():
-            send_task('openstack', 'allocate_floating_ip')(spl.to_string())
-            tasks_scheduled += 1
-
-        message = ungettext(
-            'One service project link scheduled for floating IP allocation',
-            '%(tasks_scheduled)d service project links scheduled for floating IP allocation',
-            tasks_scheduled
-        )
-        message = message % {
-            'tasks_scheduled': tasks_scheduled,
-        }
-
-        self.message_user(request, message)
-
-    allocate_floating_ip.short_description = "Allocate floating IPs for selected service project links"
-
-    def pull_security_groups(self, request, queryset):
-        spls_checked = queryset.count()
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-
-        if spls_checked != queryset.count():
-            message = 'Only service project links that are IN_SYNC state can be scheduled'
-            self.message_user(request, message, level=messages.WARNING)
-
-        tasks_scheduled = 0
-        for spl in queryset.iterator():
-            send_task('openstack', 'openstack_pull_security_groups')(spl.to_string())
-            tasks_scheduled += 1
-
-        message = ungettext(
-            'Scheduled security groups pulling for one service project link',
-            'Scheduled security groups pulling for %(tasks_scheduled)d service project links',
-            tasks_scheduled
-        )
-        message = message % {
-            'tasks_scheduled': tasks_scheduled,
-        }
-
-        self.message_user(request, message)
-
-    pull_security_groups.short_description = "Pull security groups for selected service project links"
-
-    def push_security_groups(self, request, queryset):
-        spls_checked = queryset.count()
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-
-        if spls_checked != queryset.count():
-            message = 'Only service project links that are IN_SYNC state can be scheduled'
-            self.message_user(request, message, level=messages.WARNING)
-
-        tasks_scheduled = 0
-        for spl in queryset.iterator():
-            send_task('openstack', 'openstack_push_security_groups')(spl.to_string())
-            tasks_scheduled += 1
-
-        message = ungettext(
-            'Scheduled security groups pushing for one service project link',
-            'Scheduled security groups pushing for %(tasks_scheduled)d service project links',
-            tasks_scheduled
-        )
-        message = message % {
-            'tasks_scheduled': tasks_scheduled,
-        }
-
-        self.message_user(request, message)
-
-    push_security_groups.short_description = "Push security groups for selected service project links"
+    get_tenant.short_description = 'Tenant'
+    get_tenant.allow_tags = True
 
 
 class BackupAdmin(admin.ModelAdmin):
@@ -141,7 +52,45 @@ class InstanceAdmin(structure_admin.VirtualMachineAdmin):
     form = InstanceForm
 
 
+class TenantAdmin(structure_admin.ResourceAdmin):
+
+    actions = ('detect_external_networks', 'allocate_floating_ip', 'pull_security_groups')
+
+    class PullSecurityGroups(ExecutorAdminAction):
+        executor = executors.TenantPullSecurityGroupsExecutor
+        short_description = 'Pull security groups'
+
+        def validate(self, tenant):
+            if tenant.state != Tenant.States.OK:
+                raise ValidationError('Tenant has to be in state OK to pull security groups.')
+
+    pull_security_groups = PullSecurityGroups()
+
+    class AllocateFloatingIP(ExecutorAdminAction):
+        executor = executors.TenantAllocateFloatingIPExecutor
+        short_description = 'Allocate floating IPs'
+
+        def validate(self, tenant):
+            if tenant.state != Tenant.States.OK:
+                raise ValidationError('Tenant has to be in state OK to allocate floating IP.')
+            if not tenant.exeternal_network_id:
+                raise ValidationError('Tenant has to have external network to allocate floating IP.')
+
+    allocate_floating_ip = AllocateFloatingIP()
+
+    class DetectExternalNetwrorks(ExecutorAdminAction):
+        executor = executors.TenantDetectExternalNetworkExecutor
+        short_description = 'Attempt to lookup and set external network id of the connected router'
+
+        def validate(self, tenant):
+            if tenant.state != Tenant.States.OK:
+                raise ValidationError('Tenant has to be in state OK to allocate floating IPs.')
+
+    detect_external_networks = DetectExternalNetwrorks()
+
+
 admin.site.register(Instance, InstanceAdmin)
+admin.site.register(Tenant, TenantAdmin)
 admin.site.register(OpenStackService, structure_admin.ServiceAdmin)
 admin.site.register(OpenStackServiceProjectLink, ServiceProjectLinkAdmin)
 admin.site.register(Backup, BackupAdmin)

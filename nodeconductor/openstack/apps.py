@@ -73,9 +73,9 @@ class OpenStackConfig(AppConfig):
             dispatch_uid='nodeconductor.openstack.handlers.change_floating_ip_quota_on_status_change',
         )
         signals.post_save.connect(
-            handlers.check_project_name_update,
+            handlers.update_tenant_name_on_project_update,
             sender=Project,
-            dispatch_uid='nodeconductor.openstack.handlers.check_project_name_update',
+            dispatch_uid='nodeconductor.openstack.handlers.update_tenant_name_on_project_update',
         )
 
         signals.post_save.connect(

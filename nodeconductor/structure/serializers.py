@@ -1107,11 +1107,9 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
-            'service', 'service_name', 'service_uuid',
-            'state', 'error_message'
+            'service', 'service_name', 'service_uuid'
         )
         related_paths = ('project', 'service')
-        read_only_fields = ('error_message',)
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }

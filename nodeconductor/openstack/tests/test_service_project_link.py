@@ -5,7 +5,6 @@ from rest_framework import test, status
 
 from nodeconductor.openstack import models
 from nodeconductor.openstack.tests import factories
-from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -44,7 +43,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
-        self.service_project_link = factories.OpenStackServiceProjectLinkFactory(state=SynchronizationStates.IN_SYNC)
+        self.service_project_link = factories.OpenStackServiceProjectLinkFactory()
 
         self.quotas_url = factories.OpenStackServiceProjectLinkFactory.get_url(
             self.service_project_link, 'set_quotas')
@@ -159,8 +158,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
     def test_user_cannot_allocate_floating_ip_from_spl_in_unstable_state(self):
         self.client.force_authenticate(user=self.staff)
-        spl = factories.OpenStackServiceProjectLinkFactory(
-            external_network_id='12345', state=SynchronizationStates.ERRED)
+        spl = factories.OpenStackServiceProjectLinkFactory(external_network_id='12345')
         url = factories.OpenStackServiceProjectLinkFactory.get_url(spl, 'allocate_floating_ip')
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:
@@ -171,8 +169,7 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
     def test_user_can_allocate_floating_ip_from_spl_with_external_network_id(self):
         self.client.force_authenticate(user=self.staff)
-        spl = factories.OpenStackServiceProjectLinkFactory(
-            external_network_id='12345', state=SynchronizationStates.IN_SYNC)
+        spl = factories.OpenStackServiceProjectLinkFactory(external_network_id='12345')
         url = factories.OpenStackServiceProjectLinkFactory.get_url(spl, 'allocate_floating_ip')
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:
@@ -212,8 +209,7 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         self.service = factories.OpenStackServiceFactory(customer=self.customer)
         self.service_project_link = factories.OpenStackServiceProjectLinkFactory(
             project=self.connected_project,
-            service=self.service,
-            state=SynchronizationStates.IN_SYNC)
+            service=self.service)
 
         # the customer also has another project with users but without a permission link
         self.not_connected_project = structure_factories.ProjectFactory(customer=self.customer)

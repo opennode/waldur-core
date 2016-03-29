@@ -1,8 +1,7 @@
 import factory
 from mock import patch, call
-from rest_framework import test, status
+from rest_framework import test
 
-from nodeconductor.core import models as core_models
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.models import CustomerRole, ProjectRole
@@ -21,7 +20,8 @@ class UserAndSshKeyPropagationTest(test.APITransactionTestCase):
         self.links = [self.create_service_project_link(self.customer, self.project) for i in range(3)]
 
     def create_service_project_link(self, customer, project):
-        service_type, models = SupportedServices.get_service_models().items()[0]
+        service_type = 'OpenStack'
+        models = SupportedServices.get_service_models()[service_type]
 
         class ServiceFactory(factory.DjangoModelFactory):
             class Meta(object):
