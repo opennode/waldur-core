@@ -918,7 +918,10 @@ class UpdateOnlyByPaidCustomerMixin(object):
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.UserContextMixin,
                          viewsets.ModelViewSet):
-
+    """
+    Read more about `services
+    <http://nodeconductor.readthedocs.org/en/stable/api/api.html#services>`_.
+    """
     class PaidControl:
         customer_path = 'customer'
         settings_path = 'settings'
@@ -973,6 +976,10 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
+        """
+        Read more about `linking
+        <http://nodeconductor.readthedocs.org/en/stable/api/api.html#import-service-resources>`_.
+        """
         if not self._can_import():
             raise MethodNotAllowed('link')
 
@@ -1039,6 +1046,10 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     mixins.DestroyModelMixin,
                                     mixins.ListModelMixin,
                                     viewsets.GenericViewSet):
+    """
+    Read more about `service project links
+    <http://nodeconductor.readthedocs.org/en/latest/api/api.html#project-service-connection-list>`_.
+    """
 
     class PaidControl:
         customer_path = 'service__customer'

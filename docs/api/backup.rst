@@ -112,7 +112,7 @@ for triggering the next backups. Schedule will be deactivated if backup fails.
 Activating/deactivating a schedule
 ----------------------------------
 
-A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
+A schedule can be in two states: active or not. Non-active states are not used for scheduling the new tasks.
 Only users with write access to backup schedule source can activate or deactivate schedule.
 
 To activate a backup schedule, issue POST request to **/api/backup-schedules/<UUID>/activate/**. Note that
