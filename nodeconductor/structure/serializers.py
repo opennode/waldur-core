@@ -1176,8 +1176,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name=NotImplemented,
-        queryset=NotImplemented,
-        write_only=True)
+        queryset=NotImplemented)
 
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
