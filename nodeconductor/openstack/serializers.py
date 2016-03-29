@@ -531,10 +531,10 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         if not attrs['skip_external_ip_assignment']:
             options = settings.options or {}
             tenant = service_project_link.tenant
-            missed_net = (
-                (tenant is None and 'external_network_id' not in options) or
-                (tenant.state == core_models.StateMixin.States.OK and not tenant.external_network_id)
-            )
+            if tenant is None:
+                missed_net = 'external_network_id' not in options
+            else:
+                missed_net = tenant.state == core_models.StateMixin.States.OK and not tenant.external_network_id
 
             if missed_net:
                 raise serializers.ValidationError(
