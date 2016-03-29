@@ -20,7 +20,8 @@ def _instance_data(user, instance=None):
         'image': factories.ImageFactory.get_url(image),
         'service_project_link': factories.OpenStackServiceProjectLinkFactory.get_url(instance.service_project_link),
         'ssh_public_key': structure_factories.SshPublicKeyFactory.get_url(ssh_public_key),
-        'system_volume_size': image.min_disk
+        'system_volume_size': image.min_disk,
+        'skip_external_ip_assignment': True,
     }
 
 
@@ -31,13 +32,13 @@ class InstanceSecurityGroupsTest(test.APISimpleTestCase):
         self.client.force_authenticate(self.user)
 
         self.instance = factories.InstanceFactory(state=models.Instance.States.OFFLINE)
-        membership = self.instance.service_project_link
-        membership.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
+        spl = self.instance.service_project_link
+        spl.project.add_user(self.user, structure_models.ProjectRole.ADMINISTRATOR)
 
         self.instance_security_groups = factories.InstanceSecurityGroupFactory.create_batch(2, instance=self.instance)
         self.service_security_groups = [g.security_group for g in self.instance_security_groups]
         for security_group in self.service_security_groups:
-            security_group.service_project_link = membership
+            security_group.service_project_link = spl
             security_group.save()
 
     def test_groups_list_in_instance_response(self):

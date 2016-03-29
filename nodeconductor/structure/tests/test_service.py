@@ -1,7 +1,6 @@
 
 import factory
 
-from mock import patch
 from mock_django import mock_signal_receiver
 from django.core.urlresolvers import reverse
 from rest_framework import test, status

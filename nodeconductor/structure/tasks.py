@@ -141,26 +141,14 @@ def recover_erred_service(service_project_link_str, is_iaas=False):
 
     try:
         backend = spl.get_backend()
-        if is_iaas:
-            try:
-                if spl.state == SynchronizationStates.ERRED:
-                    backend.create_session(membership=spl)
-                if spl.cloud.state == SynchronizationStates.ERRED:
-                    backend.create_session(keystone_url=spl.cloud.auth_url)
-            except CloudBackendError:
-                is_active = False
-            else:
-                is_active = True
-        else:
-            is_active = backend.ping()
+        is_active = backend.ping()
     except (ServiceBackendError, ServiceBackendNotImplemented):
         is_active = False
 
     if is_active:
-        for entity in (spl, settings):
-            if entity.state == SynchronizationStates.ERRED:
-                entity.set_in_sync_from_erred()
-                entity.save()
+        if settings.state == SynchronizationStates.ERRED:
+            settings.set_in_sync_from_erred()
+            settings.save()
     else:
         logger.info('Failed to recover service settings %s.' % settings)
 
@@ -193,19 +181,6 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
     except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
-
-    if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logger.debug(
-            'Not pushing public keys for service project link %s which is in state %s.',
-            service_project_link_str, service_project_link.get_state_display())
-
-        if service_project_link.state != SynchronizationStates.ERRED:
-            logger.debug(
-                'Rescheduling synchronisation of keys for link %s in state %s.',
-                service_project_link_str, service_project_link.get_state_display())
-
-            # retry a task if service project link is not in a sane state
-            return False
 
     backend = service_project_link.get_backend()
     try:
@@ -261,19 +236,6 @@ def add_user(user_uuid, service_project_link_str):
     except StopIteration:
         logger.warning('Missing service project link %s.', service_project_link_str)
         return True
-
-    if service_project_link.state != SynchronizationStates.IN_SYNC:
-        logger.debug(
-            'Not adding users for service project link %s which is in state %s.',
-            service_project_link_str, service_project_link.get_state_display())
-
-        if service_project_link.state != SynchronizationStates.ERRED:
-            logger.debug(
-                'Rescheduling synchronisation of users for link %s in state %s.',
-                service_project_link_str, service_project_link.get_state_display())
-
-            # retry a task if service project link is not in a sane state
-            return False
 
     backend = service_project_link.get_backend()
     try:

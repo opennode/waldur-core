@@ -2,12 +2,8 @@ import mock
 
 from django.test import TestCase
 
-from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.openstack import models as openstack_models
 from nodeconductor.openstack.tests import factories as openstack_factories
-from nodeconductor.structure import models as structure_models
 from nodeconductor.structure import tasks as structure_tasks
-from nodeconductor.structure import ServiceBackendError
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
@@ -15,8 +11,7 @@ from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 @mock.patch('nodeconductor.structure.models.ServiceProjectLink.get_backend')
 class TestSshSynchronizationTask(TestCase):
     def setUp(self):
-        self.link = openstack_factories.OpenStackServiceProjectLinkFactory(
-            state=SynchronizationStates.IN_SYNC)
+        self.link = openstack_factories.OpenStackServiceProjectLinkFactory()
         self.link_str = self.link.to_string()
         self.ssh_key = structure_factories.SshPublicKeyFactory()
 
@@ -41,8 +36,7 @@ class TestSshSynchronizationTask(TestCase):
 @mock.patch('nodeconductor.structure.models.ServiceProjectLink.get_backend')
 class TestUserSynchronizationTask(TestCase):
     def setUp(self):
-        self.link = openstack_factories.OpenStackServiceProjectLinkFactory(
-            state=SynchronizationStates.IN_SYNC)
+        self.link = openstack_factories.OpenStackServiceProjectLinkFactory()
         self.link_str = self.link.to_string()
         self.user = structure_factories.UserFactory()
 

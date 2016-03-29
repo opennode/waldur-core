@@ -97,7 +97,7 @@ class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
 
     # XXX: temporary method, should be removed after instance will have tenant as field
     def create_tenant(self):
-        return Tenant.objects.create(name=self.get_tenant_name(self), service_project_link=self)
+        return Tenant.objects.create(name=self.get_tenant_name(), service_project_link=self)
 
 
 class Flavor(LoggableMixin, structure_models.ServiceProperty):

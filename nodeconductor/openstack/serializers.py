@@ -533,8 +533,8 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
             options = settings.options or {}
             tenant = service_project_link.tenant
             missed_net = (
-                (tenant.state == core_models.StateMixin.States.OK and tenant.external_network_id is None) or
-                (tenant is None and 'external_network_id' not in options)
+                (tenant is None and 'external_network_id' not in options) or
+                (tenant.state == core_models.StateMixin.States.OK and not tenant.external_network_id)
             )
 
             if missed_net:

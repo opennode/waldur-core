@@ -3,7 +3,6 @@ from uuid import uuid4
 from mock import patch
 from rest_framework import test, status
 
-from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.openstack.models import Instance, Tenant
 from nodeconductor.openstack.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
@@ -12,7 +11,7 @@ from nodeconductor.structure.tests import factories as structure_factories
 class AssignFloatingIPTestCase(test.APITransactionTestCase):
 
     def test_user_cannot_assign_floating_ip_to_instance_in_unstable_state(self):
-        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC)
+        service_project_link = self.get_link()
         floating_ip = factories.FloatingIPFactory(
             service_project_link=service_project_link,
             status='DOWN',
@@ -31,7 +30,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
             self.assertFalse(mocked_task.called)
 
     def test_user_cannot_assign_floating_ip_to_instance_with_spl_without_external_network_id(self):
-        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC, external_network_id='')
+        service_project_link = self.get_link(external_network_id='')
         floating_ip = factories.FloatingIPFactory(
             service_project_link=service_project_link,
             status='DOWN')
@@ -48,7 +47,10 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
             self.assertFalse(mocked_task.called)
 
     def test_user_cannot_assign_floating_ip_to_instance_with_link_in_unstable_state(self):
-        service_project_link = self.get_link(state=SynchronizationStates.ERRED, external_network_id='12345')
+        service_project_link = self.get_link(external_network_id='12345')
+        tenant = service_project_link.tenant
+        tenant.state = Tenant.States.ERRED
+        tenant.save()
         floating_ip = factories.FloatingIPFactory(
             service_project_link=service_project_link,
             status='DOWN',
@@ -80,7 +82,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
             self.assertFalse(mocked_task.called)
 
     def test_user_cannot_assign_used_ip_to_the_instance(self):
-        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC, external_network_id='12345')
+        service_project_link = self.get_link(external_network_id='12345')
         floating_ip = factories.FloatingIPFactory(
             service_project_link=service_project_link,
             status='ACTIVE',
@@ -98,7 +100,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
             self.assertFalse(mocked_task.called)
 
     def test_user_cannot_assign_ip_from_different_link_to_the_instance(self):
-        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC, external_network_id='12345')
+        service_project_link = self.get_link(external_network_id='12345')
         floating_ip = factories.FloatingIPFactory(status='DOWN')
         instance = factories.InstanceFactory(
             service_project_link=service_project_link,
@@ -113,7 +115,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
             self.assertFalse(mocked_task.called)
 
     def test_user_can_assign_floating_ip_to_instance_with_satisfied_requirements(self):
-        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC, external_network_id='12345')
+        service_project_link = self.get_link(external_network_id='12345')
         floating_ip = factories.FloatingIPFactory(
             service_project_link=service_project_link,
             status='DOWN',
@@ -131,7 +133,7 @@ class AssignFloatingIPTestCase(test.APITransactionTestCase):
             self.assert_task_called(mocked_task, instance, floating_ip)
 
     def test_user_can_assign_floating_ip_by_url(self):
-        service_project_link = self.get_link(state=SynchronizationStates.IN_SYNC, external_network_id='12345')
+        service_project_link = self.get_link(external_network_id='12345')
         floating_ip = factories.FloatingIPFactory(
             service_project_link=service_project_link,
             status='DOWN',
