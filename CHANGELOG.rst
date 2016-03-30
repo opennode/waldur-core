@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-<add here>
+- Cleanup closed yet old alerts
 
 Release 0.91.0
 --------------

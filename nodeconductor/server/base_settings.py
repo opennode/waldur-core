@@ -265,7 +265,12 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.logging.close_alerts_without_scope',
         'schedule': timedelta(minutes=30),
         'args': (),
-    }
+    },
+    'cleanup-alerts': {
+        'task': 'nodeconductor.logging.alerts_cleanup',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
 }
 
 CELERY_TASK_THROTTLING = {
@@ -297,8 +302,9 @@ NODECONDUCTOR = {
             ),
         },
     ),
-    'SUSPEND_UNPAID_CUSTOMERS': False,
     'TOKEN_KEY': 'x-auth-token',
+    'SUSPEND_UNPAID_CUSTOMERS': False,
+    'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
 }
 
 
