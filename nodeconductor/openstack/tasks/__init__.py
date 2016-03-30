@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 from .backup import *
 from .base import *
+from .celerybeat import *
 from .flavor import *
 from .floating_ip import *
 from .instance import *

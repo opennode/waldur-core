@@ -611,9 +611,10 @@ class OpenStackBackend(ServiceBackend):
         service_project_link.set_quota_usage('security_group_rule_count', len(sum([sg.rules for sg in security_groups], [])))
         service_project_link.set_quota_usage('floating_ip_count', len(floating_ips))
 
-    def pull_floating_ips(self, service_project_link):
+    @log_backend_action('pull floating IPs for tenant')
+    def pull_tenant_floating_ips(self, tenant):
+        service_project_link = tenant.service_project_link
         neutron = self.neutron_client
-        logger.debug('Pulling floating ips for tenant %s', self.tenant_id)
 
         try:
             nc_floating_ips = {ip.backend_id: ip for ip in service_project_link.floating_ips.all()}
@@ -624,7 +625,6 @@ class OpenStackBackend(ServiceBackend):
                     if ip.get('floating_ip_address') and ip.get('status')
                 }
             except neutron_exceptions.ClientException as e:
-                logger.exception('Failed to get a list of floating IPs')
                 six.reraise(OpenStackBackendError, e)
 
             backend_ids = set(backend_floating_ips.keys())
@@ -657,7 +657,7 @@ class OpenStackBackend(ServiceBackend):
                         nc_ip.address = backend_ip['floating_ip_address']
                         nc_ip.backend_network_id = backend_ip['floating_network_id']
                         nc_ip.save()
-                        logger.debug('Updated existing floating IP port %s in database', nc_ip.uuid)
+                        logger.info('Updated existing floating IP port %s in database', nc_ip.uuid)
 
         except Exception as e:
             event_logger.service_project_link.warning(
@@ -668,7 +668,7 @@ class OpenStackBackend(ServiceBackend):
                     'error_message': six.text_type(e),
                 }
             )
-            six.reraise(*sys.exc_info())
+            six.reraise(OpenStackBackendError, e)
 
     @log_backend_action('pull security groups for tenant')
     def pull_tenant_security_groups(self, tenant):
