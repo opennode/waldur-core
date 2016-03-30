@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-- Cleanup closed yet old alerts
+- Closed alerts are now cleaned up after a configured period (1 week by default).
 
 Release 0.91.0
 --------------
