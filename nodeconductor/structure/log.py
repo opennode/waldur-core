@@ -105,7 +105,7 @@ class UserOrganizationEventLogger(EventLogger):
 
 
 class ResourceEventLogger(EventLogger):
-    resource = models.Resource
+    resource = models.ResourceMixin
 
     class Meta:
         event_types = (

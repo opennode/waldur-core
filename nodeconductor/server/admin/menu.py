@@ -49,6 +49,7 @@ class CustomMenu(Menu):
         'nodeconductor_sugarcrm.*',
         'nodeconductor_saltstack.*',
         'nodeconductor_zabbix.*',
+        'nodeconductor_jira.*',
         'nodeconductor_plus.gitlab.*',
         'nodeconductor_oracle_dbaas.*'
     )
