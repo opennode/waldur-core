@@ -54,40 +54,50 @@ class InstanceAdmin(structure_admin.VirtualMachineAdmin):
 
 class TenantAdmin(structure_admin.ResourceAdmin):
 
-    actions = ('detect_external_networks', 'allocate_floating_ip', 'pull_security_groups')
+    actions = ('detect_external_networks', 'allocate_floating_ip', 'pull_security_groups',
+               'pull_floating_ips', 'pull_quotas')
 
-    class PullSecurityGroups(ExecutorAdminAction):
-        executor = executors.TenantPullSecurityGroupsExecutor
-        short_description = 'Pull security groups'
+    class OKTenantAction(ExecutorAdminAction):
+        """ Execute action with tenant that is in state OK """
 
         def validate(self, tenant):
             if tenant.state != Tenant.States.OK:
                 raise ValidationError('Tenant has to be in state OK to pull security groups.')
 
+    class PullSecurityGroups(OKTenantAction):
+        executor = executors.TenantPullSecurityGroupsExecutor
+        short_description = 'Pull security groups'
+
     pull_security_groups = PullSecurityGroups()
 
-    class AllocateFloatingIP(ExecutorAdminAction):
+    class AllocateFloatingIP(OKTenantAction):
         executor = executors.TenantAllocateFloatingIPExecutor
         short_description = 'Allocate floating IPs'
 
         def validate(self, tenant):
-            if tenant.state != Tenant.States.OK:
-                raise ValidationError('Tenant has to be in state OK to allocate floating IP.')
+            super(TenantAdmin.AllocateFloatingIP, self).validate(tenant)
             if not tenant.exeternal_network_id:
                 raise ValidationError('Tenant has to have external network to allocate floating IP.')
 
     allocate_floating_ip = AllocateFloatingIP()
 
-    class DetectExternalNetwrorks(ExecutorAdminAction):
+    class DetectExternalNetwrorks(OKTenantAction):
         executor = executors.TenantDetectExternalNetworkExecutor
         short_description = 'Attempt to lookup and set external network id of the connected router'
 
-        def validate(self, tenant):
-            if tenant.state != Tenant.States.OK:
-                raise ValidationError('Tenant has to be in state OK to allocate floating IPs.')
-
     detect_external_networks = DetectExternalNetwrorks()
 
+    class PullFloatingIPs(OKTenantAction):
+        executor = executors.TenantPullFloatingIPsExecutor
+        short_description = 'Pull floating IPs'
+
+    pull_floating_ips = PullFloatingIPs()
+
+    class PullQuotas(OKTenantAction):
+        executor = executors.TenantPullQuotasExecutor
+        short_description = 'Pull quotas'
+
+    pull_quotas = PullQuotas()
 
 admin.site.register(Instance, InstanceAdmin)
 admin.site.register(Tenant, TenantAdmin)
