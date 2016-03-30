@@ -243,6 +243,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'openstack-pull-tenants': {
+        'task': 'nodeconductor.openstack.pull_tenants_properties',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
     'pull-instances-installation-state': {
         'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
         'schedule': timedelta(minutes=1),
@@ -252,12 +258,6 @@ CELERYBEAT_SCHEDULE = {
     'update-current-month-cost-projections': {
         'task': 'nodeconductor.cost_tracking.update_projected_estimate',
         'schedule': timedelta(hours=24),
-        'args': (),
-    },
-
-    'update-openstack-service-project-links-quotas': {
-        'task': 'nodeconductor.structure.sync_service_project_links',
-        'schedule': timedelta(minutes=30),
         'args': (),
     },
 

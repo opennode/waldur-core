@@ -7,14 +7,13 @@ from netaddr import IPNetwork
 from rest_framework import serializers, reverse
 from taggit.models import Tag
 
-from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.models import SynchronizationStates
+from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
-from nodeconductor.structure import serializers as structure_serializers
 from nodeconductor.openstack.backend import OpenStackBackendError
 from nodeconductor.openstack import models
+from nodeconductor.structure import serializers as structure_serializers
 
 
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
@@ -75,15 +74,12 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + (
             'quotas', 'tenant_id', 'external_network_id', 'internal_network_id'
         )
-        read_only_fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.read_only_fields + (
-            'tenant_id', 'external_network_id', 'internal_network_id'
-        )
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
         }
 
 
-class ServiceProjectLinkQuotaSerializer(serializers.Serializer):
+class TenantQuotaSerializer(serializers.Serializer):
     instances = serializers.IntegerField(min_value=1, required=False)
     ram = serializers.IntegerField(min_value=1, required=False)
     vcpu = serializers.IntegerField(min_value=1, required=False)
@@ -97,11 +93,6 @@ class NestedServiceProjectLinkSerializer(structure_serializers.PermissionFieldFi
                                          core_serializers.HyperlinkedRelatedModelSerializer):
 
     quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
-    state = MappedChoiceField(
-        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
-        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
-        read_only=True,
-    )
 
     class Meta(object):
         model = models.OpenStackServiceProjectLink
@@ -110,7 +101,6 @@ class NestedServiceProjectLinkSerializer(structure_serializers.PermissionFieldFi
             'project', 'project_name', 'project_uuid',
             'service', 'service_name', 'service_uuid',
             'quotas',
-            'state',
         )
         related_paths = 'project', 'service'
         view_name = 'openstack-spl-detail'
@@ -217,7 +207,7 @@ class AssignFloatingIpSerializer(serializers.Serializer):
         if not self.instance.service_project_link.external_network_id:
             raise serializers.ValidationError(
                 "External network ID of the service project link is missing.")
-        elif self.instance.service_project_link.state not in SynchronizationStates.STABLE_STATES:
+        elif self.instance.service_project_link.tenant.state != core_models.StateMixin.States.OK:
             raise serializers.ValidationError(
                 "Service project link of instance should be in stable state.")
 
@@ -241,8 +231,8 @@ class SecurityGroupSerializer(core_serializers.AugmentedSerializerMixin,
                               structure_serializers.BasePropertySerializer):
 
     state = MappedChoiceField(
-        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
-        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        choices=[(v, k) for k, v in core_models.StateMixin.States.CHOICES],
+        choice_mappings={v: k for k, v in core_models.StateMixin.States.CHOICES},
         read_only=True,
     )
     rules = NestedSecurityGroupRuleSerializer(many=True)
@@ -464,8 +454,7 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name='openstack-spl-detail',
-        queryset=models.OpenStackServiceProjectLink.objects.all(),
-        write_only=True)
+        queryset=models.OpenStackServiceProjectLink.objects.all())
 
     flavor = serializers.HyperlinkedRelatedField(
         view_name='openstack-flavor-detail',
@@ -539,22 +528,17 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
                     "Security group {} has wrong service or project. New instance and its "
                     "security groups have to belong to same project and service".format(security_group.name))
 
-        options = settings.options or {}
-        missed_net = (
-            (
-                (service_project_link.state == core_models.SynchronizationStates.IN_SYNC) or
-                (
-                    service_project_link.state == core_models.SynchronizationStates.NEW and
-                    'external_network_id' not in options
-                )
-            )
-            and not service_project_link.external_network_id
-            and not attrs['skip_external_ip_assignment']
-        )
+        if not attrs['skip_external_ip_assignment']:
+            options = settings.options or {}
+            tenant = service_project_link.tenant
+            if tenant is None:
+                missed_net = 'external_network_id' not in options
+            else:
+                missed_net = tenant.state == core_models.StateMixin.States.OK and not tenant.external_network_id
 
-        if missed_net:
-            raise serializers.ValidationError(
-                "Cannot assign external IP if service project link has no external network")
+            if missed_net:
+                raise serializers.ValidationError(
+                    "Cannot assign external IP if service project link has no external network")
 
         return attrs
 

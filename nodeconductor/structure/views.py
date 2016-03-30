@@ -34,7 +34,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.views import BaseSummaryView
+from nodeconductor.core.views import BaseSummaryView, StateExecutorViewSet
 from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
 from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
@@ -1154,9 +1154,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
 
     def perform_create(self, serializer):
         service_project_link = serializer.validated_data['service_project_link']
-        if service_project_link.state == core_models.SynchronizationStates.ERRED:
-            raise core_exceptions.IncorrectStateException(
-                detail='Cannot create resource if its service project link is in erred state.')
 
         if service_project_link.service.settings.state == core_models.SynchronizationStates.ERRED:
             raise core_exceptions.IncorrectStateException(
@@ -1173,11 +1170,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
             event_context={'resource': serializer.instance})
 
     def perform_update(self, serializer):
-        spl = self.get_object().service_project_link
-        if spl.state == core_models.SynchronizationStates.ERRED:
-            raise core_exceptions.IncorrectStateException(
-                detail='Cannot modify resource if its service project link is in erred state.')
-
         old_name = serializer.instance.name
         resource = serializer.save()
 
@@ -1274,8 +1266,42 @@ class BaseOnlineResourceViewSet(_BaseResourceViewSet):
     destroy.destructive = True
 
 
+class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                                     StateExecutorViewSet,
+                                                     core_mixins.UserContextMixin,
+                                                     viewsets.ModelViewSet)):
+
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    lookup_field = 'uuid'
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (
+        filters.GenericRoleFilter,
+        core_filters.DjangoMappingFilterBackend,
+        SlaFilter,
+        MonitoringItemFilter,
+        filters.TagsFilter,
+    )
+    filter_class = filters.BaseResourceStateFilter
+    metadata_class = ResourceActionsMetadata
+    create_executor = NotImplemented
+    update_executor = NotImplemented
+    delete_executor = NotImplemented
+
+
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.BaseServicePropertyFilter
+
+
+class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
+                                          core_mixins.UpdateExecutorMixin,
+                                          core_mixins.DeleteExecutorMixin,
+                                          viewsets.ModelViewSet):
+    queryset = NotImplemented
+    serializer_class = NotImplemented
+    lookup_field = 'uuid'
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
 
 
 class AggregatedStatsView(views.APIView):

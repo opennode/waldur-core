@@ -338,6 +338,14 @@ class SynchronizableMixin(ErrorMessageMixin):
         self.error_message = ''
 
 
+class RuntimeStateMixin(models.Model):
+    """ Provide run_time_state field """
+    class Meta(object):
+        abstract = True
+
+    runtime_state = models.CharField(_('runtime state'), max_length=150, blank=True)
+
+
 # This Mixin should replace SynchronizableMixin after NC-1237 implementation.
 class StateMixin(ErrorMessageMixin):
     class States(object):
