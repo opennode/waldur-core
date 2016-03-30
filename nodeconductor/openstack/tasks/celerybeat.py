@@ -1,7 +1,10 @@
+from celery import shared_task
+
 from nodeconductor.core import tasks as core_tasks, utils as core_utils
 from nodeconductor.openstack import models
 
 
+@shared_task
 def pull_tenants_properties():
     for tenant in models.Tenant.objects.filter(state=models.Tenant.States.OK):
         serialized_tenant = core_utils.serialize_instance(tenant)
