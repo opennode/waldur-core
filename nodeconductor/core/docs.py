@@ -157,15 +157,6 @@ class ApiDocs(object):
                             if doc:
                                 f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
                         else:
-                            # docs for classic Views
-                            for method in methods:
-                                try:
-                                    doc = getdoc(getattr(cls, method.lower()), warning=False)
-                                except AttributeError:
-                                    continue
-                                if doc:
-                                    f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
-
                             # docs for ViewSets
                             for method, a in act.METHODS:
                                 if idx == 1 and a == 'retrieve':
@@ -178,6 +169,18 @@ class ApiDocs(object):
                                     doc = getdoc(action, warning=False)
                                     if doc:
                                         f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
+
+                            else:
+                                continue
+
+                            # docs for classic Views
+                            for method in methods:
+                                try:
+                                    doc = getdoc(getattr(cls, method.lower()), warning=False)
+                                except AttributeError:
+                                    continue
+                                if doc:
+                                    f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
 
                     f.write('\n\n')
 
