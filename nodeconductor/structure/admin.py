@@ -319,7 +319,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def sync(self, request, queryset):
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        service_uuids = list(queryset.values_list('uuid', flat=True))
+        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
         tasks_scheduled = queryset.count()
 
         send_task('structure', 'sync_service_settings')(service_uuids)
@@ -337,7 +337,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def recover(self, request, queryset):
         selected_settings = queryset.count()
         queryset = queryset.filter(state=SynchronizationStates.ERRED)
-        service_uuids = list(queryset.values_list('uuid', flat=True))
+        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
         send_task('structure', 'recover_service_settings')(service_uuids)
 
         tasks_scheduled = queryset.count()
@@ -358,7 +358,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def create_spls_and_services(self, request, queryset):
         selected_settings = queryset.count()
         queryset = queryset.filter(state=SynchronizationStates.IN_SYNC, shared=True)
-        settings_uuids = list(queryset.values_list('uuid', flat=True))
+        settings_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
         send_task('structure', 'create_spls_and_services_for_shared_settings')(settings_uuids)
 
         tasks_scheduled = queryset.count()
@@ -383,50 +383,16 @@ class ServiceAdmin(admin.ModelAdmin):
 
 
 class ServiceProjectLinkAdmin(admin.ModelAdmin):
-    readonly_fields = ('service', 'project', 'error_message')
-    list_display = ('get_service_name', 'get_customer_name', 'get_project_name', 'state')
+    readonly_fields = ('service', 'project')
+    list_display = ('get_service_name', 'get_customer_name', 'get_project_name')
     ordering = ('service__customer__name', 'project__name', 'service__name')
     list_display_links = ('get_service_name',)
     search_fields = ('service__customer__name', 'project__name', 'service__name')
     inlines = [QuotaInline]
 
-    actions = ['sync_with_backend', 'recover_erred_service_project_links']
-
     def get_queryset(self, request):
         queryset = super(ServiceProjectLinkAdmin, self).get_queryset(request)
         return queryset.select_related('service', 'project', 'project__customer')
-
-    def sync_with_backend(self, request, queryset):
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        send_task('structure', 'sync_service_project_links')([spl.to_string() for spl in queryset])
-
-        tasks_scheduled = queryset.count()
-        message = ungettext(
-            'One service project link scheduled for update',
-            '%(tasks_scheduled)d service project links scheduled for update',
-            tasks_scheduled
-        )
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    sync_with_backend.short_description = "Sync selected service project links with backend"
-
-    def recover_erred_service_project_links(self, request, queryset):
-        queryset = queryset.filter(state=SynchronizationStates.ERRED)
-        send_task('structure', 'recover_erred_services')([spl.to_string() for spl in queryset])
-        tasks_scheduled = queryset.count()
-
-        message = ungettext(
-            'One service project link scheduled for recovery',
-            '%(tasks_scheduled)d service project links scheduled for recovery',
-            tasks_scheduled
-        )
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    recover_erred_service_project_links.short_description = "Recover selected service project links"
 
     def get_service_name(self, obj):
         return obj.service.name

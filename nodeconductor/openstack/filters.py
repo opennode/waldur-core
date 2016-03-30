@@ -56,7 +56,7 @@ class SecurityGroupFilter(django_filters.FilterSet):
         name='service_project_link__pk',
         lookup_field='pk',
     )
-    state = core_filters.SynchronizationStateFilter()
+    state = core_filters.StateFilter()
 
     class Meta(object):
         model = models.SecurityGroup

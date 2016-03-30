@@ -17,8 +17,6 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__
 
 DEBUG = False
 
-TEMPLATE_DEBUG = False
-
 MEDIA_ROOT = '/tmp/'
 
 MEDIA_URL = '/media/'
@@ -97,18 +95,25 @@ AUTHENTICATION_BACKENDS = (
 
 ANONYMOUS_USER_ID = None
 
-TEMPLATE_DIRS = (
-    os.path.join(BASE_DIR, 'nodeconductor', 'templates'),
-)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'nodeconductor', 'templates')],
+        'OPTIONS': {
+            'context_processors': (
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ) + ADMIN_TEMPLATE_CONTEXT_PROCESSORS,
+            'loaders': (
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+            ) + ADMIN_TEMPLATE_LOADERS,
+        },
+    },
 
-TEMPLATE_CONTEXT_PROCESSORS = ()
-TEMPLATE_CONTEXT_PROCESSORS += ADMIN_TEMPLATE_CONTEXT_PROCESSORS
-
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-)
-TEMPLATE_LOADERS += ADMIN_TEMPLATE_LOADERS
+]
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
 
@@ -238,6 +243,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'openstack-pull-tenants': {
+        'task': 'nodeconductor.openstack.pull_tenants_properties',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
     'pull-instances-installation-state': {
         'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
         'schedule': timedelta(minutes=1),
@@ -247,12 +258,6 @@ CELERYBEAT_SCHEDULE = {
     'update-current-month-cost-projections': {
         'task': 'nodeconductor.cost_tracking.update_projected_estimate',
         'schedule': timedelta(hours=24),
-        'args': (),
-    },
-
-    'update-openstack-service-project-links-quotas': {
-        'task': 'nodeconductor.structure.sync_service_project_links',
-        'schedule': timedelta(minutes=30),
         'args': (),
     },
 

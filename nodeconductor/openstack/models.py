@@ -38,15 +38,6 @@ class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
 
     service = models.ForeignKey(OpenStackService)
 
-    tenant_id = models.CharField(max_length=64, blank=True)
-    internal_network_id = models.CharField(max_length=64, blank=True)
-    external_network_id = models.CharField(max_length=64, blank=True)
-
-    availability_zone = models.CharField(
-        max_length=100, blank=True,
-        help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
-    )
-
     class Meta(structure_models.ServiceProjectLink.Meta):
         verbose_name = 'OpenStack service project link'
         verbose_name_plural = 'OpenStack service project links'
@@ -69,6 +60,45 @@ class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
     def get_backend(self):
         return super(OpenStackServiceProjectLink, self).get_backend(tenant_id=self.tenant_id)
 
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    @property
+    def tenant(self):
+        if not hasattr(self, '_tenant'):
+            self._tenant = self.tenants.first()
+        return self._tenant
+
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    @property
+    def internal_network_id(self):
+        return self.tenant.internal_network_id if self.tenant else None
+
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    @property
+    def external_network_id(self):
+        return self.tenant.external_network_id if self.tenant else None
+
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    @property
+    def availability_zone(self):
+        return self.tenant.availability_zone if self.tenant else None
+
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    @property
+    def tenant_id(self):
+        return self.tenant.backend_id if self.tenant else None
+
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    def get_tenant_name(self):
+        proj = self.project
+        return '%(project_name)s-%(project_uuid)s' % {
+            'project_name': ''.join([c for c in proj.name if ord(c) < 128])[:15],
+            'project_uuid': proj.uuid.hex[:4]
+        }
+
+    # XXX: temporary method, should be removed after instance will have tenant as field
+    def create_tenant(self):
+        return Tenant.objects.create(name=self.get_tenant_name(), service_project_link=self)
+
 
 class Flavor(LoggableMixin, structure_models.ServiceProperty):
     cores = models.PositiveSmallIntegerField(help_text='Number of cores in a VM')
@@ -85,7 +115,7 @@ class Image(structure_models.ServiceProperty):
 class SecurityGroup(core_models.UuidMixin,
                     core_models.NameMixin,
                     core_models.DescribableMixin,
-                    core_models.SynchronizableMixin):
+                    core_models.StateMixin):
 
     class Permissions(object):
         customer_path = 'service_project_link__project__customer'
@@ -106,9 +136,6 @@ class SecurityGroup(core_models.UuidMixin,
     @classmethod
     def get_url_name(cls):
         return 'openstack-sgp'
-
-
-SecurityGroup._meta.get_field('state').default = core_models.SynchronizationStates.SYNCING_SCHEDULED
 
 
 @python_2_unicode_compatible
@@ -309,3 +336,20 @@ class Backup(core_models.UuidMixin,
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
         pass
+
+
+class Tenant(core_models.RuntimeStateMixin, core_models.StateMixin, structure_models.ResourceMixin):
+    service_project_link = models.ForeignKey(
+        OpenStackServiceProjectLink, related_name='tenants', on_delete=models.PROTECT)
+
+    internal_network_id = models.CharField(max_length=64, blank=True)
+    external_network_id = models.CharField(max_length=64, blank=True)
+    availability_zone = models.CharField(
+        max_length=100, blank=True,
+        help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
+    )
+
+    tracker = FieldTracker()
+
+    def get_backend(self):
+        return self.service_project_link.service.get_backend(tenant_id=self.backend_id)

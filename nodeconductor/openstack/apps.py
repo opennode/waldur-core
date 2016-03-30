@@ -22,6 +22,7 @@ class OpenStackConfig(AppConfig):
         Instance = self.get_model('Instance')
         FloatingIP = self.get_model('FloatingIP')
         BackupSchedule = self.get_model('BackupSchedule')
+        Tenant = self.get_model('Tenant')
 
         # structure
         from nodeconductor.openstack.backend import OpenStackBackend
@@ -49,9 +50,9 @@ class OpenStackConfig(AppConfig):
         )
 
         signals.pre_save.connect(
-            handlers.set_spl_default_availability_zone,
-            sender=OpenStackServiceProjectLink,
-            dispatch_uid='nodeconductor.openstack.handlers.set_spl_default_availability_zone',
+            handlers.set_tenant_default_availability_zone,
+            sender=Tenant,
+            dispatch_uid='nodeconductor.openstack.handlers.set_tenant_default_availability_zone',
         )
 
         signals.post_save.connect(
@@ -72,9 +73,9 @@ class OpenStackConfig(AppConfig):
             dispatch_uid='nodeconductor.openstack.handlers.change_floating_ip_quota_on_status_change',
         )
         signals.post_save.connect(
-            handlers.check_project_name_update,
+            handlers.update_tenant_name_on_project_update,
             sender=Project,
-            dispatch_uid='nodeconductor.openstack.handlers.check_project_name_update',
+            dispatch_uid='nodeconductor.openstack.handlers.update_tenant_name_on_project_update',
         )
 
         signals.post_save.connect(

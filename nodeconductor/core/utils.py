@@ -112,6 +112,7 @@ def request_api(request, url_or_view_name, method='GET', data=None, params=None,
         result.data = None
     result.total = int(response.headers.get('X-Result-Count', 0))
     result.success = response.status_code in (200, 201)
+    result.status = response.status_code
 
     return result
 

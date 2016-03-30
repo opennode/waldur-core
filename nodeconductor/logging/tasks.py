@@ -1,3 +1,4 @@
+import uuid
 import logging
 
 from celery import shared_task
@@ -21,7 +22,7 @@ def check_event(event, hook):
     if event['type'] not in hook.event_types:
         return False
     for key, uuids in event_logger.get_permitted_objects_uuids(hook.user).items():
-        if key in event['context'] and event['context'][key] in uuids:
+        if key in event['context'] and uuid.UUID(event['context'][key]) in uuids:
             return True
     return False
 

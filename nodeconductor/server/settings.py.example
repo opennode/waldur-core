@@ -137,6 +137,7 @@ LOGGING = {
 
 # Settings, that are related to NodeCondoctor applications
 NODECONDUCTOR = {
+    'EXTENSIONS_AUTOREGISTER': True,
     'DEFAULT_SECURITY_GROUPS': (
         {
             'name': 'ssh',

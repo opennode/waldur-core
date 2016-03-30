@@ -75,7 +75,8 @@ class FilterAlertsByAggregateTest(test.APITransactionTestCase):
         self.assertEqual(expected, actual)
 
     def create_resource(self, customer, project):
-        service_type, models = SupportedServices.get_service_models().items()[0]
+        service_type = 'OpenStack'
+        models = SupportedServices.get_service_models()[service_type]
 
         class ServiceFactory(factory.DjangoModelFactory):
             class Meta(object):

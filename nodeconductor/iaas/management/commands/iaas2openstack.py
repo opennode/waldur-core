@@ -340,26 +340,31 @@ class Command(BaseCommand):
                 init_quotas(cpm.project.customer.__class__, cpm.project.customer, created=True)
                 spl = op_models.OpenStackServiceProjectLink.objects.create(
                     service=clouds[cpm.cloud_id],
-                    project=cpm.project,
-                    tenant_id=cpm.tenant_id,
-                    availability_zone=cpm.availability_zone,
-                    internal_network_id=cpm.internal_network_id,
-                    external_network_id=cpm.external_network_id)
+                    project=cpm.project)
+                tenant = spl.create_tenant()
+                tenant.backend_id = cpm.tenant_id
+                tenant.availability_zone = cpm.availability_zone
+                tenant.internal_network_id = cpm.internal_network_id
+                tenant.external_network_id = cpm.external_network_id
+                tenant.state = op_models.Tenant.States.OK
+                tenant.save()
+
                 spls.append(spl.to_string())
                 cpms[cpm.id] = spl
             else:
                 cpms[cpm.id] = spl
-                if spl.state != SynchronizationStates.NEW and spl.tenant_id != cpm.tenant_id:
+                if spl.tenant is not None and spl.tenant_id != cpm.tenant_id:
                     raise Exception('There are 2 OpenStack tenants that connects service %s and project %s. This'
                                     ' conflict should be handled manually.' % (spl.service, spl.project))
                 else:
+                    # TODO: create tenant for SPL here.
                     if spl.tenant_id != cpm.tenant_id:
-                        spl.tenant_id = cpm.tenant_id
-                        spl.internal_network_id = cpm.internal_network_id
-                        spl.external_network_id = cpm.external_network_id
-                        spl.availability_zone = cpm.availability_zone
-                        spl.state = SynchronizationStates.IN_SYNC
-                        spl.save()
+                        tenant.backend_id = cpm.tenant_id
+                        tenant.availability_zone = cpm.availability_zone
+                        tenant.internal_network_id = cpm.internal_network_id
+                        tenant.external_network_id = cpm.external_network_id
+                        tenant.state = op_models.Tenant.States.OK
+                        tenant.save()
                         self.stdout.write('[+] (only tenant id) %s' % cpm)
                     else:
                         self.stdout.write('[ ] %s' % cpm)
@@ -457,6 +462,10 @@ class Command(BaseCommand):
                 # XXX: duplicate UUIDs due to killbill
                 inst.uuid = instance.uuid
                 inst.created = instance.created
+                image = instance.template.images.first()
+                if image:
+                    inst.min_disk = image.min_disk
+                    inst.min_ram = image.min_ram
                 inst.save()
 
                 for sgrp in instance.security_groups.all():
@@ -569,12 +578,17 @@ class Command(BaseCommand):
                 if main_template.tags.filter(name__contains='zimbra'):
                     zabbix_templates.append(ZabbixTemplate.objects.get(
                         name='Template PaaS App Zimbra', settings=self.zabbix_settings))
+                    trigger_name = 'Zimbra is not available'
                 elif main_template.tags.filter(name__contains='wordpr'):
                     zabbix_templates.append(ZabbixTemplate.objects.get(
                         name='Template PaaS App Wordpress', settings=self.zabbix_settings))
+                    trigger_name = 'Wordpress is not available'
                 elif main_template.tags.filter(name__contains='postgre'):
                     zabbix_templates.append(ZabbixTemplate.objects.get(
                         name='Template PaaS App PostgreSQL', settings=self.zabbix_settings))
+                    trigger_name = 'PostgreSQL is not available'
+                else:
+                    trigger_name = 'Missing data about the VM'
 
                 Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(Host),
@@ -591,7 +605,8 @@ class Command(BaseCommand):
                     group=group,
                     order_number=2)
 
-                trigger = Trigger.objects.get(name='Missing data about the VM', template__name='Template NodeConductor Instance', settings=self.zabbix_settings)
+                trigger = Trigger.objects.get(
+                    name=trigger_name, template__name='Template NodeConductor Instance', settings=self.zabbix_settings)
 
                 Template.objects.create(
                     resource_content_type=ContentType.objects.get_for_model(ITService),

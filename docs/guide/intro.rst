@@ -8,4 +8,5 @@
 .. include:: license.rst
 .. include:: support.rst
 .. include:: events/intro.rst
+.. include:: resource-actions.rst
 

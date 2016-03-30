@@ -704,6 +704,10 @@ class TemplateLicenseViewSet(viewsets.ModelViewSet):
                     d[output_name] = d[db_name]
                     del d[db_name]
 
+            for a in d:
+                if a.endswith('uuid'):
+                    d[a] = d[a].hex
+
         # XXX: hack for portal only. (Provide project group data if aggregation was done by project)
         if 'project' in aggregate_parameters and 'project_group' not in aggregate_parameters:
             for item in queryset:
@@ -1353,6 +1357,15 @@ class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelView
 class IpMappingFilter(django_filters.FilterSet):
     project = django_filters.CharFilter(
         name='project__uuid',
+    )
+
+    # XXX: remove after upgrading to django-filter 0.12
+    #      which is still unavailable at https://pypi.python.org/simple/django-filter/
+    private_ip = django_filters.CharFilter(
+        name='private_ip',
+    )
+    public_ip = django_filters.CharFilter(
+        name='public_ip',
     )
 
     class Meta(object):

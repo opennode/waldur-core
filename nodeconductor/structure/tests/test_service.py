@@ -1,7 +1,6 @@
 
 import factory
 
-from mock import patch
 from mock_django import mock_signal_receiver
 from django.core.urlresolvers import reverse
 from rest_framework import test, status
@@ -10,7 +9,7 @@ from nodeconductor.iaas.models import OpenStackSettings
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure import SupportedServices, signals
-from nodeconductor.structure.models import Customer, CustomerRole
+from nodeconductor.structure.models import Customer, CustomerRole, VirtualMachineMixin
 from nodeconductor.structure.tests import factories
 
 
@@ -23,27 +22,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
 
     def _get_url(self, view_name, **kwargs):
         return 'http://testserver' + reverse(view_name, kwargs=kwargs)
-
-    def test_debit_customer(self):
-        amount = 9.99
-        customer = factories.CustomerFactory()
-
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
-            with mock_signal_receiver(signals.customer_account_debited) as receiver:
-                customer.debit_account(amount)
-
-                receiver.assert_called_once_with(
-                    instance=customer,
-                    amount=amount,
-                    sender=Customer,
-                    signal=signals.customer_account_debited,
-                )
-
-                mocked_task.assert_called_once_with(
-                    'nodeconductor.structure.stop_customer_resources',
-                    (customer.uuid.hex,), {}, countdown=2)
-
-                self.assertEqual(customer.balance, -1 * amount)
 
     def test_credit_customer(self):
         amount = 7.45
@@ -127,5 +105,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
                     resource_url = self._get_url(
                         SupportedServices.get_detail_view_for_model(resource_model), uuid=resource.uuid.hex)
 
-                    response = self.client.post(resource_url + 'start/')
-                    self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+                    if isinstance(resource, VirtualMachineMixin):
+                        response = self.client.post(resource_url + 'start/')
+                        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)

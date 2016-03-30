@@ -7,6 +7,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.admindocs.views import simplify_regex
 from django.core.urlresolvers import RegexURLResolver, RegexURLPattern
+from django.http import QueryDict
 from django_filters import ModelMultipleChoiceFilter
 
 from rest_framework.fields import ChoiceField, ReadOnlyField, ModelField
@@ -76,6 +77,15 @@ class ApiDocs(object):
     def _is_drf_view(self, pattern):
         return hasattr(pattern.callback, 'cls') and issubclass(pattern.callback.cls, APIView)
 
+    def _get_fields(self, fields):
+        lines = []
+        for field in fields:
+            hl = '**' if field['required'] else ''
+            cmnt = ' (%s)' % field['help_text'] if field['help_text'] else ''
+            txt = '\t* {hl}{name}{hl} -- ``{type}``{cmnt}'.format(hl=hl, cmnt=cmnt, **field)
+            lines.append(txt)
+        return '\n'.join(lines)
+
     def generate(self, path):
         for app, endpoints in sorted(self.tree.items()):
             if self.apps and app not in self.apps:
@@ -121,8 +131,7 @@ class ApiDocs(object):
                             create_fields = [o for o in fields if not o['readonly']]
                             if 'POST' in methods and create_fields:
                                 f.write('\tSupported fields for creation:\n\n')
-                                for field in create_fields:
-                                    f.write('\t* {name} -- ``{type}``\n'.format(**field))
+                                f.write(self._get_fields(create_fields))
                                 f.write('\n')
 
                             fltr = top.get_filter_fields()
@@ -139,8 +148,7 @@ class ApiDocs(object):
                             update_fields = [o for o in fields if not o['readonly'] and not o['protected']]
                             if 'PUT' in methods and update_fields:
                                 f.write('\tSupported fields for update:\n\n')
-                                for field in update_fields:
-                                    f.write('\t* {name} -- ``{type}``\n'.format(**field))
+                                f.write(self._get_fields(update_fields))
                                 f.write('\n')
 
                         cls = act.callback.cls
@@ -149,16 +157,28 @@ class ApiDocs(object):
                             if doc:
                                 f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
                         else:
+                            # docs for ViewSets
+                            for method, a in act.METHODS:
+                                if idx == 1 and a == 'retrieve':
+                                    continue
+                                if idx >= 2 and a == 'list':
+                                    continue
+
+                                action = getattr(cls, a, None)
+                                if action:
+                                    doc = getdoc(action, warning=False)
+                                    if doc:
+                                        f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
+
+                            else:
+                                continue
+
+                            # docs for classic Views
                             for method in methods:
                                 try:
                                     doc = getdoc(getattr(cls, method.lower()), warning=False)
                                 except AttributeError:
-                                    for m, a in act.METHODS:
-                                        action = getattr(cls, a, None)
-                                        if action:
-                                            doc = getdoc(action, warning=False)
-                                            if doc:
-                                                break
+                                    continue
                                 if doc:
                                     f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
 
@@ -249,7 +269,7 @@ class ApiEndpoint(object):
         if isinstance(cls, type):
             user = get_user_model()()
             serializer = cls(context={
-                'request': type('R', (object,), {'method': 'GET', 'user': user}),
+                'request': self.fake_request(user),
                 'user': user})
         else:
             serializer = cls
@@ -261,6 +281,7 @@ class ApiEndpoint(object):
             return [{
                 "name": key,
                 "type": self._get_field_type(field),
+                "help_text": field.help_text,
                 "required": field.required,
                 "readonly": key in ro or isinstance(field, ReadOnlyField) or field.read_only,
                 "writeonly": key in wo or field.write_only,
@@ -268,6 +289,9 @@ class ApiEndpoint(object):
             } for key, field in serializer.get_fields().items()]
 
         return []
+
+    def fake_request(self, user):
+        return type('R', (object,), {'method': 'GET', 'user': user, 'query_params': QueryDict()})
 
     def get_filter_fields(self):
         try:

@@ -1,10 +1,10 @@
 from mock import patch
+import unittest
 
 from rest_framework import test, status
 
 from nodeconductor.openstack import models
 from nodeconductor.openstack.tests import factories
-from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -22,10 +22,6 @@ class ServiceProjectLinkCreateDeleteTest(test.APISimpleTestCase):
     def test_membership_creation(self):
         self.client.force_authenticate(self.owner)
 
-        availability_zone = 'zone-xyz'
-        self.service.settings.options = {'availability_zone': availability_zone}
-        self.service.settings.save()
-
         url = factories.OpenStackServiceProjectLinkFactory.get_list_url()
         payload = {
             'service': factories.OpenStackServiceFactory.get_url(self.service),
@@ -34,21 +30,20 @@ class ServiceProjectLinkCreateDeleteTest(test.APISimpleTestCase):
 
         response = self.client.post(url, payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        service_project_link = models.OpenStackServiceProjectLink.objects.get(
+        models.OpenStackServiceProjectLink.objects.get(
             project=self.project, service=self.service)
-
-        self.assertEqual(service_project_link.availability_zone, availability_zone)
 
         # duplicate call should result in 400 code
         response = self.client.post(url, payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
+@unittest.skip('Test should be moved to tenant, after NC-1267')
 class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
-        self.service_project_link = factories.OpenStackServiceProjectLinkFactory(state=SynchronizationStates.IN_SYNC)
+        self.service_project_link = factories.OpenStackServiceProjectLinkFactory()
 
         self.quotas_url = factories.OpenStackServiceProjectLinkFactory.get_url(
             self.service_project_link, 'set_quotas')
@@ -163,20 +158,18 @@ class ServiceProjectLinkActionsTest(test.APISimpleTestCase):
 
     def test_user_cannot_allocate_floating_ip_from_spl_in_unstable_state(self):
         self.client.force_authenticate(user=self.staff)
-        spl = factories.OpenStackServiceProjectLinkFactory(
-            external_network_id='12345', state=SynchronizationStates.ERRED)
+        spl = factories.OpenStackServiceProjectLinkFactory(external_network_id='12345')
         url = factories.OpenStackServiceProjectLinkFactory.get_url(spl, 'allocate_floating_ip')
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:
             response = self.client.post(url)
             self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-            self.assertEqual(response.data['detail'], 'Service project link must be in stable state.')
+            self.assertEqual(response.data['detail'], 'Tenant should be in state OK.')
             self.assertFalse(mocked_task.delay.called)
 
     def test_user_can_allocate_floating_ip_from_spl_with_external_network_id(self):
         self.client.force_authenticate(user=self.staff)
-        spl = factories.OpenStackServiceProjectLinkFactory(
-            external_network_id='12345', state=SynchronizationStates.IN_SYNC)
+        spl = factories.OpenStackServiceProjectLinkFactory(external_network_id='12345')
         url = factories.OpenStackServiceProjectLinkFactory.get_url(spl, 'allocate_floating_ip')
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:
@@ -216,8 +209,7 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         self.service = factories.OpenStackServiceFactory(customer=self.customer)
         self.service_project_link = factories.OpenStackServiceProjectLinkFactory(
             project=self.connected_project,
-            service=self.service,
-            state=SynchronizationStates.IN_SYNC)
+            service=self.service)
 
         # the customer also has another project with users but without a permission link
         self.not_connected_project = structure_factories.ProjectFactory(customer=self.customer)
@@ -283,6 +275,7 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
+    @unittest.skip('Test should be moved to tenant, after NC-1267')
     def test_non_staff_user_cannot_request_service_project_link_quota_update(self):
         for user in self.users.values():
             self.client.force_authenticate(user=user)
@@ -290,6 +283,7 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
             response = self.client.post(url)
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @unittest.skip('Test should be moved to tenant, after NC-1267')
     def test_staff_user_can_request_service_project_link_quota_update(self):
         user = structure_factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=user)
@@ -297,21 +291,6 @@ class ProjectCloudApiPermissionTest(test.APITransactionTestCase):
         url = factories.OpenStackServiceProjectLinkFactory.get_url(self.service_project_link, action='set_quotas')
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-
-    def test_user_cannot_modify_in_unstable_state(self):
-        user = self.users['group_manager']
-        self.client.force_authenticate(user=user)
-
-        for state in SynchronizationStates.UNSTABLE_STATES:
-            if state == SynchronizationStates.NEW:
-                continue
-
-            self.service_project_link.state = state
-            self.service_project_link.save()
-
-            url = factories.OpenStackServiceProjectLinkFactory.get_url(self.service_project_link)
-            response = self.client.delete(url)
-            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
     def _get_valid_payload(self, service=None, project=None):
         return {

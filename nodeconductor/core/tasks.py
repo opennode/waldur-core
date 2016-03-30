@@ -420,11 +420,24 @@ class Task(CeleryTask):
             message = ('Cannot restore instance from serialized object %s. Probably it was deleted.' %
                        serialized_instance)
             six.reraise(ObjectDoesNotExist, message)
-        return self.execute(instance, *args, **kwargs)
+
+        self.args = args
+        self.kwargs = kwargs
+
+        self.pre_execute(instance)
+        result = self.execute(instance, *self.args, **self.kwargs)
+        self.post_execute(instance)
+        return result
+
+    def pre_execute(self, instance):
+        pass
 
     def execute(self, instance, *args, **kwargs):
         """ Execute backend operation """
         raise NotImplementedError('%s should implement method `execute`' % self.__class__.__name__)
+
+    def post_execute(self, instance):
+        pass
 
 
 class StateTransitionTask(Task):
@@ -450,21 +463,50 @@ class StateTransitionTask(Task):
             logger.info('State of %s changed from %s to %s, with method `%s`',
                         instance_description, old_state, instance.human_readable_state, transition_method)
 
-    def execute(self, instance, state_transition=None):
+    def pre_execute(self, instance):
+        state_transition = self.kwargs.pop('state_transition', None)
         if state_transition is not None:
             self.state_transition(instance, state_transition)
+        super(StateTransitionTask, self).pre_execute(instance)
+
+    # Empty execute method allows to use StateTransitionTask as standalone task
+    def execute(self, instance, *args, **kwargs):
+        pass
 
 
-class BackendMethodTask(StateTransitionTask):
+class RuntimeStateChangeTask(Task):
+    """ Allows to change runtime state of instance before and after execution.
+
+    Define kwargs:
+     - runtime_state - to change instance runtime state during execution.
+     - success_runtime_state - to change instance runtime state after success tasks execution.
+    """
+
+    def update_runtime_state(self, instance, runtime_state):
+        instance.runtime_state = runtime_state
+        instance.save(update_fields=['runtime_state'])
+
+    def pre_execute(self, instance):
+        self.runtime_state = self.kwargs.pop('runtime_state', None)
+        self.success_runtime_state = self.kwargs.pop('success_runtime_state', None)
+
+        if self.runtime_state is not None:
+            self.update_runtime_state(instance, self.runtime_state)
+        super(RuntimeStateChangeTask, self).pre_execute(instance)
+
+    def post_execute(self, instance, *args, **kwargs):
+        if self.success_runtime_state is not None:
+            self.update_runtime_state(instance, self.success_runtime_state)
+        super(RuntimeStateChangeTask, self).post_execute(instance)
+
+
+class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
 
     def get_backend(self, instance):
         return instance.get_backend()
 
     def execute(self, instance, backend_method, *args, **kwargs):
-        state_transition = kwargs.pop('state_transition', None)
-        if state_transition is not None:
-            self.state_transition(instance, state_transition)
         backend = self.get_backend(instance)
         return getattr(backend, backend_method)(instance, *args, **kwargs)
 

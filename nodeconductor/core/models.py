@@ -146,7 +146,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     organization_approved = models.BooleanField(_('organization approved'), default=False,
                                                 help_text=_('Designates whether user organization was approved.'))
     job_title = models.CharField(_('job title'), max_length=40, blank=True)
-    email = models.EmailField(_('email address'), blank=True)
+    email = models.EmailField(_('email address'), max_length=75, blank=True)
 
     is_staff = models.BooleanField(_('staff status'), default=False,
                                    help_text=_('Designates whether the user can log into this admin '
@@ -185,7 +185,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     @classmethod
     def get_permitted_objects_uuids(cls, user):
         if user.is_staff:
-            return {'user_uuid': cls.objects.all().values_list('uuid', flat=True)}
+            return {'user_uuid': cls.objects.values_list('uuid', flat=True)}
         else:
             return {'user_uuid': [user.uuid.hex]}
 
@@ -336,6 +336,79 @@ class SynchronizableMixin(ErrorMessageMixin):
     @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.IN_SYNC)
     def set_in_sync_from_erred(self):
         self.error_message = ''
+
+
+class RuntimeStateMixin(models.Model):
+    """ Provide run_time_state field """
+    class Meta(object):
+        abstract = True
+
+    runtime_state = models.CharField(_('runtime state'), max_length=150, blank=True)
+
+
+# This Mixin should replace SynchronizableMixin after NC-1237 implementation.
+class StateMixin(ErrorMessageMixin):
+    class States(object):
+        CREATION_SCHEDULED = 5
+        CREATING = 6
+        UPDATE_SCHEDULED = 1
+        UPDATING = 2
+        DELETION_SCHEDULED = 7
+        DELETING = 8
+        OK = 3
+        ERRED = 4
+
+        CHOICES = (
+            (CREATION_SCHEDULED, _('Creation Scheduled')),
+            (CREATING, _('Creating')),
+            (UPDATE_SCHEDULED, _('Update Scheduled')),
+            (UPDATING, _('Updating')),
+            (DELETION_SCHEDULED, _('Deletion Scheduled')),
+            (DELETING, _('Deleting')),
+            (OK, _('OK')),
+            (ERRED, _('Erred')),
+        )
+
+    class Meta(object):
+        abstract = True
+
+    state = FSMIntegerField(
+        default=States.CREATION_SCHEDULED,
+        choices=States.CHOICES,
+    )
+
+    @property
+    def human_readable_state(self):
+        return force_text(dict(self.States.CHOICES)[self.state])
+
+    @transition(field=state, source=States.CREATION_SCHEDULED, target=States.CREATING)
+    def begin_creating(self):
+        pass
+
+    @transition(field=state, source=States.UPDATE_SCHEDULED, target=States.UPDATING)
+    def begin_updating(self):
+        pass
+
+    @transition(field=state, source=States.DELETION_SCHEDULED, target=States.DELETING)
+    def begin_deleting(self):
+        pass
+
+    @transition(field=state, source=States.OK, target=States.UPDATE_SCHEDULED)
+    def schedule_updating(self):
+        pass
+
+    @transition(field=state, source=[States.OK, States.ERRED], target=States.DELETION_SCHEDULED)
+    def schedule_deleting(self):
+        pass
+
+    @transition(field=state, source=[States.UPDATING, States.CREATING],
+                target=States.OK)
+    def set_ok(self):
+        pass
+
+    @transition(field=state, source='*', target=States.ERRED)
+    def set_erred(self):
+        pass
 
 
 class ReversionMixin(object):

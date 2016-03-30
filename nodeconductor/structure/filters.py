@@ -652,6 +652,18 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
         }
 
 
+# XXX: use single class when NC-1237 is done
+class BaseResourceStateFilter(BaseResourceFilter):
+
+    state = core_filters.MappedMultipleChoiceFilter(
+        choices=[(representation, representation) for db_value, representation in core_models.StateMixin.States.CHOICES],
+        choice_mappings={representation: db_value for db_value, representation in core_models.StateMixin.States.CHOICES},
+    )
+
+    class Meta(BaseResourceFilter.Meta):
+        model = models.ResourceMixin
+
+
 # XXX: temporary filter for licenses filtering.
 class TagsFilter(BaseFilterBackend):
 

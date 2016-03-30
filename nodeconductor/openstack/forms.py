@@ -20,6 +20,7 @@ class BackupScheduleForm(ModelForm):
 class InstanceForm(ModelForm):
     class Meta:
         model = Instance
+        exclude = 'uuid',
         widgets = {
             'tags': LicenseWidget(),
         }

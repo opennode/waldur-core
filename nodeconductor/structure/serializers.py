@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from django.conf import settings
 from django.contrib import auth
@@ -52,8 +52,8 @@ class PermissionFieldFilteringMixin(object):
             return fields
 
         for field_name in self.get_filtered_field_names():
-            fields[field_name].queryset = filter_queryset_for_user(
-                fields[field_name].queryset, user)
+            field = fields[field_name]
+            field.queryset = filter_queryset_for_user(field.queryset, user)
 
         return fields
 
@@ -61,6 +61,33 @@ class PermissionFieldFilteringMixin(object):
         raise NotImplementedError(
             'Implement get_filtered_field_names() '
             'to return list of filtered fields')
+
+
+class PermissionListSerializer(serializers.ListSerializer):
+    """
+    Allows to filter related queryset by user.
+    Counterpart of PermissionFieldFilteringMixin.
+
+    In order to use it set Meta.list_serializer_class. Example:
+
+    >>> class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
+    >>>     class Meta(BasicProjectGroupSerializer.Meta):
+    >>>         list_serializer_class = PermissionListSerializer
+    >>>
+    >>> class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+    >>>     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
+    """
+    def to_representation(self, data):
+        try:
+            request = self.context['request']
+            user = request.user
+        except (KeyError, AttributeError):
+            pass
+        else:
+            if isinstance(data, (django_models.Manager, django_models.query.QuerySet)):
+                data = filter_queryset_for_user(data.all(), user)
+
+        return super(PermissionListSerializer, self).to_representation(data)
 
 
 class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
@@ -78,11 +105,21 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
         fields = ('url', 'uuid', 'name')
 
 
+class PermissionProjectSerializer(BasicProjectSerializer):
+    class Meta(BasicProjectSerializer.Meta):
+        list_serializer_class = PermissionListSerializer
+
+
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
         fields = ('url', 'name', 'uuid')
         read_only_fields = ('name', 'uuid')
+
+
+class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
+    class Meta(BasicProjectGroupSerializer.Meta):
+        list_serializer_class = PermissionListSerializer
 
 
 class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
@@ -280,8 +317,8 @@ class CustomerImageSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
-    projects = serializers.SerializerMethodField()
-    project_groups = serializers.SerializerMethodField()
+    projects = PermissionProjectSerializer(many=True, read_only=True)
+    project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     image = DefaultImageField(required=False, read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
@@ -308,21 +345,57 @@ class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
     def eager_load(queryset):
         return queryset.prefetch_related('quotas', 'projects', 'project_groups')
 
-    def _get_filtered_data(self, objects, serializer):
+
+class CustomerUserSerializer(serializers.ModelSerializer):
+    role = serializers.ReadOnlyField(source='group.customerrole.get_role_type_display')
+    permission = serializers.HyperlinkedRelatedField(
+        source='perm.pk',
+        view_name='customer_permission-detail',
+        queryset=User.groups.through.objects.all(),
+    )
+    projects = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['url', 'uuid', 'username', 'full_name', 'role', 'permission', 'projects']
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def to_representation(self, user):
+        customer = self.context['customer']
         try:
-            user = self.context['request'].user
-            queryset = filter_queryset_for_user(objects, user)
-        except (KeyError, AttributeError):
-            pass
+            group = user.groups.get(customerrole__customer=customer)
+        except user.groups.model.DoesNotExist:
+            group = None
+            perm = None
+        else:
+            perm = User.groups.through.objects.get(user=user, group=group)
 
-        serializer_instance = serializer(queryset, many=True, context=self.context)
-        return serializer_instance.data
+        setattr(user, 'group', group)
+        setattr(user, 'perm', perm)
+        return super(CustomerUserSerializer, self).to_representation(user)
 
-    def get_projects(self, obj):
-        return self._get_filtered_data(obj.projects, BasicProjectSerializer)
+    def get_projects(self, user):
+        request = self.context['request']
+        customer = self.context['customer']
+        projectrole = {
+            g.projectrole.project_id: (g.projectrole.get_role_type_display(),
+                                       User.groups.through.objects.get(user=user, group=g).pk)
+            for g in user.groups.exclude(projectrole=None)
+        }
+        projects = filter_queryset_for_user(
+            models.Project.objects.filter(customer=customer).filter(id__in=projectrole.keys()), request.user)
 
-    def get_project_groups(self, obj):
-        return self._get_filtered_data(obj.project_groups, BasicProjectGroupSerializer)
+        return [OrderedDict([
+            ('url', reverse('project-detail', kwargs={'uuid': proj.uuid}, request=request)),
+            ('uuid', proj.uuid),
+            ('name', proj.name),
+            ('role', projectrole[proj.id][0]),
+            ('permission', reverse('project_permission-detail',
+                                   kwargs={'pk': projectrole[proj.id][1]},
+                                   request=request))
+        ]) for proj in projects]
 
 
 class BalanceHistorySerializer(serializers.ModelSerializer):
@@ -334,7 +407,7 @@ class BalanceHistorySerializer(serializers.ModelSerializer):
 class ProjectGroupSerializer(PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
                              serializers.HyperlinkedModelSerializer):
-    projects = serializers.SerializerMethodField()
+    projects = PermissionProjectSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ProjectGroup
@@ -353,38 +426,10 @@ class ProjectGroupSerializer(PermissionFieldFilteringMixin,
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
+        protected_fields = ('customer',)
 
     def get_filtered_field_names(self):
         return 'customer',
-
-    def get_fields(self):
-        # TODO: Extract to a proper mixin
-        fields = super(ProjectGroupSerializer, self).get_fields()
-
-        try:
-            method = self.context['view'].request.method
-        except (KeyError, AttributeError):
-            return fields
-
-        if method in ('PUT', 'PATCH'):
-            fields['customer'].read_only = True
-
-        return fields
-
-    def _get_filtered_data(self, objects, serializer):
-        # XXX: this method completely duplicates _get_filtered_data in CustomerSerializer.
-        # We need to create mixin to follow DRY principle. (NC-578)
-        try:
-            user = self.context['request'].user
-            queryset = filter_queryset_for_user(objects, user)
-        except (KeyError, AttributeError):
-            queryset = objects.all()
-
-        serializer_instance = serializer(queryset, many=True, context=self.context)
-        return serializer_instance.data
-
-    def get_projects(self, obj):
-        return self._get_filtered_data(obj.projects.all(), BasicProjectSerializer)
 
 
 class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
@@ -1062,11 +1107,9 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
-            'service', 'service_name', 'service_uuid',
-            'state', 'error_message'
+            'service', 'service_name', 'service_uuid'
         )
         related_paths = ('project', 'service')
-        read_only_fields = ('error_message',)
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }
@@ -1112,6 +1155,7 @@ class BasicResourceSerializer(serializers.Serializer):
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
+                             core_serializers.RestrictedSerializerMixin,
                              MonitoringSerializerMixin,
                              PermissionFieldFilteringMixin,
                              core_serializers.AugmentedSerializerMixin,
@@ -1132,8 +1176,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name=NotImplemented,
-        queryset=NotImplemented,
-        write_only=True)
+        queryset=NotImplemented)
 
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
@@ -1221,7 +1264,7 @@ class PublishableResourceSerializer(BaseResourceSerializer):
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
-class SummaryResourceSerializer(serializers.BaseSerializer):
+class SummaryResourceSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         serializer = SupportedServices.get_resource_serializer(instance.__class__)
@@ -1313,8 +1356,9 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     def get_fields(self):
         fields = super(VirtualMachineSerializer, self).get_fields()
-        fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
-            user=self.context['request'].user)
+        if 'ssh_public_key' in fields:
+            fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
+                user=self.context['request'].user)
         return fields
 
 

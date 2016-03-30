@@ -6,6 +6,17 @@ Release NEXT
 
 <add here>
 
+Release 0.91.0
+--------------
+- Migrated to Django 1.8.
+- Make quota usage readonly in /admin.
+- Changed assing_floating_ip signature for OpenStack instances.
+- Allow requesting specific REST fields to be rendered in a list.
+- Added OpenStack Tenant resource and related operations.
+- Documentation improvements.
+- Removed state from the service project links.
+- Bugfixes.
+
 Release 0.90.0
 --------------
 - Introduced Executor layer for a single point of backend logic.

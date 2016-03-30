@@ -20,6 +20,7 @@ class Command(BaseCommand):
         self.recalculate_aggregator_quotas()
         self.stdout.write('XXX: Second time to make sure that aggregators of aggregators where calculated properly.')
         self.recalculate_aggregator_quotas()
+        self.recalculate_customers_user_count()
 
     def delete_stale_quotas(self):
         self.stdout.write('Deleting stale quotas')
@@ -65,4 +66,13 @@ class Command(BaseCommand):
             for aggregator_field in model.get_quotas_fields(field_class=fields.AggregatorQuotaField):
                 for instance in model.objects.all():
                     aggregator_field.recalculate(scope=instance)
+        self.stdout.write('...done')
+
+    # XXX: With current permissions structure it easier to handle customer quota separately.
+    def recalculate_customers_user_count(self):
+        self.stdout.write('Recalculating customers user count')
+        from nodeconductor.structure.models import Customer
+        for customer in Customer.objects.all():
+            usage = len(set(customer.get_users()))
+            customer.set_quota_usage(Customer.Quotas.nc_user_count, usage)
         self.stdout.write('...done')

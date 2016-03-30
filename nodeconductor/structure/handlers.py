@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from collections import Counter
 import logging
 
 from django.db import models, transaction
@@ -9,7 +8,7 @@ from django.contrib.auth import get_user_model
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
-from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, signals
+from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
@@ -80,7 +79,7 @@ def propagate_user_to_his_projects_services(sender, instance=None, created=False
         link = Link(instance)
 
         users = get_user_model().objects.filter(groups__projectrole__project=instance.project)
-        users = list(users.values_list('uuid', flat=True))
+        users = [uuid.hex for uuid in users.values_list('uuid', flat=True)]
 
         for user in users:
             link.add_user(user)
@@ -362,13 +361,8 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
     elif sender in (Project, ProjectGroup):
         customer = structure.customer
 
-    customer_users_counter = Counter(customer.get_users())
-
-    if customer_users_counter.get(user, 0) == 1:
-        if signal == signals.structure_role_granted:
-            customer.add_quota_usage('nc_user_count', 1)
-        else:
-            customer.add_quota_usage('nc_user_count', -1)
+    customer_users = customer.get_users()
+    customer.set_quota_usage(Customer.Quotas.nc_user_count, customer_users.count())
 
 
 def log_resource_deleted(sender, instance, **kwargs):
@@ -424,8 +418,7 @@ def connect_project_to_all_available_services(sender, instance, created=False, *
     for service_model in Service.get_all_models():
         for service in service_model.objects.filter(available_for_all=True, customer=project.customer):
             service_project_link_model = service.projects.through
-            service_project_link_model.objects.create(
-                project=project, service=service, state=SynchronizationStates.NEW)
+            service_project_link_model.objects.create(project=project, service=service)
 
 
 def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance, created=False, **kwargs):
@@ -433,13 +426,20 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
     if service.available_for_all:
         service_project_link_model = service.projects.through
         for project in service.customer.projects.all():
-            service_project_link_model.objects.get_or_create(
-                project=project, service=service, state=SynchronizationStates.NEW)
+            service_project_link_model.objects.get_or_create(project=project, service=service)
 
 
 def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
-    if created:
-        send_task('structure', 'sync_service_settings')(instance.uuid.hex)
+    if not created:
+        return
+
+    backend = instance.get_backend()
+    if backend.has_global_properties():
+        instance.state = SynchronizationStates.IN_SYNC
+        instance.save(update_fields=['state'])
+        return
+
+    send_task('structure', 'sync_service_settings')(instance.uuid.hex)
 
 
 def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
@@ -454,44 +454,6 @@ def log_service_recovered(sender, instance, name, source, target, **kwargs):
     settings = instance
     if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
         logger.info('Service settings %s has been recovered.' % settings)
-
-def sync_service_project_link_with_backend(sender, instance, created=False, **kwargs):
-    if created:
-        if instance.state != SynchronizationStates.NEW:
-            send_task('structure', 'sync_service_project_links')(instance.to_string(), initial=True)
-
-
-def log_service_project_link_sync_failed(sender, instance, name, source, target, **kwargs):
-    service_project_link = instance
-    message = service_project_link.error_message
-
-    if not message or target != SynchronizationStates.ERRED:
-        return
-
-    if source == SynchronizationStates.CREATING:
-        logger.error(
-            "Creation of service project link %s has failed with an error: %s",
-            service_project_link.to_string(),
-            message)
-    elif source == SynchronizationStates.SYNCING:
-        logger.error(
-            "Synchronization of service project link %s has failed with an error: %s",
-            service_project_link.to_string(),
-            message)
-
-
-def log_service_project_link_recovered(sender, instance, name, source, target, **kwargs):
-    service_project_link = instance
-    if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
-        logger.info('Service project link %s has been recovered.' % service_project_link.to_string())
-
-
-def remove_service_project_link_from_backend(sender, instance, **kwargs):
-    backend = instance.get_backend()
-    try:
-        backend.remove_link(instance)
-    except ServiceBackendNotImplemented:
-        pass
 
 
 def delete_service_settings(sender, instance, **kwargs):

@@ -3,13 +3,14 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
+from rest_framework.reverse import reverse
 from taggit.models import Tag
 
-from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core.exceptions import IncorrectStateException
-from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.permissions import has_user_permission_for_instance
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.utils import request_api
+from nodeconductor.core.views import StateExecutorViewSet
 from nodeconductor.structure import views as structure_views
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -29,73 +30,70 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
     serializer_class = serializers.ServiceProjectLinkSerializer
     filter_class = filters.OpenStackServiceProjectLinkFilter
 
+    serializers = {
+        'set_quotas': serializers.TenantQuotaSerializer,
+        'external_network': serializers.ExternalNetworkSerializer,
+    }
+
+    def get_serializer_class(self):
+        serializer = self.serializers.get(self.action)
+        return serializer or super(OpenStackServiceProjectLinkViewSet, self).get_serializer_class()
+
+    # XXX: This method and backend quotas should be moved to tenant.
     @decorators.detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
         if not request.user.is_staff:
             raise exceptions.PermissionDenied()
 
         spl = self.get_object()
-        if spl.state != SynchronizationStates.IN_SYNC:
-            return IncorrectStateException(
-                "Service project link must be in stable state.")
+        tenant = spl.tenant
+        if not tenant or tenant.state != models.Tenant.States.OK:
+            raise IncorrectStateException("Tenant should be in state OK.")
 
-        serializer = serializers.ServiceProjectLinkQuotaSerializer(data=request.data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        data = dict(serializer.validated_data)
-        if data.get('instances') is not None:
-            quotas = settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
-            volume_ratio = quotas.get('volumes', 4)
-            snapshots_ratio = quotas.get('snapshots', 20)
-
-            data['volumes'] = volume_ratio * data['instances']
-            data['snapshots'] = snapshots_ratio * data['instances']
-
-        send_task('structure', 'sync_service_project_links')(spl.to_string(), quotas=data)
+        quotas = dict(serializer.validated_data)
+        for quota_name, limit in quotas.items():
+            spl.set_quota_limit(quota_name, limit)
+        executors.TenantPushQuotasExecutor.execute(tenant, quotas=quotas)
 
         return response.Response(
-            {'detail': 'Quota update was scheduled'}, status=status.HTTP_202_ACCEPTED)
+            {'detail': 'Quota update has been scheduled'}, status=status.HTTP_202_ACCEPTED)
 
+    # XXX: This method should be moved to tenant endpoint.
+    #      Also it should be replaced by two methods - create external network and delete external network.
     @decorators.detail_route(methods=['post', 'delete'])
     def external_network(self, request, pk=None):
         spl = self.get_object()
+        tenant = spl.tenant
+
+        if not tenant or tenant.state != models.Tenant.States.OK:
+            raise IncorrectStateException("Tenant should be in state OK.")
+
         if request.method == 'DELETE':
-            if spl.external_network_id:
-                send_task('openstack', 'sync_external_network')(spl.to_string(), 'delete')
-                return response.Response(
-                    {'detail': 'External network deletion has been scheduled.'},
-                    status=status.HTTP_202_ACCEPTED)
-            else:
-                return response.Response(
-                    {'detail': 'External network does not exist.'},
-                    status=status.HTTP_204_NO_CONTENT)
+            return self._delete_external_network(request, tenant)
+        else:
+            return self._create_external_network(request, tenant)
 
-        serializer = serializers.ExternalNetworkSerializer(data=request.data)
+    def _create_external_network(self, request, tenant):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        send_task('openstack', 'sync_external_network')(spl.to_string(), 'create', serializer.data)
-
+        executors.TenantCreateExternalNetworkExecutor.execute(tenant, external_network_data=serializer.data)
         return response.Response(
             {'detail': 'External network creation has been scheduled.'},
             status=status.HTTP_202_ACCEPTED)
 
-    @decorators.detail_route(methods=['post'])
-    def allocate_floating_ip(self, request, pk=None):
-        spl = self.get_object()
-        if not spl.external_network_id:
+    def _delete_external_network(self, request, tenant):
+        if tenant.external_network_id:
+            executors.TenantDeleteExternalNetworkExecutor.execute(tenant)
             return response.Response(
-                {'detail': 'Service project link should have an external network ID.'},
-                status=status.HTTP_409_CONFLICT)
-
-        elif spl.state not in SynchronizationStates.STABLE_STATES:
-            raise IncorrectStateException(
-                "Service project link must be in stable state.")
-
-        send_task('openstack', 'allocate_floating_ip')(spl.to_string())
-
-        return response.Response(
-            {'detail': 'Floating IP allocation has been scheduled.'},
-            status=status.HTTP_202_ACCEPTED)
+                {'detail': 'External network deletion has been scheduled.'},
+                status=status.HTTP_202_ACCEPTED)
+        else:
+            return response.Response(
+                {'detail': 'External network does not exist.'},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
@@ -192,6 +190,21 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         return serializer or super(InstanceViewSet, self).get_serializer_class()
 
     @decorators.detail_route(methods=['post'])
+    def allocate_floating_ip(self, request, uuid=None):
+        """
+        Proxy request to allocate floating IP to instance's service project link.
+
+        TODO: Move method after migration from service project link to tenant resource.
+        """
+        instance = self.get_object()
+        kwargs = {'uuid': instance.service_project_link.tenant.uuid.hex}
+        url = reverse('openstack-tenant-detail', kwargs=kwargs, request=request) + 'allocate_floating_ip/'
+        result = request_api(request, url, 'POST')
+        return response.Response(result.data, result.status)
+
+    allocate_floating_ip.title = 'Allocate floating IP'
+
+    @decorators.detail_route(methods=['post'])
     @structure_views.safe_operation(valid_state=tuple(models.Instance.States.STABLE_STATES))
     def assign_floating_ip(self, request, instance, uuid=None):
         """
@@ -202,7 +215,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         serializer.is_valid(raise_exception=True)
 
         send_task('openstack', 'assign_floating_ip')(
-            instance.uuid.hex, serializer.validated_data['floating_ip_uuid'])
+            instance.uuid.hex, serializer.get_floating_ip_uuid())
 
     assign_floating_ip.title = 'Assign floating IP'
 
@@ -241,28 +254,16 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     resize.title = 'Resize virtual machine'
 
 
-class SecurityGroupViewSet(core_mixins.UpdateOnlyStableMixin, viewsets.ModelViewSet):
+class SecurityGroupViewSet(StateExecutorViewSet):
     queryset = models.SecurityGroup.objects.all()
     serializer_class = serializers.SecurityGroupSerializer
     lookup_field = 'uuid'
     filter_class = filters.SecurityGroupFilter
     filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
-
-    def perform_create(self, serializer):
-        security_group = serializer.save()
-        executors.SecurityGroupCreateExecutor.execute(security_group)
-
-    def perform_update(self, serializer):
-        super(SecurityGroupViewSet, self).perform_update(serializer)
-        security_group = self.get_object()
-        executors.SecurityGroupUpdateExecutor.execute(security_group)
-
-    def destroy(self, request, *args, **kwargs):
-        security_group = self.get_object()
-        executors.SecurityGroupDeleteExecutor.execute(security_group)
-        return response.Response(
-            {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
+    create_executor = executors.SecurityGroupCreateExecutor
+    update_executor = executors.SecurityGroupUpdateExecutor
+    delete_executor = executors.SecurityGroupDeleteExecutor
 
 
 class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
@@ -535,3 +536,33 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             results.append(tag)
 
         return response.Response(results)
+
+
+class TenantViewSet(StateExecutorViewSet):
+    queryset = models.Tenant.objects.all()
+    serializer_class = serializers.TenantSerializer
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    create_executor = executors.TenantCreateExecutor
+    update_executor = executors.TenantUpdateExecutor
+    delete_executor = executors.TenantDeleteExecutor
+
+    @decorators.detail_route(methods=['post'])
+    def allocate_floating_ip(self, request, uuid=None):
+        tenant = self.get_object()
+
+        if not tenant or tenant.state != models.Tenant.States.OK:
+            raise IncorrectStateException("Tenant should be in state OK.")
+
+        if not tenant.external_network_id:
+            return response.Response(
+                {'detail': 'Tenant should have an external network ID.'},
+                status=status.HTTP_409_CONFLICT)
+
+        executors.TenantAllocateFloatingIPExecutor.execute(tenant)
+
+        return response.Response(
+            {'detail': 'Floating IP allocation has been scheduled.'},
+            status=status.HTTP_202_ACCEPTED)
+
+    allocate_floating_ip.title = 'Allocate floating IP'
