@@ -243,6 +243,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'openstack-pull-tenants': {
+        'task': 'nodeconductor.openstack.pull_tenants_properties',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
     'pull-instances-installation-state': {
         'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
         'schedule': timedelta(minutes=1),

@@ -165,3 +165,21 @@ class TenantDetectExternalNetworkExecutor(executors.ActionExecutor):
         return tasks.BackendMethodTask().si(
             serialized_tenant, 'detect_external_network',
             state_transition='begin_updating')
+
+
+class TenantPullFloatingIPsExecutor(executors.ActionExecutor):
+
+    @classmethod
+    def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
+        return tasks.BackendMethodTask().si(
+            serialized_tenant, 'pull_tenant_floating_ips',
+            state_transition='begin_updating')
+
+
+class TenantPullQuotasExecutor(executors.ActionExecutor):
+
+    @classmethod
+    def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
+        return tasks.BackendMethodTask().si(
+            serialized_tenant, 'pull_tenant_quotas',
+            state_transition='begin_updating')
