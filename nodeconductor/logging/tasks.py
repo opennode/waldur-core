@@ -2,6 +2,8 @@ import uuid
 import logging
 
 from celery import shared_task
+from datetime import datetime
+from django.conf import settings
 
 from nodeconductor.logging.log import event_logger
 from nodeconductor.logging.models import BaseHook, Alert
@@ -33,3 +35,10 @@ def close_alerts_without_scope():
         if alert.scope is None:
             logger.error('Alert without scope was not closed. Alert id: %s.', alert.id)
             alert.close()
+
+
+@shared_task(name='nodeconductor.logging.alerts_cleanup')
+def alerts_cleanup():
+    timespan = settings.NODECONDUCTOR.get('CLOSED_ALERTS_LIFETIME')
+    if timespan:
+        Alert.objects.filter(is_closed=True, closed__lte=datetime.now() - timespan).delete()
