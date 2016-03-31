@@ -95,6 +95,16 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
                 {'detail': 'External network does not exist.'},
                 status=status.HTTP_400_BAD_REQUEST)
 
+    def destroy(self, request, *args, **kwargs):
+        """ If OpenStack SPL has connected tenant - destroy operation will trigger tenant deletion. """
+        spl = self.get_object()
+        if spl.tenant is not None:
+            executors.SPLTenantDeleteExecutor.execute(spl.tenant, force=True)
+            return response.Response(
+                {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
+        else:
+            return super(OpenStackServiceProjectLinkViewSet, self).destroy(request, *args, **kwargs)
+
 
 class FlavorViewSet(structure_views.BaseServicePropertyViewSet):
     queryset = models.Flavor.objects.all().order_by('settings', 'cores', 'ram', 'disk')

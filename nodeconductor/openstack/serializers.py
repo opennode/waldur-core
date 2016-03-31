@@ -66,13 +66,19 @@ class ImageSerializer(structure_serializers.BasePropertySerializer):
 
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
 
+    state = serializers.SerializerMethodField()
     quotas = quotas_serializers.QuotaSerializer(many=True, read_only=True)
+
+    def get_state(self, obj):
+        if obj.tenant:
+            return obj.tenant.human_readable_state
+        return None
 
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
         model = models.OpenStackServiceProjectLink
         view_name = 'openstack-spl-detail'
         fields = structure_serializers.BaseServiceProjectLinkSerializer.Meta.fields + (
-            'quotas', 'tenant_id', 'external_network_id', 'internal_network_id'
+            'quotas', 'tenant_id', 'external_network_id', 'internal_network_id', 'state'
         )
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'openstack-detail'},
