@@ -268,7 +268,7 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
         super(SshPublicKey, self).save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
-        return self.name
+        return '%s - %s, user: %s, %s' % (self.name, self.fingerprint, self.user.username, self.user.full_name)
 
 
 class SynchronizationStates(object):

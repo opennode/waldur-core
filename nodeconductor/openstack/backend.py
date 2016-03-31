@@ -337,8 +337,12 @@ class OpenStackBackend(ServiceBackend):
             return nova.keypairs.find(fingerprint=fingerprint)
         except nova_exceptions.NotFound:
             # Fine, it's a new key, let's add it
-            logger.info('Propagating ssh public key %s to backend', key_name)
-            return nova.keypairs.create(name=key_name, public_key=public_key)
+            try:
+                return nova.keypairs.create(name=key_name, public_key=public_key)
+            except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+                six.reraise(OpenStackBackendError, e)
+            else:
+                logger.info('Propagating ssh public key %s to backend', key_name)
         except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
             six.reraise(OpenStackBackendError, e)
         else:
