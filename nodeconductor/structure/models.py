@@ -6,6 +6,7 @@ import itertools
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.core.validators import MaxLengthValidator
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -1065,6 +1066,45 @@ class ResourceMixin(MonitoringModelMixin,
         from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
                 if not issubclass(resource, VirtualMachineMixin) and not issubclass(resource, Instance)]
+
+    def get_related_resources(self):
+        return itertools.chain(
+            self._get_generic_related_resources(),
+            self._get_concrete_related_resources(),
+            self._get_concrete_linked_resources(),
+            self._get_generic_linked_resources()
+        )
+
+    def _get_generic_related_resources(self):
+        # For example, returns Zabbix host for virtual machine
+
+        return itertools.chain.from_iterable(
+            model.objects.filter(**{field.name: self})
+            for model in Resource.get_all_models()
+            for field in model._meta.virtual_fields
+            if isinstance(field, GenericForeignKey))
+
+    def _get_concrete_related_resources(self):
+        # For example, returns GitLab projects for group
+
+        return itertools.chain.from_iterable(
+            rel.related_model.objects.filter(**{rel.field.name: self})
+            for rel in self._meta.get_all_related_objects()
+            if issubclass(rel.related_model, Resource)
+        )
+
+    def _get_concrete_linked_resources(self):
+        # For example, returns GitLab group for project
+        return [getattr(self, field.name)
+                for field in self._meta.fields
+                if isinstance(field, models.ForeignKey)
+                and issubclass(field.related_model, Resource)]
+
+    def _get_generic_linked_resources(self):
+        # For example, returns GitLab group for project
+        return [getattr(self, field.name)
+                for field in self._meta.virtual_fields
+                if isinstance(field, GenericForeignKey)]
 
     @classmethod
     @lru_cache(maxsize=1)

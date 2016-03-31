@@ -25,7 +25,6 @@ from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
 import reversion
 
 from nodeconductor.core import filters as core_filters
@@ -969,7 +968,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         except ServiceBackendNotImplemented:
             resources = []
 
-        serializer = serializers.BasicResourceSerializer(resources, many=True)
+        serializer = serializers.ManagedResourceSerializer(resources, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @detail_route(methods=['get', 'post'])

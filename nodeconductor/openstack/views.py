@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
