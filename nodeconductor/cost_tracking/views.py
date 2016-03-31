@@ -52,6 +52,61 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
         return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
 
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of price estimates, run GET against **/api/price-estimates/** as authenticated user.
+
+        Price estimates can be filtered by:
+         - ?scope=<object URL> URL of object that was estimated
+         - ?scope_type=<string> can be list. Filter by scope type
+         - ?date=<string in format YYYY.MM> can be list. Filters price estimates for given months
+         - ?start=<string in format YYYY.MM> filter price estimates that was after given months (excluding given)
+         - ?end=<string in format YYYY.MM> filter price estimates that was before end months (including given)
+         - ?is_manually_input=True|False - show manually created (auto calculated) estimates
+         - ?customer=<UUID> - filter price estimates by objects connected to a specific customer
+
+        Price estimates in response are sorted from latest to earliest.
+
+        scope_type is generic type of object for which price estimate is calculated.
+        Currently there are following types: customer, project, serviceprojectlink, service, resource.
+
+
+        Run POST against */api/price-estimates/* to create price estimate. Manually created price estimate will replace
+        auto calculated estimate. Manual creation is available only for estimates for resources and service-project-links.
+        Only customer owner and staff can edit price estimates.
+
+        Request example:
+
+        .. code-block:: javascript
+
+            POST /api/price-estimates/
+            Accept: application/json
+            Content-Type: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "scope": "http://example.com/api/instances/ab2e3d458e8a4ecb9dded36f3e46878d/",
+                "total": 1000,
+                "consumed": 800,
+                "month": 8,
+                "year": 2015
+            }
+        """
+
+        return super(PriceEstimateViewSet, self).list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Run PATCH request against */api/price-estimates/<uuid>/* to update manually created price estimate.
+        Only fields "total" and "consumed" could be updated. Only customer owner
+        and staff can update price estimates.
+
+        Run DELETE request against */api/price-estimates/<uuid>/* to delete price estimate. Estimate will be
+        replaced with auto calculated (if it exists). Only customer owner and staff can delete price estimates.
+        """
+        return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
+
 
 class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     queryset = models.PriceListItem.objects.all()
@@ -62,6 +117,47 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         return models.PriceListItem.objects.filtered_for_user(self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of price list items, run GET against **/api/price-list-items/** as an authenticated user.
+
+        Price lists can be filtered by:
+         - ?service=<object URL> URL of service
+
+
+        Run POST request against */api/price-list-items/* to create new price list item.
+        Customer owner and staff can create price items.
+
+        Example of request:
+
+        .. code-block:: http
+
+            POST /api/price-list-items/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "units": "per month",
+                "key": "test_key",
+                "value": 100,
+                "service": "http://example.com/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
+                "item_type": "storage"
+            }
+        """
+        return super(PriceListItemViewSet, self).list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Run PATCH request against */api/price-list-items/<uuid>/* to update price list item.
+        Only value and units can be updated. Customer owner and staff can update price items.
+
+        Run DELETE request against */api/price-list-items/<uuid>/* to delete price list item.
+        Customer owner and staff can delete price items.
+        """
+        return super(PriceListItemViewSet, self).retrieve(request, *args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('partial_update', 'update', 'destroy'):
@@ -85,3 +181,16 @@ class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.DefaultPriceListItemFilter
     filter_backends = (DjangoMappingFilterBackend,)
     serializer_class = serializers.DefaultPriceListItemSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of default price list items, run GET against **/api/default-price-list-items/**
+        as authenticated user.
+
+        Price lists can be filtered by:
+         - ?key=<string>
+         - ?item_type=<string> has to be from list of available item_types
+           (available options: 'flavor', 'storage', 'license-os', 'license-application', 'network', 'support')
+         - ?resource_type==<string> resource type, for example: 'OpenStack.Instance, 'Oracle.Database')
+        """
+        return super(DefaultPriceListItemViewSet, self).list(request, *args, **kwargs)

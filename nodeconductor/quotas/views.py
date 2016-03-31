@@ -15,7 +15,6 @@ from nodeconductor.quotas import models, serializers, filters
 
 class QuotaViewSet(mixins.UpdateModelMixin,
                    viewsets.ReadOnlyModelViewSet):
-
     queryset = models.Quota.objects.all()
     serializer_class = serializers.QuotaSerializer
     lookup_field = 'uuid'
@@ -27,6 +26,37 @@ class QuotaViewSet(mixins.UpdateModelMixin,
 
     def get_queryset(self):
         return models.Quota.objects.filtered_for_user(self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get an actual value for object quotas limit and usage issue a GET request against **/api/<objects>/**.
+
+        To get all quotas visible to the user issue a GET request against **/api/quotas/**
+        """
+        return super(QuotaViewSet, self).retrieve(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        To set quota limit issue a PUT request against **/api/quotas/<quota uuid>** with limit values.
+
+        Please note that if a quota is a cache of a backend quota (e.g. 'storage' size of an OpenStack tenant),
+        it will be impossible to modify it through **/api/quotas/<quota uuid>** endpoint.
+
+        Example of changing quota limit:
+
+        .. code-block:: http
+
+            POST /api/quotas/6ad5f49d6d6c49648573b2b71f44a42b/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "limit": 2000.0
+            }
+        """
+        return super(QuotaViewSet, self).retrieve(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         if not serializer.instance.scope.can_user_update_quotas(self.request.user):

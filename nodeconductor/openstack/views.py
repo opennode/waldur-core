@@ -19,97 +19,77 @@ from nodeconductor.openstack import Types, models, filters, serializers, executo
 
 
 class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
-    """
-    Create OpenStack service
-    ------------------------
-
-    To create a service, issue a POST to **/api/openstack/** as a customer owner.
-
-    You can create service based on shared service settings. Example:
-
-    .. code-block:: http
-
-        POST /api/openstack/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "name": "Common OpenStack",
-            "customer": "http://example.com/api/customers/1040561ca9e046d2b74268600c7e1105/",
-            "settings": "http://example.com/api/service-settings/93ba615d6111466ebe3f792669059cb4/"
-        }
-
-    Or provide your own credentials. Example:
-
-    .. code-block:: http
-
-        POST /api/openstack/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "name": "My OpenStack",
-            "customer": "http://example.com/api/customers/1040561ca9e046d2b74268600c7e1105/",
-            "backend_url": "http://keystone.example.com:5000/v2.0",
-            "username": "admin",
-            "password": "secret"
-        }
-
-    To remove OpenStack service, issue DELETE against **/api/openstack/<service_uuid>/** as staff user or customer owner.
-
-
-    Update OpenStack service
-    ------------------------
-
-    To update OpenStack service issue PUT or PATCH against **/api/openstack/<service_uuid>/** as a customer owner.
-    You can only update service's name.
-
-    Example of a request:
-
-    .. code-block:: http
-
-        PUT /api/openstack/c6526bac12b343a9a65c4cd6710666ee/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "name": "My OpenStack2"
-        }
-    """
     queryset = models.OpenStackService.objects.all()
     serializer_class = serializers.ServiceSerializer
     import_serializer_class = serializers.InstanceImportSerializer
 
+    def list(self, request, *args, **kwargs):
+        """
+        To create a service, issue a POST to **/api/openstack/** as a customer owner.
+
+        You can create service based on shared service settings. Example:
+
+        .. code-block:: http
+
+            POST /api/openstack/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "name": "Common OpenStack",
+                "customer": "http://example.com/api/customers/1040561ca9e046d2b74268600c7e1105/",
+                "settings": "http://example.com/api/service-settings/93ba615d6111466ebe3f792669059cb4/"
+            }
+
+        Or provide your own credentials. Example:
+
+        .. code-block:: http
+
+            POST /api/openstack/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "name": "My OpenStack",
+                "customer": "http://example.com/api/customers/1040561ca9e046d2b74268600c7e1105/",
+                "backend_url": "http://keystone.example.com:5000/v2.0",
+                "username": "admin",
+                "password": "secret"
+            }
+        """
+
+        return super(OpenStackServiceViewSet, self).list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        To update OpenStack service issue PUT or PATCH against **/api/openstack/<service_uuid>/** as a customer owner.
+        You can update service's `name` and `available_for_all` fields.
+
+        Example of a request:
+
+        .. code-block:: http
+
+            PUT /api/openstack/c6526bac12b343a9a65c4cd6710666ee/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "name": "My OpenStack2"
+            }
+
+        To remove OpenStack service, issue DELETE against **/api/openstack/<service_uuid>/** as
+        staff user or customer owner.
+        """
+        return super(OpenStackServiceViewSet, self).retrieve(request, *args, **kwargs)
+
 
 class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSet):
-    """
-    In order to be able to provision OpenStack resources, it must first be linked to a project. To do that,
-    POST a connection between project and a service to **/api/openstack-service-project-link/**
-    as stuff user or customer owner.
-
-    Example of a request:
-
-    .. code-block:: http
-
-        POST /api/openstack-service-project-link/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "project": "http://example.com/api/projects/e5f973af2eb14d2d8c38d62bcbaccb33/",
-            "service": "http://example.com/api/openstack/b0e8a4cbd47c4f9ca01642b7ec033db4/"
-        }
-
-    To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
-    """
     queryset = models.OpenStackServiceProjectLink.objects.all()
     serializer_class = serializers.ServiceProjectLinkSerializer
     filter_class = filters.OpenStackServiceProjectLinkFilter
@@ -123,6 +103,31 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
         serializer = self.serializers.get(self.action)
         return serializer or super(OpenStackServiceProjectLinkViewSet, self).get_serializer_class()
 
+    def list(self, request, *args, **kwargs):
+        """
+        In order to be able to provision OpenStack resources, it must first be linked to a project. To do that,
+        POST a connection between project and a service to **/api/openstack-service-project-link/**
+        as stuff user or customer owner.
+
+        Example of a request:
+
+        .. code-block:: http
+
+            POST /api/openstack-service-project-link/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "project": "http://example.com/api/projects/e5f973af2eb14d2d8c38d62bcbaccb33/",
+                "service": "http://example.com/api/openstack/b0e8a4cbd47c4f9ca01642b7ec033db4/"
+            }
+
+        To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
+        """
+        return super(OpenStackServiceProjectLinkViewSet, self).list(request, *args, **kwargs)
+
     # XXX: This method and backend quotas should be moved to tenant.
     @decorators.detail_route(methods=['post'])
     def set_quotas(self, request, **kwargs):
@@ -131,7 +136,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
         In order to set quota submit POST request to **/api/openstack-service-project-link/<pk>/set_quotas/**.
         The quota values are propagated to the backend.
 
-        The following is a list of supported quotas. All values are expected to be integers:
+        The following quotas are supported. All values are expected to be integers:
 
         - instances - maximal number of created instances.
         - ram - maximal size of ram for allocation. In MiB_.
@@ -139,10 +144,6 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
         - vcpu - maximal number of virtual cores for allocation.
         - security_group_count - maximal number of created security groups.
         - security_group_rule_count - maximal number of created security groups rules.
-
-        In addition, NodeConductor will automatically calculate quotas for the **volumes** and **snapshots**,
-        when **instances** is provided. You can set default values for volumes and snapshots per instance
-        in the settings_ file.
 
         It is possible to update quotas by one or by submitting all the fields in one request.
         NodeConductor will attempt to update the provided quotas. Please note, that if provided quotas are
@@ -199,9 +200,6 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
     @decorators.detail_route(methods=['post', 'delete'])
     def external_network(self, request, pk=None):
         """
-        Creating external network
-        -------------------------
-
         In order to create external network a person with admin role or staff should issue a POST
         request to **/api/openstack-service-project-link/<pk>/external_network/**.
         The body of the request should consist of following parameters:
@@ -228,9 +226,6 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
                 "network_prefix": "26",
                 "ips_count": "6"
             }
-
-        Deleting external network
-        -------------------------
 
         In order to delete external network, a person with admin role or staff should issue a DELETE request
         to **/api/openstack-service-project-link/<pk>/external_network/** without any parameters in the request body.
@@ -310,9 +305,9 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     OpenStack instance states
     -------------------------
 
-    Each instance has a **state** field that defines its current operational state. Instance has a FSM that defines possible
-    state transitions. If a request is made to perform an operation on instance in incorrect state, a validation
-    error will be returned.
+    Each instance has a **state** field that defines its current operational state.
+    Instance has a FSM that defines possible state transitions. If a request is made to perform an operation
+    on instance in incorrect state, a validation error will be returned.
 
     The UI can poll for updates to provide feedback after submitting one of the longer running operations.
 
@@ -340,117 +335,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     A graph of possible state transitions is shown below.
 
     .. image:: /images/instance-states.png
-
-    List OpenStack instances
-    ------------------------
-
-    To get a list of instances, run GET against **/api/openstack-instances/** as authenticated user.
-    Note that a user can only see connected instances:
-
-    - instances that belong to a project where a user has a role.
-    - instances that belong to a customer that a user owns.
-
-    Create OpenStack instance
-    -------------------------
-
-    A new instance can be created by users with project administrator role or with staff privilege (is_staff=True).
-    To create a instance, client must define:
-
-    - name
-    - description (optional);
-    - service project link (connection between project and OpenStack service);
-    - link to the flavor (it *must* belong to a service, which is authorized for usage in the project);
-    - link to the image (it *must* belong to a service, which is authorized for usage in the project);
-    - link to user's public key (user owning this key will be able to log in to the instance);
-    - skip_external_ip_assignment (should be true, if user do not want to assign floating IP);
-    - security_groups (optional);
-    - system_volume_size (in MiB);
-    - data_volume_size (in MiB, sum of instance's system_volume_size and data_volume_size has to be lower
-      than available storage quota);
-    - user_data (optional) - YAML field with user commands for created instance;
-
-    Example of a valid request:
-
-    .. code-block:: http
-
-        POST /api/openstack-instances/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "name": "test VM",
-            "description": "sample description",
-            "image": "http://example.com/api/openstack-images/1ee380602b6283c446ad9420b3230bf0/",
-            "flavor": "http://example.com/api/openstack-flavors/1ee385bc043249498cfeb8c7e3e079f0/",
-            "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
-            "service_project_link": "http://example.com/api/openstack-service-project-link/674/".
-            "data_volume_size": 1024,
-            "system_volume_size": 20480,
-            "security_groups": [
-                { "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/"},
-                { "url": "http://example.com/api/security-groups/232da2ad9b3048db8dd60eeaa23d8123/"}
-            ]
-        }
-
-    Display OpenStack instance
-    --------------------------
-
-    Example rendering of the Instance object:
-
-    .. code-block:: javascript
-
-        [
-            {
-                "url": "http://example.com/api/openstack-instances/abceed63b8e844afacd63daeac855474/",
-                "uuid": "abceed63b8e844afacd63daeac855474",
-                "name": "wordpress",
-                "description": "",
-                "start_time": "2015-10-15T14:38:04Z",
-                "service": "http://example.com/api/openstack/2c41511fc27b4f32b1255c2755e7926a/",
-                "service_name": "Stratus",
-                "service_uuid": "2c41511fc27b4f32b1255c2755e7926a",
-                "project": "http://example.com/api/projects/5e7d93955f114d88981dea4f32ab673d/",
-                "project_name": "visual-studio",
-                "project_uuid": "5e7d93955f114d88981dea4f32ab673d",
-                "customer": "http://example.com/api/customers/00576c9790fa4d60bb58d6a557090932/",
-                "customer_name": "College of Technical Subjects",
-                "customer_native_name": "",
-                "customer_abbreviation": "",
-                "project_groups": [],
-                "resource_type": "OpenStack.Instance",
-                "state": "Online",
-                "created": "2015-10-15T14:33:54Z",
-                "cores": 1,
-                "ram": 2048,
-                "disk": 21504,
-                "external_ips": [
-                    "49.255.68.119"
-                ],
-                "internal_ips": [
-                    "192.168.42.11"
-                ],
-                "system_volume_size": 20480,
-                "data_volume_size": 1024,
-                "security_groups": []
-            },
-        ]
-
-
-    Delete OpenStack instance
-    -------------------------
-
-    Deletion of an instance is done through sending a DELETE request to the instance URI.
-    Valid request example (token is user specific):
-
-    .. code-block:: http
-
-        DELETE /api/openstack-instances/abceed63b8e844afacd63daeac855474/ HTTP/1.1
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-    Only stopped instances or instances in ERRED state can be deleted.
     """
     queryset = models.Instance.objects.all()
     serializer_class = serializers.InstanceSerializer
@@ -460,6 +344,68 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         'assign_floating_ip': serializers.AssignFloatingIpSerializer,
         'resize': serializers.InstanceResizeSerializer,
     }
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of instances, run GET against **/api/openstack-instances/** as authenticated user.
+        Note that a user can only see connected instances:
+
+        - instances that belong to a project where a user has a role.
+        - instances that belong to a customer that a user owns.
+
+        A new instance can be created by users with project administrator role or with staff privilege (is_staff=True).
+
+        Example of a valid request:
+
+        .. code-block:: http
+
+            POST /api/openstack-instances/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "name": "test VM",
+                "description": "sample description",
+                "image": "http://example.com/api/openstack-images/1ee380602b6283c446ad9420b3230bf0/",
+                "flavor": "http://example.com/api/openstack-flavors/1ee385bc043249498cfeb8c7e3e079f0/",
+                "ssh_public_key": "http://example.com/api/keys/6fbd6b24246f4fb38715c29bafa2e5e7/",
+                "service_project_link": "http://example.com/api/openstack-service-project-link/674/".
+                "data_volume_size": 1024,
+                "system_volume_size": 20480,
+                "security_groups": [
+                    { "url": "http://example.com/api/security-groups/16c55dad9b3048db8dd60e89bd4d85bc/"},
+                    { "url": "http://example.com/api/security-groups/232da2ad9b3048db8dd60eeaa23d8123/"}
+                ]
+            }
+        """
+        return super(InstanceViewSet, self).list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        To stop/start/restart an instance, run an authorized POST request against the instance UUID,
+        appending the requested command.
+        Examples of URLs:
+
+        - POST /api/openstack-instances/6c9b01c251c24174a6691a1f894fae31/start/
+        - POST /api/openstack-instances/6c9b01c251c24174a6691a1f894fae31/stop/
+        - POST /api/openstack-instances/6c9b01c251c24174a6691a1f894fae31/restart/
+
+        If instance is in the state that does not allow this transition, error code will be returned.
+
+        Deletion of an instance is done through sending a DELETE request to the instance URI.
+        Valid request example (token is user specific):
+
+        .. code-block:: http
+
+            DELETE /api/openstack-instances/abceed63b8e844afacd63daeac855474/ HTTP/1.1
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+        Only stopped instances or instances in ERRED state can be deleted.
+        """
+        return super(InstanceViewSet, self).retrieve(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         super(InstanceViewSet, self).perform_update(serializer)
@@ -552,7 +498,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
         Example of a valid request:
 
-
         .. code-block:: http
 
             POST /api/openstack-instances/6c9b01c251c24174a6691a1f894fae31/resize/ HTTP/1.1
@@ -594,93 +539,6 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
 
 class SecurityGroupViewSet(StateExecutorViewSet):
-    """
-    Security group list
-    -------------------
-
-    To get a list of Security Groups and security group rules,
-    run GET against *api/openstack-security-groups/* as authenticated user.
-
-    Create a security group
-    -----------------------
-
-    To create a new security group, issue a POST with security group details to **/api/openstack-security-groups/**.
-    This will create new security group and start its synchronization with OpenStack.
-
-    Example of a request:
-
-    .. code-block:: http
-
-        POST /api/openstack-security-groups/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "name": "Security group name",
-            "description": "description",
-            "rules": [
-                {
-                    "protocol": "tcp",
-                    "from_port": 1,
-                    "to_port": 10,
-                    "cidr": "10.1.1.0/24"
-                },
-                {
-                    "protocol": "udp",
-                    "from_port": 10,
-                    "to_port": 8000,
-                    "cidr": "10.1.1.0/24"
-                }
-            ],
-            "service_project_link": {
-                "project": "http://example.com/api/project/6c9b01c251c24174a6691a1f894fae31/",
-                "service": "http://example.com/api/openstack/1ee385bc043249498cfeb8c7e3e079f0/"
-            }
-        }
-
-
-    Update a security group
-    -----------------------
-
-    Security group name, description and rules can be updated. To execute update request make PATCH request with details
-    to **/api/openstack-security-groups/<security-group-uuid>/**. This will update security group in database and
-    start its synchronization with OpenStack. To leave old security groups add old rule id to list of new rules
-    (note that existing rule cannot be updated, if endpoint receives id and some other attributes,
-    it uses only id for rule identification).
-
-    .. code-block:: http
-
-        POST /api/users/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "name": "Security group new name",
-            "rules": [
-                {
-                    "id": 13,
-                },
-                {
-                    "protocol": "udp",
-                    "from_port": 10,
-                    "to_port": 8000,
-                    "cidr": "10.1.1.0/24"
-                }
-            ],
-        }
-
-
-    Delete a security group
-    -----------------------
-
-    To schedule security group deletion - issue DELETE request against
-    */api/openstack-security-groups/<security-group-uuid>/*. Endpoint will return 202 if deletion
-    was scheduled successfully.
-    """
     queryset = models.SecurityGroup.objects.all()
     serializer_class = serializers.SecurityGroupSerializer
     lookup_field = 'uuid'
@@ -691,14 +549,88 @@ class SecurityGroupViewSet(StateExecutorViewSet):
     update_executor = executors.SecurityGroupUpdateExecutor
     delete_executor = executors.SecurityGroupDeleteExecutor
 
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of Security Groups and security group rules,
+        run GET against *api/openstack-security-groups/* as authenticated user.
+
+        To create a new security group, issue a POST with security group details to **/api/openstack-security-groups/**.
+        This will create new security group and start its synchronization with OpenStack.
+
+        Example of a request:
+
+        .. code-block:: http
+
+            POST /api/openstack-security-groups/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "name": "Security group name",
+                "description": "description",
+                "rules": [
+                    {
+                        "protocol": "tcp",
+                        "from_port": 1,
+                        "to_port": 10,
+                        "cidr": "10.1.1.0/24"
+                    },
+                    {
+                        "protocol": "udp",
+                        "from_port": 10,
+                        "to_port": 8000,
+                        "cidr": "10.1.1.0/24"
+                    }
+                ],
+                "service_project_link": {
+                    "project": "http://example.com/api/project/6c9b01c251c24174a6691a1f894fae31/",
+                    "service": "http://example.com/api/openstack/1ee385bc043249498cfeb8c7e3e079f0/"
+                }
+            }
+        """
+        return super(SecurityGroupViewSet, self).list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Security group name, description and rules can be updated. To execute update request make PATCH request with details
+        to **/api/openstack-security-groups/<security-group-uuid>/**. This will update security group in database and
+        start its synchronization with OpenStack. To leave old security groups add old rule id to list of new rules
+        (note that existing rule cannot be updated, if endpoint receives id and some other attributes,
+        it uses only id for rule identification).
+
+        .. code-block:: http
+
+            POST /api/users/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "name": "Security group new name",
+                "rules": [
+                    {
+                        "id": 13,
+                    },
+                    {
+                        "protocol": "udp",
+                        "from_port": 10,
+                        "to_port": 8000,
+                        "cidr": "10.1.1.0/24"
+                    }
+                ],
+            }
+
+        To schedule security group deletion - issue DELETE request against
+        */api/openstack-security-groups/<security-group-uuid>/*. Endpoint will return 202 if deletion
+        was scheduled successfully.
+        """
+        return super(SecurityGroupViewSet, self).retrieve(request, *args, **kwargs)
+
 
 class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    To get a list of all available floating IPs, issue GET against **/api/floating-ips/**.
-    Floating IPs are read only. Each floating IP has fields: 'address', 'status'.
-
-    Status *DOWN* means that floating IP is not linked to a VM, status *ACTIVE* means that it is in use.
-    """
     queryset = models.FloatingIP.objects.all()
     serializer_class = serializers.FloatingIPSerializer
     lookup_field = 'uuid'
@@ -706,46 +638,18 @@ class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
 
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of all available floating IPs, issue GET against **/api/floating-ips/**.
+        Floating IPs are read only. Each floating IP has fields: 'address', 'status'.
+
+        Status *DOWN* means that floating IP is not linked to a VM, status *ACTIVE* means that it is in use.
+        """
+
+        return super(FloatingIPViewSet, self).list(request, *args, **kwargs)
+
 
 class BackupScheduleViewSet(viewsets.ModelViewSet):
-    """
-    Backup schedules
-    ----------------
-
-    To perform backups on a regular basis, it is possible to define a backup schedule. Example of a request:
-
-    .. code-block:: http
-
-        POST /api/openstack-backup-schedules/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "instance": "http://example.com/api/openstack-instances/430abd492a384f9bbce5f6b999ac766c/",
-            "description": "schedule description",
-            "retention_time": 0,
-            "timezone": "Europe/London",
-            "maximal_number_of_backups": 10,
-            "schedule": "1 1 1 1 1",
-            "is_active": true
-        }
-
-    For schedule to work, it should be activated - it's flag is_active set to true. If it's not, it won't be used
-    for triggering the next backups. Schedule will be deactivated if backup fails.
-
-    - **retention time** is a duration in days during which backup is preserved.
-    - **maximal_number_of_backups** is a maximal number of active backups connected to this schedule.
-    - **schedule** is a backup schedule defined in a cron format.
-    - **timezone** is used for calculating next run of the backup (optional).
-
-    Activating/deactivating a schedule
-    ==================================
-
-    A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
-    Only users with write access to backup schedule source can activate or deactivate schedule.
-    """
     queryset = models.BackupSchedule.objects.all()
     serializer_class = serializers.BackupScheduleSerializer
     lookup_field = 'uuid'
@@ -774,6 +678,40 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         if not has_user_permission_for_instance(self.request.user, schedule.instance):
             raise exceptions.PermissionDenied('You do not have permission to perform this action.')
         return schedule
+
+    def list(self, request, *args, **kwargs):
+        """
+        To perform backups on a regular basis, it is possible to define a backup schedule. Example of a request:
+
+        .. code-block:: http
+
+            POST /api/openstack-backup-schedules/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "instance": "http://example.com/api/openstack-instances/430abd492a384f9bbce5f6b999ac766c/",
+                "description": "schedule description",
+                "retention_time": 0,
+                "timezone": "Europe/London",
+                "maximal_number_of_backups": 10,
+                "schedule": "1 1 1 1 1",
+                "is_active": true
+            }
+
+        For schedule to work, it should be activated - it's flag is_active set to true. If it's not, it won't be used
+        for triggering the next backups. Schedule will be deactivated if backup fails.
+
+        - **retention time** is a duration in days during which backup is preserved.
+        - **maximal_number_of_backups** is a maximal number of active backups connected to this schedule.
+        - **schedule** is a backup schedule defined in a cron format.
+        - **timezone** is used for calculating next run of the backup (optional).
+
+        A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
+        Only users with write access to backup schedule source can activate or deactivate schedule.
+        """
 
     @decorators.detail_route(methods=['post'])
     def activate(self, request, uuid):
@@ -821,43 +759,6 @@ class BackupViewSet(mixins.CreateModelMixin,
                     mixins.ListModelMixin,
                     viewsets.GenericViewSet):
     """
-    To create a backup, issue the following POST request:
-
-    .. code-block:: http
-
-        POST /api/openstack-backups/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "instance": "http://example.com/api/openstack-instances/a04a26e46def4724a0841abcb81926ac/",
-            "description": "a new manual backup"
-        }
-
-    On creation of backup it's projected size is validated against a remaining storage quota.
-
-    Example of a created backup representation:
-
-    .. code-block:: http
-
-        GET /api/openstack-backups/7441df421d5443118af257da0f719533/ HTTP/1.1
-        Content-Type: application/json
-        Accept: application/json
-        Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-        Host: example.com
-
-        {
-            "url": "http://example.com/api/openstack-backups/7441df421d5443118af257da0f719533/",
-            "instance": "http://example.com/api/openstack-instances/a04a26e46def4724a0841abcb81926ac/",
-            "description": "a new manual backup",
-            "created_at": "2014-10-19T20:43:37.370Z",
-            "kept_until": null,
-            "state": "Backing up",
-            "backup_schedule": "http://example.com/api/openstack-backup-schedules/075c3525b9af42e08f54c3ccf87e998a/"
-        }
-
     Please note, that backups can be both manual and automatic, triggered by the schedule.
     In the first case, **backup_schedule** field will be **null**, in the latter - contain a link to the schedule.
 
@@ -871,17 +772,6 @@ class BackupViewSet(mixins.CreateModelMixin,
 
     You can filter backup by description or instance field, which should match object URL.
     It is useful when one resource has several backups and you want to get all backups related to this resource.
-
-    Backup actions
-    --------------
-
-    Created backups support several operations. Only users with write access to backup source are allowed to perform these
-    operations:
-
-    - **/api/openstack-backup/<backup_uuid>/restore/** - restore a specified backup.
-    - **/api/openstack-backup/<backup_uuid>/delete/** - delete a specified backup.
-
-    If a backup is in a state that prohibits this operation, it will be returned in error message of the response.
     """
     queryset = models.Backup.objects.all()
     serializer_class = serializers.BackupSerializer
@@ -889,6 +779,39 @@ class BackupViewSet(mixins.CreateModelMixin,
     filter_class = filters.BackupFilter
     filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+
+    def list(self, request, *args, **kwargs):
+        """
+        To create a backup, issue the following POST request:
+
+        .. code-block:: http
+
+            POST /api/openstack-backups/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "instance": "http://example.com/api/openstack-instances/a04a26e46def4724a0841abcb81926ac/",
+                "description": "a new manual backup"
+            }
+
+        On creation of backup it's projected size is validated against a remaining storage quota.
+        """
+        return super(BackupViewSet, self).list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Created backups support several operations. Only users with write access to backup source
+        are allowed to perform these operations:
+
+        - **/api/openstack-backup/<backup_uuid>/restore/** - restore a specified backup.
+        - **/api/openstack-backup/<backup_uuid>/delete/** - delete a specified backup.
+
+        If a backup is in a state that prohibits this operation, it will be returned in error message of the response.
+        """
+        return super(BackupViewSet, self).retrieve(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         if not has_user_permission_for_instance(self.request.user, serializer.validated_data['instance']):
@@ -915,8 +838,8 @@ class BackupViewSet(mixins.CreateModelMixin,
     def restore(self, request, uuid):
         """
         Restore a specified backup. Restoring a backup can take user input.
-        Restoration is available only for backups in state ``READY``. If backup is not ready, status code of the response
-        will be **409 CONFLICT**.
+        Restoration is available only for backups in state ``READY``. If backup is not ready,
+        status code of the response will be **409 CONFLICT**.
 
         Supported inputs for VM Instance:
 
@@ -948,6 +871,10 @@ class BackupViewSet(mixins.CreateModelMixin,
 
     @decorators.detail_route(methods=['post'])
     def delete(self, request, uuid):
+        """
+        Backup can be deleted by issuing **POST** request
+        to the **/api/backup/<backup_uuid>/delete/**
+        """
         backup = self.get_backup()
         if backup.state != models.Backup.States.READY:
             return response.Response(
@@ -959,34 +886,6 @@ class BackupViewSet(mixins.CreateModelMixin,
 
 
 class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """
-    Licenses can be listed by sending GET to **/api/openstack-licenses/**.
-    Filtering by customers is supported through **?customer=CUSTOMER_UUID** filter.
-
-    Example response:
-
-    .. code-block:: http
-
-        HTTP/1.0 200 OK
-        Allow: GET, POST, HEAD, OPTIONS
-        Content-Type: application/json
-        X-Result-Count: 2
-
-        [
-            {
-                "instance": "http://example.com/api/openstack-instances/7a823b0074d34873a754cea9190e046e/",
-                "group": "license-application",
-                "type": "postgresql",
-                "name": "9.4"
-            },
-            {
-                "instance": "http://example.com/api/openstack-instances/7a823b0074d34873a754cea9190e046e/",
-                "group": "license-os",
-                "type": "centos7",
-                "name": "CentOS Linux x86_64"
-            }
-        ]
-    """
     serializer_class = serializers.LicenseSerializer
 
     def get_queryset(self):
@@ -1000,6 +899,14 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         super(LicenseViewSet, self).initial(request, *args, **kwargs)
         if self.action != 'stats' and not self.request.user.is_staff:
             raise Http404
+
+    def list(self, request, *args, **kwargs):
+        """
+        Licenses can be listed by sending GET to **/api/openstack-licenses/**.
+        Filtering by customers is supported through **?customer=CUSTOMER_UUID** filter.
+        """
+
+        return super(LicenseViewSet, self).list(request, *args, **kwargs)
 
     @decorators.list_route()
     def stats(self, request):

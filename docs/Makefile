@@ -45,6 +45,7 @@ help:
 	@echo "  pseudoxml  to make pseudoxml-XML files for display purposes"
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
+	@echo "  drfdocs    to make RST and HTML files for DRF documentation"
 
 clean:
 	rm -rf $(BUILDDIR)/*
@@ -175,3 +176,11 @@ pseudoxml:
 	$(SPHINXBUILD) -b pseudoxml $(ALLSPHINXOPTS) $(BUILDDIR)/pseudoxml
 	@echo
 	@echo "Build finished. The pseudo-XML files are in $(BUILDDIR)/pseudoxml."
+
+drfdocs:
+    ifeq (, $(shell which nodeconductor))
+    $(error "No nodeconductor in $(PATH)")
+    endif
+
+	@echo "Building RST files and HTML pages for DRF documentation"
+	nodeconductor drfdocs

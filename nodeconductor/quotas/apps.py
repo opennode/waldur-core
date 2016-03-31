@@ -7,6 +7,19 @@ from nodeconductor.quotas import handlers, utils
 
 
 class QuotasConfig(AppConfig):
+    """
+    Quotas - objects resource limits and their usage. Currently only projects and cloud project memberships have quotas.
+    Quotas limits can be editable by users.
+
+    Projects quotas names:
+     - 'vcpu' - number of CPUs
+     - 'ram' - RAM amount in MiB
+     - 'storage' - storage amount in MiB
+     - 'max_instances' - total amount of instances(virtual machines)
+
+    Cloud project memberships have same quotas as projects. All current projects and memberships quotas are based on
+    backend limits and are not editable by any user. Quota limits auto update is executed once a day.
+    """
     name = 'nodeconductor.quotas'
     verbose_name = 'Quotas'
 
