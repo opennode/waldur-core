@@ -1212,7 +1212,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.SerializerMethodField()
     access_url = serializers.SerializerMethodField()
-    related_resources = serializers.SerializerMethodField()
+    related_resources = RelatedResourceSerializer(source='get_related_resources', many=True)
 
     class Meta(object):
         model = NotImplemented
@@ -1255,11 +1255,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     # an optional generic URL for accessing a resource
     def get_access_url(self, obj):
         return obj.get_access_url()
-
-    def get_related_resources(self, obj):
-        serializer = RelatedResourceSerializer(obj.get_related_resources(),
-                                               many=True, context=self.context)
-        return serializer.data
 
     def create(self, validated_data):
         data = validated_data.copy()
