@@ -1141,17 +1141,27 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
 class BasicResourceSerializer(serializers.Serializer):
     uuid = serializers.ReadOnlyField()
     name = serializers.ReadOnlyField()
+    resource_type = serializers.SerializerMethodField()
 
+    def get_resource_type(self, resource):
+        return SupportedServices.get_name_for_model(resource)
+
+
+class ManagedResourceSerializer(BasicResourceSerializer):
     project_name = serializers.ReadOnlyField(source='service_project_link.project.name')
     project_uuid = serializers.ReadOnlyField(source='service_project_link.project.uuid')
 
     customer_uuid = serializers.ReadOnlyField(source='service_project_link.project.customer.uuid')
     customer_name = serializers.ReadOnlyField(source='service_project_link.project.customer.name')
 
-    resource_type = serializers.SerializerMethodField()
 
-    def get_resource_type(self, resource):
-        return SupportedServices.get_name_for_model(resource)
+class RelatedResourceSerializer(BasicResourceSerializer):
+    url = serializers.SerializerMethodField()
+
+    def get_url(self, resource):
+        return reverse(resource.get_url_name() + '-detail',
+                       kwargs={'uuid': resource.uuid.hex},
+                       request=self.context['request'])
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
@@ -1202,7 +1212,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.SerializerMethodField()
     access_url = serializers.SerializerMethodField()
-    actions = serializers.SerializerMethodField()
+    related_resources = RelatedResourceSerializer(source='get_related_resources', many=True)
 
     class Meta(object):
         model = NotImplemented
@@ -1214,7 +1224,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url'
+            'access_url', 'related_resources'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
