@@ -1343,11 +1343,13 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + (
-            'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
+            'cores', 'ram', 'disk', 'min_ram', 'min_disk',
+            'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
             'latitude', 'longitude', 'key_name', 'key_fingerprint',
         )
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
-            'cores', 'ram', 'disk', 'external_ips', 'internal_ips',
+            'cores', 'ram', 'disk', 'min_ram', 'min_disk',
+            'external_ips', 'internal_ips',
             'latitude', 'longitude', 'key_name', 'key_fingerprint',
         )
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
