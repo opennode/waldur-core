@@ -273,8 +273,9 @@ class OpenStackBackend(ServiceBackend):
 
     def provision(self, instance, flavor=None, image=None, ssh_key=None, **kwargs):
         if ssh_key:
-            instance.key_name = ssh_key.name
+            instance.key_name = self.get_key_name(ssh_key)
             instance.key_fingerprint = ssh_key.fingerprint
+            kwargs['public_key'] = ssh_key.public_key
 
         instance.flavor_name = flavor.name
         instance.cores = flavor.cores
@@ -324,26 +325,40 @@ class OpenStackBackend(ServiceBackend):
         return re.sub(r'[^-a-zA-Z0-9 _]+', '_', key_name)[:17]
 
     def add_ssh_key(self, ssh_key, service_project_link):
+        if service_project_link.tenant is not None:
+            key_name = self.get_key_name(ssh_key)
+            self.get_or_create_ssh_key_for_tenant(
+                service_project_link.tenant, key_name, ssh_key.fingerprint, ssh_key.public_key)
+
+    def get_or_create_ssh_key_for_tenant(self, tenant, key_name, fingerprint, public_key):
         nova = self.nova_client
-        key_name = self.get_key_name(ssh_key)
 
         try:
-            nova.keypairs.find(fingerprint=ssh_key.fingerprint)
+            return nova.keypairs.find(fingerprint=fingerprint)
         except nova_exceptions.NotFound:
             # Fine, it's a new key, let's add it
-            logger.info('Propagating ssh public key %s to backend', key_name)
-            nova.keypairs.create(name=key_name, public_key=ssh_key.public_key)
-            logger.info('Successfully propagated ssh public key %s to backend', key_name)
+            try:
+                return nova.keypairs.create(name=key_name, public_key=public_key)
+            except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+                six.reraise(OpenStackBackendError, e)
+            else:
+                logger.info('Propagating ssh public key %s to backend', key_name)
+        except (nova_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+            six.reraise(OpenStackBackendError, e)
         else:
             # Found a key with the same fingerprint, skip adding
             logger.info('Skipped propagating ssh public key %s to backend', key_name)
 
     def remove_ssh_key(self, ssh_key, service_project_link):
+        if service_project_link.tenant is not None:
+            self.remove_ssh_key_from_tenant(service_project_link.tenant, ssh_key)
+
+    @log_backend_action
+    def remove_ssh_key_from_tenant(self, tenant, key_name, fingerprint):
         nova = self.nova_client
 
         # There could be leftovers of key duplicates: remove them all
-        keys = nova.keypairs.findall(fingerprint=ssh_key.fingerprint)
-        key_name = self.get_key_name(ssh_key)
+        keys = nova.keypairs.findall(fingerprint=fingerprint)
         for key in keys:
             # Remove only keys created with NC
             if key.name == key_name:
@@ -943,7 +958,7 @@ class OpenStackBackend(ServiceBackend):
 
     def provision_instance(self, instance, backend_flavor_id=None, backend_image_id=None,
                            system_volume_id=None, data_volume_id=None,
-                           skip_external_ip_assignment=False):
+                           skip_external_ip_assignment=False, public_key=None):
         logger.info('About to provision instance %s', instance.uuid)
         try:
             nova = self.nova_client
@@ -974,36 +989,8 @@ class OpenStackBackend(ServiceBackend):
 
             # instance key name and fingerprint are optional
             if instance.key_name:
-                safe_key_name = self.sanitize_key_name(instance.key_name)
-
-                matching_keys = [
-                    key
-                    for key in nova.keypairs.findall(fingerprint=instance.key_fingerprint)
-                    if key.name.endswith(safe_key_name)
-                ]
-                matching_keys_count = len(matching_keys)
-
-                if matching_keys_count >= 1:
-                    if matching_keys_count > 1:
-                        # TODO: warning as we trust that fingerprint+name combo is unique.
-                        logger.warning(
-                            "Found %d public keys with fingerprint %s, "
-                            "expected exactly one. Taking the first one.",
-                            matching_keys_count, instance.key_fingerprint)
-                    backend_public_key = matching_keys[0]
-                elif matching_keys_count == 0:
-                    logger.error(
-                        "Found no public keys with fingerprint %s, expected exactly one",
-                        instance.key_fingerprint)
-                    # It is possible to fix this situation with OpenStack admin account. So not failing here.
-                    # Error log is expected to be addressed.
-                    # TODO: consider failing provisioning/putting this check into serializer/pre-save.
-                    # reset failed key name/fingerprint
-                    instance.key_name = ''
-                    instance.key_fingerprint = ''
-                    backend_public_key = None
-                else:
-                    backend_public_key = matching_keys[0]
+                backend_public_key = self.get_or_create_ssh_key_for_tenant(
+                    tenant, instance.key_name, instance.key_fingerprint, public_key)
             else:
                 backend_public_key = None
 
