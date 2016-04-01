@@ -788,6 +788,8 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
     external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
 
+    image_name = models.CharField(max_length=150, blank=True)
+
     class Meta(object):
         abstract = True
 
