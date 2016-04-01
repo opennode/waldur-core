@@ -50,6 +50,7 @@ class BackupScheduleAdmin(admin.ModelAdmin):
 
 class InstanceAdmin(structure_admin.VirtualMachineAdmin):
     form = InstanceForm
+    readonly_fields = structure_admin.VirtualMachineAdmin.readonly_fields + ('image_name',)
 
 
 class TenantAdmin(structure_admin.ResourceAdmin):
