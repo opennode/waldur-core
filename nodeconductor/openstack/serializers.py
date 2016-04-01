@@ -481,13 +481,10 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips', 'backups', 'backup_schedules', 'image_name'
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-        )
-        read_only_fields = structure_serializers.VirtualMachineSerializer.Meta.read_only_fields + (
-            'image_name',
         )
 
     def get_fields(self):
@@ -546,7 +543,6 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         return attrs
 
     def create(self, validated_data):
-        validated_data['image_name'] = validated_data['image'].name
         security_groups = [data['security_group'] for data in validated_data.pop('security_groups', [])]
         instance = super(InstanceSerializer, self).create(validated_data)
 

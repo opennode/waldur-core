@@ -1350,12 +1350,12 @@ class VirtualMachineSerializer(BaseResourceSerializer):
         fields = BaseResourceSerializer.Meta.fields + (
             'cores', 'ram', 'disk', 'min_ram', 'min_disk',
             'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
-            'latitude', 'longitude', 'key_name', 'key_fingerprint',
+            'latitude', 'longitude', 'key_name', 'key_fingerprint', 'image_name'
         )
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
             'cores', 'ram', 'disk', 'min_ram', 'min_disk',
             'external_ips', 'internal_ips',
-            'latitude', 'longitude', 'key_name', 'key_fingerprint',
+            'latitude', 'longitude', 'key_name', 'key_fingerprint', 'image_name'
         )
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
             'user_data', 'ssh_public_key'
@@ -1367,6 +1367,10 @@ class VirtualMachineSerializer(BaseResourceSerializer):
             fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
                 user=self.context['request'].user)
         return fields
+
+    def create(self, validated_data):
+        validated_data['image_name'] = validated_data['image'].name
+        return super(VirtualMachineSerializer, self).create(validated_data)
 
 
 class PropertySerializerMetaclass(serializers.SerializerMetaclass):
