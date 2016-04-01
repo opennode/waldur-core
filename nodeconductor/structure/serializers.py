@@ -1212,7 +1212,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.SerializerMethodField()
     access_url = serializers.SerializerMethodField()
-    related_resources = RelatedResourceSerializer(source='get_related_resources', many=True)
+    related_resources = RelatedResourceSerializer(source='get_related_resources', many=True, read_only=True)
 
     class Meta(object):
         model = NotImplemented
