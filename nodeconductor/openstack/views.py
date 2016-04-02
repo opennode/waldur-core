@@ -712,6 +712,7 @@ class BackupScheduleViewSet(viewsets.ModelViewSet):
         A schedule can be it two states: active or not. Non-active states are not used for scheduling the new tasks.
         Only users with write access to backup schedule source can activate or deactivate schedule.
         """
+        return super(BackupScheduleViewSet, self).list(self, request, *args, **kwargs)
 
     @decorators.detail_route(methods=['post'])
     def activate(self, request, uuid):

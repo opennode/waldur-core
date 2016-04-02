@@ -33,7 +33,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
 
         To get all quotas visible to the user issue a **GET** request against */api/quotas/*
         """
-        return super(QuotaViewSet, self).retrieve(request, *args, **kwargs)
+        return super(QuotaViewSet, self).list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
         """
