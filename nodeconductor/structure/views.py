@@ -63,7 +63,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of customers, run GET against **/api/customers/** as authenticated user. Note that a user can
+        To get a list of customers, run GET against */api/customers/* as authenticated user. Note that a user can
         only see connected customers:
 
         - customers that the user owns
@@ -90,7 +90,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Deletion of a customer is done through sending a DELETE request to the customer instance URI. Please note,
+        Deletion of a customer is done through sending a **DELETE** request to the customer instance URI. Please note,
         that if a customer has connected projects or project groups, deletion request will fail with 409 response code.
 
         Valid request example (token is user specific):
@@ -179,8 +179,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of projects, run GET against **/api/projects/** as authenticated user. Note that a user can
-        only see connected projects:
+        To get a list of projects, run **GET** against */api/projects/* as authenticated user.
+        Here you can also check actual value for project quotas and project usage
+        ("resource_quota" and "resource_quota_usage" are deprecated).
+
+        Note that a user can only see connected projects:
 
         - projects that the user owns as a customer
         - projects where user has any role
@@ -214,7 +217,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Deletion of a project is done through sending a DELETE request to the project instance URI.
+        Deletion of a project is done through sending a **DELETE** request to the project instance URI.
         Please note, that if a project has connected instances, deletion request will fail with 409 response code.
 
         Valid request example (token is user specific):
@@ -292,14 +295,14 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of projects groups, run GET against **/api/project-groups/** as authenticated user.
+        To get a list of projects groups, run **GET** against */api/project-groups/* as authenticated user.
         Note that a user can only see connected project groups:
 
         - project groups that the user owns as a customer;
         - project groups with projects where user has a role.
 
-        A new project can be created by users with staff privilege (is_staff=True) or customer owners.
-        Project resource quota is optional. Example of a valid request:
+        A new project group can be created by users with staff privilege (is_staff=True) or customer owners.
+        Project group resource quota is optional. Example of a valid request:
 
         .. code-block:: http
 
@@ -310,7 +313,7 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
             Host: example.com
 
             {
-                "name": "Project A",
+                "name": "Project group A",
                 "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
             }
         """
@@ -318,7 +321,7 @@ class ProjectGroupViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Deletion of a project group is done through sending a DELETE request to the project group instance URI.
+        Deletion of a project group is done through sending a **DELETE** request to the project group instance URI.
         Please note, that if a project group has connected projects, deletion request will fail with 409 response code.
 
         Valid request example (token is user specific):
@@ -372,10 +375,11 @@ class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
     def list(self, request, *args, **kwargs):
         """
         To get a list of connections between project and a project group,
-        run GET against **/api/project-group-memberships/** as authenticated user.
+        run **GET** against */api/project-group-memberships/* as authenticated user.
         Note that a user can only see connections of a project or a project group where a user has a role.
 
-        In order to link project to a project group, POST a connection between them to **/api/project-group-memberships/**.
+        In order to link project to a project group, **POST** a connection between them to
+        */api/project-group-memberships/*.
         Note that project and a project group must be from the same customer.
         For example,
 
@@ -470,7 +474,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """
         User list is available to all authenticated users. To get a list,
-        issue authenticated GET request against **/api/users/**.
+        issue authenticated **GET** request against */api/users/*.
 
         User list supports several filters. All filters are set in HTTP query section.
         Field filters are listed below. All of the filters apart from ?organization are
@@ -489,7 +493,6 @@ class UserViewSet(viewsets.ModelViewSet):
           (deprecated, use `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
         - ?organization_claimed - show only users with a non-empty organization
           (deprecated, use `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ instead)
-
 
         The user can be created either through automated process on login with SAML token, or through a REST call by a user
         with staff privilege.
@@ -532,7 +535,7 @@ class UserViewSet(viewsets.ModelViewSet):
         - phone_number
         - email
 
-        Can be done by PUTing a new data to the user URI, i.e. **/api/users/<UUID>/** by staff user or account owner.
+        Can be done by **PUT**ing a new data to the user URI, i.e. */api/users/<UUID>/* by staff user or account owner.
         Valid request example (token is user specific):
 
         .. code-block:: http
@@ -553,11 +556,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @detail_route(methods=['post'])
     def password(self, request, uuid=None):
         """
-        To change a user password, submit a POST request to the user's RPC URL, specifying new password
+        To change a user password, submit a **POST** request to the user's RPC URL, specifying new password
         by staff user or account owner.
-
-        Password validation
-        ^^^^^^^^^^^^^^^^^^^
 
         Password is expected to be at least 7 symbols long and contain at least one number
         and at least one lower or upper case.
@@ -745,23 +745,15 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         """
         Project permissions expresses connection of users to a project. Each project has two associated user groups that
         represent project managers and administrators. The link is maintained
-        through **/api/project-permissions/** endpoint.
+        through */api/project-permissions/* endpoint.
 
         Note that project membership can be viewed and modified only by customer owners, corresponding project group
         managers and staff users.
 
-        To list all visible links, run a GET query against a list.
-
-        .. code-block:: http
-
-            GET /api/project-permissions/ HTTP/1.1
-            Accept: application/json
-            Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-            Host: example.com
-
+        To list all visible links, run a **GET** query against a list.
         Response will contain a list of project users and their brief data.
 
-        To add a new user to the project, POST a new relationship to **/api/project-permissions/** endpoint specifying
+        To add a new user to the project, **POST** a new relationship to */api/project-permissions/* endpoint specifying
         project, user and the role of the user ('admin' or 'manager'):
 
         .. code-block:: http
@@ -781,7 +773,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 
     def retrieve(self, request, *args, **kwargs):
         """
-         To remove a user from a project group, delete corresponding connection (**url** field). Successful deletion
+        To remove a user from a project group, delete corresponding connection (**url** field). Successful deletion
         will return status code 204.
 
         .. code-block:: http
@@ -824,7 +816,7 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
     Project group permissions expresses connection of users to project groups.
     A single role is supported - Project Group manager.
 
-    Management is done through **api/project-group-permissions/** endpoint.
+    Management is done through */api/project-group-permissions/* endpoint.
     """
     # See CustomerPermissionViewSet for implementation details.
     queryset = User.groups.through.objects.exclude(group__projectgrouprole=None)
@@ -864,33 +856,25 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        To list all visible links, run a GET query against a list.
+        To list all visible permissions, run a **GET** query against a list.
+        Response will contain a list of project groups' users and their brief data.
 
-            .. code-block:: http
+        To add a new user to the project group, **POST** a new relationship
+        to **api/project-permissions** endpoint specifying project, user
+        and the role of the user (currently the only role is '1' - project group manager):
 
-                GET /api/project-group-permissions/ HTTP/1.1
-                Accept: application/json
-                Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-                Host: example.com
+        .. code-block:: http
 
-            Response will contain a list of project groups' users and their brief data.
+            POST /api/project-permissions/ HTTP/1.1
+            Accept: application/json
+            Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
+            Host: example.com
 
-            To add a new user to the project group, POST a new relationship
-            to **api/project-permissions** endpoint specifying project, user
-            and the role of the user (currently the only role is '1' - project group manager):
-
-            .. code-block:: http
-
-                POST /api/project-permissions/ HTTP/1.1
-                Accept: application/json
-                Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-                Host: example.com
-
-                {
-                    "project": "http://example.com/api/projects-groups/6c9b01c251c24174a6691a1f894fae31/",
-                    "role": "manager",
-                    "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
-                }
+            {
+                "project": "http://example.com/api/projects-groups/6c9b01c251c24174a6691a1f894fae31/",
+                "role": "manager",
+                "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
+            }
         """
         return super(ProjectGroupPermissionViewSet, self).list(request, *args, **kwargs)
 
@@ -980,21 +964,12 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
     def list(self, request, *args, **kwargs):
         """
         Each customer is associated with a group of users that represent customer owners. The link is maintained
-        through **api/customer-permissions/** endpoint.
+        through **api/customer-permissions/* endpoint.
 
-        To list all visible links, run a GET query against a list.
-
-        .. code-block:: http
-
-            GET /api/customer-permissions/ HTTP/1.1
-            Accept: application/json
-            Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-            Host: example.com
-
+        To list all visible links, run a **GET** query against a list.
         Response will contain a list of customer owners and their brief data.
 
-
-        To add a new user to the customer, POST a new relationship to **customer-permissions** endpoint:
+        To add a new user to the customer, **POST** a new relationship to **customer-permissions** endpoint:
 
             .. code-block:: http
 
@@ -1121,7 +1096,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of SSH keys, run GET against **/api/keys/** as authenticated user.
+        To get a list of SSH keys, run **GET** against */api/keys/* as authenticated user.
 
         A new SSH key can be created by any active users. Example of a valid request:
 
@@ -1174,7 +1149,7 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of service settings, run GET against **/api/service-settings/** as an authenticated user.
+        To get a list of service settings, run **GET** against */api/service-settings/* as an authenticated user.
         Only settings owned by this user or shared settings will be listed.
 
         Supported filters are:
@@ -1187,7 +1162,7 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
     def retrieve(self, request, *args, **kwargs):
         """
-        To update service settings, issue a PUT or PATCH to **/api/service-settings/<uuid>/** as a customer owner.
+        To update service settings, issue a **PUT** or **PATCH** to */api/service-settings/<uuid>/* as a customer owner.
         You are allowed to change name and credentials only.
 
         Example of a request:
@@ -1211,7 +1186,7 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
     def list(self, request):
         """
-        To get a list of supported service types, run GET against **/api/service-metadata/** as an authenticated user.
+        To get a list of supported service types, run **GET** against */api/service-metadata/* as an authenticated user.
         Use an endpoint from the returned list in order to create new service.
         """
         return Response(SupportedServices.get_services_with_resources(request))
@@ -1237,6 +1212,9 @@ class ResourceViewSet(mixins.ListModelMixin,
 
     def list(self, request, *args, **kwargs):
         """
+        To get a list of supported resources' actions, run **OPTIONS** against
+        */api/<resource_url>/* as an authenticated user.
+
         It is possible to filter and order by resource-specific fields, but this filters will be applied only to
         resources that support such filtering. For example it is possible to sort resource by ?o=ram, but sugarcrm crms
         will ignore this ordering, because they do not support such option.
@@ -1310,7 +1288,7 @@ class ResourceViewSet(mixins.ListModelMixin,
         Tags ordering:
 
          - ?o=tag__license-os - order by tag with particular prefix. Instances without given tag will not be returned.
-            """
+        """
 
         return super(ResourceViewSet, self).list(request, *args, **kwargs)
 
@@ -1543,16 +1521,12 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        To list all services without regard to its type, run GET against **/api/services/** as an authenticated user.
+        To list all services without regard to its type, run **GET** against */api/services/* as an authenticated user.
 
-        To list services of specific type issue GET to specific endpoint from a list above as a customer owner.
+        To list services of specific type issue **GET** to specific endpoint from a list above as a customer owner.
         Individual endpoint used for every service type.
-        """
-        return super(BaseServiceViewSet, self).list(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
-        """
-        To create a service, issue a POST to specific endpoint from a list above as a customer owner.
+        To create a service, issue a **POST** to specific endpoint from a list above as a customer owner.
         Individual endpoint used for every service type.
 
         You can create service based on shared service settings. Example:
@@ -1589,7 +1563,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 "password": "secret"
             }
         """
-        return super(BaseServiceViewSet, self).retrieve(request, *args, **kwargs)
+        return super(BaseServiceViewSet, self).list(request, *args, **kwargs)
 
     def get_queryset(self, *args, **kwargs):
         queryset = super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)
@@ -1634,11 +1608,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
         """
-        To get a list of resources available for import, run GET against **/<service_endpoint>/link/**
+        To get a list of resources available for import, run **GET** against */<service_endpoint>/link/*
         as an authenticated user.
         Optionally project_uuid parameter can be supplied for services requiring it like OpenStack.
 
-        To import (link with NodeConductor) resource issue POST against the same endpoint with resource id.
+        To import (link with NodeConductor) resource issue **POST** against the same endpoint with resource id.
 
         .. code-block:: http
 
@@ -1731,19 +1705,19 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of connections between a project and an service, run GET against service_project_link_url
+        To get a list of connections between a project and an service, run **GET** against service_project_link_url
         as authenticated user. Note that a user can only see connections of a project where a user has a role.
 
         If service has `available_for_all` flag, project-service connections are created automatically.
         Otherwise, in order to be able to provision resources, service must first be linked to a project.
-        To do that, POST a connection between project and a service to service_project_link_url
+        To do that, **POST** a connection between project and a service to service_project_link_url
         as stuff user or customer owner.
         """
         return super(BaseServiceProjectLinkViewSet, self).list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
         """
-        To remove a link, issue DELETE to URL of the corresponding connection as stuff user or customer owner.
+        To remove a link, issue **DELETE** to URL of the corresponding connection as stuff user or customer owner.
         """
         return super(BaseServiceProjectLinkViewSet, self).retrieve(request, *args, **kwargs)
 
@@ -2010,7 +1984,14 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
 
 class AggregatedStatsView(views.APIView):
     """
-    Aggregate quotas from service project links.
+    Quotas and quotas usage aggregated by projects/project_groups/customers.
+
+    Available request parameters:
+        - ?aggregate=aggregate_model_name (default: 'customer'.
+          Have to be from list: 'customer', 'project', 'project_group')
+        - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined -
+          result will contain only object with given uuid)
+        - ?quota_name - optional list of quota names, for example ram, vcpu, storage
     """
     def get(self, request, format=None):
         serializer = serializers.AggregateSerializer(data=request.query_params)

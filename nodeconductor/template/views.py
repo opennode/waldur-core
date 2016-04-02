@@ -20,14 +20,14 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get an actual value for object quotas limit and usage issue a GET request against **/api/<objects>/**.
-
-        To get all quotas visible to the user issue a GET request against **/api/quotas/**
+        To get a list of all template groups, issue **GET** request against */api/templates-groups/*.
 
         Supported filters are:
 
          - tag=<template group tag>, can be list.
          - name=<template group name>.
+         - template_tag=<template tag>, filter templates groups that contain template with given tag. Can be list.
+         - template_tag__license-os=centos7 - filter by template tag with particular prefix.
          - project=<project_url> filter all template groups that could be provisioned with given project.
          - project_uuid=<project_uuid> filter all template groups that could be provisioned with given project.
 
@@ -41,7 +41,7 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
         """
         Schedule head(first) template provision synchronously, tail templates - as task.
 
-        To start a template group provisioning, issue POST request against **/api/templates-groups/<uuid>/provision/**
+        To start a template group provisioning, issue **POST** request against */api/templates-groups/<uuid>/provision/*
         with a list of templates' additional options. Additional options should contain options
         for what should be added to template options and passed to resource provisioning endpoint.
 
@@ -113,7 +113,7 @@ class TemplateGroupResultViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of template group results - issue POST request against **/api/templates-results/**.
+        To get a list of template group results - issue **POST** request against */api/templates-results/*.
 
         Template group result has the following fields:
 

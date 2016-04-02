@@ -25,7 +25,7 @@ class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To create a service, issue a POST to **/api/openstack/** as a customer owner.
+        To create a service, issue a **POST** to */api/openstack/* as a customer owner.
 
         You can create service based on shared service settings. Example:
 
@@ -66,8 +66,8 @@ class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        To update OpenStack service issue PUT or PATCH against **/api/openstack/<service_uuid>/** as a customer owner.
-        You can update service's `name` and `available_for_all` fields.
+        To update OpenStack service issue **PUT** or **PATCH** against */api/openstack/<service_uuid>/* 
+        as a customer owner. You can update service's `name` and `available_for_all` fields.
 
         Example of a request:
 
@@ -83,7 +83,7 @@ class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
                 "name": "My OpenStack2"
             }
 
-        To remove OpenStack service, issue DELETE against **/api/openstack/<service_uuid>/** as
+        To remove OpenStack service, issue **DELETE** against */api/openstack/<service_uuid>/* as
         staff user or customer owner.
         """
         return super(OpenStackServiceViewSet, self).retrieve(request, *args, **kwargs)
@@ -106,7 +106,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
     def list(self, request, *args, **kwargs):
         """
         In order to be able to provision OpenStack resources, it must first be linked to a project. To do that,
-        POST a connection between project and a service to **/api/openstack-service-project-link/**
+        **POST** a connection between project and a service to */api/openstack-service-project-link/*
         as stuff user or customer owner.
 
         Example of a request:
@@ -133,7 +133,7 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
     def set_quotas(self, request, **kwargs):
         """
         A project quota can be set for a particular link between service and project. Only staff users can do that.
-        In order to set quota submit POST request to **/api/openstack-service-project-link/<pk>/set_quotas/**.
+        In order to set quota submit **POST** request to */api/openstack-service-project-link/<pk>/set_quotas/*.
         The quota values are propagated to the backend.
 
         The following quotas are supported. All values are expected to be integers:
@@ -200,8 +200,8 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
     @decorators.detail_route(methods=['post', 'delete'])
     def external_network(self, request, pk=None):
         """
-        In order to create external network a person with admin role or staff should issue a POST
-        request to **/api/openstack-service-project-link/<pk>/external_network/**.
+        In order to create external network a person with admin role or staff should issue a **POST**
+        request to */api/openstack-service-project-link/<pk>/external_network/*.
         The body of the request should consist of following parameters:
 
         - vlan_id (required if vxlan_id is not provided) - VLAN ID of the external network.
@@ -227,8 +227,8 @@ class OpenStackServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkV
                 "ips_count": "6"
             }
 
-        In order to delete external network, a person with admin role or staff should issue a DELETE request
-        to **/api/openstack-service-project-link/<pk>/external_network/** without any parameters in the request body.
+        In order to delete external network, a person with admin role or staff should issue a **DELETE** request
+        to */api/openstack-service-project-link/<pk>/external_network/* without any parameters in the request body.
         """
         spl = self.get_object()
         tenant = spl.tenant
@@ -347,7 +347,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of instances, run GET against **/api/openstack-instances/** as authenticated user.
+        To get a list of instances, run **GET** against */api/openstack-instances/* as authenticated user.
         Note that a user can only see connected instances:
 
         - instances that belong to a project where a user has a role.
@@ -384,7 +384,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        To stop/start/restart an instance, run an authorized POST request against the instance UUID,
+        To stop/start/restart an instance, run an authorized **POST** request against the instance UUID,
         appending the requested command.
         Examples of URLs:
 
@@ -394,7 +394,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
 
         If instance is in the state that does not allow this transition, error code will be returned.
 
-        Deletion of an instance is done through sending a DELETE request to the instance URI.
+        Deletion of an instance is done through sending a **DELETE** request to the instance URI.
         Valid request example (token is user specific):
 
         .. code-block:: http
@@ -428,8 +428,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     @decorators.detail_route(methods=['post'])
     def allocate_floating_ip(self, request, uuid=None):
         """
-        In order to allocate floating IP, make POST request to
-        **/api/openstack-service-project-link/<pk>/allocate_floating_ip/**.
+        In order to allocate floating IP, make **POST** request to
+        */api/openstack-service-project-link/<pk>/allocate_floating_ip/*.
         Note that service project link should be in stable state and have external network.
         """
         # TODO: Move method after migration from service project link to tenant resource.
@@ -445,8 +445,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     @structure_views.safe_operation(valid_state=tuple(models.Instance.States.STABLE_STATES))
     def assign_floating_ip(self, request, instance, uuid=None):
         """
-        To assign floating IP to the instance, make POST request to
-        **/api/openstack-instances/<uuid>/assign_floating_ip/** with link to the floating IP.
+        To assign floating IP to the instance, make **POST** request to
+        */api/openstack-instances/<uuid>/assign_floating_ip/* with link to the floating IP.
         Note that instance should be in stable state, service project link of the instance should be in stable state
         and have external network.
 
@@ -476,7 +476,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
     @structure_views.safe_operation(valid_state=models.Instance.States.OFFLINE)
     def resize(self, request, instance, uuid=None):
         """
-        To resize an instance, submit a POST request to the instance's RPC URL, specifying URI of a target flavor.
+        To resize an instance, submit a **POST** request to the instance's RPC URL, specifying URI of a target flavor.
         Note, that instance must be OFFLINE.
         Example of a valid request:
 
@@ -493,7 +493,7 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
                 "flavor": "http://example.com/api/openstack-flavors/1ee385bc043249498cfeb8c7e3e079f0/"
             }
 
-        To resize data disk of the instance, submit a POST request to the instance's RPC URL,
+        To resize data disk of the instance, submit a **POST** request to the instance's RPC URL,
         specifying size of the disk. Additional size of instance cannot be over the storage quota.
 
         Example of a valid request:
@@ -552,9 +552,9 @@ class SecurityGroupViewSet(StateExecutorViewSet):
     def list(self, request, *args, **kwargs):
         """
         To get a list of Security Groups and security group rules,
-        run GET against *api/openstack-security-groups/* as authenticated user.
+        run **GET** against *api/openstack-security-groups/* as authenticated user.
 
-        To create a new security group, issue a POST with security group details to **/api/openstack-security-groups/**.
+        To create a new security group, issue a **POST** with security group details to */api/openstack-security-groups/*.
         This will create new security group and start its synchronization with OpenStack.
 
         Example of a request:
@@ -594,15 +594,15 @@ class SecurityGroupViewSet(StateExecutorViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        Security group name, description and rules can be updated. To execute update request make PATCH request with details
-        to **/api/openstack-security-groups/<security-group-uuid>/**. This will update security group in database and
-        start its synchronization with OpenStack. To leave old security groups add old rule id to list of new rules
-        (note that existing rule cannot be updated, if endpoint receives id and some other attributes,
-        it uses only id for rule identification).
+        Security group name, description and rules can be updated. To execute update request make **PATCH**
+        request with details to */api/openstack-security-groups/<security-group-uuid>/*.
+        This will update security group in database and start its synchronization with OpenStack.
+        To leave old security groups add old rule id to list of new rules (note that existing rule cannot be updated,
+        if endpoint receives id and some other attributes, it uses only id for rule identification).
 
         .. code-block:: http
 
-            POST /api/users/ HTTP/1.1
+            PATCH /api/openstack-security-groups/ HTTP/1.1
             Content-Type: application/json
             Accept: application/json
             Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
@@ -623,7 +623,7 @@ class SecurityGroupViewSet(StateExecutorViewSet):
                 ],
             }
 
-        To schedule security group deletion - issue DELETE request against
+        To schedule security group deletion - issue **DELETE** request against
         */api/openstack-security-groups/<security-group-uuid>/*. Endpoint will return 202 if deletion
         was scheduled successfully.
         """
@@ -640,7 +640,7 @@ class FloatingIPViewSet(viewsets.ReadOnlyModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of all available floating IPs, issue GET against **/api/floating-ips/**.
+        To get a list of all available floating IPs, issue **GET** against */api/floating-ips/*.
         Floating IPs are read only. Each floating IP has fields: 'address', 'status'.
 
         Status *DOWN* means that floating IP is not linked to a VM, status *ACTIVE* means that it is in use.
@@ -782,7 +782,7 @@ class BackupViewSet(mixins.CreateModelMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        To create a backup, issue the following POST request:
+        To create a backup, issue the following **POST** request:
 
         .. code-block:: http
 
@@ -806,8 +806,8 @@ class BackupViewSet(mixins.CreateModelMixin,
         Created backups support several operations. Only users with write access to backup source
         are allowed to perform these operations:
 
-        - **/api/openstack-backup/<backup_uuid>/restore/** - restore a specified backup.
-        - **/api/openstack-backup/<backup_uuid>/delete/** - delete a specified backup.
+        - */api/openstack-backup/<backup_uuid>/restore/* - restore a specified backup.
+        - */api/openstack-backup/<backup_uuid>/delete/* - delete a specified backup.
 
         If a backup is in a state that prohibits this operation, it will be returned in error message of the response.
         """
@@ -840,12 +840,6 @@ class BackupViewSet(mixins.CreateModelMixin,
         Restore a specified backup. Restoring a backup can take user input.
         Restoration is available only for backups in state ``READY``. If backup is not ready,
         status code of the response will be **409 CONFLICT**.
-
-        Supported inputs for VM Instance:
-
-            - image - URL to a image used for restoration. Mandatory.
-            - flavor - URL to a flavor used for restoration. Mandatory.
-            - name - Name of the restored VM. Optional (equals to the name of the original VM by default).
         """
         backup = self.get_backup()
         if backup.state != models.Backup.States.READY:
@@ -873,7 +867,7 @@ class BackupViewSet(mixins.CreateModelMixin,
     def delete(self, request, uuid):
         """
         Backup can be deleted by issuing **POST** request
-        to the **/api/backup/<backup_uuid>/delete/**
+        to the */api/backup/<backup_uuid>/delete/*
         """
         backup = self.get_backup()
         if backup.state != models.Backup.States.READY:
@@ -902,7 +896,7 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        Licenses can be listed by sending GET to **/api/openstack-licenses/**.
+        Licenses can be listed by sending **GET** to */api/openstack-licenses/*.
         Filtering by customers is supported through **?customer=CUSTOMER_UUID** filter.
         """
 
@@ -912,7 +906,7 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def stats(self, request):
         """
         It is possible to issue queries to NodeConductor to get aggregate statistics about instance licenses.
-        Query is done against **/api/openstack-licenses/stats/** endpoint. Queries can be run by all users with
+        Query is done against */api/openstack-licenses/stats/* endpoint. Queries can be run by all users with
         answers scoped by their visibility permissions of instances. By default queries are aggregated by license name.
 
         Supported aggregate queries are:
@@ -926,12 +920,6 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         Note: aggregate parameters can be combined to aggregate by several fields. For example,
         *?aggregate=name&aggregate=type&aggregate=project* will aggregate result by license name,
         license_type and project group.
-
-        Supported filters:
-
-        - ?customer=customer_uuid
-        - ?name=license_name
-        - ?type=license_type
         """
         queryset = filter_queryset_for_user(models.Instance.objects.all(), request.user)
         if 'customer' in self.request.query_params:

@@ -19,12 +19,11 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of events - run GET against **/api/events/** as authenticated user. Note that a user can
+        To get a list of events - run **GET** against */api/events/* as authenticated user. Note that a user can
         only see events connected to objects she is allowed to see.
 
         Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter. By default
         events are sorted by @timestamp in descending order.
-
 
         Run POST against */api/events/* to create an event. Only users with staff privileges can create events.
         New event will be emitted with `custom_notification` event type.
@@ -75,7 +74,7 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     @decorators.list_route()
     def count(self, request, *args, **kwargs):
         """
-        To get a count of events - run GET against **/api/events/count/** as authenticated user.
+        To get a count of events - run **GET** against */api/events/count/* as authenticated user.
         Endpoint support same filters as events list.
 
         Response example:
@@ -91,7 +90,7 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     @decorators.list_route()
     def count_history(self, request, *args, **kwargs):
         """
-        To get a historical data of events amount - run GET against **/api/events/count/history/**.
+        To get a historical data of events amount - run **GET** against */api/events/count/history/*.
         Endpoint support same filters as events list.
         More about historical data - read at section *Historical data*.
 
@@ -146,13 +145,13 @@ class AlertViewSet(mixins.CreateModelMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        To get a list of alerts, run GET against **/api/alerts/** as authenticated user.
+        To get a list of alerts, run **GET** against */api/alerts/* as authenticated user.
 
         Alert severity field can take one of this values: "Error", "Warning", "Info", "Debug".
         Field scope will contain link to object that cause alert.
         Context - dictionary that contains information about all related to alert objects.
 
-        Run POST against */api/alerts/* to create or update alert. If alert with posted scope and
+        Run **POST** against */api/alerts/* to create or update alert. If alert with posted scope and
         alert_type already exists - it will be updated. Only users with staff privileges can create alerts.
 
         Request example:
@@ -177,7 +176,7 @@ class AlertViewSet(mixins.CreateModelMixin,
     @decorators.detail_route(methods=['post'])
     def close(self, request, *args, **kwargs):
         """
-        To close alert - run POST against **/api/alerts/<alert_uuid>/close/**. No data is required.
+        To close alert - run **POST** against */api/alerts/<alert_uuid>/close/*. No data is required.
         Only users with staff privileges can close alerts.
         """
         if not request.user.is_staff:
@@ -190,7 +189,7 @@ class AlertViewSet(mixins.CreateModelMixin,
     @decorators.detail_route(methods=['post'])
     def acknowledge(self, request, *args, **kwargs):
         """
-        To acknowledge alert - run POST against **/api/alerts/<alert_uuid>/acknowledge/**. No payload is required.
+        To acknowledge alert - run **POST** against */api/alerts/<alert_uuid>/acknowledge/*. No payload is required.
         All users that can see alerts can also acknowledge it. If alert is already acknowledged endpoint
         will return error with code 409(conflict).
         """
@@ -204,7 +203,7 @@ class AlertViewSet(mixins.CreateModelMixin,
     @decorators.detail_route(methods=['post'])
     def cancel_acknowledgment(self, request, *args, **kwargs):
         """
-        To cancel alert acknowledgment - run POST against **/api/alerts/<alert_uuid>/cancel_acknowledgment/**.
+        To cancel alert acknowledgment - run **POST** against */api/alerts/<alert_uuid>/cancel_acknowledgment/*.
         No payload is required. All users that can see alerts can also cancel it acknowledgment.
         If alert is not acknowledged endpoint will return error with code 409 (conflict).
         """
@@ -218,8 +217,8 @@ class AlertViewSet(mixins.CreateModelMixin,
     @decorators.list_route()
     def stats(self, request, *args, **kwargs):
         """
-        To get count of alerts per severities - run GET request against **/api/alerts/stats/**.
-        This endpoint supports all filters that are available for alerts list (**/api/alerts/**).
+        To get count of alerts per severities - run **GET** request against */api/alerts/stats/*.
+        This endpoint supports all filters that are available for alerts list (*/api/alerts/*).
 
         Response example:
 
@@ -255,6 +254,7 @@ class AlertViewSet(mixins.CreateModelMixin,
 class BaseHookViewSet(viewsets.ModelViewSet):
     """
     Hooks API allows user to receive event notifications via different channel, like email or webhook.
+    To get a list of all your hooks, run **GET** against */api/hooks/* as an authenticated user.
     """
     permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (core_filters.StaffOrUserFilter,)
@@ -267,14 +267,8 @@ class WebHookViewSet(BaseHookViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To create new web hook issue POST against **/api/hooks-web/** as an authenticated user.
-        Request should contain fields:
-
-        - events: list of event types you are interested in
-        - destination_url: valid URL endpoint
-        - content_type: optional value, which may be "json" or "form", default is "json"
-
-        When hook is activated, POST request is issued against destination URL with the following data:
+        To create new web hook issue **POST** against */api/hooks-web/* as an authenticated user.
+        When hook is activated, **POST** request is issued against destination URL with the following data:
 
         .. code-block:: javascript
 
@@ -307,11 +301,7 @@ class EmailHookViewSet(BaseHookViewSet):
 
     def list(self, request, *args, **kwargs):
         """
-        To create new email hook issue POST against **/api/hooks-email/** as an authenticated user.
-        Request should contain fields:
-
-        - events: list of event types you are interested in
-        - email: destination email address
+        To create new email hook issue **POST** against */api/hooks-email/* as an authenticated user.
 
         Example of a request:
 
@@ -324,7 +314,7 @@ class EmailHookViewSet(BaseHookViewSet):
                 "email": "test@example.com"
             }
 
-        You may temporarily disable hook without deleting it by issuing following PATCH request against hook URL:
+        You may temporarily disable hook without deleting it by issuing following **PATCH** request against hook URL:
 
         .. code-block:: javascript
 
