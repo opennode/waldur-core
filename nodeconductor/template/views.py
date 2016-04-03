@@ -4,6 +4,7 @@ from rest_framework import viewsets, decorators, exceptions, status
 from rest_framework.response import Response
 
 from nodeconductor.core import filters as core_filters
+from nodeconductor.structure import filters as structure_filters
 from nodeconductor.template import models, serializers, filters
 
 
@@ -12,7 +13,10 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.TemplateGroupSerializer
     lookup_field = 'uuid'
     filter_class = filters.TemplateGroupFilter
-    filter_backends = (core_filters.DjangoMappingFilterBackend,)
+    filter_backends = (core_filters.DjangoMappingFilterBackend, structure_filters.TagsFilter)
+    # Parameters for TagsFilter that support complex filtering by templates tags.
+    tags_filter_db_field = 'templates__tags'
+    tags_filter_request_field = 'templates_tag'
 
     @decorators.detail_route(methods=['post'])
     def provision(self, request, uuid=None):
