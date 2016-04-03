@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField
@@ -25,13 +26,19 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
         }
 
     def create(self, validated_data):
-        alert, _ = log.AlertLogger().process(
-            severity=validated_data['severity'],
-            message_template=validated_data['message'],
-            scope=validated_data['scope'],
-            alert_type=validated_data['alert_type'],
-        )
-        return alert
+        try:
+            alert, _ = log.AlertLogger().process(
+                severity=validated_data['severity'],
+                message_template=validated_data['message'],
+                scope=validated_data['scope'],
+                alert_type=validated_data['alert_type'],
+            )
+        except IntegrityError:
+            # In case of simultaneous requests serializer validation can pass for both alerts,
+            # so we need to handle DB IntegrityError separately.
+            raise serializers.ValidationError('Alert with given type and scope already exists.')
+        else:
+            return alert
 
 
 class EventSerializer(serializers.Serializer):
