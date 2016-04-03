@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import re
-import copy
 import time
 import uuid
 import logging
