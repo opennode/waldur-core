@@ -3,6 +3,7 @@ from functools import wraps
 
 from nodeconductor.openstack.backend import OpenStackClient
 from nodeconductor.core.tasks import retry_if_false
+from nodeconductor.core.utils import deserialize_instance
 
 
 def track_openstack_session(task_fn):
@@ -45,3 +46,11 @@ def nova_server_resize_confirm(client, server_id):
 def nova_wait_for_server_status(client, server_id, status):
     server = client.nova.servers.get(server_id)
     return server.status == status
+
+
+@shared_task
+def delete_tenant_with_spl(serialized_tenant):
+    tenant = deserialize_instance(serialized_tenant)
+    spl = tenant.service_project_link
+    tenant.delete()
+    spl.delete()

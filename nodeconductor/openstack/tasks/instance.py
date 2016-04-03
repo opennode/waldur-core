@@ -6,7 +6,6 @@ from django.utils import six
 
 from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.openstack.models import Instance, FloatingIP, Tenant
-from nodeconductor.openstack import executors
 from nodeconductor.structure.log import event_logger
 
 
@@ -20,6 +19,8 @@ def provision(instance_uuid, **kwargs):
     tenant = spl.tenant
 
     if tenant is None:
+        from nodeconductor.openstack import executors
+
         tenant = spl.create_tenant()
         executors.TenantCreateExecutor.execute(tenant, async=False)
         tenant.refresh_from_db()
