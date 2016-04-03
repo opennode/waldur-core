@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import re
+import copy
 import time
 import uuid
 import logging
@@ -145,6 +146,9 @@ class OpenStackClient(object):
                 return True
 
             raise CloudBackendError('Invalid OpenStack session')
+
+        def __str__(self):
+            return str({k: v if k != 'password' else '***' for k, v in self})
 
     def create_admin_session(self, keystone_url):
         try:

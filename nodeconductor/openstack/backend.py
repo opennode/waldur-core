@@ -3,7 +3,6 @@ import dateutil.parser
 import functools
 import logging
 import re
-import sys
 import time
 import uuid
 
@@ -88,6 +87,9 @@ class OpenStackSession(dict):
             return True
 
         raise OpenStackBackendError('OpenStack session is expired')
+
+    def __str__(self):
+        return str({k: v if k != 'password' else '***' for k, v in self})
 
 
 class OpenStackClient(object):
