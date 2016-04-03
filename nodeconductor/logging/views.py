@@ -37,7 +37,8 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             level=serializer.validated_data.get('level'),
             message_template=serializer.validated_data.get('message'),
             event_type='custom_notification',
-            event_context=context
+            event_context=context,
+            fail_silently=False
         )
 
     @decorators.list_route()
@@ -105,8 +106,6 @@ class AlertViewSet(mixins.CreateModelMixin,
             return response.Response(status=status.HTTP_200_OK)
         else:
             return response.Response({'detail': 'Alert is already acknowledged'}, status=status.HTTP_409_CONFLICT)
-
-        return response.Response(status=status.HTTP_200_OK)
 
     @decorators.detail_route(methods=['post'])
     def cancel_acknowledgment(self, request, *args, **kwargs):

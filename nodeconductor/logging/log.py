@@ -243,7 +243,7 @@ class AlertLogger(BaseLogger):
     def debug(self, *args, **kwargs):
         return self.process(models.Alert.SeverityChoices.DEBUG, *args, **kwargs)
 
-    def process(self, severity, message_template, scope, alert_type='undefined', alert_context=None):
+    def process(self, severity, message_template, scope, alert_type='undefined', alert_context=None, fail_silently=True):
         self.validate_logging_type(alert_type)
 
         if not alert_context:
@@ -290,7 +290,10 @@ class AlertLogger(BaseLogger):
             logger.warning(
                 'Could not create alert for scope %s (id: %s), with type %s due to concurrent update',
                 scope, scope.id, alert_type)
-            return None, False
+            if fail_silently:
+                return None, False
+            else:
+                raise
 
     def close(self, scope, alert_type):
         try:
