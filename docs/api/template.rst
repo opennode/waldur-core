@@ -6,6 +6,8 @@ To get a list of all template groups, issue GET request against **/api/templates
 Supported filters are:
 
  - tag=<template group tag>, can be list.
+ - template_tag=<template tag>, filter templates groups that contain template with given tag. Can be list.
+ - template_tag__license-os=centos7 - filter by template tag with particular prefix.
  - name=<template group name>.
  - project=<project_url> filter all template groups that could be provisioned with given project.
  - project_uuid=<project_uuid> filter all template groups that could be provisioned with given project.
