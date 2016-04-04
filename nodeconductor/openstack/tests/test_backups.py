@@ -50,7 +50,6 @@ class BackupUsageTest(test.APITransactionTestCase):
         settings = backup.instance.service_project_link.service.settings
         user_input = {
             'flavor': factories.FlavorFactory.get_url(factories.FlavorFactory(settings=settings)),
-            'image': factories.ImageFactory.get_url(factories.ImageFactory(settings=settings)),
         }
         response = self.client.post(url, data=user_input)
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
