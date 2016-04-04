@@ -6,7 +6,7 @@ import django_fsm
 import nodeconductor.structure.models
 import django.utils.timezone
 import django.db.models.deletion
-import nodeconductor.logging.log
+import nodeconductor.logging.loggers
 import uuidfield.fields
 import django.core.validators
 import model_utils.fields
@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=(nodeconductor.logging.log.LoggableMixin, models.Model),
+            bases=(nodeconductor.logging.loggers.LoggableMixin, models.Model),
         ),
         migrations.CreateModel(
             name='Image',
@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=(nodeconductor.logging.log.LoggableMixin, models.Model),
+            bases=(nodeconductor.logging.loggers.LoggableMixin, models.Model),
         ),
         migrations.CreateModel(
             name='OpenStackServiceProjectLink',
@@ -84,7 +84,7 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=(nodeconductor.logging.log.LoggableMixin, models.Model),
+            bases=(nodeconductor.logging.loggers.LoggableMixin, models.Model),
         ),
         migrations.AddField(
             model_name='openstackservice',
@@ -130,7 +130,7 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=(nodeconductor.logging.log.LoggableMixin, models.Model),
+            bases=(nodeconductor.logging.loggers.LoggableMixin, models.Model),
         ),
         migrations.CreateModel(
             name='InstanceSecurityGroup',

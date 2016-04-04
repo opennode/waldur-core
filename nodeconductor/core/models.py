@@ -25,7 +25,7 @@ from reversion.models import Version
 from nodeconductor.core import utils
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.validators import validate_name
-from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.logging.loggers import LoggableMixin
 
 
 logger = logging.getLogger(__name__)

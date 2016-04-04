@@ -1,7 +1,7 @@
 from django.core.urlresolvers import reverse
 from rest_framework import status, test
 
-from nodeconductor.logging import serializers, log
+from nodeconductor.logging import loggers
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -14,7 +14,7 @@ class HookCreationViewTest(test.APITransactionTestCase):
     def test_user_can_create_webhook(self):
         self.client.force_authenticate(user=self.author)
         response = self.client.post(reverse('webhook-list'), data={
-            'event_types': log.get_valid_events()[:3],
+            'event_types': loggers.get_valid_events()[:3],
             'destination_url': 'http://example.com/'
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
@@ -22,7 +22,7 @@ class HookCreationViewTest(test.APITransactionTestCase):
     def test_user_can_create_email_hook(self):
         self.client.force_authenticate(user=self.author)
         response = self.client.post(reverse('emailhook-list'), data={
-            'event_types': log.get_valid_events()[:3],
+            'event_types': loggers.get_valid_events()[:3],
             'email': 'test@example.com'
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
@@ -36,7 +36,7 @@ class HookPermisssionsViewTest(test.APITransactionTestCase):
 
         self.client.force_authenticate(user=self.author)
         response = self.client.post(reverse('webhook-list'), data={
-            'event_types': log.get_valid_events()[:3],
+            'event_types': loggers.get_valid_events()[:3],
             'destination_url': 'http://example.com/'
         })
         self.url = response.data['url']
@@ -58,7 +58,7 @@ class HookPermisssionsViewTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND, response.data)
 
     def test_author_can_update_hook(self):
-        new_events = set(log.get_valid_events()[:2])
+        new_events = set(loggers.get_valid_events()[:2])
         self.client.force_authenticate(user=self.author)
         data = {
             'event_types': new_events,

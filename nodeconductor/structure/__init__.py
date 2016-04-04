@@ -6,8 +6,6 @@ from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
 
-from nodeconductor.core.utils import sort_dict
-
 default_app_config = 'nodeconductor.structure.apps.StructureConfig'
 
 
@@ -181,6 +179,8 @@ class SupportedServices(object):
 
     @classmethod
     def get_resource_actions(cls, model):
+        from nodeconductor.core.utils import sort_dict
+
         view = cls.get_resource_view(model)
         actions = {}
         for key in dir(view):

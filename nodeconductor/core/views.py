@@ -19,7 +19,7 @@ from nodeconductor.core import mixins
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.serializers import AuthTokenSerializer
 from nodeconductor.core.utils import request_api
-from nodeconductor.logging.log import event_logger
+from nodeconductor.logging.loggers import event_logger
 
 
 logger = logging.getLogger(__name__)

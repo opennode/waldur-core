@@ -10,7 +10,7 @@ from urlparse import urlparse
 
 from nodeconductor.core import models as core_models
 from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
-from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
 from nodeconductor.openstack.managers import BackupManager
 from nodeconductor.structure import models as structure_models

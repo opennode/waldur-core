@@ -3,12 +3,6 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.core import handlers as core_handlers
-from nodeconductor.cost_tracking import CostTrackingRegister
-from nodeconductor.structure import SupportedServices
-from nodeconductor.structure.models import Project
-from nodeconductor.quotas import handlers as quotas_handlers
-
 
 class IaasConfig(AppConfig):
     name = 'nodeconductor.iaas'
@@ -17,6 +11,12 @@ class IaasConfig(AppConfig):
 
     # See, https://docs.djangoproject.com/en/1.7/ref/applications/#django.apps.AppConfig.ready
     def ready(self):
+        from nodeconductor.core import handlers as core_handlers
+        from nodeconductor.cost_tracking import CostTrackingRegister
+        from nodeconductor.structure import SupportedServices
+        from nodeconductor.structure.models import Project
+        from nodeconductor.quotas import handlers as quotas_handlers
+
         Instance = self.get_model('Instance')
         Cloud = self.get_model('Cloud')
         CloudProjectMembership = self.get_model('CloudProjectMembership')
