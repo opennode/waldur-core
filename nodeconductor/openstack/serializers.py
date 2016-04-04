@@ -397,12 +397,6 @@ class BackupRestorationSerializer(serializers.ModelSerializer):
         queryset=models.Flavor.objects.all().select_related('settings'),
         write_only=True)
 
-    image = serializers.HyperlinkedRelatedField(
-        view_name='openstack-image-detail',
-        lookup_field='uuid',
-        queryset=models.Image.objects.all().select_related('settings'),
-        write_only=True)
-
     system_volume_id = serializers.CharField(required=False)
     system_volume_size = serializers.IntegerField(required=False, min_value=0)
     data_volume_id = serializers.CharField(required=False)
@@ -413,7 +407,7 @@ class BackupRestorationSerializer(serializers.ModelSerializer):
         fields = (
             'name', 'description',
             'service_project_link',
-            'flavor', 'image',
+            'flavor', 'min_ram', 'min_disk',
             'key_name', 'key_fingerprint',
             'system_volume_id', 'system_volume_size',
             'data_volume_id', 'data_volume_size',
@@ -424,12 +418,8 @@ class BackupRestorationSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
-        image = attrs['image']
         flavor = attrs['flavor']
         spl = attrs['service_project_link']
-
-        if image.settings != spl.service.settings:
-            raise serializers.ValidationError({'image': "Image is not within services' settings."})
 
         if flavor.settings != spl.service.settings:
             raise serializers.ValidationError({'flavor': "Flavor is not within services' settings."})

@@ -93,6 +93,8 @@ class BackupBackend(object):
             'system_volume_size': instance.system_volume_size,
             'data_volume_id': instance.data_volume_id,
             'data_volume_size': instance.data_volume_size,
+            'min_ram': instance.min_ram,
+            'min_disk': instance.min_disk,
             'key_name': instance.key_name,
             'key_fingerprint': instance.key_fingerprint,
             'user_data': instance.user_data,
