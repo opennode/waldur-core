@@ -93,6 +93,8 @@ class BackupBackend(object):
             'system_volume_size': instance.system_volume_size,
             'data_volume_id': instance.data_volume_id,
             'data_volume_size': instance.data_volume_size,
+            'min_ram': instance.min_ram,
+            'min_disk': instance.min_disk,
             'key_name': instance.key_name,
             'key_fingerprint': instance.key_fingerprint,
             'user_data': instance.user_data,
@@ -154,15 +156,13 @@ class BackupBackend(object):
         except ServiceBackendError as e:
             six.reraise(BackupError, e)
 
-        from nodeconductor.openstack.models import Flavor, Image
+        from nodeconductor.openstack.models import Flavor
 
         flavor = Flavor.objects.get(uuid=user_input['flavor_uuid'])
-        image = Image.objects.get(uuid=user_input['image_uuid'])
 
         backend.provision(
             instance,
             flavor=flavor,
-            image=image,
             system_volume_id=cloned_volumes_ids[0],
             data_volume_id=cloned_volumes_ids[1],
             skip_external_ip_assignment=True)
@@ -172,7 +172,6 @@ class BackupBackend(object):
         user_input = {
             'name': user_raw_input.get('name'),
             'flavor': user_raw_input.get('flavor'),
-            'image': user_raw_input.get('image'),
         }
 
         # overwrite metadata attributes with user provided ones
@@ -196,10 +195,7 @@ class BackupBackend(object):
                 return None, None, None, 'Missing system_snapshot_id or data_snapshot_id in metadata'
 
             # all user_input should be json serializable
-            user_input = {
-                'flavor_uuid': serializer.validated_data.pop('flavor').uuid.hex,
-                'image_uuid': serializer.validated_data.pop('image').uuid.hex,
-            }
+            user_input = {'flavor_uuid': serializer.validated_data.pop('flavor').uuid.hex}
             instance = serializer.save()
             # note that root/system volumes of a backup will be linked to the volumes belonging to a backup
             return instance, user_input, [system_volume_snapshot_id, data_volume_snapshot_id], None
