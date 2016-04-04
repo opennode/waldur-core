@@ -10,7 +10,6 @@ from nodeconductor.logging import elasticsearch_client, models, serializers, fil
 
 
 class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
-
     permission_classes = (permissions.IsAuthenticated, core_permissions.IsAdminOrReadOnly)
     filter_backends = (filters.EventFilterBackend,)
     serializer_class = serializers.EventSerializer
@@ -19,6 +18,37 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return elasticsearch_client.ElasticsearchResultList()
 
     def list(self, request, *args, **kwargs):
+        """
+        To get a list of events - run **GET** against */api/events/* as authenticated user. Note that a user can
+        only see events connected to objects she is allowed to see.
+
+        Sorting is supported in ascending and descending order by specifying a field to an **?o=** parameter. By default
+        events are sorted by @timestamp in descending order.
+
+        Run POST against */api/events/* to create an event. Only users with staff privileges can create events.
+        New event will be emitted with `custom_notification` event type.
+        Request should contain following fields:
+
+        - level: the level of current event. Following levels are supported: debug, info, warning, error
+        - message: string representation of event message
+        - scope: optional URL, which points to the loggable instance
+
+        Request example:
+
+        .. code-block:: javascript
+
+            POST /api/events/
+            Accept: application/json
+            Content-Type: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "level": "info",
+                "message": "message#1",
+                "scope": "http://example.com/api/customers/9cd869201e1b4158a285427fcd790c1c/"
+            }
+        """
         self.queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(self.queryset)
@@ -43,8 +73,15 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     @decorators.list_route()
     def count(self, request, *args, **kwargs):
-        """ Returns a count of events.
-            Response example: ``{"count": 12321}``
+        """
+        To get a count of events - run **GET** against */api/events/count/* as authenticated user.
+        Endpoint support same filters as events list.
+
+        Response example:
+
+        .. code-block:: javascript
+
+            {"count": 12321}
         """
 
         self.queryset = self.filter_queryset(self.get_queryset())
@@ -52,6 +89,24 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     @decorators.list_route()
     def count_history(self, request, *args, **kwargs):
+        """
+        To get a historical data of events amount - run **GET** against */api/events/count/history/*.
+        Endpoint support same filters as events list.
+        More about historical data - read at section *Historical data*.
+
+        Response example:
+
+        .. code-block:: javascript
+
+            [
+                {
+                    "point": 141111111111,
+                    "object": {
+                        "count": 558
+                    }
+                }
+            ]
+        """
         queryset = self.filter_queryset(self.get_queryset())
 
         mapped = {
@@ -73,7 +128,6 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
 class AlertViewSet(mixins.CreateModelMixin,
                    viewsets.ReadOnlyModelViewSet):
-
     queryset = models.Alert.objects.all()
     serializer_class = serializers.AlertSerializer
     lookup_field = 'uuid'
@@ -89,8 +143,42 @@ class AlertViewSet(mixins.CreateModelMixin,
     def get_queryset(self):
         return models.Alert.objects.filtered_for_user(self.request.user).order_by('-created')
 
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of alerts, run **GET** against */api/alerts/* as authenticated user.
+
+        Alert severity field can take one of this values: "Error", "Warning", "Info", "Debug".
+        Field scope will contain link to object that cause alert.
+        Context - dictionary that contains information about all related to alert objects.
+
+        Run **POST** against */api/alerts/* to create or update alert. If alert with posted scope and
+        alert_type already exists - it will be updated. Only users with staff privileges can create alerts.
+
+        Request example:
+
+        .. code-block:: javascript
+
+            POST /api/alerts/
+            Accept: application/json
+            Content-Type: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "scope": "http://testserver/api/projects/b9e8a102b5ff4469b9ac03253fae4b95/",
+                "message": "message#1",
+                "alert_type": "first_alert",
+                "severity": "Debug"
+            }
+        """
+        return super(AlertViewSet, self).list(request, *args, **kwargs)
+
     @decorators.detail_route(methods=['post'])
     def close(self, request, *args, **kwargs):
+        """
+        To close alert - run **POST** against */api/alerts/<alert_uuid>/close/*. No data is required.
+        Only users with staff privileges can close alerts.
+        """
         if not request.user.is_staff:
             raise PermissionDenied()
         alert = self.get_object()
@@ -100,6 +188,11 @@ class AlertViewSet(mixins.CreateModelMixin,
 
     @decorators.detail_route(methods=['post'])
     def acknowledge(self, request, *args, **kwargs):
+        """
+        To acknowledge alert - run **POST** against */api/alerts/<alert_uuid>/acknowledge/*. No payload is required.
+        All users that can see alerts can also acknowledge it. If alert is already acknowledged endpoint
+        will return error with code 409(conflict).
+        """
         alert = self.get_object()
         if not alert.acknowledged:
             alert.acknowledge()
@@ -109,6 +202,11 @@ class AlertViewSet(mixins.CreateModelMixin,
 
     @decorators.detail_route(methods=['post'])
     def cancel_acknowledgment(self, request, *args, **kwargs):
+        """
+        To cancel alert acknowledgment - run **POST** against */api/alerts/<alert_uuid>/cancel_acknowledgment/*.
+        No payload is required. All users that can see alerts can also cancel it acknowledgment.
+        If alert is not acknowledged endpoint will return error with code 409 (conflict).
+        """
         alert = self.get_object()
         if alert.acknowledged:
             alert.cancel_acknowledgment()
@@ -118,6 +216,21 @@ class AlertViewSet(mixins.CreateModelMixin,
 
     @decorators.list_route()
     def stats(self, request, *args, **kwargs):
+        """
+        To get count of alerts per severities - run **GET** request against */api/alerts/stats/*.
+        This endpoint supports all filters that are available for alerts list (*/api/alerts/*).
+
+        Response example:
+
+        .. code-block:: javascript
+
+            {
+                "debug": 2,
+                "error": 1,
+                "info": 1,
+                "warning": 1
+            }
+        """
         queryset = self.filter_queryset(self.get_queryset())
         alerts_severities_count = queryset.values('severity').annotate(count=Count('severity'))
 
@@ -139,6 +252,10 @@ class AlertViewSet(mixins.CreateModelMixin,
 
 
 class BaseHookViewSet(viewsets.ModelViewSet):
+    """
+    Hooks API allows user to receive event notifications via different channel, like email or webhook.
+    To get a list of all your hooks, run **GET** against */api/hooks/* as an authenticated user.
+    """
     permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (core_filters.StaffOrUserFilter,)
     lookup_field = 'uuid'
@@ -148,10 +265,64 @@ class WebHookViewSet(BaseHookViewSet):
     queryset = models.WebHook.objects.all()
     serializer_class = serializers.WebHookSerializer
 
+    def list(self, request, *args, **kwargs):
+        """
+        To create new web hook issue **POST** against */api/hooks-web/* as an authenticated user.
+        When hook is activated, **POST** request is issued against destination URL with the following data:
+
+        .. code-block:: javascript
+
+            {
+                "timestamp": "2015-07-14T12:12:56.000000",
+                "message": "Customer ABC LLC has been updated.",
+                "type": "customer_update_succeeded",
+                "context": {
+                    "user_native_name": "Walter Lebrowski",
+                    "customer_contact_details": "",
+                    "user_username": "Walter",
+                    "user_uuid": "1c3323fc4ae44120b57ec40dea1be6e6",
+                    "customer_uuid": "4633bbbb0b3a4b91bffc0e18f853de85",
+                    "ip_address": "8.8.8.8",
+                    "user_full_name": "Walter Lebrowski",
+                    "customer_abbreviation": "ABC LLC",
+                    "customer_name": "ABC LLC"
+                },
+                "levelname": "INFO"
+            }
+
+        Note that context depends on event type.
+        """
+        return super(WebHookViewSet, self).list(request, *args, **kwargs)
+
 
 class EmailHookViewSet(BaseHookViewSet):
     queryset = models.EmailHook.objects.all()
     serializer_class = serializers.EmailHookSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        To create new email hook issue **POST** against */api/hooks-email/* as an authenticated user.
+
+        Example of a request:
+
+        .. code-block:: javascript
+
+            {
+                "events": [
+                    "iaas_instance_start_succeeded"
+                ],
+                "email": "test@example.com"
+            }
+
+        You may temporarily disable hook without deleting it by issuing following **PATCH** request against hook URL:
+
+        .. code-block:: javascript
+
+            {
+                "is_active": "false"
+            }
+        """
+        return super(EmailHookViewSet, self).list(request, *args, **kwargs)
 
 
 class HookSummary(BaseSummaryView):

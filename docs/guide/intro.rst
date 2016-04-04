@@ -9,4 +9,8 @@
 .. include:: support.rst
 .. include:: events/intro.rst
 .. include:: resource-actions.rst
-
+.. include:: openstack-migration.rst
+.. include:: authentication.rst
+.. include:: pagination.rst
+.. include:: permission_management.rst
+.. include:: version.rst

@@ -5,6 +5,8 @@ Release NEXT
 ------------
 
 - Closed alerts are now cleaned up after a configured period (1 week by default).
+- Moved documentation from RST files to docstrings.
+- Added developer's section about API documentation.
 
 Release 0.91.0
 --------------

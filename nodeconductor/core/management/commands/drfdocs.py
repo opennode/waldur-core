@@ -1,5 +1,4 @@
 import os
-import subprocess
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -30,5 +29,3 @@ class Command(BaseCommand):
         docs = ApiDocs(apps=args)
         self.stdout.write(self.style.MIGRATE_HEADING('Write RST docs'))
         docs.generate(path)
-        self.stdout.write(self.style.MIGRATE_HEADING('Make Sphinx docs'))
-        subprocess.call(['make', 'html', '--directory=%s' % os.path.join(settings.BASE_DIR, 'docs')])

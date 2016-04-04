@@ -18,12 +18,51 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
     tags_filter_db_field = 'templates__tags'
     tags_filter_request_field = 'templates_tag'
 
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of all template groups, issue **GET** request against */api/templates-groups/*.
+
+        Supported filters are:
+
+         - tag=<template group tag>, can be list.
+         - name=<template group name>.
+         - template_tag=<template tag>, filter templates groups that contain template with given tag. Can be list.
+         - template_tag__license-os=centos7 - filter by template tag with particular prefix.
+         - project=<project_url> filter all template groups that could be provisioned with given project.
+         - project_uuid=<project_uuid> filter all template groups that could be provisioned with given project.
+
+         Template field "order_number" shows templates execution order:
+         template with lowest order number will be executed first.
+        """
+        return super(TemplateGroupViewSet, self).list(request, *args, **kwargs)
+
     @decorators.detail_route(methods=['post'])
     def provision(self, request, uuid=None):
-        """ Schedule head(first) template provision synchronously, tail templates - as task.
+        """
+        Schedule head(first) template provision synchronously, tail templates - as task.
 
-            Method will return validation errors if they occurs on head template provision.
-            If head template provision succeed - method will return URL of template group result.
+        To start a template group provisioning, issue **POST** request against */api/templates-groups/<uuid>/provision/*
+        with a list of templates' additional options. Additional options should contain options
+        for what should be added to template options and passed to resource provisioning endpoint.
+
+        Additional options example:
+
+        .. code-block:: javascript
+
+            [
+                // options for first template
+                {
+                    "name": "test-openstack-instance",
+                    "system_volume_size": 20
+                },
+                // options for second template
+                {
+                    "host_group": "zabbix-host-group"
+                }
+            ]
+
+        Method will return validation errors if they occurs on head template provision.
+        If head template provision succeed - method will return URL of template group result.
         """
         group = self.get_object()
         templates_additional_options = self._get_templates_additional_options(request)
@@ -71,3 +110,20 @@ class TemplateGroupResultViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.TemplateGroupResult.objects.all()
     serializer_class = serializers.TemplateGroupResultSerializer
     lookup_field = 'uuid'
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of template group results - issue **POST** request against */api/templates-results/*.
+
+        Template group result has the following fields:
+
+         - url
+         - uuid
+         - is_finished - false if corresponding template group is provisioning resources, true otherwise
+         - is_erred - true if corresponding template group provisioning has failed
+         - provisioned_resources - list of resources URLs that were provisioned by the template group
+         - state_message - human-readable description of the state of the provisioning group
+         - error_message - human-readable error message (empty if provisioning was successful)
+         - error_details - technical details of the error
+        """
+        return super(TemplateGroupResultViewSet, self).list(request, *args, **kwargs)
