@@ -375,11 +375,8 @@ def log_resource_deleted(sender, instance, **kwargs):
 
 
 def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
-    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
-    enable_geoip = nc_settings.get('ENABLE_GEOIP', True)
-
-    # Geolocation is disabled
-    if not enable_geoip:
+    # Check if geolocation is enabled
+    if not settings.NODECONDUCTOR.get('ENABLE_GEOIP', True):
         return
 
     # VM already has coordinates
