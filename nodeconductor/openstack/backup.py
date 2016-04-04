@@ -74,12 +74,18 @@ class BackupBackend(object):
         self.backup = backup
 
     def start_backup(self):
+        self.backup.starting_backup()
+        self.backup.save(update_fields=['state'])
         send_task('openstack', 'backup_start_create')(self.backup.uuid.hex)
 
     def start_deletion(self):
+        self.backup.starting_deletion()
+        self.backup.save(update_fields=['state'])
         send_task('openstack', 'backup_start_delete')(self.backup.uuid.hex)
 
     def start_restoration(self, instance_uuid, user_input, snapshot_ids):
+        self.backup.starting_restoration()
+        self.backup.save(update_fields=['state'])
         send_task('openstack', 'backup_start_restore')(
             self.backup.uuid.hex, instance_uuid, user_input, snapshot_ids)
 
