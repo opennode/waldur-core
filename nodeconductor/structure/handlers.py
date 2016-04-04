@@ -378,7 +378,15 @@ def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
     nc_settings = getattr(settings, 'NODECONDUCTOR', {})
     enable_geoip = nc_settings.get('ENABLE_GEOIP', True)
 
-    if enable_geoip and target == Resource.States.ONLINE:
+    # Geolocation is disabled
+    if not enable_geoip:
+        return
+
+    # VM already has coordinates
+    if instance.latitude is not None and instance.longitude is not None:
+        return
+
+    if target == Resource.States.ONLINE:
         send_task('structure', 'detect_vm_coordinates')(instance.to_string())
 
 
