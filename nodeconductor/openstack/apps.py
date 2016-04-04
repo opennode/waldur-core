@@ -1,12 +1,6 @@
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.cost_tracking import CostTrackingRegister
-from nodeconductor.quotas import handlers as quotas_handlers
-from nodeconductor.openstack import handlers
-from nodeconductor.structure import SupportedServices
-from nodeconductor.structure.models import Project
-
 
 class OpenStackConfig(AppConfig):
     """ OpenStack is a toolkit for building private and public clouds.
@@ -18,6 +12,12 @@ class OpenStackConfig(AppConfig):
     service_name = 'OpenStack'
 
     def ready(self):
+        from nodeconductor.cost_tracking import CostTrackingRegister
+        from nodeconductor.quotas import handlers as quotas_handlers
+        from nodeconductor.openstack import handlers
+        from nodeconductor.structure import SupportedServices
+        from nodeconductor.structure.models import Project
+
         OpenStackServiceProjectLink = self.get_model('OpenStackServiceProjectLink')
         Instance = self.get_model('Instance')
         FloatingIP = self.get_model('FloatingIP')

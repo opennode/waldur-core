@@ -22,8 +22,17 @@ Guide
    changelog
    guide/intro
 
+
 API
 ---
+
+.. toctree::
+   :maxdepth: 1
+
+   drfapi/index
+
+IAAS
+----
 
 .. toctree::
    :maxdepth: 1

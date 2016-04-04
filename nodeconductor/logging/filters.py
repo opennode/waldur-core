@@ -11,7 +11,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.core.filters import ExternalFilterBackend
 from nodeconductor.logging import models, utils
-from nodeconductor.logging.log import event_logger
+from nodeconductor.logging.loggers import event_logger
 from nodeconductor.logging.features import features_to_events, features_to_alerts, UPDATE_EVENTS
 
 

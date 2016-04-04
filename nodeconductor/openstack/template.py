@@ -3,6 +3,7 @@ from django.contrib.admin.widgets import FilteredSelectMultiple, AdminTextareaWi
 
 from rest_framework import serializers
 
+from nodeconductor.core import models as core_models
 from nodeconductor.openstack import models
 from nodeconductor.template.forms import TemplateForm
 from nodeconductor.template.serializers import BaseTemplateSerializer
@@ -24,6 +25,8 @@ class InstanceProvisionTemplateForm(TemplateForm):
 
     flavor = forms.ModelChoiceField(label="Flavor", queryset=models.Flavor.objects.all(), required=False)
     image = forms.ModelChoiceField(label="Image", queryset=models.Image.objects.all(), required=False)
+    ssh_public_key = forms.ModelChoiceField(
+        label="SSH public key", queryset=core_models.SshPublicKey.objects.all(), required=False)
     data_volume_size = forms.IntegerField(label='Data volume size', required=False)
     system_volume_size = forms.IntegerField(label='System volume size', required=False)
     security_groups = forms.ModelMultipleChoiceField(
@@ -54,6 +57,12 @@ class InstanceProvisionTemplateForm(TemplateForm):
             view_name='openstack-image-detail',
             lookup_field='uuid',
             queryset=models.Image.objects.all(),
+            required=False,
+        )
+        ssh_public_key = serializers.HyperlinkedRelatedField(
+            view_name='sshpublickey-detail',
+            lookup_field='uuid',
+            queryset=core_models.SshPublicKey.objects.all(),
             required=False,
         )
         data_volume_size = serializers.IntegerField(required=False)

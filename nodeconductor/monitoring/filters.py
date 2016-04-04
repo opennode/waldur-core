@@ -25,14 +25,23 @@ class ResourceStateFilter(django_filters.FilterSet):
 
 class SlaFilter(BaseFilterBackend):
     """
+    SLA filter
+    ----------
+
     Allows to filter or sort resources by actual_sla
     Default period is current year and month.
 
     Example query parameters for filtering list of OpenStack instances:
-    /api/openstack-instances/?actual_sla=90&period=2016-02
+
+    .. code-block:: http
+
+        /api/openstack-instances/?actual_sla=90&period=2016-02
 
     Example query parameters for sorting list of OpenStack instances:
-    /api/openstack-instances/?o=actual_sla&period=2016-02
+
+    .. code-block:: http
+
+        /api/openstack-instances/?o=actual_sla&period=2016-02
     """
     def filter_queryset(self, request, queryset, view):
         period = get_period(request)
@@ -50,19 +59,32 @@ class SlaFilter(BaseFilterBackend):
 
 class MonitoringItemFilter(BaseFilterBackend):
     """
+    Monitoring filter
+    -----------------
+
     Filter and order resources by monitoring item.
     For example, given query dictionary
-    {
-        'monitoring__installation_state': True
-    }
+
+    .. code-block:: http
+
+        {
+            'monitoring__installation_state': True
+        }
+
     it produces following query
-    {
-        'monitoring_item__name': 'installation_state',
-        'monitoring_item__value': True
-    }
+
+    .. code-block:: http
+
+        {
+            'monitoring_item__name': 'installation_state',
+            'monitoring_item__value': True
+        }
 
     Example query parameters for sorting list of OpenStack instances:
-    /api/openstack-instances/?o=monitoring__installation_state
+
+    .. code-block:: http
+
+        /api/openstack-instances/?o=monitoring__installation_state
     """
     def filter_queryset(self, request, queryset, view):
         for key in request.query_params.keys():

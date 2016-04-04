@@ -13,7 +13,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
 import reversion
 
-from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.quotas import exceptions, managers, fields
 from nodeconductor.core.models import UuidMixin, ReversionMixin, DescendantMixin
 

@@ -7,7 +7,7 @@ import nodeconductor.core.fields
 import jsonfield.fields
 import django.db.models.deletion
 import django.utils.timezone
-import nodeconductor.logging.log
+import nodeconductor.logging.loggers
 import uuidfield.fields
 import nodeconductor.core.validators
 
@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=(models.Model, nodeconductor.logging.log.LoggableMixin),
+            bases=(models.Model, nodeconductor.logging.loggers.LoggableMixin),
         ),
         migrations.CreateModel(
             name='BackupSchedule',
@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
             },
-            bases=(models.Model, nodeconductor.logging.log.LoggableMixin),
+            bases=(models.Model, nodeconductor.logging.loggers.LoggableMixin),
         ),
         migrations.AddField(
             model_name='backup',

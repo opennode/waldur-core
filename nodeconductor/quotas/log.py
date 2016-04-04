@@ -1,4 +1,4 @@
-from nodeconductor.logging.log import AlertLogger, EventLogger, alert_logger, event_logger
+from nodeconductor.logging.loggers import AlertLogger, EventLogger, alert_logger, event_logger
 from nodeconductor.quotas import models
 
 

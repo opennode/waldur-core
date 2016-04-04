@@ -8,7 +8,6 @@ import logging.handlers
 #  - https://docs.djangoproject.com/en/1.7/ref/settings/#debug
 #  - https://docs.djangoproject.com/en/1.7/ref/settings/#template-debug
 DEBUG = False
-TEMPLATE_DEBUG = False
 
 # Allowed hosts
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#allowed-hosts

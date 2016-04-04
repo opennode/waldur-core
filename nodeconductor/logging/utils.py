@@ -1,6 +1,6 @@
 from django.apps import apps
 
-from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.logging.loggers import LoggableMixin
 
 
 def get_loggable_models():

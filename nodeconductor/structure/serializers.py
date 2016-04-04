@@ -1141,17 +1141,27 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
 class BasicResourceSerializer(serializers.Serializer):
     uuid = serializers.ReadOnlyField()
     name = serializers.ReadOnlyField()
+    resource_type = serializers.SerializerMethodField()
 
+    def get_resource_type(self, resource):
+        return SupportedServices.get_name_for_model(resource)
+
+
+class ManagedResourceSerializer(BasicResourceSerializer):
     project_name = serializers.ReadOnlyField(source='service_project_link.project.name')
     project_uuid = serializers.ReadOnlyField(source='service_project_link.project.uuid')
 
     customer_uuid = serializers.ReadOnlyField(source='service_project_link.project.customer.uuid')
     customer_name = serializers.ReadOnlyField(source='service_project_link.project.customer.name')
 
-    resource_type = serializers.SerializerMethodField()
 
-    def get_resource_type(self, resource):
-        return SupportedServices.get_name_for_model(resource)
+class RelatedResourceSerializer(BasicResourceSerializer):
+    url = serializers.SerializerMethodField()
+
+    def get_url(self, resource):
+        return reverse(resource.get_url_name() + '-detail',
+                       kwargs={'uuid': resource.uuid.hex},
+                       request=self.context['request'])
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
@@ -1202,7 +1212,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.SerializerMethodField()
     access_url = serializers.SerializerMethodField()
-    actions = serializers.SerializerMethodField()
+    related_resources = RelatedResourceSerializer(source='get_related_resources', many=True, read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -1214,7 +1224,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url'
+            'access_url', 'related_resources'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1313,11 +1323,6 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
         spl_class = SupportedServices.get_related_models(self.Meta.model)['service_project_link']
         spl = spl_class.objects.get(service=self.context['service'], project=validated_data['project'])
-
-        if spl.state == core_models.SynchronizationStates.ERRED:
-            raise serializers.ValidationError(
-                {'project': "Service project link must be in non-erred state"})
-
         validated_data['service_project_link'] = spl
 
         return validated_data
@@ -1343,12 +1348,14 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + (
-            'cores', 'ram', 'disk', 'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
-            'latitude', 'longitude', 'key_name', 'key_fingerprint',
+            'cores', 'ram', 'disk', 'min_ram', 'min_disk',
+            'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
+            'latitude', 'longitude', 'key_name', 'key_fingerprint', 'image_name'
         )
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
-            'cores', 'ram', 'disk', 'external_ips', 'internal_ips',
-            'latitude', 'longitude', 'key_name', 'key_fingerprint',
+            'cores', 'ram', 'disk', 'min_ram', 'min_disk',
+            'external_ips', 'internal_ips',
+            'latitude', 'longitude', 'key_name', 'key_fingerprint', 'image_name'
         )
         protected_fields = BaseResourceSerializer.Meta.protected_fields + (
             'user_data', 'ssh_public_key'
@@ -1360,6 +1367,10 @@ class VirtualMachineSerializer(BaseResourceSerializer):
             fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
                 user=self.context['request'].user)
         return fields
+
+    def create(self, validated_data):
+        validated_data['image_name'] = validated_data['image'].name
+        return super(VirtualMachineSerializer, self).create(validated_data)
 
 
 class PropertySerializerMetaclass(serializers.SerializerMetaclass):

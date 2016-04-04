@@ -5,18 +5,17 @@ from django.contrib.auth import get_user_model
 from django.db.models import signals
 from django_fsm import signals as fsm_signals
 
-from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
-from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
-from nodeconductor.structure import handlers
-from nodeconductor.structure import signals as structure_signals
-
 
 class StructureConfig(AppConfig):
     name = 'nodeconductor.structure'
     verbose_name = 'Structure'
 
-    # See, https://docs.djangoproject.com/en/1.7/ref/applications/#django.apps.AppConfig.ready
     def ready(self):
+        from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
+        from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
+        from nodeconductor.structure import handlers
+        from nodeconductor.structure import signals as structure_signals
+
         User = get_user_model()
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')

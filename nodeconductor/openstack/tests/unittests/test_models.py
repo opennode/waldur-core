@@ -60,7 +60,7 @@ class BackupScheduleTest(TestCase):
             backend.execute()
 
             new_backup = models.Backup.objects.filter(
-                backup_schedule=schedule, state=models.Backup.States.READY).order_by('created_at').last()
+                backup_schedule=schedule, state=models.Backup.States.BACKING_UP).order_by('created_at').last()
 
             # after execution old backups have to be deleted
             # new backup have to be created
