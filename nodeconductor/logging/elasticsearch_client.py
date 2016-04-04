@@ -6,7 +6,6 @@ from django.conf import settings
 from elasticsearch import Elasticsearch
 
 from nodeconductor.core.utils import datetime_to_timestamp
-from nodeconductor.logging.log import event_logger
 
 
 logger = logging.getLogger(__name__)

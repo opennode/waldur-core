@@ -272,7 +272,7 @@ class AlertUniquenessTest(test.APITransactionTestCase):
         self.assertEqual(created, False)
 
     def test_if_race_conditions_detected_alert_skipped(self):
-        with mock.patch('nodeconductor.logging.log.models') as mock_models:
+        with mock.patch('nodeconductor.logging.loggers.models') as mock_models:
             mock_models.Alert.objects.create.side_effect = IntegrityError
 
             alert, created = self.log_alert()

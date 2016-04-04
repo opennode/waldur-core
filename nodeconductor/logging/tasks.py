@@ -5,7 +5,7 @@ from celery import shared_task
 from datetime import datetime
 from django.conf import settings
 
-from nodeconductor.logging.log import event_logger
+from nodeconductor.logging.loggers import event_logger
 from nodeconductor.logging.models import BaseHook, Alert
 
 

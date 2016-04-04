@@ -6,7 +6,7 @@ from django.core import mail
 from rest_framework import test
 
 from nodeconductor.logging import models as logging_models
-from nodeconductor.logging.log import HookHandler
+from nodeconductor.logging.loggers import HookHandler
 from nodeconductor.logging.tasks import process_event
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.log import event_logger
