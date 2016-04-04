@@ -15,7 +15,6 @@ from nodeconductor.quotas import models, serializers, filters
 
 class QuotaViewSet(mixins.UpdateModelMixin,
                    viewsets.ReadOnlyModelViewSet):
-
     queryset = models.Quota.objects.all()
     serializer_class = serializers.QuotaSerializer
     lookup_field = 'uuid'
@@ -27,6 +26,37 @@ class QuotaViewSet(mixins.UpdateModelMixin,
 
     def get_queryset(self):
         return models.Quota.objects.filtered_for_user(self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get an actual value for object quotas limit and usage issue a **GET** request against */api/<objects>/*.
+
+        To get all quotas visible to the user issue a **GET** request against */api/quotas/*
+        """
+        return super(QuotaViewSet, self).list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        To set quota limit issue a **PUT** request against */api/quotas/<quota uuid>** with limit values.
+
+        Please note that if a quota is a cache of a backend quota (e.g. 'storage' size of an OpenStack tenant),
+        it will be impossible to modify it through */api/quotas/<quota uuid>** endpoint.
+
+        Example of changing quota limit:
+
+        .. code-block:: http
+
+            POST /api/quotas/6ad5f49d6d6c49648573b2b71f44a42b/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "limit": 2000.0
+            }
+        """
+        return super(QuotaViewSet, self).retrieve(request, *args, **kwargs)
 
     def perform_update(self, serializer):
         if not serializer.instance.scope.can_user_update_quotas(self.request.user):
@@ -45,6 +75,37 @@ class QuotaViewSet(mixins.UpdateModelMixin,
 
     @decorators.detail_route()
     def history(self, request, uuid=None):
+        """
+        Historical data endpoints could be available for any objects (currently
+        implemented for quotas and events count). The data is available at *<object_endpoint>/history/*,
+        for example: */api/quotas/<uuid>/history/*.
+
+        There are two ways to define datetime points for historical data.
+
+        1. Send *?point=<timestamp>* parameter that can list. Response will contain historical data for each given point
+            in the same order.
+        2. Send *?start=<timestamp>*, *?end=<timestamp>*, *?points_count=<integer>* parameters.
+           Result will contain <points_count> points from <start> to <end>.
+
+        Response format:
+
+        .. code-block:: javascript
+
+            [
+                {
+                    "point": <timestamp>,
+                    "object": {<object_representation>}
+                },
+                {
+                    "point": <timestamp>
+                    "object": {<object_representation>}
+                },
+            ...
+            ]
+
+        NB! There will not be any "object" for corresponding point in response if there
+        is no data about object for a given timestamp.
+        """
         mapped = {
             'start': request.query_params.get('start'),
             'end': request.query_params.get('end'),

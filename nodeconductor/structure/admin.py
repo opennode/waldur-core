@@ -433,6 +433,8 @@ class PublishableResourceAdmin(ResourceAdmin):
 
 
 class VirtualMachineAdmin(ResourceAdmin):
+    readonly_fields = ResourceAdmin.readonly_fields + ('image_name',)
+
     actions = ['detect_coordinates']
 
     def detect_coordinates(self, request, queryset):

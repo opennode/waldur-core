@@ -4,7 +4,6 @@ from nodeconductor.server.base_settings import *
 SECRET_KEY = 'test-key'
 
 DEBUG = True
-TEMPLATE_DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1']
 

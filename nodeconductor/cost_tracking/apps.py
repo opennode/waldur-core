@@ -4,16 +4,16 @@ from django.apps import AppConfig
 from django.db.models import signals
 from django_fsm.signals import post_transition
 
-from nodeconductor.core.handlers import preserve_fields_before_update
-from nodeconductor.cost_tracking import handlers
-from nodeconductor.structure import models as structure_models
-
 
 class CostTrackingConfig(AppConfig):
     name = 'nodeconductor.cost_tracking'
     verbose_name = 'Cost Tracking'
 
     def ready(self):
+        from nodeconductor.core.handlers import preserve_fields_before_update
+        from nodeconductor.cost_tracking import handlers
+        from nodeconductor.structure import models as structure_models
+
         PriceEstimate = self.get_model('PriceEstimate')
         DefaultPriceListItem = self.get_model('DefaultPriceListItem')
 

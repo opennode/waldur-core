@@ -64,6 +64,41 @@ resource_permission_logic = FilteredCollaboratorsPermissionLogic(
     any_permission=True,
 )
 
+service_permission_logic = FilteredCollaboratorsPermissionLogic(
+    collaborators_query='customer__roles__permission_group__user',
+    collaborators_filter={
+        'customer__roles__role_type': CustomerRole.OWNER,
+    },
+    any_permission=True,
+)
+
+service_project_link_permission_logic = FilteredCollaboratorsPermissionLogic(
+    collaborators_query=[
+        'service__customer__roles__permission_group__user',
+        'project__project_groups__roles__permission_group__user',
+    ],
+    collaborators_filter=[
+        {'service__customer__roles__role_type': CustomerRole.OWNER},
+        {'project__project_groups__roles__role_type': ProjectGroupRole.MANAGER},
+    ],
+
+    any_permission=True,
+)
+
+
+def property_permission_logic(prefix):
+    return FilteredCollaboratorsPermissionLogic(
+        collaborators_query=[
+            '%s__service_project_link__project__roles__permission_group__user' % prefix,
+            '%s__service_project_link__project__customer__roles__permission_group__user' % prefix,
+        ],
+        collaborators_filter=[
+            {'%s__service_project_link__project__roles__role_type' % prefix: ProjectRole.ADMINISTRATOR},
+            {'%s__service_project_link__project__customer__roles__role_type' % prefix: CustomerRole.OWNER},
+        ],
+        any_permission=True,
+    )
+
 
 OWNER_CAN_MANAGE_CUSTOMER_LOGICS = FilteredCollaboratorsPermissionLogic(
     collaborators_query='roles__permission_group__user',

@@ -25,7 +25,7 @@ from reversion.models import Version
 from nodeconductor.core import utils
 from nodeconductor.core.fields import CronScheduleField
 from nodeconductor.core.validators import validate_name
-from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.logging.loggers import LoggableMixin
 
 
 logger = logging.getLogger(__name__)
@@ -268,7 +268,7 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
         super(SshPublicKey, self).save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
-        return self.name
+        return '%s - %s, user: %s, %s' % (self.name, self.fingerprint, self.user.username, self.user.full_name)
 
 
 class SynchronizationStates(object):

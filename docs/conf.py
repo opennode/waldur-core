@@ -20,11 +20,6 @@ import os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('..'))
 
-# Uncomment it for autodoc
-# import django
-# os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.settings'
-# django.setup()
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -270,3 +265,11 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+import django
+os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.test_settings'
+django.setup()
+
+# Generate API documentation
+from nodeconductor.core.management.commands.drfdocs import Command
+Command().handle(path='docs/drfapi')

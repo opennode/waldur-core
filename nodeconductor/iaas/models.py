@@ -12,7 +12,7 @@ from iptools.ipv4 import validate_cidr
 from nodeconductor.core import models as core_models
 from nodeconductor.cost_tracking import models as cost_tracking_models
 from nodeconductor.iaas import managers
-from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.structure import models as structure_models
 
 logger = logging.getLogger(__name__)

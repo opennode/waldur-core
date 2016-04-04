@@ -17,7 +17,7 @@ from jsonfield import JSONField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import fields as core_fields
 from nodeconductor.backup import managers, exceptions, utils
-from nodeconductor.logging.log import LoggableMixin
+from nodeconductor.logging.loggers import LoggableMixin
 
 
 logger = logging.getLogger(__name__)

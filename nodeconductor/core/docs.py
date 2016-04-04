@@ -186,8 +186,6 @@ class ApiDocs(object):
 
         with open(path + '/index.rst', 'w') as f:
             lines = [
-                "DRF API",
-                "=======",
                 "",
                 ".. toctree::",
                 "   :glob:",

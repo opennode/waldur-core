@@ -3,14 +3,27 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.quotas import handlers, utils
-
 
 class QuotasConfig(AppConfig):
+    """
+    Quotas - objects resource limits and their usage. Currently only projects and cloud project memberships have quotas.
+    Quotas limits can be editable by users.
+
+    Projects quotas names:
+     - 'vcpu' - number of CPUs
+     - 'ram' - RAM amount in MiB
+     - 'storage' - storage amount in MiB
+     - 'max_instances' - total amount of instances(virtual machines)
+
+    Cloud project memberships have same quotas as projects. All current projects and memberships quotas are based on
+    backend limits and are not editable by any user. Quota limits auto update is executed once a day.
+    """
     name = 'nodeconductor.quotas'
     verbose_name = 'Quotas'
 
     def ready(self):
+        from nodeconductor.quotas import handlers, utils
+
         Quota = self.get_model('Quota')
 
         signals.post_save.connect(
@@ -70,6 +83,8 @@ class QuotasConfig(AppConfig):
 
     @staticmethod
     def register_counter_field_signals(model, counter_field):
+        from nodeconductor.quotas import handlers
+
         for target_model_index, target_model in enumerate(counter_field.target_models):
             signals.post_save.connect(
                 handlers.count_quota_handler_factory(counter_field),

@@ -1,11 +1,11 @@
 import unittest
 
-from nodeconductor.logging import serializers, log
+from nodeconductor.logging import serializers, loggers
 
 
 class HookSerializerTest(unittest.TestCase):
     def setUp(self):
-        self.events = log.get_valid_events()[:3]
+        self.events = loggers.get_valid_events()[:3]
 
     def test_valid_web_settings(self):
         serializer = serializers.WebHookSerializer(data={

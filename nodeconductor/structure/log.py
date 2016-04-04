@@ -1,7 +1,7 @@
 from django.utils import six
 
 from nodeconductor.core.models import User
-from nodeconductor.logging.log import EventLogger, event_logger
+from nodeconductor.logging.loggers import EventLogger, event_logger
 from nodeconductor.structure import models
 
 

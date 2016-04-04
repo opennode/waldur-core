@@ -4,7 +4,14 @@ CHANGELOG
 Release NEXT
 ------------
 
-<add here>
+< Add changelog here >
+
+Release 0.92.0
+--------------
+- Closed alerts are now cleaned up after a configured period (1 week by default).
+- Moved documentation from RST files to docstrings.
+- Added developer's section about API documentation.
+- Bugfix: removed Django19 warnings.
 
 Release 0.91.0
 --------------
