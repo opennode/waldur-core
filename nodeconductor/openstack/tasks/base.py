@@ -1,8 +1,9 @@
 from celery import shared_task, current_app
 from functools import wraps
 
+from nodeconductor.openstack import models
 from nodeconductor.openstack.backend import OpenStackClient
-from nodeconductor.core.tasks import retry_if_false
+from nodeconductor.core.tasks import retry_if_false, BackendMethodTask
 from nodeconductor.core.utils import deserialize_instance
 
 
@@ -54,3 +55,38 @@ def delete_tenant_with_spl(serialized_tenant):
     spl = tenant.service_project_link
     tenant.delete()
     spl.delete()
+
+
+# Temporary task. Should be removed after tenant will be connected to instance.
+class SecurityGroupCreationTask(BackendMethodTask):
+    """ Create tenant for SPL if it does not exist and execute backend method """
+
+    def create_tenant(self, spl, security_group):
+        """ Create tenant for SPL via executor.
+
+        Creation ignores security groups pull to avoid new group deletion.
+        """
+        from nodeconductor.openstack import executors
+
+        tenant = spl.create_tenant()
+        executors.TenantCreateExecutor.execute(tenant, async=False, pull_security_groups=False)
+        tenant.refresh_from_db()
+        if tenant.state != models.Tenant.States.OK:
+            security_group.set_erred()
+            security_group.error_message = 'Tenant %s (PK: %s) creation failed.' % (tenant, tenant.pk)
+            security_group.save()
+        return tenant
+
+    def execute(self, security_group, *args, **kwargs):
+        spl = security_group.service_project_link
+        if spl.tenant is None:
+            from nodeconductor.openstack import executors
+            # Create tenant without security groups
+            tenant = self.create_tenant(spl, security_group)
+            # Create new security group
+            backend = tenant.get_backend()
+            backend.create_security_group(security_group, *args, **kwargs)
+            # Pull all security groups
+            executors.TenantPullSecurityGroupsExecutor.execute(tenant, async=False)
+        else:
+            super(SecurityGroupCreationTask, self).execute(security_group, 'create_security_group', *args, **kwargs)

@@ -2,15 +2,15 @@ from celery import chain
 from django.conf import settings
 
 from nodeconductor.core import tasks, executors
-from nodeconductor.openstack.tasks import delete_tenant_with_spl
+from nodeconductor.openstack.tasks import delete_tenant_with_spl, SecurityGroupCreationTask
 
 
 class SecurityGroupCreateExecutor(executors.CreateExecutor):
 
     @classmethod
     def get_task_signature(cls, security_group, serialized_security_group, **kwargs):
-        return tasks.BackendMethodTask().si(
-            serialized_security_group, 'create_security_group', state_transition='begin_creating')
+        return SecurityGroupCreationTask().si(
+            serialized_security_group, state_transition='begin_creating')
 
 
 class SecurityGroupUpdateExecutor(executors.UpdateExecutor):
@@ -35,7 +35,7 @@ class SecurityGroupDeleteExecutor(executors.DeleteExecutor):
 class TenantCreateExecutor(executors.CreateExecutor):
 
     @classmethod
-    def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
+    def get_task_signature(cls, tenant, serialized_tenant, pull_security_groups=True, **kwargs):
         # create tenant, add user to it, create internal network,
         # pull quotas and security groups.
         creation_tasks = [
@@ -51,12 +51,15 @@ class TenantCreateExecutor(executors.CreateExecutor):
                 runtime_state='creating internal network for tenant'),
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'pull_tenant_quotas',
-                runtime_state='pulling tenant quotas'),
-            tasks.BackendMethodTask().si(
-                serialized_tenant, 'pull_tenant_security_groups',
-                runtime_state='pulling tenant security groups',
+                runtime_state='pulling tenant quotas',
                 success_runtime_state='online'),
         ]
+        if pull_security_groups:
+            creation_tasks.append(tasks.BackendMethodTask().si(
+                serialized_tenant, 'pull_tenant_security_groups',
+                runtime_state='pulling tenant security groups',
+                success_runtime_state='online')
+            )
         # initialize external network if it defined in service settings
         service_settings = tenant.service_project_link.service.settings
         external_network_id = service_settings.options.get('external_network_id')
