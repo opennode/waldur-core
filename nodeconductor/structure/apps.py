@@ -159,7 +159,7 @@ class StructureConfig(AppConfig):
 
         for index, model in enumerate(Resource.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
-                signals.post_save.connect(
+                fsm_signals.post_transition.connect(
                     handlers.detect_vm_coordinates,
                     sender=model,
                     dispatch_uid='nodeconductor.structure.handlers.detect_vm_coordinates_{}_{}'.format(

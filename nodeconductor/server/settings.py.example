@@ -188,4 +188,8 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
     'protocol': 'https',
 }
 
+# Enable detection of coordinates of virtual machines
+# Set to False in order to disable this feature
+NODECONDUCTOR['ENABLE_GEOIP'] = True
+
 DEFAULT_FROM_EMAIL='noreply@example.com'

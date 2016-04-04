@@ -50,7 +50,11 @@ def deserialize_user(data):
 def get_coordinates_by_ip(ip_address):
     url = 'http://freegeoip.net/json/{}'.format(ip_address)
 
-    response = requests.get(url)
+    try:
+        response = requests.get(url)
+    except requests.exceptions.RequestException as e:
+        raise GeoIpException("Request to geoip API %s failed: %s" % (url, e))
+
     if response.ok:
         data = response.json()
         return Coordinates(latitude=data['latitude'],
