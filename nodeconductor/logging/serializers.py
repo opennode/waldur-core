@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField
 from nodeconductor.core.fields import MappedChoiceField, JsonField
-from nodeconductor.logging import models, utils, log
+from nodeconductor.logging import models, utils, loggers
 
 
 class AlertSerializer(serializers.HyperlinkedModelSerializer):
@@ -27,7 +27,7 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
 
     def create(self, validated_data):
         try:
-            alert, _ = log.AlertLogger().process(
+            alert, _ = loggers.AlertLogger().process(
                 severity=validated_data['severity'],
                 message_template=validated_data['message'],
                 scope=validated_data['scope'],
@@ -48,7 +48,7 @@ class EventSerializer(serializers.Serializer):
 
 
 class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
-    event_types = serializers.MultipleChoiceField(choices=log.get_valid_events(), allow_blank=False)
+    event_types = serializers.MultipleChoiceField(choices=loggers.get_valid_events(), allow_blank=False)
     author_uuid = serializers.ReadOnlyField(source='user.uuid')
     hook_type = serializers.SerializerMethodField()
 

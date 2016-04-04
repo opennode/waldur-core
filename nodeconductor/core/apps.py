@@ -4,14 +4,14 @@ from django.apps import AppConfig
 from django.db.models import signals
 from django.contrib.auth import get_user_model
 
-from nodeconductor.core import handlers
-
 
 class CoreConfig(AppConfig):
     name = 'nodeconductor.core'
     verbose_name = 'Core'
 
     def ready(self):
+        from nodeconductor.core import handlers
+
         User = get_user_model()
         SshPublicKey = self.get_model('SshPublicKey')
 

@@ -3,14 +3,14 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.quotas import handlers, utils
-
 
 class QuotasConfig(AppConfig):
     name = 'nodeconductor.quotas'
     verbose_name = 'Quotas'
 
     def ready(self):
+        from nodeconductor.quotas import handlers, utils
+
         Quota = self.get_model('Quota')
 
         signals.post_save.connect(
@@ -70,6 +70,8 @@ class QuotasConfig(AppConfig):
 
     @staticmethod
     def register_counter_field_signals(model, counter_field):
+        from nodeconductor.quotas import handlers
+
         for target_model_index, target_model in enumerate(counter_field.target_models):
             signals.post_save.connect(
                 handlers.count_quota_handler_factory(counter_field),

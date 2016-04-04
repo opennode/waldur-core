@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework import test, status
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.logging import log, models
+from nodeconductor.logging import log, models, loggers
 from nodeconductor.logging.tests import factories
 # Dependency from `structure` application exists only in tests
 from nodeconductor.structure import models as structure_models
@@ -252,14 +252,14 @@ class AlertUniquenessTest(test.APITransactionTestCase):
         self.project = structure_factories.ProjectFactory()
 
     def get_logger(self):
-        if not hasattr(log.alert_logger, 'test_alert_logger'):
-            class TestAlertLogger(log.AlertLogger):
+        if not hasattr(loggers.alert_logger, 'test_alert_logger'):
+            class TestAlertLogger(loggers.AlertLogger):
                 class Meta:
                     alert_types = ('test_alert',)
 
-            log.alert_logger.register('test_alert_logger', TestAlertLogger)
+            loggers.alert_logger.register('test_alert_logger', TestAlertLogger)
 
-        return log.alert_logger.test_alert_logger
+        return loggers.alert_logger.test_alert_logger
 
     def log_alert(self):
         return self.get_logger().info('Message', scope=self.project, alert_type='test_alert')

@@ -68,7 +68,7 @@ class ErrorMessageTest(TestCase):
 
     def assert_instance_has_error_message(self):
         instance = Instance.objects.get(pk=self.instance.pk)
-        self.assertEqual(instance.error_message, self.error.message)
+        self.assertEqual(instance.error_message, str(self.error))
 
 
 @mock.patch('celery.app.base.Celery.send_task')

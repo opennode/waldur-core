@@ -3,14 +3,16 @@ from __future__ import unicode_literals
 from django.apps import AppConfig
 from django.db.models import signals
 
-from nodeconductor.logging import handlers, utils
-
 
 class EventsConfig(AppConfig):
     name = 'nodeconductor.logging'
     verbose_name = 'Logging'
 
     def ready(self):
+        from nodeconductor.logging import handlers, utils
+        # # to register customer loggers
+        # from nodeconductor.logging import loggers
+
         for index, model in enumerate(utils.get_loggable_models()):
             signals.post_delete.connect(
                 handlers.remove_related_alerts,
