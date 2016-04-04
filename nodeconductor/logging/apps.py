@@ -10,8 +10,6 @@ class EventsConfig(AppConfig):
 
     def ready(self):
         from nodeconductor.logging import handlers, utils
-        # # to register customer loggers
-        # from nodeconductor.logging import loggers
 
         for index, model in enumerate(utils.get_loggable_models()):
             signals.post_delete.connect(
