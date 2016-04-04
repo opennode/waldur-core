@@ -26,7 +26,6 @@ def delete_expired_backups():
 
 
 @shared_task(name='nodeconductor.openstack.backup_start_create')
-@transition(Backup, 'starting_backup')
 def backup_start_create(backup_uuid, transition_entity=None):
     backup_create.apply_async(
         args=(backup_uuid,),
@@ -35,7 +34,6 @@ def backup_start_create(backup_uuid, transition_entity=None):
 
 
 @shared_task(name='nodeconductor.openstack.backup_start_delete')
-@transition(Backup, 'starting_deletion')
 def backup_start_delete(backup_uuid, transition_entity=None):
     backup_delete.apply_async(
         args=(backup_uuid,),
@@ -44,7 +42,6 @@ def backup_start_delete(backup_uuid, transition_entity=None):
 
 
 @shared_task(name='nodeconductor.openstack.backup_start_restore')
-@transition(Backup, 'starting_restoration')
 def backup_start_restore(backup_uuid, instance_uuid, user_input, snapshot_ids, transition_entity=None):
     backup_restore.apply_async(
         args=(backup_uuid, instance_uuid, user_input, snapshot_ids),
