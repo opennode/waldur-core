@@ -266,12 +266,8 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
 
-from shutil import copyfile
-if not os.path.exists('../nodeconductor/server/settings.py'):
-    copyfile('../nodeconductor/server/settings.py.example', '../nodeconductor/server/settings.py')
-
 import django
-os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.test_settings'
 django.setup()
 
 # Generate API documentation
