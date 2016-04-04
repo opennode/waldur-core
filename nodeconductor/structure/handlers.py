@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 
+from django.conf import settings
 from django.db import models, transaction
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
@@ -12,7 +13,8 @@ from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceProjectLink, ServiceSettings, Service)
+                                            Customer, ProjectGroup, ServiceProjectLink,
+                                            ServiceSettings, Service, Resource)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
@@ -372,8 +374,11 @@ def log_resource_deleted(sender, instance, **kwargs):
         event_context={'resource': instance})
 
 
-def detect_vm_coordinates(sender, instance=None, created=False, **kwargs):
-    if created or instance.tracker.has_changed('external_ips'):
+def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
+    nc_settings = getattr(settings, 'NODECONDUCTOR', {})
+    enable_geoip = nc_settings.get('ENABLE_GEOIP', True)
+
+    if enable_geoip and target == Resource.States.ONLINE:
         send_task('structure', 'detect_vm_coordinates')(instance.to_string())
 
 
