@@ -374,6 +374,13 @@ def log_resource_deleted(sender, instance, **kwargs):
         event_context={'resource': instance})
 
 
+def log_resource_imported(sender, instance, **kwargs):
+    event_logger.resource.info(
+        'Resource {resource_full_name} has been imported.',
+        event_type='resource_import_succeeded',
+        event_context={'resource': instance})
+
+
 def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
     # Check if geolocation is enabled
     if not settings.NODECONDUCTOR.get('ENABLE_GEOIP', True):

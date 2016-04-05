@@ -13,6 +13,7 @@ class CostTrackingConfig(AppConfig):
         from nodeconductor.core.handlers import preserve_fields_before_update
         from nodeconductor.cost_tracking import handlers
         from nodeconductor.structure import models as structure_models
+        from nodeconductor.structure.signals import resource_imported
 
         PriceEstimate = self.get_model('PriceEstimate')
         DefaultPriceListItem = self.get_model('DefaultPriceListItem')
@@ -90,6 +91,14 @@ class CostTrackingConfig(AppConfig):
                 sender=resource,
                 dispatch_uid=(
                     'nodeconductor.cost_tracking.handlers.update_price_estimate_on_resource_spl_change_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
+            resource_imported.connect(
+                handlers.update_price_estimate_on_resource_import,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.update_price_estimate_on_resource_import_{}_{}'
                     .format(resource.__name__, index))
             )
 
