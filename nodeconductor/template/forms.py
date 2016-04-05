@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.contenttypes.models import ContentType
+from rest_framework import serializers
 
 from nodeconductor.structure import models as structure_models
 from nodeconductor.template.models import Template
@@ -56,7 +57,15 @@ class TemplateForm(forms.ModelForm):
         serializer_class = self.get_serializer_class()
         serializer = serializer_class()
         data = {k: v for k, v in template.options.items() if v}
-        return serializer.to_internal_value(data)
+        try:
+            return serializer.to_internal_value(data)
+        except serializers.ValidationError as e:
+            # If some object disappears from DB serializer will throw error,
+            # lets try remove such fields from data.
+            for error_field in e.detail:
+                if error_field in data:
+                    del data[error_field]
+            return serializer.to_internal_value(data)
 
     @classmethod
     def get_resource_content_type(cls):
