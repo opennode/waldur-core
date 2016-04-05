@@ -125,6 +125,11 @@ class Customer(core_models.UuidMixin,
             target_models=lambda: Resource.get_vm_models(),
             path_to_scope='project.customer',
         )
+        nc_private_cloud_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Resource.get_private_cloud_models(),
+            path_to_scope='project.customer',
+        )
+
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
             target_models=lambda: ServiceProjectLink.get_all_models(),
             path_to_scope='project.customer',
@@ -778,6 +783,12 @@ class BaseVirtualMachineMixin(models.Model):
         abstract = True
 
 
+class PrivateCloudMixin(models.Model):
+
+    class Meta(object):
+        abstract = True
+
+
 class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
     def __init__(self, *args, **kwargs):
         AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
@@ -1071,7 +1082,15 @@ class ResourceMixin(MonitoringModelMixin,
         # TODO: remove once iaas has been deprecated
         from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
-                if not issubclass(resource, VirtualMachineMixin) and not issubclass(resource, Instance)]
+                if not issubclass(resource, VirtualMachineMixin) and
+                not issubclass(resource, Instance)
+                and not issubclass(resource, PrivateCloudMixin)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_private_cloud_models(cls):
+        # TODO:
+        return [resource for resource in cls.get_all_models() if issubclass(resource, PrivateCloudMixin)]
 
     def get_related_resources(self):
         return itertools.chain(
