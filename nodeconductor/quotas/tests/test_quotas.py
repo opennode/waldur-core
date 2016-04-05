@@ -3,12 +3,10 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework import test, status
 import reversion
-from reversion import models as reversion_models
 
 # Dependency from structure and iaas exists only in tests
 from nodeconductor.core import utils as core_utils
 from nodeconductor.iaas.tests import factories as iaas_factories
-from nodeconductor.quotas import models
 from nodeconductor.quotas.tests import factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories

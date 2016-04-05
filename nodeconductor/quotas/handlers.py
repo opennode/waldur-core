@@ -86,11 +86,6 @@ def init_quotas(sender, instance, created=False, **kwargs):
             pass
 
 
-def delete_quotas(sender, instance, **kwargs):
-    """ Delete quotas on instance deletion """
-    instance.quotas.all().delete()
-
-
 def count_quota_handler_factory(count_quota_field):
     """ Creates handler that will recalculate count_quota on creation/deletion """
 

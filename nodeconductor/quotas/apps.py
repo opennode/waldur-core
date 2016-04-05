@@ -48,13 +48,6 @@ class QuotasConfig(AppConfig):
                 dispatch_uid='nodeconductor.quotas.init_quotas_%s_%s' % (model.__name__, model_index)
             )
 
-            # delete quotas before object deletion to avoid unpredictable deletion by GenericRelation
-            signals.pre_delete.connect(
-                handlers.delete_quotas,
-                sender=model,
-                dispatch_uid='nodeconductor.quotas.delete_quotas_%s_%s' % (model.__name__, model_index)
-            )
-
             # Counter quota signals
             # How it works:
             # Each counter quota field has list of target models. Change of target model should increase or decrease
