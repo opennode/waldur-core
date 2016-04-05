@@ -1089,7 +1089,6 @@ class ResourceMixin(MonitoringModelMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_private_cloud_models(cls):
-        # TODO:
         return [resource for resource in cls.get_all_models() if issubclass(resource, PrivateCloudMixin)]
 
     def get_related_resources(self):
