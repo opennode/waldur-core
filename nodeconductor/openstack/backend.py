@@ -127,7 +127,7 @@ class OpenStackClient(object):
     def neutron(self):
         try:
             return neutron_client.Client(session=self.session.keystone_session)
-        except (neutron_exceptions.ClientException, keystone_exceptions.ClientException) as e:
+        except (neutron_exceptions.NeutronClientException, keystone_exceptions.ClientException) as e:
             logger.exception('Failed to create neutron client: %s', e)
             six.reraise(OpenStackBackendError, e)
 
@@ -587,7 +587,9 @@ class OpenStackBackend(ServiceBackend):
             nova_quotas = nova.quotas.get(tenant_id=tenant.backend_id)
             cinder_quotas = cinder.quotas.get(tenant_id=tenant.backend_id)
             neutron_quotas = neutron.show_quota(tenant_id=tenant.backend_id)['quota']
-        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
+        except (nova_exceptions.ClientException,
+                cinder_exceptions.ClientException,
+                neutron_exceptions.NeutronClientException) as e:
             six.reraise(OpenStackBackendError, e)
 
         service_project_link.set_quota_limit('ram', nova_quotas.ram)
@@ -618,7 +620,9 @@ class OpenStackBackend(ServiceBackend):
                 ram += getattr(flavor, 'ram', 0)
                 vcpu += getattr(flavor, 'vcpus', 0)
 
-        except (nova_exceptions.ClientException, cinder_exceptions.ClientException) as e:
+        except (nova_exceptions.ClientException,
+                cinder_exceptions.ClientException,
+                neutron_exceptions.NeutronClientException) as e:
             six.reraise(OpenStackBackendError, e)
 
         service_project_link.set_quota_usage('ram', ram)
@@ -642,7 +646,7 @@ class OpenStackBackend(ServiceBackend):
                     for ip in neutron.list_floatingips(tenant_id=self.tenant_id)['floatingips']
                     if ip.get('floating_ip_address') and ip.get('status')
                 }
-            except neutron_exceptions.ClientException as e:
+            except neutron_exceptions.NeutronClientException as e:
                 six.reraise(OpenStackBackendError, e)
 
             backend_ids = set(backend_floating_ips.keys())
@@ -1607,7 +1611,8 @@ class OpenStackBackend(ServiceBackend):
 
             neutron.delete_network(tenant.external_network_id)
             logger.info('External network with id %s has been deleted.', tenant.external_network_id)
-        except (neutron_exceptions.NeutronClientException, keystone_exceptions.ClientException) as e:
+        except (neutron_exceptions.NeutronClientException,
+                keystone_exceptions.ClientException) as e:
             six.reraise(OpenStackBackendError, e)
         else:
             tenant.external_network_id = ''
