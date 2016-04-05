@@ -44,6 +44,7 @@ from nodeconductor.structure import models
 from nodeconductor.structure import serializers
 from nodeconductor.structure import managers
 from nodeconductor.structure.log import event_logger
+from nodeconductor.structure.signals import resource_imported
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.metadata import check_operation, ResourceActionsMetadata
 
@@ -1660,13 +1661,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             except ServiceBackendError as e:
                 raise APIException(e)
 
-            event_logger.resource.info(
-                'Resource {resource_name} has been imported.',
-                event_type='resource_import_succeeded',
-                event_context={'resource': resource})
-
-            send_task('cost_tracking', 'update_projected_estimate')(
-                resource_str=resource.to_string())
+            resource_imported.send(sender=resource.__class__, instance=resource)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 

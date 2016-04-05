@@ -12,3 +12,5 @@ project_resource_removed = Signal(providing_args=['project', 'resource', 'member
 
 customer_account_credited = Signal(providing_args=['instance', 'amount'])
 customer_account_debited = Signal(providing_args=['instance', 'amount'])
+
+resource_imported = Signal(providing_args=['instance'])
