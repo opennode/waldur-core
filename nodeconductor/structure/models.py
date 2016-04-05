@@ -129,7 +129,6 @@ class Customer(core_models.UuidMixin,
             target_models=lambda: Resource.get_private_cloud_models(),
             path_to_scope='project.customer',
         )
-
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
             target_models=lambda: ServiceProjectLink.get_all_models(),
             path_to_scope='project.customer',
@@ -330,6 +329,10 @@ class Project(core_models.DescribableMixin,
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
             target_models=lambda: Resource.get_vm_models(),
+            path_to_scope='project',
+        )
+        nc_private_cloud_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Resource.get_private_cloud_models(),
             path_to_scope='project',
         )
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
