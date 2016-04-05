@@ -113,17 +113,21 @@ class Customer(core_models.UuidMixin,
             path_to_scope='customer',
         )
         nc_user_count = quotas_fields.QuotaField()
-        nc_resource_count = quotas_fields.UsageAggregatorQuotaField(
-            get_children=lambda customer: customer.projects.all(),
+        nc_resource_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Resource.get_all_models(),
+            path_to_scope='project.customer',
         )
-        nc_app_count = quotas_fields.UsageAggregatorQuotaField(
-            get_children=lambda customer: customer.projects.all(),
+        nc_app_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Resource.get_app_models(),
+            path_to_scope='project.customer',
         )
-        nc_vm_count = quotas_fields.UsageAggregatorQuotaField(
-            get_children=lambda customer: customer.projects.all(),
+        nc_vm_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Resource.get_vm_models(),
+            path_to_scope='project.customer',
         )
-        nc_service_project_link_count = quotas_fields.UsageAggregatorQuotaField(
-            get_children=lambda customer: customer.projects.all(),
+        nc_service_project_link_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: ServiceProjectLink.get_all_models(),
+            path_to_scope='project.customer',
         )
 
     def get_log_fields(self):

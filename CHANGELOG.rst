@@ -6,6 +6,11 @@ Release NEXT
 
 < Add changelog here >
 
+Release 0.93.0
+--------------
+- Added Resource import signal.
+- Fixed quota update bug on cascade deletion.
+
 Release 0.92.0
 --------------
 - Closed alerts are now cleaned up after a configured period (1 week by default).

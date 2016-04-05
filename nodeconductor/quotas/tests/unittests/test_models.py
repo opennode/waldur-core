@@ -55,18 +55,3 @@ class QuotaModelMixinTest(TestCase):
         membership = iaas_factories.CloudProjectMembershipFactory()
 
         self.assertFalse(membership.project.quotas.filter(name='vcpu').exists())
-
-    def test_quotas_of_parents_change_on_child_quota_change(self):
-        customer = structure_factories.CustomerFactory()
-        project1 = structure_factories.ProjectFactory(customer=customer)
-        project2 = structure_factories.ProjectFactory(customer=customer)
-
-        project1.set_quota_usage('nc_resource_count', 1)
-        project2.set_quota_usage('nc_resource_count', 2)
-
-        self.assertEqual(customer.quotas.get(name='nc_resource_count').usage, 3)
-
-        project1.add_quota_usage('nc_resource_count', 1)
-        project2.add_quota_usage('nc_resource_count', -2)
-
-        self.assertEqual(customer.quotas.get(name='nc_resource_count').usage, 2)
