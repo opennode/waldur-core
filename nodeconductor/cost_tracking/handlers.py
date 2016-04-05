@@ -101,10 +101,14 @@ def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
     ).delete()
 
 
+def update_price_estimate_on_resource_import(sender, instance, **kwargs):
+    send_task('cost_tracking', 'update_projected_estimate')(
+        resource_str=instance.to_string())
+
+
 def add_resource_price_estimate_on_provision(sender, instance, name=None, source=None, **kwargs):
     if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
-        send_task('cost_tracking', 'update_projected_estimate')(
-            resource_str=instance.to_string())
+        update_price_estimate_on_resource_import(sender, instance)
 
 
 def update_price_estimate_ancestors(sender, instance, created=False, **kwargs):
