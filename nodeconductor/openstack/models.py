@@ -338,7 +338,8 @@ class Backup(core_models.UuidMixin,
         pass
 
 
-class Tenant(core_models.RuntimeStateMixin, core_models.StateMixin, structure_models.ResourceMixin):
+class Tenant(core_models.RuntimeStateMixin, core_models.StateMixin,
+             structure_models.PrivateCloudMixin, structure_models.ResourceMixin):
     service_project_link = models.ForeignKey(
         OpenStackServiceProjectLink, related_name='tenants', on_delete=models.PROTECT)
 
