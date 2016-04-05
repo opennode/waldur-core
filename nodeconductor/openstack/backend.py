@@ -457,7 +457,6 @@ class OpenStackBackend(ServiceBackend):
 
         for _ in range(retries):
             obj = client_get_method(obj_id)
-            print 'OpenStack object status', obj.status, obj
 
             if complete_state_predicate(obj):
                 return True
