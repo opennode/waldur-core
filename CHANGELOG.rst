@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-< Add changelog here >
+- Extended events filter to support filtering by user and time frame
 
 Release 0.93.0
 --------------
