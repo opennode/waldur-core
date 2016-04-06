@@ -1205,11 +1205,30 @@ class ResourceViewSet(mixins.ListModelMixin,
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items()
+                           if k != 'IaaS.Instance'}
+        resource_models = self._filter_by_category(resource_models)
+        resource_models = self._filter_by_types(resource_models)
+
+        return managers.SummaryQuerySet(resource_models.values())
+
+    def _filter_by_types(self, resource_models):
         types = self.request.query_params.getlist('resource_type', None)
-        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items() if k != 'IaaS.Instance'}
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
-        return managers.SummaryQuerySet(resource_models.values())
+        return resource_models
+
+    def _filter_by_category(self, resource_models):
+        choices = {
+            'apps': models.ResourceMixin.get_app_models(),
+            'vms': models.ResourceMixin.get_vm_models(),
+            'private_clouds': models.ResourceMixin.get_private_cloud_models()
+        }
+        category = self.request.query_params.get('resource_category')
+        category_models = choices.get(category)
+        if category_models:
+            resource_models = {k: v for k, v in resource_models.items() if v in category_models}
+        return resource_models
 
     def list(self, request, *args, **kwargs):
         """
@@ -1217,8 +1236,24 @@ class ResourceViewSet(mixins.ListModelMixin,
         */api/<resource_url>/* as an authenticated user.
 
         It is possible to filter and order by resource-specific fields, but this filters will be applied only to
-        resources that support such filtering. For example it is possible to sort resource by ?o=ram, but sugarcrm crms
+        resources that support such filtering. For example it is possible to sort resource by ?o=ram, but SugarCRM crms
         will ignore this ordering, because they do not support such option.
+
+        Filter resources by type or category
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        There are two query argument to select resources by their type.
+
+        - Specify explicitly list of resource types, for example:
+
+          /api/<resource_endpoint>/?resource_type=DigitalOcean.Droplet&resource_type=OpenStack.Instance
+
+        - Specify category, one of vms, apps or private_clouds, for example:
+
+          /api/<resource_endpoint>/?category=vms
+
+        Filtering by monitoring fields
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
         Resources may have SLA attached to it. Example rendering of SLA:
 
@@ -1269,6 +1304,8 @@ class ResourceViewSet(mixins.ListModelMixin,
 
           /api/<resource_endpoint>/?o=monitoring__installation_state
 
+        Filtering by tags
+        ^^^^^^^^^^^^^^^^^
 
         Resource may have tags attached to it. Example of tags rendering:
 

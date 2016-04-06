@@ -4,7 +4,8 @@ CHANGELOG
 Release NEXT
 ------------
 
-- Extended events filter to support filtering by user and time frame
+- Extended events filter to support filtering by user and time frame.
+- Enable filtering resource by category (vms, apps, private_clouds).
 
 Release 0.93.0
 --------------
