@@ -114,19 +114,19 @@ class Customer(core_models.UuidMixin,
         )
         nc_user_count = quotas_fields.QuotaField()
         nc_resource_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_all_models(),
+            target_models=lambda: ResourceMixin.get_all_models(),
             path_to_scope='project.customer',
         )
         nc_app_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_app_models(),
+            target_models=lambda: ResourceMixin.get_app_models(),
             path_to_scope='project.customer',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_vm_models(),
+            target_models=lambda: ResourceMixin.get_vm_models(),
             path_to_scope='project.customer',
         )
         nc_private_cloud_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_private_cloud_models(),
+            target_models=lambda: ResourceMixin.get_private_cloud_models(),
             path_to_scope='project.customer',
         )
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
@@ -320,19 +320,19 @@ class Project(core_models.DescribableMixin,
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
         nc_resource_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_all_models(),
+            target_models=lambda: ResourceMixin.get_all_models(),
             path_to_scope='project',
         )
         nc_app_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_app_models(),
+            target_models=lambda: ResourceMixin.get_app_models(),
             path_to_scope='project',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_vm_models(),
+            target_models=lambda: ResourceMixin.get_vm_models(),
             path_to_scope='project',
         )
         nc_private_cloud_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_private_cloud_models(),
+            target_models=lambda: ResourceMixin.get_private_cloud_models(),
             path_to_scope='project',
         )
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
