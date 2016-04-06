@@ -56,6 +56,11 @@ class ResourceCounterFormMixin(object):
 
     get_app_count.short_description = 'Application count'
 
+    def get_private_cloud_count(self, obj):
+        return obj.quotas.get(name=obj.Quotas.nc_private_cloud_count).usage
+
+    get_private_cloud_count.short_description = 'Private cloud count'
+
 
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
@@ -96,7 +101,7 @@ class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAd
               'billing_backend_id', 'balance', 'owners')
     readonly_fields = ['balance']
     actions = ['update_projected_estimate']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count']
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     inlines = [QuotaInline]
 
     def update_projected_estimate(self, request, queryset):
@@ -183,7 +188,7 @@ class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonly
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')
 
-    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count']
+    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
