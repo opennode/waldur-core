@@ -36,6 +36,8 @@ class EventFilterBackend(filters.BaseFilterBackend):
         - ?scope_type=<string> - name of scope type of object that is connected to event (Ex.: project, customer...)
         - ?exclude_features=<feature> (can be list) - exclude event from output if
           it's type corresponds to one of listed features
+        - ?from=<timestamp> - beginning UNIX timestamp
+        - ?to=<timestamp> - ending UNIX timestamp
     """
 
     def filter_queryset(self, request, queryset, view):
@@ -72,10 +74,21 @@ class EventFilterBackend(filters.BaseFilterBackend):
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
 
+        mapped = {
+            'start': request.query_params.get('from'),
+            'end': request.query_params.get('to'),
+        }
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(
+            data={k: v for k, v in mapped.items() if v})
+        timestamp_interval_serializer.is_valid(raise_exception=True)
+        filter_data = timestamp_interval_serializer.get_filter_data()
+
         queryset = queryset.filter(search_text=search_text,
                                    should_terms=should_terms,
                                    must_terms=must_terms,
-                                   must_not_terms=must_not_terms)
+                                   must_not_terms=must_not_terms,
+                                   start=filter_data.get('start'),
+                                   end=filter_data.get('end'))
 
         order_by = request.query_params.get('o', '-@timestamp')
         queryset = queryset.order_by(order_by)
