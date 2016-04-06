@@ -11,8 +11,9 @@ from nodeconductor.openstack.models import OpenStackService, OpenStackServicePro
 
 
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
+    list_display = structure_admin.ServiceProjectLinkAdmin.list_display + ('get_tenant',)
     readonly_fields = ('get_service_settings_username', 'get_service_settings_password', 'get_tenant') + \
-                      structure_admin.ServiceProjectLinkAdmin.readonly_fields
+        structure_admin.ServiceProjectLinkAdmin.readonly_fields
 
     def get_service_settings_username(self, obj):
         return obj.service.settings.username

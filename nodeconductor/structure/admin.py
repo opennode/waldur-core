@@ -385,6 +385,7 @@ class ServiceAdmin(admin.ModelAdmin):
 class ServiceProjectLinkAdmin(admin.ModelAdmin):
     readonly_fields = ('service', 'project')
     list_display = ('get_service_name', 'get_customer_name', 'get_project_name')
+    list_filter = ('service__settings', 'project__name')
     ordering = ('service__customer__name', 'project__name', 'service__name')
     list_display_links = ('get_service_name',)
     search_fields = ('service__customer__name', 'project__name', 'service__name')
