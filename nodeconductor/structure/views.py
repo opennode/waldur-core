@@ -1348,33 +1348,51 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             "users": 3
         }
     """
-    queryset = models.Customer.objects.all()
     lookup_field = 'uuid'
+
+    def get_queryset(self):
+        return filter_queryset_for_user(models.Customer.objects.all().only('pk', 'uuid'), self.request.user)
 
     def list(self, request, uuid):
         self.customer = self.get_object()
-        self.customer_uuid = self.customer.uuid.hex
-        self.exclude_features = request.query_params.getlist('exclude_features')
-
-        quotas = {quota['name']: quota['usage']
-                  for quota in self.customer.quotas.values('name', 'usage')}
 
         return Response({
             'alerts': self.get_alerts(),
-            'vms': quotas.get(models.Customer.Quotas.nc_vm_count.name, 0),
-            'apps': quotas.get(models.Customer.Quotas.nc_app_count.name, 0),
-            'projects': quotas.get(models.Customer.Quotas.nc_project_count.name, 0),
-            'services': quotas.get(models.Customer.Quotas.nc_service_count.name, 0),
-            'users': quotas.get(models.Customer.Quotas.nc_user_count.name, 0)
+            'vms': self.get_vms(),
+            'apps': self.get_apps(),
+            'projects': self.get_projects(),
+            'services': self.get_services(),
+            'users': self.customer.get_users().count()
         })
 
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'customer',
-            'uuid': self.customer_uuid,
-            'exclude_features': self.exclude_features,
+            'uuid': self.customer.uuid.hex,
+            'exclude_features': self.request.query_params.getlist('exclude_features'),
             'opened': True
         })
+
+    def get_vms(self):
+        return self._total_count(models.Resource.get_vm_models())
+
+    def get_apps(self):
+        return self._total_count(models.Resource.get_app_models())
+
+    def get_projects(self):
+        return self._count_model(models.Project)
+
+    def get_services(self):
+        models = [item['service'] for item in SupportedServices.get_service_models().values()]
+        return self._total_count(models)
+
+    def _total_count(self, models):
+        return sum(self._count_model(model) for model in models)
+
+    def _count_model(self, model):
+        qs = model.objects.filter(customer=self.customer).only('pk')
+        qs = filter_queryset_for_user(qs, self.request.user)
+        return qs.count()
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -1390,8 +1408,10 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             "premium_support_contracts": 0,
         }
     """
-    queryset = models.Project.objects.all()
     lookup_field = 'uuid'
+
+    def get_queryset(self):
+        return filter_queryset_for_user(models.Project.objects.all().only('pk', 'uuid'), self.request.user)
 
     def list(self, request, uuid):
         self.project = self.get_object()
