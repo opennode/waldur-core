@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
-from django.core.urlresolvers import reverse, resolve, Resolver404
+from django.core.urlresolvers import reverse, Resolver404
 from rest_framework import serializers
 from rest_framework.fields import Field, ReadOnlyField
 
@@ -123,35 +123,15 @@ class GenericRelatedField(Field):
         request = self._get_request()
         return request.build_absolute_uri(reverse(self._get_url(obj), kwargs=kwargs))
 
-    def _format_url(self, url):
-        """
-        Removes domain and protocol from url
-        """
-        if url.startswith('http'):
-            return '/' + url.split('/', 3)[-1]
-        return url
-
-    def _get_model_from_resolve_match(self, match):
-        queryset = match.func.cls.queryset
-        if queryset is not None:
-            return queryset.model
-        else:
-            return match.func.cls.model
-
     def to_internal_value(self, data):
         """
         Restores model instance from its url
         """
-        # XXX: This circular dependency will be removed then filter_queryset_for_user
-        # will be moved to model manager method
-        from nodeconductor.structure.managers import filter_queryset_for_user
         request = self._get_request()
+        user = request.user
         try:
-            url = self._format_url(data)
-            match = resolve(url)
-            model = self._get_model_from_resolve_match(match)
-            queryset = filter_queryset_for_user(model.objects.all(), request.user)
-            obj = queryset.get(**match.kwargs)
+            obj = core_utils.instance_from_url(data, user=user)
+            model = obj.__class__
         except (Resolver404, AttributeError, MultipleObjectsReturned, ObjectDoesNotExist):
             raise serializers.ValidationError("Can`t restore object from url: %s" % data)
         if model not in self.related_models:
