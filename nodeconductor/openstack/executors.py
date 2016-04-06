@@ -1,7 +1,7 @@
 from celery import chain
 from django.conf import settings
 
-from nodeconductor.core import tasks, executors
+from nodeconductor.core import tasks, executors, utils
 from nodeconductor.openstack.tasks import delete_tenant_with_spl, SecurityGroupCreationTask
 
 
@@ -36,8 +36,7 @@ class TenantCreateExecutor(executors.CreateExecutor):
 
     @classmethod
     def get_task_signature(cls, tenant, serialized_tenant, pull_security_groups=True, **kwargs):
-        # create tenant, add user to it, create internal network,
-        # pull quotas and security groups.
+        # create tenant, add user to it, create internal network, pull quotas
         creation_tasks = [
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'create_tenant',
@@ -54,12 +53,20 @@ class TenantCreateExecutor(executors.CreateExecutor):
                 runtime_state='pulling tenant quotas',
                 success_runtime_state='online'),
         ]
+        # handle security groups
+        # XXX: Create default security groups that was connected to SPL earlier.
+        serialized_executor = utils.serialize_class(SecurityGroupCreateExecutor)
+        for security_group in tenant.service_project_link.security_groups.all():
+            serialized_security_group = utils.serialize_instance(security_group)
+            creation_tasks.append(tasks.ExecutorTask().si(serialized_executor, serialized_security_group))
+
         if pull_security_groups:
             creation_tasks.append(tasks.BackendMethodTask().si(
                 serialized_tenant, 'pull_tenant_security_groups',
                 runtime_state='pulling tenant security groups',
                 success_runtime_state='online')
             )
+
         # initialize external network if it defined in service settings
         service_settings = tenant.service_project_link.service.settings
         external_network_id = service_settings.options.get('external_network_id')
