@@ -536,3 +536,14 @@ class ErrorStateTransitionTask(StateTransitionTask):
         if isinstance(instance, models.ErrorMessageMixin):
             instance.error_message = self.result.result
             instance.save(update_fields=['error_message'])
+
+
+class ExecutorTask(Task):
+    """ Run executor as a task """
+
+    def run(self, serialized_executor, serialized_instance, *args, **kwargs):
+        self.executor = utils.deserialize_class(serialized_executor)
+        return super(ExecutorTask, self).run(serialized_instance, *args, **kwargs)
+
+    def execute(self, instance, **kwargs):
+        self.executor.execute(instance, async=False, **kwargs)
