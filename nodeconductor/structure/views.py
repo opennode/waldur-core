@@ -1442,13 +1442,13 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_vm_count).usage
+        return self._total_count(models.ResourceMixin.get_vm_models())
 
     def get_apps(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_app_count).usage
+        return self._total_count(models.ResourceMixin.get_app_models())
 
     def get_private_clouds(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_private_cloud_count).usage
+        return self._total_count(models.ResourceMixin.get_private_cloud_models())
 
     def get_users(self):
         return self.get_count('user-list', {
@@ -1459,6 +1459,14 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         return self.get_count('premium-support-contract-list', {
             'project_uuid': self.project_uuid
         })
+
+    def _total_count(self, models):
+        return sum(self._count_model(model) for model in models)
+
+    def _count_model(self, model):
+        qs = model.objects.filter(project=self.project).only('pk')
+        qs = filter_queryset_for_user(qs, self.request.user)
+        return qs.count()
 
 
 class UserCountersView(CounterMixin, viewsets.GenericViewSet):
