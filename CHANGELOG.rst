@@ -7,6 +7,7 @@ Release NEXT
 - Extended events filter to support filtering by user and time frame.
 - Enable filtering resource by category (vms, apps, private_clouds).
 - Support permission, filters and metadata for OpenStack tenants.
+- Added events hook to send them as push notification messages.
 
 Release 0.93.0
 --------------

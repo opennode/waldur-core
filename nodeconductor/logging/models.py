@@ -108,6 +108,52 @@ class WebHook(BaseHook):
             requests.post(self.destination_url, data=event, verify=False)
 
 
+class PushHook(BaseHook):
+
+    class Type:
+        IOS = 1
+        ANDROID = 2
+        CHOICES = ((IOS, 'iOS'), (ANDROID, 'Android'))
+
+    type = models.SmallIntegerField(choices=Type.CHOICES)
+    registration_token = models.CharField(max_length=255, blank=True)
+
+    def process(self, event):
+        """ Send events as push notification via Google Cloud Messaging.
+            Expected settings as follows:
+
+                # https://developers.google.com/mobile/add
+                NODECONDUCTOR['GOOGLE_API'] = {
+                    'Android': {
+                        'project_id': 'nc-android',
+                        'server_key': 'AIzaSyA2_7UaVIxXfKeFvxTjQNZbrzkXG9OTCkg',
+                    },
+                    'iOS': {
+                        'project_id': 'nc-ios',
+                        'server_key': 'AIzaSyA34zlG_y5uHOe2FmcJKwfk2vG-3RW05vk',
+                    }
+                }
+        """
+
+        conf = settings.NODECONDUCTOR.get('GOOGLE_API') or {}
+        keys = conf.get(dict(self.Type.CHOICES)[self.type])
+
+        if not keys or not self.registration_token:
+            return
+
+        endpoint = 'https://gcm-http.googleapis.com/gcm/send'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': 'key=%s' % keys['server_key'],
+        }
+        payload = {
+            'to': self.registration_token,
+            'data': event,
+        }
+
+        requests.post(endpoint, json=payload, headers=headers)
+
+
 class EmailHook(BaseHook):
     email = models.EmailField(max_length=75)
 

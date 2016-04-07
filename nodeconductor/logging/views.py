@@ -325,6 +325,11 @@ class EmailHookViewSet(BaseHookViewSet):
         return super(EmailHookViewSet, self).list(request, *args, **kwargs)
 
 
+class PushHookViewSet(BaseHookViewSet):
+    queryset = models.PushHook.objects.all()
+    serializer_class = serializers.PushHookSerializer
+
+
 class HookSummary(BaseSummaryView):
     def get_urls(self, request):
         return ('webhook-list', 'emailhook-list')
