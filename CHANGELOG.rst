@@ -4,7 +4,8 @@ CHANGELOG
 Release NEXT
 ------------
 
-- Extended events filter to support filtering by user and time frame
+- Extended events filter to support filtering by user and time frame.
+- Support permission, filters and metadata for OpenStack tenants.
 
 Release 0.93.0
 --------------
