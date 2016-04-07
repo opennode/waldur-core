@@ -1380,6 +1380,7 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             "alerts": 12,
             "vms": 1,
             "apps": 0,
+            "private_clouds": 1,
             "services": 1,
             "projects": 1,
             "users": 3
@@ -1397,6 +1398,7 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             'alerts': self.get_alerts(),
             'vms': self.get_vms(),
             'apps': self.get_apps(),
+            'private_clouds': self.get_private_clouds(),
             'projects': self.get_projects(),
             'services': self.get_services(),
             'users': self.customer.get_users().count()
@@ -1411,10 +1413,13 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self._total_count(models.Resource.get_vm_models())
+        return self._total_count(models.ResourceMixin.get_vm_models())
 
     def get_apps(self):
-        return self._total_count(models.Resource.get_app_models())
+        return self._total_count(models.ResourceMixin.get_app_models())
+
+    def get_private_clouds(self):
+        return self._total_count(models.ResourceMixin.get_private_cloud_models())
 
     def get_projects(self):
         return self._count_model(models.Project)
@@ -1442,6 +1447,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             "alerts": 2,
             "apps": 0,
             "vms": 1,
+            "private_clouds": 1,
             "premium_support_contracts": 0,
         }
     """
@@ -1459,6 +1465,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'alerts': self.get_alerts(),
             'vms': self.get_vms(),
             'apps': self.get_apps(),
+            'private_clouds': self.get_private_clouds(),
             'users': self.get_users(),
             'premium_support_contracts': self.get_premium_support_contracts()
         })
@@ -1472,10 +1479,13 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_vm_count).usage
+        return self._total_count(models.ResourceMixin.get_vm_models())
 
     def get_apps(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_app_count).usage
+        return self._total_count(models.ResourceMixin.get_app_models())
+
+    def get_private_clouds(self):
+        return self._total_count(models.ResourceMixin.get_private_cloud_models())
 
     def get_users(self):
         return self.get_count('user-list', {
@@ -1486,6 +1496,14 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         return self.get_count('premium-support-contract-list', {
             'project_uuid': self.project_uuid
         })
+
+    def _total_count(self, models):
+        return sum(self._count_model(model) for model in models)
+
+    def _count_model(self, model):
+        qs = model.objects.filter(project=self.project).only('pk')
+        qs = filter_queryset_for_user(qs, self.request.user)
+        return qs.count()
 
 
 class UserCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -1820,11 +1838,7 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
-class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                              UpdateOnlyByPaidCustomerMixin,
-                                              core_mixins.UserContextMixin,
-                                              viewsets.ModelViewSet)):
-
+class ResourceViewMixin(UpdateOnlyByPaidCustomerMixin):
     class PaidControl:
         customer_path = 'service_project_link__service__customer'
         settings_path = 'service_project_link__service__settings'
@@ -1839,9 +1853,16 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         SlaFilter,
         MonitoringItemFilter,
         filters.TagsFilter,
+        filters.StartTimeFilter
     )
-    filter_class = filters.BaseResourceFilter
     metadata_class = ResourceActionsMetadata
+
+
+class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                              ResourceViewMixin,
+                                              core_mixins.UserContextMixin,
+                                              viewsets.ModelViewSet)):
+    filter_class = filters.BaseResourceFilter
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
@@ -1857,21 +1878,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
                     'Provisioning scheduled. Disabled modifications.')
 
         super(_BaseResourceViewSet, self).initial(request, *args, **kwargs)
-
-    def get_queryset(self):
-        queryset = super(_BaseResourceViewSet, self).get_queryset()
-
-        order = self.request.query_params.get('o', None)
-        if order == 'start_time':
-            queryset = queryset.extra(select={
-                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
-                .order_by('is_null', 'start_time')
-        elif order == '-start_time':
-            queryset = queryset.extra(select={
-                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
-                .order_by('-is_null', '-start_time')
-
-        return queryset
 
     def perform_create(self, serializer):
         service_project_link = serializer.validated_data['service_project_link']
@@ -1939,8 +1945,6 @@ class BaseResourceViewSet(_BaseResourceViewSet):
     def destroy(self, request, resource, uuid=None):
         self.perform_managed_resource_destroy(
             resource, force=resource.state == models.Resource.States.ERRED)
-    destroy.method = 'DELETE'
-    destroy.destructive = True
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.OFFLINE)
