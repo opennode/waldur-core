@@ -31,11 +31,12 @@ class EventFilterBackend(filters.BaseFilterBackend):
 
         - ?event_type=<string> - type of filtered events. Can be list
         - ?search=<string> - text for FTS. FTS fields: 'message', 'customer_abbreviation', 'importance'
-          'project_group_name', 'cloud_account_name', 'project_name'
+          'project_group_name', 'cloud_account_name', 'project_name', 'user_full_name', 'user_native_name'
         - ?scope=<URL> - url of object that is connected to event
         - ?scope_type=<string> - name of scope type of object that is connected to event (Ex.: project, customer...)
         - ?exclude_features=<feature> (can be list) - exclude event from output if
           it's type corresponds to one of listed features
+        - ?user_username=<string> - user's username
         - ?from=<timestamp> - beginning UNIX timestamp
         - ?to=<timestamp> - ending UNIX timestamp
     """
@@ -54,6 +55,9 @@ class EventFilterBackend(filters.BaseFilterBackend):
 
         if 'exclude_extra' in request.query_params:
             must_not_terms['event_type'] = must_not_terms.get('event_type', []) + UPDATE_EVENTS
+
+        if 'user_username' in request.query_params:
+            must_terms['user_username'] = [request.query_params.get('user_username')]
 
         if 'scope' in request.query_params:
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())

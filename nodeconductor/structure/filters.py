@@ -708,6 +708,26 @@ class TagsFilter(BaseFilterBackend):
             return key[len(prefix):]
 
 
+class StartTimeFilter(BaseFilterBackend):
+    """
+    In PostgreSQL NULL values come *last* with ascending sort order.
+    In MySQL NULL values come *first* with ascending sort order.
+    This filter provides unified sorting for both databases.
+    """
+    def filter_queryset(self, request, queryset, view):
+        order = request.query_params.get('o', None)
+        if order == 'start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('is_null', 'start_time')
+        elif order == '-start_time':
+            queryset = queryset.extra(select={
+                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
+                .order_by('-is_null', '-start_time')
+
+        return queryset
+
+
 class BaseServicePropertyFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         name='name',

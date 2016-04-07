@@ -1,6 +1,7 @@
-import time
 import calendar
+import importlib
 import requests
+import time
 
 from collections import OrderedDict
 from datetime import datetime
@@ -138,6 +139,18 @@ def deserialize_instance(serialized_instance):
     model_name, pk = serialized_instance.split(':')
     model = apps.get_model(model_name)
     return model._default_manager.get(pk=pk)
+
+
+def serialize_class(cls):
+    """ Serialize Python class """
+    return '{}:{}'.format(cls.__module__, cls.__name__)
+
+
+def deserialize_class(serilalized_cls):
+    """ Deserialize Python class """
+    module_name, cls_name = serilalized_cls.split(':')
+    module = importlib.import_module(module_name)
+    return getattr(module, cls_name)
 
 
 def clear_url(url):

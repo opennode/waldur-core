@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
+from django.utils import six
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
 from rest_framework.reverse import reverse
@@ -994,14 +995,15 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return response.Response(results)
 
 
-class TenantViewSet(StateExecutorViewSet):
+class TenantViewSet(six.with_metaclass(structure_views.ResourceViewMetaclass,
+                                       structure_views.ResourceViewMixin,
+                                       StateExecutorViewSet)):
     queryset = models.Tenant.objects.all()
     serializer_class = serializers.TenantSerializer
-    lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     create_executor = executors.TenantCreateExecutor
     update_executor = executors.TenantUpdateExecutor
     delete_executor = executors.TenantDeleteExecutor
+    filter_class = structure_filters.BaseResourceStateFilter
 
     @decorators.detail_route(methods=['post'])
     def allocate_floating_ip(self, request, uuid=None):

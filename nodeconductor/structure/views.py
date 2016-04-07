@@ -1205,11 +1205,30 @@ class ResourceViewSet(mixins.ListModelMixin,
     filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items()
+                           if k != 'IaaS.Instance'}
+        resource_models = self._filter_by_category(resource_models)
+        resource_models = self._filter_by_types(resource_models)
+
+        return managers.SummaryQuerySet(resource_models.values())
+
+    def _filter_by_types(self, resource_models):
         types = self.request.query_params.getlist('resource_type', None)
-        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items() if k != 'IaaS.Instance'}
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
-        return managers.SummaryQuerySet(resource_models.values())
+        return resource_models
+
+    def _filter_by_category(self, resource_models):
+        choices = {
+            'apps': models.ResourceMixin.get_app_models(),
+            'vms': models.ResourceMixin.get_vm_models(),
+            'private_clouds': models.ResourceMixin.get_private_cloud_models()
+        }
+        category = self.request.query_params.get('resource_category')
+        category_models = choices.get(category)
+        if category_models:
+            resource_models = {k: v for k, v in resource_models.items() if v in category_models}
+        return resource_models
 
     def list(self, request, *args, **kwargs):
         """
@@ -1217,8 +1236,24 @@ class ResourceViewSet(mixins.ListModelMixin,
         */api/<resource_url>/* as an authenticated user.
 
         It is possible to filter and order by resource-specific fields, but this filters will be applied only to
-        resources that support such filtering. For example it is possible to sort resource by ?o=ram, but sugarcrm crms
+        resources that support such filtering. For example it is possible to sort resource by ?o=ram, but SugarCRM crms
         will ignore this ordering, because they do not support such option.
+
+        Filter resources by type or category
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        There are two query argument to select resources by their type.
+
+        - Specify explicitly list of resource types, for example:
+
+          /api/<resource_endpoint>/?resource_type=DigitalOcean.Droplet&resource_type=OpenStack.Instance
+
+        - Specify category, one of vms, apps or private_clouds, for example:
+
+          /api/<resource_endpoint>/?category=vms
+
+        Filtering by monitoring fields
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
         Resources may have SLA attached to it. Example rendering of SLA:
 
@@ -1269,6 +1304,8 @@ class ResourceViewSet(mixins.ListModelMixin,
 
           /api/<resource_endpoint>/?o=monitoring__installation_state
 
+        Filtering by tags
+        ^^^^^^^^^^^^^^^^^
 
         Resource may have tags attached to it. Example of tags rendering:
 
@@ -1343,38 +1380,61 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             "alerts": 12,
             "vms": 1,
             "apps": 0,
+            "private_clouds": 1,
             "services": 1,
             "projects": 1,
             "users": 3
         }
     """
-    queryset = models.Customer.objects.all()
     lookup_field = 'uuid'
+
+    def get_queryset(self):
+        return filter_queryset_for_user(models.Customer.objects.all().only('pk', 'uuid'), self.request.user)
 
     def list(self, request, uuid):
         self.customer = self.get_object()
-        self.customer_uuid = self.customer.uuid.hex
-        self.exclude_features = request.query_params.getlist('exclude_features')
-
-        quotas = {quota['name']: quota['usage']
-                  for quota in self.customer.quotas.values('name', 'usage')}
 
         return Response({
             'alerts': self.get_alerts(),
-            'vms': quotas.get(models.Customer.Quotas.nc_vm_count.name, 0),
-            'apps': quotas.get(models.Customer.Quotas.nc_app_count.name, 0),
-            'projects': quotas.get(models.Customer.Quotas.nc_project_count.name, 0),
-            'services': quotas.get(models.Customer.Quotas.nc_service_count.name, 0),
-            'users': quotas.get(models.Customer.Quotas.nc_user_count.name, 0)
+            'vms': self.get_vms(),
+            'apps': self.get_apps(),
+            'private_clouds': self.get_private_clouds(),
+            'projects': self.get_projects(),
+            'services': self.get_services(),
+            'users': self.customer.get_users().count()
         })
 
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'customer',
-            'uuid': self.customer_uuid,
-            'exclude_features': self.exclude_features,
+            'uuid': self.customer.uuid.hex,
+            'exclude_features': self.request.query_params.getlist('exclude_features'),
             'opened': True
         })
+
+    def get_vms(self):
+        return self._total_count(models.ResourceMixin.get_vm_models())
+
+    def get_apps(self):
+        return self._total_count(models.ResourceMixin.get_app_models())
+
+    def get_private_clouds(self):
+        return self._total_count(models.ResourceMixin.get_private_cloud_models())
+
+    def get_projects(self):
+        return self._count_model(models.Project)
+
+    def get_services(self):
+        models = [item['service'] for item in SupportedServices.get_service_models().values()]
+        return self._total_count(models)
+
+    def _total_count(self, models):
+        return sum(self._count_model(model) for model in models)
+
+    def _count_model(self, model):
+        qs = model.objects.filter(customer=self.customer).only('pk')
+        qs = filter_queryset_for_user(qs, self.request.user)
+        return qs.count()
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -1387,11 +1447,14 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             "alerts": 2,
             "apps": 0,
             "vms": 1,
+            "private_clouds": 1,
             "premium_support_contracts": 0,
         }
     """
-    queryset = models.Project.objects.all()
     lookup_field = 'uuid'
+
+    def get_queryset(self):
+        return filter_queryset_for_user(models.Project.objects.all().only('pk', 'uuid'), self.request.user)
 
     def list(self, request, uuid):
         self.project = self.get_object()
@@ -1402,6 +1465,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'alerts': self.get_alerts(),
             'vms': self.get_vms(),
             'apps': self.get_apps(),
+            'private_clouds': self.get_private_clouds(),
             'users': self.get_users(),
             'premium_support_contracts': self.get_premium_support_contracts()
         })
@@ -1415,10 +1479,13 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_vm_count).usage
+        return self._total_count(models.ResourceMixin.get_vm_models())
 
     def get_apps(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_app_count).usage
+        return self._total_count(models.ResourceMixin.get_app_models())
+
+    def get_private_clouds(self):
+        return self._total_count(models.ResourceMixin.get_private_cloud_models())
 
     def get_users(self):
         return self.get_count('user-list', {
@@ -1429,6 +1496,14 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         return self.get_count('premium-support-contract-list', {
             'project_uuid': self.project_uuid
         })
+
+    def _total_count(self, models):
+        return sum(self._count_model(model) for model in models)
+
+    def _count_model(self, model):
+        qs = model.objects.filter(project=self.project).only('pk')
+        qs = filter_queryset_for_user(qs, self.request.user)
+        return qs.count()
 
 
 class UserCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -1763,11 +1838,7 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
-class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                              UpdateOnlyByPaidCustomerMixin,
-                                              core_mixins.UserContextMixin,
-                                              viewsets.ModelViewSet)):
-
+class ResourceViewMixin(UpdateOnlyByPaidCustomerMixin):
     class PaidControl:
         customer_path = 'service_project_link__service__customer'
         settings_path = 'service_project_link__service__settings'
@@ -1782,9 +1853,16 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         SlaFilter,
         MonitoringItemFilter,
         filters.TagsFilter,
+        filters.StartTimeFilter
     )
-    filter_class = filters.BaseResourceFilter
     metadata_class = ResourceActionsMetadata
+
+
+class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                              ResourceViewMixin,
+                                              core_mixins.UserContextMixin,
+                                              viewsets.ModelViewSet)):
+    filter_class = filters.BaseResourceFilter
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
@@ -1800,21 +1878,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
                     'Provisioning scheduled. Disabled modifications.')
 
         super(_BaseResourceViewSet, self).initial(request, *args, **kwargs)
-
-    def get_queryset(self):
-        queryset = super(_BaseResourceViewSet, self).get_queryset()
-
-        order = self.request.query_params.get('o', None)
-        if order == 'start_time':
-            queryset = queryset.extra(select={
-                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
-                .order_by('is_null', 'start_time')
-        elif order == '-start_time':
-            queryset = queryset.extra(select={
-                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
-                .order_by('-is_null', '-start_time')
-
-        return queryset
 
     def perform_create(self, serializer):
         service_project_link = serializer.validated_data['service_project_link']
@@ -1882,8 +1945,6 @@ class BaseResourceViewSet(_BaseResourceViewSet):
     def destroy(self, request, resource, uuid=None):
         self.perform_managed_resource_destroy(
             resource, force=resource.state == models.Resource.States.ERRED)
-    destroy.method = 'DELETE'
-    destroy.destructive = True
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.OFFLINE)

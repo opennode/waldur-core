@@ -724,7 +724,9 @@ class OpenStackBackend(ServiceBackend):
 
                 # deleting extra security groups
                 extra_groups.delete()
-                logger.debug('Deleted stale security groups in database')
+                if extra_groups:
+                    logger.debug('Deleted stale security group: %s.',
+                                 ' ,'.join('%s (PK: %s)' % (sg.name, sg.pk) for sg in extra_groups))
 
                 # synchronizing unsynchronized security groups
                 for backend_group in unsynchronized_groups:
@@ -734,7 +736,8 @@ class OpenStackBackend(ServiceBackend):
                         nc_security_group.state = StateMixin.States.OK
                         nc_security_group.save()
                     self.pull_security_group_rules(nc_security_group)
-                logger.debug('Updated existing security groups in database')
+                    logger.debug('Updated existing security group %s (PK: %s).',
+                                 nc_security_group.name, nc_security_group.pk)
 
                 # creating non-existed security groups
                 for backend_group in nonexistent_groups:
@@ -744,7 +747,8 @@ class OpenStackBackend(ServiceBackend):
                         state=StateMixin.States.OK
                     )
                     self.pull_security_group_rules(nc_security_group)
-                    logger.debug('Created new security group %s in database', nc_security_group.uuid)
+                    logger.debug('Created new security group %s (PK: %s).',
+                                 nc_security_group.name, nc_security_group.pk)
 
         except Exception as e:
             event_logger.service_project_link.warning(
