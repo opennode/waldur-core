@@ -187,7 +187,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         if user.is_staff:
             return {'user_uuid': cls.objects.values_list('uuid', flat=True)}
         else:
-            return {'user_uuid': [user.uuid.hex]}
+            return {'user_uuid': [user.uuid]}
 
     def clean(self):
         # User email has to be unique or empty
