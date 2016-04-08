@@ -329,7 +329,32 @@ class PushHookViewSet(BaseHookViewSet):
     queryset = models.PushHook.objects.all()
     serializer_class = serializers.PushHookSerializer
 
+    def list(self, request, *args, **kwargs):
+        """
+        To create new push hook issue **POST** against */api/hooks-push/* as an authenticated user.
+
+        Example of a request:
+
+        .. code-block:: javascript
+
+            {
+                "events": [
+                    "resource_start_succeeded"
+                ],
+                "type": "Android"
+            }
+
+        You may temporarily disable hook without deleting it by issuing following **PATCH** request against hook URL:
+
+        .. code-block:: javascript
+
+            {
+                "is_active": "false"
+            }
+        """
+        return super(PushHookViewSet, self).list(request, *args, **kwargs)
+
 
 class HookSummary(BaseSummaryView):
     def get_urls(self, request):
-        return ('webhook-list', 'emailhook-list')
+        return ('webhook-list', 'emailhook-list', 'pushhook-list')

@@ -35,4 +35,12 @@ class Migration(migrations.Migration):
                 'abstract': False,
             },
         ),
+        migrations.CreateModel(
+            name='SystemNotification',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('event_types', jsonfield.fields.JSONField(verbose_name='List of event types')),
+                ('hook_content_type', models.OneToOneField(related_name='+', to='contenttypes.ContentType')),
+            ],
+        ),
     ]

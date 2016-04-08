@@ -81,6 +81,18 @@ class BaseHook(UuidMixin, TimeStampedModel):
     # This timestamp would be updated periodically when event is sent via this hook
     last_published = models.DateTimeField(default=timezone.now)
 
+    @property
+    def all_event_types(self):
+        self_types = set(self.event_types)
+        try:
+            hook_ct = ct_models.ContentType.objects.get_for_model(self)
+            base_types = SystemNotification.objects.get(hook_content_type=hook_ct)
+        except SystemNotification.DoesNotExist:
+            return self_types
+        else:
+            return self_types | set(base_types.event_types)
+        return self_types
+
     @classmethod
     def get_active_hooks(cls):
         return [obj for hook in cls.__subclasses__() for obj in hook.objects.filter(is_active=True)]
@@ -163,3 +175,12 @@ class EmailHook(BaseHook):
         text_message = event['message']
         html_message = render_to_string('logging/email.html', {'events': [event]})
         send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [self.email], html_message=html_message)
+
+
+class SystemNotification(models.Model):
+    event_types = JSONField('List of event types')
+    hook_content_type = models.OneToOneField(
+        ct_models.ContentType, related_name='+',
+        limit_choices_to=lambda: {'id__in': [
+            ct.id for ct in ct_models.ContentType.objects.get_for_models(
+                *BaseHook.__subclasses__()).values()]})
