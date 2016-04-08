@@ -369,7 +369,8 @@ class EventLoggerRegistry(BaseLoggerRegistry):
         from nodeconductor.logging.utils import get_loggable_models
         permitted_objects_uuids = {}
         for model in get_loggable_models():
-            permitted_objects_uuids.update(model.get_permitted_objects_uuids(user))
+            for field, uuids in model.get_permitted_objects_uuids(user).items():
+                permitted_objects_uuids[field] = [uuid.hex for uuid in uuids]
         return permitted_objects_uuids
 
 
