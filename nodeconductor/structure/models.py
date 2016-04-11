@@ -1154,6 +1154,12 @@ class ResourceMixin(MonitoringModelMixin,
         context['resource_type'] = SupportedServices.get_name_for_model(self)
         return context
 
+    def filter_by_logged_object(self):
+        return {
+            'resource_uuid': self.uuid.hex,
+            'resource_type': SupportedServices.get_name_for_model(self)
+        }
+
     def get_parents(self):
         return [self.service_project_link]
 

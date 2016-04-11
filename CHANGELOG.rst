@@ -8,6 +8,7 @@ Release NEXT
 - Enable filtering resource by category (vms, apps, private_clouds).
 - Support permission, filters and metadata for OpenStack tenants.
 - Emit resource state events for all resource models.
+- Fix events filtering if resource URL is specified as scope.
 
 Release 0.93.0
 --------------
