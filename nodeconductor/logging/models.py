@@ -91,7 +91,6 @@ class BaseHook(UuidMixin, TimeStampedModel):
             return self_types
         else:
             return self_types | set(base_types.event_types)
-        return self_types
 
     @classmethod
     def get_active_hooks(cls):
