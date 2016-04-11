@@ -2,7 +2,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField
-from nodeconductor.core.fields import MappedChoiceField, JsonField
+from nodeconductor.core.fields import MappedChoiceField, NaturalChoiceField, JsonField
 from nodeconductor.logging import models, utils, loggers
 
 
@@ -77,11 +77,7 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class WebHookSerializer(BaseHookSerializer):
-    content_type = MappedChoiceField(
-        choices=[(v, v) for k, v in models.WebHook.ContentTypeChoices.CHOICES],
-        choice_mappings={v: k for k, v in models.WebHook.ContentTypeChoices.CHOICES},
-        required=False
-    )
+    content_type = NaturalChoiceField(models.WebHook.ContentTypeChoices.CHOICES, required=False)
 
     class Meta(BaseHookSerializer.Meta):
         model = models.WebHook
@@ -89,6 +85,17 @@ class WebHookSerializer(BaseHookSerializer):
 
     def get_hook_type(self, hook):
         return 'webhook'
+
+
+class PushHookSerializer(BaseHookSerializer):
+    type = NaturalChoiceField(models.PushHook.Type.CHOICES)
+
+    class Meta(BaseHookSerializer.Meta):
+        model = models.PushHook
+        fields = BaseHookSerializer.Meta.fields + ('type',)
+
+    def get_hook_type(self, hook):
+        return 'pushhook'
 
 
 class EmailHookSerializer(BaseHookSerializer):
