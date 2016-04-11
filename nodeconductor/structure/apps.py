@@ -164,6 +164,13 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
+            fsm_signals.post_transition.connect(
+                handlers.log_resource_action,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.log_resource_action_{}_{}'.format(
+                    model.__name__, index),
+            )
+
         for index, model in enumerate(Resource.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
                 fsm_signals.post_transition.connect(

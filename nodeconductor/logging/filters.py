@@ -63,7 +63,10 @@ class EventFilterBackend(filters.BaseFilterBackend):
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
             field._context = {'request': request}
             obj = field.to_internal_value(request.query_params['scope'])
-            must_terms[_convert(obj.__class__.__name__ + '_uuid')] = [obj.uuid.hex]
+            for key, val in obj.filter_by_logged_object().items():
+                # Use "{field_name}.raw" to get the non-analyzed version of the value
+                # https://github.com/elastic/kibana/issues/364
+                must_terms[_convert(key) + '.raw'] = [val]
         elif 'scope_type' in request.query_params:
             choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
             try:
