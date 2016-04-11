@@ -1801,27 +1801,15 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
-                event_logger.resource.error(
-                    'Virtual machine {resource_name} start has failed.',
-                    event_type='resource_start_failed',
-                    event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to start' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to start instance %s', instance.uuid)
-            event_logger.resource.error(
-                'Virtual machine {resource_name} start has failed.',
-                event_type='resource_start_failed',
-                event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
             instance.start_time = timezone.now()
             instance.save(update_fields=['start_time'])
 
             logger.info('Successfully started instance %s', instance.uuid)
-            event_logger.resource.info(
-                'Virtual machine {resource_name} has been started.',
-                event_type='resource_start_succeeded',
-                event_context={'resource': instance})
 
     def stop_instance(self, instance):
         nova = self.nova_client
@@ -1838,26 +1826,14 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
-                event_logger.resource.error(
-                    'Virtual machine {resource_name} stop has failed.',
-                    event_type='resource_stop_failed',
-                    event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to stop instance %s', instance.uuid)
-            event_logger.resource.error(
-                'Virtual machine {resource_name} stop has failed.',
-                event_type='resource_stop_failed',
-                event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
             instance.start_time = None
             instance.save(update_fields=['start_time'])
             logger.info('Successfully stopped instance %s', instance.uuid)
-            event_logger.resource.info(
-                'Virtual machine {resource_name} has been stopped.',
-                event_type='resource_stop_succeeded',
-                event_context={'resource': instance})
 
     def restart_instance(self, instance):
         nova = self.nova_client
@@ -1867,24 +1843,12 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE', retries=80):
                 logger.error('Failed to restart instance %s', instance.uuid)
-                event_logger.resource.error(
-                    'Virtual machine {resource_name} restart has failed.',
-                    event_type='resource_restart_failed',
-                    event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to restart' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to restart instance %s', instance.uuid)
-            event_logger.resource.error(
-                'Virtual machine {resource_name} restart has failed.',
-                event_type='resource_restart_failed',
-                event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info('Successfully restarted instance %s', instance.uuid)
-            event_logger.resource.info(
-                'Virtual machine {resource_name} has been restarted.',
-                event_type='resource_restart_succeeded',
-                event_context={'resource': instance})
 
     def delete_instance(self, instance):
         nova = self.nova_client
