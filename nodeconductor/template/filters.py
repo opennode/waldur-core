@@ -80,7 +80,7 @@ class TemplateGroupFilter(django_filters.FilterSet):
         queryset=taggit.models.Tag.objects.all(),
     )
     templates_rtag = django_filters.ModelMultipleChoiceFilter(
-        name='tags__name',
+        name='templates__tags__name',
         to_field_name='name',
         queryset=taggit.models.Tag.objects.all(),
         conjoined=True,

@@ -27,10 +27,10 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
          - tag=<template group tag>, can be list. If template group has at least one of tags - it will be returned.
          - rtag=<template group tag>, can be list. If template group has all rtags - it will be returned.
          - name=<template group name>.
-         - template_tag=<template tag>, filter templates groups that contain template with given tag. Can be list.
-         - template_rtag=<template tag>, the same as rtag but for templates. Can be list.
-         - template_tag__license-os=centos7 - filter by template tag with particular prefix.
-                                              (deprecated, use template_rtag instead).
+         - templates_tag=<template tag>, filter templates groups that contain template with given tag. Can be list.
+         - templates_rtag=<template tag>, the same as rtag but for templates. Can be list.
+         - templates_tag__license-os=centos7 - filter by template tag with particular prefix.
+                                              (deprecated, use templates_rtag instead).
          - project=<project_url> filter all template groups that could be provisioned with given project.
          - project_uuid=<project_uuid> filter all template groups that could be provisioned with given project.
 
