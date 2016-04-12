@@ -607,6 +607,12 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
         lookup_type='in',
         queryset=taggit.models.Tag.objects.all(),
     )
+    rtag = django_filters.ModelMultipleChoiceFilter(
+        name='tags__name',
+        to_field_name='name',
+        queryset=taggit.models.Tag.objects.all(),
+        conjoined=True,
+    )
 
     strict = False
 
@@ -622,7 +628,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             # service
             'service_uuid', 'service_name',
             # resource
-            'name', 'description', 'state', 'uuid', 'tag',
+            'name', 'description', 'state', 'uuid', 'tag', 'rtag',
         )
         order_by = [
             'name',

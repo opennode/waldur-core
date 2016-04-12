@@ -1318,7 +1318,8 @@ class ResourceViewSet(mixins.ListModelMixin,
 
         Tags filtering:
 
-         - ?tag=IaaS - filter by full tag name. Can be list.
+         - ?tag=IaaS - filter by full tag name, using method OR. Can be list.
+         - ?rtag=os-family:linux - filter by full tag name, using AND method. Can be list.
          - ?tag__license-os=centos7 - filter by tags with particular prefix.
 
         Tags ordering:

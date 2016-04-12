@@ -251,7 +251,7 @@ class BackupSchedule(core_models.UuidMixin,
 
     @classmethod
     def get_url_name(cls):
-        return 'openstack-backup-schedule'
+        return 'openstack-schedule'
 
     def get_backend(self):
         return BackupScheduleBackend(self)
