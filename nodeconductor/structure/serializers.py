@@ -831,7 +831,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
-            'dummy', 'quotas',
+            'quotas',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
@@ -918,7 +918,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     password = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     token = serializers.CharField(allow_null=True, write_only=True, required=False)
     certificate = serializers.FileField(allow_null=True, write_only=True, required=False)
-    dummy = serializers.BooleanField(write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
     shared = serializers.ReadOnlyField(source='settings.shared')
@@ -933,13 +932,13 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'url',
             'name', 'projects',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'settings', 'settings_uuid', 'dummy',
+            'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
             'available_for_all'
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
-        protected_fields = ('customer', 'settings', 'dummy') + settings_fields
+        protected_fields = ('customer', 'settings') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -1031,7 +1030,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
                 extra_fields += tuple(self.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
 
-            settings_fields += 'dummy',
             if create_settings:
                 args = {f: attrs.get(f) for f in settings_fields if f in attrs}
                 if extra_fields:
