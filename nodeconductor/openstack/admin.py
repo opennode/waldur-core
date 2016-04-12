@@ -55,7 +55,7 @@ class InstanceAdmin(structure_admin.VirtualMachineAdmin):
 
 class TenantAdmin(structure_admin.ResourceAdmin):
 
-    actions = ('detect_external_networks', 'allocate_floating_ip', 'pull_security_groups',
+    actions = ('pull', 'detect_external_networks', 'allocate_floating_ip', 'pull_security_groups',
                'pull_floating_ips', 'pull_quotas')
 
     class OKTenantAction(ExecutorAdminAction):
@@ -99,6 +99,17 @@ class TenantAdmin(structure_admin.ResourceAdmin):
         short_description = 'Pull quotas'
 
     pull_quotas = PullQuotas()
+
+    class Pull(ExecutorAdminAction):
+        executor = executors.TenantPullExecutor
+        short_description = 'Pull'
+
+        def validate(self, tenant):
+            if tenant.state not in (Tenant.States.OK, Tenant.States.ERRED):
+                raise ValidationError('Tenant has to be OK or erred.')
+
+    pull = Pull()
+
 
 admin.site.register(Instance, InstanceAdmin)
 admin.site.register(Tenant, TenantAdmin)

@@ -393,7 +393,7 @@ class StateMixin(ErrorMessageMixin):
     def begin_deleting(self):
         pass
 
-    @transition(field=state, source=States.OK, target=States.UPDATE_SCHEDULED)
+    @transition(field=state, source=[States.OK, States.ERRED], target=States.UPDATE_SCHEDULED)
     def schedule_updating(self):
         pass
 
@@ -408,6 +408,10 @@ class StateMixin(ErrorMessageMixin):
 
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
+        pass
+
+    @transition(field=state, source=States.ERRED, target=States.OK)
+    def recover(self):
         pass
 
 

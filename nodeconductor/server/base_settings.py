@@ -244,6 +244,12 @@ CELERYBEAT_SCHEDULE = {
     },
 
     'openstack-pull-tenants': {
+        'task': 'nodeconductor.openstack.pull_tenants',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
+    'openstack-pull-tenants-properties': {
         'task': 'nodeconductor.openstack.pull_tenants_properties',
         'schedule': timedelta(minutes=30),
         'args': (),

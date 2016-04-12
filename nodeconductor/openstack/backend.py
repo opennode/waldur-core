@@ -854,6 +854,20 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(OpenStackBackendError, e)
 
     @log_backend_action()
+    def pull_tenant(self, tenant):
+        keystone = self.keystone_admin_client
+        if not tenant.backend_id:
+            raise OpenStackBackendError('Cannot pull tenant without backend_id')
+        try:
+            backend_tenant = keystone.tenants.get(tenant.backend_id)
+        except keystone_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
+        else:
+            tenant.name = backend_tenant.name
+            tenant.description = backend_tenant.description
+            tenant.save()
+
+    @log_backend_action()
     def add_admin_user_to_tenant(self, tenant):
         """ Add user from openstack settings to new tenant """
         keystone = self.keystone_admin_client
