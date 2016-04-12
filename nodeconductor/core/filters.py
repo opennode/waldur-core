@@ -54,25 +54,26 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
 
     def filter_queryset(self, request, queryset, view):
         filter_class = self.get_filter_class(view, queryset)
-
         if filter_class:
-            # XXX: The proper way would be to redefine FilterSetOptions,
-            # but it's too much of a boilerplate
-            mapping = getattr(filter_class.Meta, 'order_by_mapping', None)
-            order_by_field = getattr(filter_class, 'order_by_field')
-
-            if mapping:
-                transform = lambda o: self._transform_ordering(mapping, o)
-
-                params = request.query_params.copy()
-                ordering = map(transform, params.getlist(order_by_field))
-                params.setlist(order_by_field, ordering)
-            else:
-                params = request.query_params
-            # pass request as parameter to filter class if it expects such argument
+            params = self.prepare_query_params(request, filter_class)
             return filter_class(params, queryset=queryset).qs
-
         return queryset
+
+    def prepare_query_params(self, request, filter_class):
+        # XXX: The proper way would be to redefine FilterSetOptions,
+        # but it's too much of a boilerplate
+        mapping = getattr(filter_class.Meta, 'order_by_mapping', None)
+        order_by_field = getattr(filter_class, 'order_by_field')
+
+        if mapping:
+            transform = lambda o: self._transform_ordering(mapping, o)
+
+            params = request.query_params.copy()
+            ordering = map(transform, params.getlist(order_by_field))
+            params.setlist(order_by_field, ordering)
+        else:
+            params = request.query_params
+        return params
 
     # noinspection PyMethodMayBeStatic
     def _transform_ordering(self, mapping, ordering):
