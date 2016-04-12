@@ -173,6 +173,15 @@ class TenantPushQuotasExecutor(executors.ActionExecutor):
             success_runtime_state='online')
 
 
+class TenantPullExecutor(executors.ActionExecutor):
+
+    @classmethod
+    def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
+        return tasks.BackendMethodTask().si(
+            serialized_tenant, 'pull_tenant',
+            state_transition='begin_updating')
+
+
 class TenantPullSecurityGroupsExecutor(executors.ActionExecutor):
 
     @classmethod
