@@ -14,6 +14,7 @@ Release NEXT
 - Fix ordering for /resources endpoint.
 - Implement pull operation for OpenStack tenant.
 - Provide filtering by required tags for resources and template groups endpoints.
+- Created event type for project name update.
 
 Release 0.93.0
 --------------
