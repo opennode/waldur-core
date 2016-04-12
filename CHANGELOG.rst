@@ -11,6 +11,7 @@ Release NEXT
 - Enable staff to define mandatory notifications.
 - Emit resource state events for all resource models.
 - Fix events filtering if resource URL is specified as scope.
+- Fix ordering for /resources endpoint.
 - Implement pull operation for OpenStack tenant.
 
 Release 0.93.0

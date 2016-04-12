@@ -783,10 +783,16 @@ class AggregateFilter(BaseExternalFilter):
 ExternalAlertFilterBackend.register(AggregateFilter())
 
 
-class ResourceSummaryFilterBackend(BaseFilterBackend):
-    """ Filter each resource queryset using its own filter """
+class ResourceSummaryFilterBackend(core_filters.DjangoMappingFilterBackend):
+    """ Filter and order SummaryQuerySet of resources """
 
     def filter_queryset(self, request, queryset, view):
+        queryset = self.filter(request, queryset, view)
+        queryset = self.order(request, queryset, view)
+        return queryset
+
+    def filter(self, request, queryset, view):
+        """ Filter each resource separately using its own filter """
         summary_queryset = queryset
         filtered_querysets = []
         for resource_queryset in summary_queryset.querysets:
@@ -799,3 +805,11 @@ class ResourceSummaryFilterBackend(BaseFilterBackend):
 
         summary_queryset.querysets = filtered_querysets
         return summary_queryset
+
+    def order(self, request, queryset, view):
+        """ Order all resources together using BaseResourceFilter """
+
+        ordering = self.get_valid_ordering(request, BaseResourceFilter)
+        if ordering:
+            queryset = queryset.order_by(ordering)
+        return queryset
