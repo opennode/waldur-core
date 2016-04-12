@@ -21,7 +21,7 @@ def process_event(event):
 
 def check_event(event, hook):
     # Check that event matches with hook
-    if event['type'] not in hook.event_types:
+    if event['type'] not in hook.all_event_types:
         return False
     for key, uuids in event_logger.get_permitted_objects_uuids(hook.user).items():
         if key in event['context'] and event['context'][key] in uuids:
