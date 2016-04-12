@@ -381,6 +381,53 @@ def log_resource_imported(sender, instance, **kwargs):
         event_context={'resource': instance})
 
 
+def log_resource_action(sender, instance, name, source, target, **kwargs):
+    if source == Resource.States.PROVISIONING:
+        if target == Resource.States.ONLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been created.',
+                event_type='resource_creation_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} creation has failed.',
+                event_type='resource_creation_failed',
+                event_context={'resource': instance})
+    elif source == Resource.States.STARTING:
+        if target == Resource.States.ONLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been started.',
+                event_type='resource_start_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} start has failed.',
+                event_type='resource_start_failed',
+                event_context={'resource': instance})
+    elif source == Resource.States.STOPPING:
+        if target == Resource.States.OFFLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been stopped.',
+                event_type='resource_stop_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} stop has failed.',
+                event_type='resource_stop_failed',
+                event_context={'resource': instance})
+    elif source == Resource.States.RESTARTING:
+        if target == Resource.States.ONLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been restarted.',
+                event_type='resource_restart_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} restart has failed.',
+                event_type='resource_restart_failed',
+                event_context={'resource': instance})
+
+
 def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
     # Check if geolocation is enabled
     if not settings.NODECONDUCTOR.get('ENABLE_GEOIP', True):

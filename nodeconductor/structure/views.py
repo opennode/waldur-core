@@ -32,7 +32,6 @@ from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView, StateExecutorViewSet
 from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
 from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
@@ -1202,7 +1201,6 @@ class ResourceViewSet(mixins.ListModelMixin,
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
-    filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
         resource_models = {k: v for k, v in SupportedServices.get_resource_models().items()

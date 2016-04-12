@@ -538,6 +538,16 @@ class ErrorStateTransitionTask(StateTransitionTask):
             instance.save(update_fields=['error_message'])
 
 
+class RecoverStateTransitionTask(StateTransitionTask):
+    """ Set instance as OK and remove error message """
+
+    def execute(self, instance):
+        self.state_transition(instance, 'recover')
+        if isinstance(instance, models.ErrorMessageMixin):
+            instance.error_message = ''
+            instance.save(update_fields=['error_message'])
+
+
 class ExecutorTask(Task):
     """ Run executor as a task """
 
