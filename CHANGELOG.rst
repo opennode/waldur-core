@@ -13,6 +13,7 @@ Release NEXT
 - Fix events filtering if resource URL is specified as scope.
 - Fix ordering for /resources endpoint.
 - Implement pull operation for OpenStack tenant.
+- Provide filtering by required tags for resources and template groups endpoints.
 
 Release 0.93.0
 --------------
