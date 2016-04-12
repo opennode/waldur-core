@@ -221,7 +221,14 @@ class SummaryQuerySet(object):
                 return self.attr == other.attr
 
             def __le__(self, other):
-                return self.attr < other.attr if not self.reverse else self.attr >= other.attr
+                # In MySQL NULL values come *first* with ascending sort order.
+                # We use the same behaviour.
+                if self.attr is None:
+                    return not self.reverse
+                elif other.attr is None:
+                    return self.reverse
+                else:
+                    return self.attr < other.attr if not self.reverse else self.attr >= other.attr
 
         reverse = compared_attr.startswith('-')
         if reverse:

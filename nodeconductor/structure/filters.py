@@ -808,8 +808,8 @@ class ResourceSummaryFilterBackend(core_filters.DjangoMappingFilterBackend):
 
     def order(self, request, queryset, view):
         """ Order all resources together using BaseResourceFilter """
-        params = self.prepare_query_params(request, BaseResourceFilter)
-        order_by_value = params.get(BaseResourceFilter.order_by_field)
-        if order_by_value:
-            queryset = queryset.order_by(order_by_value)
+
+        ordering = self.get_valid_ordering(request, BaseResourceFilter)
+        if ordering:
+            queryset = queryset.order_by(ordering)
         return queryset
