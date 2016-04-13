@@ -2,6 +2,7 @@ from django.conf.urls import patterns, url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.core.exceptions import ValidationError
 from django.db import models as django_models
 from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, RadioSelect
 from django.http import HttpResponseRedirect
@@ -9,11 +10,11 @@ from django.utils import six
 from django.utils.translation import ungettext
 from django.shortcuts import render
 
-from nodeconductor.core.admin import get_admin_url
+from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
 from nodeconductor.core.models import SynchronizationStates, User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices
+from nodeconductor.structure import models, SupportedServices, executors
 
 
 class ChangeReadonlyMixin(object):
@@ -262,7 +263,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
     list_filter = (ServiceTypeFilter, 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
-    actions = ['sync', 'recover', 'create_spls_and_services']
+    actions = ['pull', 'create_spls_and_services']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
@@ -322,43 +323,16 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
         return render(request, 'structure/service_settings_entities.html', {'projects': projects.values()})
 
-    def sync(self, request, queryset):
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
-        tasks_scheduled = queryset.count()
+    class Pull(ExecutorAdminAction):
+        executor = executors.ServiceSettingsPullExecutor
+        short_description = 'Pull'
 
-        send_task('structure', 'sync_service_settings')(service_uuids)
+        def validate(self, tenant):
+            States = models.ServiceSettings.States
+            if tenant.state not in (States.OK, States.ERRED):
+                raise ValidationError('Service settings has to be OK or erred.')
 
-        message = ungettext(
-            'One service settings record scheduled for sync',
-            '%(tasks_scheduled)d service settings records scheduled for sync',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    sync.short_description = "Sync selected service settings with backend"
-
-    def recover(self, request, queryset):
-        selected_settings = queryset.count()
-        queryset = queryset.filter(state=SynchronizationStates.ERRED)
-        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
-        send_task('structure', 'recover_service_settings')(service_uuids)
-
-        tasks_scheduled = queryset.count()
-        if selected_settings != tasks_scheduled:
-            message = 'Only erred service settings can be recovered'
-            self.message_user(request, message, level=messages.WARNING)
-
-        message = ungettext(
-            'One service settings record scheduled for recover',
-            '%(tasks_scheduled)d service settings records scheduled for recover',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    recover.short_description = "Recover selected service settings"
+    pull = Pull()
 
     def create_spls_and_services(self, request, queryset):
         selected_settings = queryset.count()
@@ -380,6 +354,12 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         self.message_user(request, message)
 
     create_spls_and_services.short_description = "Create SPLs and services for selected service settings"
+
+    def save_model(self, request, obj, form, change):
+        created = obj.pk is None
+        obj.save()
+        if created:
+            executors.ServiceSettingsCreateExecutor.execute(obj)
 
 
 class ServiceAdmin(admin.ModelAdmin):

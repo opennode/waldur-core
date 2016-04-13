@@ -259,6 +259,8 @@ class OpenStackBackend(ServiceBackend):
             return True
 
     def sync(self):
+        print 'SYNC-SYNC-SYNC'
+        return
         # Migration status:
         # [x] pull_flavors()
         # [x] pull_images()

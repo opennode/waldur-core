@@ -511,6 +511,14 @@ class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
         return getattr(backend, backend_method)(instance, *args, **kwargs)
 
 
+class IndependentBackendMethodTask(BackendMethodTask):
+    """ Execute instance backend method that does not receive instance as argument """
+
+    def execute(self, instance, backend_method, *args, **kwargs):
+        backend = self.get_backend(instance)
+        return getattr(backend, backend_method)(*args, **kwargs)
+
+
 class DeletionTask(Task):
     """ Delete instance """
 

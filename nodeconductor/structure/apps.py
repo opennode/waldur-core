@@ -242,12 +242,6 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.connect_customer_to_shared_service_settings',
         )
 
-        signals.post_save.connect(
-            handlers.sync_service_settings_with_backend,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.sync_service_settings_with_backend',
-        )
-
         fsm_signals.post_transition.connect(
             handlers.log_service_sync_failed,
             sender=ServiceSettings,

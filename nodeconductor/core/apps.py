@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 
 from django.apps import AppConfig
-from django.db.models import signals
 from django.contrib.auth import get_user_model
+from django.db.models import signals
+from django_fsm import signals as fsm_signals
 
 
 class CoreConfig(AppConfig):
@@ -53,7 +54,7 @@ class CoreConfig(AppConfig):
         )
 
         for index, model in enumerate(StateMixin.get_all_models()):
-            signals.post_save.connect(
+            fsm_signals.post_transition.connect(
                 handlers.delete_error_message,
                 sender=model,
                 dispatch_uid='nodeconductor.core.handlers.delete_error_message_%s_%s' % (model.__name__, index),

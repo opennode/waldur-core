@@ -493,19 +493,6 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
             service_project_link_model.objects.get_or_create(project=project, service=service)
 
 
-def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
-    if not created:
-        return
-
-    backend = instance.get_backend()
-    if backend.has_global_properties():
-        instance.state = SynchronizationStates.IN_SYNC
-        instance.save(update_fields=['state'])
-        return
-
-    send_task('structure', 'sync_service_settings')(instance.uuid.hex)
-
-
 def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
     settings = instance
     message = settings.error_message
