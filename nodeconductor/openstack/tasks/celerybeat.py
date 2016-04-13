@@ -23,7 +23,7 @@ def pull_tenants():
 @shared_task
 def recover_tenant(serialized_tenant):
     chain(
-        core_tasks.RecoverStateTransitionTask().si(serialized_tenant),
+        core_tasks.StateTransitionTask().si(serialized_tenant, 'recover'),
         core_tasks.BackendMethodTask().si(serialized_tenant, 'pull_tenant_security_groups'),
         core_tasks.BackendMethodTask().si(serialized_tenant, 'pull_tenant_floating_ips'),
         core_tasks.BackendMethodTask().si(serialized_tenant, 'pull_tenant_quotas'),

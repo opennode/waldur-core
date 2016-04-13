@@ -11,6 +11,7 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         from nodeconductor.core import handlers
+        from nodeconductor.core.models import StateMixin
 
         User = get_user_model()
         SshPublicKey = self.get_model('SshPublicKey')
@@ -50,3 +51,10 @@ class CoreConfig(AppConfig):
             sender=SshPublicKey,
             dispatch_uid='nodeconductor.core.handlers.log_ssh_key_delete',
         )
+
+        for index, model in enumerate(StateMixin.get_all_models()):
+            signals.post_save.connect(
+                handlers.delete_error_message,
+                sender=model,
+                dispatch_uid='nodeconductor.core.handlers.delete_error_message_%s_%s' % (model.__name__, index),
+            )

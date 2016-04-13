@@ -15,6 +15,7 @@ from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone as django_timezone
 from django.utils.encoding import force_text, python_2_unicode_compatible
+from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
@@ -413,6 +414,11 @@ class StateMixin(ErrorMessageMixin):
     @transition(field=state, source=States.ERRED, target=States.OK)
     def recover(self):
         pass
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
 
 class ReversionMixin(object):
