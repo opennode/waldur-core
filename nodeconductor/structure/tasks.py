@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask
+from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
@@ -203,7 +203,8 @@ def pull_service_settings():
         serialized = core_utils.serialize_instance(service_settings)
         sync_service_settings.apply_async(
             args=(serialized,),
-            link=StateTransitionTask().si(serialized, state_transition='recover')
+            link=StateTransitionTask().si(serialized, state_transition='recover'),
+            link_error=ErrorMessageTask().s(serialized),
         )
 
 

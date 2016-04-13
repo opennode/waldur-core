@@ -528,22 +528,34 @@ class DeletionTask(Task):
         logger.info('%s was successfully deleted', instance_description)
 
 
-class ErrorStateTransitionTask(StateTransitionTask):
+class ErrorMessageTask(Task):
+    """ Store error in error_message field.
+
+    This task should not be called as immutable, because it expects result_uuid
+    as input argument.
+    """
+    def run(self, result_id, serialized_instance, *args, **kwargs):
+        self.result = self.AsyncResult(result_id)
+        return super(ErrorMessageTask, self).run(serialized_instance, *args, **kwargs)
+
+    def save_error_message(self, instance):
+        if isinstance(instance, models.ErrorMessageMixin):
+            instance.error_message = self.result.result
+            instance.save(update_fields=['error_message'])
+
+    def execute(self, instance):
+        self.save_error_message(instance)
+
+
+class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
     """ Set instance as erred and save error message.
 
     This task should not be called as immutable, because it expects result_uuid
     as input argument.
     """
-
-    def run(self, result_id, serialized_instance, *args, **kwargs):
-        self.result = self.AsyncResult(result_id)
-        return super(ErrorStateTransitionTask, self).run(serialized_instance, *args, **kwargs)
-
     def execute(self, instance):
         self.state_transition(instance, 'set_erred')
-        if isinstance(instance, models.ErrorMessageMixin):
-            instance.error_message = self.result.result
-            instance.save(update_fields=['error_message'])
+        self.save_error_message(instance)
 
 
 class ExecutorTask(Task):

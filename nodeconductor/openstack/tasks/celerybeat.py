@@ -14,6 +14,7 @@ def pull_tenants():
         core_tasks.BackendMethodTask().apply_async(
             args=(serialized_tenant, 'pull_tenant'),
             link=recover_tenant.si(serialized_tenant),
+            link_error=core_tasks.ErrorMessageTask().s(serialized_tenant),
         )
     for tenant in models.Tenant.objects.filter(state=models.Tenant.States.OK):
         serialized_tenant = core_utils.serialize_instance(tenant)
@@ -23,7 +24,7 @@ def pull_tenants():
 @shared_task
 def recover_tenant(serialized_tenant):
     chain(
-        core_tasks.StateTransitionTask().si(serialized_tenant, 'recover'),
+        core_tasks.StateTransitionTask().si(serialized_tenant, state_transition='recover'),
         core_tasks.BackendMethodTask().si(serialized_tenant, 'pull_tenant_security_groups'),
         core_tasks.BackendMethodTask().si(serialized_tenant, 'pull_tenant_floating_ips'),
         core_tasks.BackendMethodTask().si(serialized_tenant, 'pull_tenant_quotas'),
