@@ -146,8 +146,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def users(self, request, uuid=None):
         """ A list of users connected to the customer """
         customer = self.get_object()
-        serializer = self.get_serializer(customer.get_users(), many=True)
-        return Response(serializer.data)
+        queryset = self.paginate_queryset(customer.get_users())
+        serializer = self.get_serializer(queryset, many=True)
+        return self.get_paginated_response(serializer.data)
 
 
 class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
