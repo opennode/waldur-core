@@ -66,7 +66,8 @@ class OpenStackCostTrackingBackend(CostTrackingBackend):
         # storage
         storage_size = resource.data_volume_size
         storage_size += sum(b.metadata['system_snapshot_size'] +
-                            b.metadata['data_snapshot_size'] for b in resource.backups.get_active())
+                            b.metadata['data_snapshot_size'] for b in resource.backups.get_active()
+                            if b.metadata)
         items.append((Types.PriceItems.STORAGE, cls.STORAGE_KEY, storage_size))
 
         return items
