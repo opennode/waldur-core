@@ -128,5 +128,7 @@ def autocreate_spl_tenant(sender, instance, created=False, **kwargs):
     options = spl.service.settings.options
     if options and options.get('autocreate_tenants'):
         tenant = spl.create_tenant()
+        # TODO: Migrate to on_commit hook
+        # Execute Celery task only after transaction commits
         # Need countdown to make sure that tenant will exist in database on task execution
         executors.TenantCreateExecutor.execute(tenant, countdown=2)
