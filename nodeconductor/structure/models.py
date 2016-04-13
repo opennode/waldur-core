@@ -586,8 +586,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     options = JSONField(default={}, help_text='Extra options', blank=True)
 
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
-    # TODO: Implement demo mode instead of dummy mode (NC-900)
-    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
 
     def get_backend(self, **kwargs):
         return SupportedServices.get_service_backend(self.type)(self, **kwargs)

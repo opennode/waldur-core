@@ -48,6 +48,9 @@ Structure events
     **project_creation_succeeded**
         Project has been created.
 
+    **project_name_update_succeeded**
+        Project name has been updated.
+
     **project_update_succeeded**
         Project has been updated.
 
