@@ -13,6 +13,8 @@ from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
 from nodeconductor.openstack.managers import BackupManager
+from nodeconductor.quotas.fields import QuotaField
+from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.utils import get_coordinates_by_ip, Coordinates
 
@@ -33,8 +35,15 @@ class OpenStackService(structure_models.Service):
 
 
 class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count',
-                    'floating_ip_count']
+
+    class Quotas(QuotaModelMixin.Quotas):
+        vcpu = QuotaField(default_limit=20, is_backend=True)
+        ram = QuotaField(default_limit=51200, is_backend=True)
+        storage = QuotaField(default_limit=1024000, is_backend=True)
+        instances = QuotaField(default_limit=30, is_backend=True)
+        security_group_count = QuotaField(default_limit=100, is_backend=True)
+        security_group_rule_count = QuotaField(default_limit=100, is_backend=True)
+        floating_ip_count = QuotaField(default_limit=50, is_backend=True)
 
     service = models.ForeignKey(OpenStackService)
 

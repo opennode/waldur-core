@@ -6,8 +6,9 @@ import re
 import time
 import uuid
 
-from django.db import transaction
+from django.conf import settings as django_settings
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from django.db import transaction
 from django.utils import six, dateparse, timezone
 from requests import ConnectionError
 
@@ -537,6 +538,15 @@ class OpenStackBackend(ServiceBackend):
 
     @log_backend_action('push quotas for tenant')
     def push_tenant_quotas(self, tenant, quotas):
+        if 'instances' in quotas:
+            # convert instances quota to volumes and snapshots.
+            quotas_ratios = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
+            volume_ratio = quotas_ratios.get('volumes', 4)
+            snapshots_ratio = quotas_ratios.get('snapshots', 20)
+
+            quotas['volumes'] = volume_ratio * quotas['instances']
+            quotas['snapshots'] = snapshots_ratio * quotas['instances']
+
         cinder_quotas = {
             'gigabytes': self.mb2gb(quotas.get('storage')) if 'storage' in quotas else None,
             'volumes': quotas.get('volumes'),

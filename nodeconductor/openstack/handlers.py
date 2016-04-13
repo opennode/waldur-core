@@ -65,7 +65,7 @@ def update_tenant_name_on_project_update(sender, instance=None, created=False, *
 
     for spl in OpenStackServiceProjectLink.objects.filter(project=project):
         tenant = spl.tenant
-        if tenant is None:
+        if tenant is None or tenant.state != tenant.States.OK:
             continue
         tenant.name = spl.get_tenant_name()
         tenant.save()
@@ -119,3 +119,14 @@ def log_backup_schedule_delete(sender, instance, **kwargs):
         'Backup schedule for {resource_name} has been deleted.',
         event_type='resource_backup_schedule_deletion_succeeded',
         event_context={'resource': instance.instance})
+
+
+def autocreate_spl_tenant(sender, instance, created=False, **kwargs):
+    if not created:
+        return
+    spl = instance
+    options = spl.service.settings.options
+    if options and options.get('autocreate_tenants'):
+        tenant = spl.create_tenant()
+        # Need countdown to make sure that tenant will exist in database on task execution
+        executors.TenantCreateExecutor.execute(tenant, countdown=2)

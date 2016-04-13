@@ -503,6 +503,10 @@ class RuntimeStateChangeTask(Task):
 class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
 
+    def run(self, serialized_instance, backend_method, *args, **kwargs):
+        print 'Running backend method %s for instance %s' % (backend_method, serialized_instance)
+        return super(BackendMethodTask, self).run(serialized_instance, backend_method, *args, **kwargs)
+
     def get_backend(self, instance):
         return instance.get_backend()
 
