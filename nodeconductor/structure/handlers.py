@@ -446,7 +446,7 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
         return
     customer = instance
 
-    for shared_settings in ServiceSettings.objects.filter(shared=True, state=SynchronizationStates.IN_SYNC):
+    for shared_settings in ServiceSettings.objects.filter(shared=True):
         try:
             service_model = SupportedServices.get_service_models()[shared_settings.type]['service']
             service_model.objects.create(customer=customer,
@@ -491,20 +491,6 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
         service_project_link_model = service.projects.through
         for project in service.customer.projects.all():
             service_project_link_model.objects.get_or_create(project=project, service=service)
-
-
-def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
-    settings = instance
-    message = settings.error_message
-    if message and target == SynchronizationStates.ERRED:
-        logger.error(
-            "Service settings %s has failed to sync with an error: %s", settings.uuid.hex, message)
-
-
-def log_service_recovered(sender, instance, name, source, target, **kwargs):
-    settings = instance
-    if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
-        logger.info('Service settings %s has been recovered.' % settings)
 
 
 def delete_service_settings(sender, instance, **kwargs):

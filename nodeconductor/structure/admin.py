@@ -327,33 +327,22 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         executor = executors.ServiceSettingsPullExecutor
         short_description = 'Pull'
 
-        def validate(self, tenant):
+        def validate(self, service_settings):
             States = models.ServiceSettings.States
-            if tenant.state not in (States.OK, States.ERRED):
+            if service_settings.state not in (States.OK, States.ERRED):
                 raise ValidationError('Service settings has to be OK or erred.')
 
     pull = Pull()
 
-    def create_spls_and_services(self, request, queryset):
-        selected_settings = queryset.count()
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC, shared=True)
-        settings_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
-        send_task('structure', 'create_spls_and_services_for_shared_settings')(settings_uuids)
+    class ConnectShared(ExecutorAdminAction):
+        executor = executors.ServiceSettingsPullExecutor
+        short_description = 'Create SPLs and services for shared service settings'
 
-        tasks_scheduled = queryset.count()
-        if selected_settings != tasks_scheduled:
-            message = 'Only shared, in sync service settings can be scheduled for SPLs and services creation'
-            self.message_user(request, message, level=messages.WARNING)
+        def validate(self, service_settings):
+            if not service_settings.shared:
+                raise ValidationError('It is impossible to connect not shared settings')
 
-        message = ungettext(
-            'One service settings record scheduled for SPLs and services creation',
-            '%(tasks_scheduled)d service settings records scheduled for SPLs and services creation',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    create_spls_and_services.short_description = "Create SPLs and services for selected service settings"
+    connect_shared = ConnectShared()
 
     def save_model(self, request, obj, form, change):
         created = obj.pk is None

@@ -7,8 +7,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask
-from nodeconductor.core.models import SshPublicKey, SynchronizationStates
+from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask, Task
+from nodeconductor.core.models import SshPublicKey
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
@@ -163,33 +163,24 @@ def detect_vm_coordinates(vm_str):
         vm.save(update_fields=['latitude', 'longitude'])
 
 
-@shared_task(name='nodeconductor.structure.create_spls_and_services_for_shared_settings')
-def create_spls_and_services_for_shared_settings(settings_uuids=None):
-    shared_settings = models.ServiceSettings.objects.all()
-    if settings_uuids:
-        if not isinstance(settings_uuids, (list, tuple)):
-            settings_uuids = [settings_uuids]
-        shared_settings = shared_settings.filter(uuid__in=settings_uuids)
-    else:
-        shared_settings = shared_settings.filter(state=SynchronizationStates.IN_SYNC, shared=True)
+class ConnectSharedSettingsTask(Task):
 
-    for settings in shared_settings:
-        service_model = SupportedServices.get_service_models()[settings.type]['service']
+    def execute(self, service_settings):
+        logger.debug('About to connect service settings "%s" to all available customers' % service_settings.name)
+        if not service_settings.shared:
+            raise ValueError('It is impossible to connect not shared settings')
+        service_model = SupportedServices.get_service_models()[service_settings.type]['service']
 
         with transaction.atomic():
             for customer in models.Customer.objects.all():
-                services = service_model.objects.filter(customer=customer, settings=settings)
-                if not services.exists():
-                    service = service_model.objects.create(
-                        customer=customer, settings=settings, name=settings.name, available_for_all=True)
-                else:
-                    service = services.first()
+                defaults = {'name': service_settings.name, 'available_for_all': True}
+                service = service_model.objects.get_or_create(
+                    customer=customer, settings=service_settings, defaults=defaults)
 
                 service_project_link_model = service.projects.through
                 for project in service.customer.projects.all():
-                    spl = service_project_link_model.objects.filter(project=project, service=service)
-                    if not spl.exists():
-                        service_project_link_model.objects.create(project=project, service=service)
+                    service_project_link_model.objects.get_or_create(project=project, service=service)
+        logger.info('Successfully connected service settings "%s" to all available customers' % service_settings.name)
 
 
 # CeleryBeat tasks
