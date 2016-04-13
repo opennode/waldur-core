@@ -15,6 +15,7 @@ Release NEXT
 - Implement pull operation for OpenStack tenant.
 - Provide filtering by required tags for resources and template groups endpoints.
 - Created event type for project name update.
+- Paginate results for customer users endpoint.
 
 Release 0.93.0
 --------------
