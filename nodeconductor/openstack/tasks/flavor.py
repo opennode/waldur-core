@@ -68,7 +68,7 @@ def flavor_change_failed(task_uuid, instance_uuid, flavor_uuid, transition_entit
         uuid=flavor_uuid)
 
     logger.exception('Failed to change flavor of an instance %s', instance.uuid)
-    event_logger.instance_flavor.error(
+    event_logger.openstack_flavor.error(
         'Virtual machine {resource_name} flavor change has failed.',
         event_type='resource_flavor_change_failed',
         event_context={'resource': instance, 'flavor': flavor}
