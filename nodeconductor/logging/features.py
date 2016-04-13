@@ -22,6 +22,7 @@ EVENT_FEATURES = {
     'projects': [
         'project_creation_succeeded',
         'project_deletion_succeeded',
+        'project_name_update_succeeded',
         'project_update_succeeded',
         'quota_threshold_reached'
     ],
@@ -149,6 +150,7 @@ UPDATE_EVENTS = [
     'iaas_backup_schedule_update_succeeded',
     'iaas_instance_update_succeeded',
     'project_group_update_succeeded',
+    'project_name_update_succeeded',
     'project_update_succeeded',
     'resource_update_succeeded',
     'template_service_update_succeeded',
