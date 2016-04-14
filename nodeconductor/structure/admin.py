@@ -11,7 +11,7 @@ from django.utils.translation import ungettext
 from django.shortcuts import render
 
 from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
-from nodeconductor.core.models import SynchronizationStates, User
+from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors
@@ -347,7 +347,8 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         obj.save()
         if not change:
-            executors.ServiceSettingsCreateExecutor.execute(obj)
+            # Django does black magic in admin save(), so it is better to schedule tasks with delay.
+            executors.ServiceSettingsCreateExecutor.execute(obj, countdown=2)
 
 
 class ServiceAdmin(admin.ModelAdmin):

@@ -8,12 +8,14 @@ class ServiceSettingsCreateExecutor(executors.CreateExecutor):
 
     @classmethod
     def get_task_signature(cls, settings, serialized_settings, **kwargs):
-        creation_tasks = []
+        creation_tasks = [tasks.StateTransitionTask().si(serialized_settings, state_transition='begin_creating')]
+        # connect settings to all customers if they are shared
         if settings.shared:
             creation_tasks.append(ConnectSharedSettingsTask().si(serialized_settings))
-        creation_tasks.append(tasks.IndependentBackendMethodTask().si(
-            serialized_settings, 'sync', state_transition='begin_creating')
-        )
+        # sync settings if they have not only global properties
+        backend = settings.get_backend()
+        if not backend.has_global_properties():
+            creation_tasks.append(tasks.IndependentBackendMethodTask().si(serialized_settings, 'sync'))
         return chain(*creation_tasks)
 
 
