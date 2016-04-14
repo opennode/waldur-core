@@ -17,6 +17,8 @@ Release NEXT
 - Created event type for project name update.
 - Fix OpenStack license stats endpoint.
 - Paginate results for customer users endpoint.
+- Enable OpenStack tenant autocreation for service project links.
+- Define default quotas for service project links.
 
 Release 0.93.0
 --------------
