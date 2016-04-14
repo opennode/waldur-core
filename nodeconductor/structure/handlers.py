@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 import logging
 
 from django.conf import settings
-from django.db import models, transaction
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
+from django.db import models, transaction
+from django.utils import timezone
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
@@ -498,3 +499,9 @@ def delete_service_settings(sender, instance, **kwargs):
     service = instance
     if not service.settings.shared:
         service.settings.delete()
+
+
+def init_resource_start_time(sender, instance, name, source, target, **kwargs):
+    if target == sender.States.ONLINE:
+        instance.start_time = timezone.now()
+        instance.save(update_fields=['start_time'])

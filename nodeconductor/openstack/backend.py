@@ -1111,9 +1111,6 @@ class OpenStackBackend(ServiceBackend):
                     instance.uuid)
                 raise OpenStackBackendError("Timed out waiting for instance %s to provision" % instance.uuid)
 
-            instance.start_time = timezone.now()
-            instance.save()
-
             logger.debug("About to infer internal ip addresses of instance %s", instance.uuid)
             try:
                 server = nova.servers.get(server.id)
@@ -1830,9 +1827,6 @@ class OpenStackBackend(ServiceBackend):
             logger.exception('Failed to start instance %s', instance.uuid)
             six.reraise(OpenStackBackendError, e)
         else:
-            instance.start_time = timezone.now()
-            instance.save(update_fields=['start_time'])
-
             logger.info('Successfully started instance %s', instance.uuid)
 
     def stop_instance(self, instance):

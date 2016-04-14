@@ -170,6 +170,13 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
+            fsm_signals.post_transition.connect(
+                handlers.init_resource_start_time,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.init_resource_start_time_{}_{}'.format(
+                    model.__name__, index),
+            )
+
         for index, model in enumerate(Resource.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
                 fsm_signals.post_transition.connect(
