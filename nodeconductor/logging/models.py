@@ -8,6 +8,7 @@ from django.contrib.contenttypes import models as ct_models
 from django.core.mail import send_mail
 from django.db import models
 from django.template.loader import render_to_string
+from django.utils.lru_cache import lru_cache
 from django.utils import timezone
 from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
@@ -68,6 +69,25 @@ class Alert(UuidMixin, TimeStampedModel):
     def cancel_acknowledgment(self):
         self.acknowledged = False
         self.save()
+
+
+class AlertThresholdMixin(models.Model):
+    """
+    It is expected that model has scope field.
+    """
+    class Meta(object):
+        abstract = True
+
+    threshold = models.FloatField(blank=True, null=True)
+
+    def is_exceeded(self):
+        return False
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        from django.apps import apps
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
 
 class BaseHook(UuidMixin, TimeStampedModel):

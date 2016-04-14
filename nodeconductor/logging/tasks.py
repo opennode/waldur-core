@@ -1,12 +1,11 @@
-import uuid
 import logging
 
 from celery import shared_task
 from datetime import datetime
 from django.conf import settings
 
-from nodeconductor.logging.loggers import event_logger
-from nodeconductor.logging.models import BaseHook, Alert
+from nodeconductor.logging.loggers import alert_logger, event_logger
+from nodeconductor.logging.models import BaseHook, Alert, AlertThresholdMixin
 
 
 logger = logging.getLogger(__name__)
@@ -42,3 +41,21 @@ def alerts_cleanup():
     timespan = settings.NODECONDUCTOR.get('CLOSED_ALERTS_LIFETIME')
     if timespan:
         Alert.objects.filter(is_closed=True, closed__lte=datetime.now() - timespan).delete()
+
+
+@shared_task(name='nodeconductor.logging.check_threshold')
+def check_threshold():
+    for model in AlertThresholdMixin.get_all_models():
+        for obj in model.objects.get_current_queryset().filter(threshold__isnull=False).iterator():
+            if obj.is_over_threshold():
+                alert_logger.threshold.warning(
+                    'Threshold for {scope_name} is exceeded.',
+                    scope=obj.scope,
+                    alert_type='threshold_exceeded',
+                    alert_context={
+                        'object': obj
+                    })
+            else:
+                alert_logger.threshold.close(
+                    scope=obj.scope,
+                    alert_type='threshold_exceeded')

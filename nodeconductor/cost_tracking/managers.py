@@ -1,6 +1,7 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db import models as django_models
 from django.db.models import Q
+from django.utils import timezone
 
 from nodeconductor.core.managers import GenericKeyMixin
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -40,6 +41,10 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
         """ Return list of models that are acceptable """
         from nodeconductor.cost_tracking.models import PriceEstimate
         return PriceEstimate.get_estimated_models()
+
+    def get_current_queryset(self):
+        dt = timezone.now()
+        return self.filter(year=dt.year, month=dt.month)
 
 
 class PriceListItemManager(GenericKeyMixin, UserFilterMixin, django_models.Manager):
