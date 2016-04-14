@@ -17,7 +17,8 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
-from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import (models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
+                                     executors)
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ServiceProjectLink
 
@@ -1050,6 +1051,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     pass
 
                 settings.save()
+                executors.ServiceSettingsCreateExecutor.execute(settings)
                 attrs['settings'] = settings
 
             for f in settings_fields + extra_fields:

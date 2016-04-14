@@ -185,16 +185,14 @@ class ServicePermissionTest(test.APITransactionTestCase):
             "password": "secret",
         }
 
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
+        with patch('nodeconductor.structure.executors.ServiceSettingsCreateExecutor.execute') as mocked:
             response = self.client.post(factories.OpenStackServiceFactory.get_list_url(), payload)
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
             settings = ServiceSettings.objects.get(name=payload['name'])
             self.assertFalse(settings.shared)
 
-            mocked_task.assert_any_call(
-                'nodeconductor.structure.sync_service_settings',
-                (settings.uuid.hex,), {}, countdown=2)
+            mocked.assert_any_call(settings)
 
     def test_user_cannot_add_service_to_the_customer_he_sees_but_doesnt_own(self):
         choices = {

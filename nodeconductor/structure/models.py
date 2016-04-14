@@ -564,7 +564,7 @@ class ProjectGroup(core_models.UuidMixin,
 class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                       core_models.UuidMixin,
                       core_models.NameMixin,
-                      core_models.SynchronizableMixin,
+                      core_models.StateMixin,
                       LoggableMixin):
 
     class Meta:

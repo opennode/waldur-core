@@ -5,6 +5,7 @@ from django.utils import six
 from rest_framework.authtoken.models import Token
 
 from nodeconductor.core.log import event_logger
+from nodeconductor.core.models import StateMixin
 
 
 def create_auth_token(sender, instance, created=False, **kwargs):
@@ -24,6 +25,14 @@ def preserve_fields_before_update(sender, instance, **kwargs):
     old_values = model_to_dict(old_instance, exclude=excluded_fields)
 
     setattr(instance, '_old_values', old_values)
+
+
+def delete_error_message(sender, instance, name, source, target, **kwargs):
+    """ Delete error message if instance state changed from erred """
+    if source != StateMixin.States.ERRED:
+        return
+    instance.error_message = ''
+    instance.save(update_fields=['error_message'])
 
 
 def log_user_save(sender, instance, created=False, **kwargs):

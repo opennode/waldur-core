@@ -6,151 +6,15 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from nodeconductor.core.tasks import transition, retry_if_false, save_error_message, throttle
-from nodeconductor.core.models import SshPublicKey, SynchronizationStates
+from nodeconductor.core import utils as core_utils
+from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask, Task
+from nodeconductor.core.models import SshPublicKey
 from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user, GeoIpException
 
 logger = logging.getLogger(__name__)
-
-
-@shared_task(name='nodeconductor.structure.sync_service_settings', heavy_task=True)
-@throttle(concurrency=2, key='service_settings_sync')
-def sync_service_settings(settings_uuids=None):
-    settings = models.ServiceSettings.objects.all()
-    if settings_uuids:
-        if not isinstance(settings_uuids, (list, tuple)):
-            settings_uuids = [settings_uuids]
-        settings = settings.filter(uuid__in=settings_uuids)
-    else:
-        settings = settings.filter(state=SynchronizationStates.IN_SYNC)
-
-    for obj in settings:
-        settings_uuid = obj.uuid.hex
-        if obj.state == SynchronizationStates.IN_SYNC:
-            obj.schedule_syncing()
-            obj.save()
-
-            begin_syncing_service_settings.apply_async(
-                args=(settings_uuid,),
-                link=sync_service_settings_succeeded.si(settings_uuid),
-                link_error=sync_service_settings_failed.si(settings_uuid))
-        elif obj.state == SynchronizationStates.CREATION_SCHEDULED:
-            begin_creating_service_settings.apply_async(
-                args=(settings_uuid,),
-                link=sync_service_settings_succeeded.si(settings_uuid),
-                link_error=sync_service_settings_failed.si(settings_uuid))
-        else:
-            logger.warning('Cannot sync service settings %s from state %s', obj.name, obj.state)
-
-
-@shared_task
-@transition(models.ServiceSettings, 'schedule_syncing')
-@save_error_message
-def begin_recovering_erred_service_settings(settings_uuid, transition_entity=None):
-    settings = transition_entity
-    try:
-        backend = settings.get_backend()
-        is_active = backend.ping()
-    except ServiceBackendNotImplemented:
-        is_active = False
-
-    if is_active:
-        # Recovered service settings should be synchronised
-        begin_syncing_service_settings.apply_async(
-                args=(settings_uuid,),
-                link=sync_service_settings_succeeded.si(settings_uuid, recovering=True),
-                link_error=sync_service_settings_failed.si(settings_uuid, recovering=True))
-    else:
-        settings.set_erred()
-        settings.error_message = 'Failed to ping service settings %s' % settings.name
-        settings.save()
-        logger.info('Failed to recover service settings %s.' % settings.name)
-
-
-@shared_task(name='nodeconductor.structure.recover_service_settings')
-def recover_erred_service_settings(settings_uuids=None):
-    settings_list = models.ServiceSettings.objects.all()
-    if settings_uuids:
-        if not isinstance(settings_uuids, (list, tuple)):
-            settings_uuids = [settings_uuids]
-        settings_list = settings_list.filter(uuid__in=settings_uuids)
-    else:
-        settings_list = settings_list.filter(state=SynchronizationStates.ERRED)
-
-    for settings in settings_list:
-        if settings.state == SynchronizationStates.ERRED:
-            settings_uuid = settings.uuid.hex
-            begin_recovering_erred_service_settings.delay(settings_uuid)
-        else:
-            logger.warning('Cannot recover service settings %s from state %s', settings.name, settings.state)
-
-
-@shared_task
-@transition(models.ServiceSettings, 'begin_syncing')
-@save_error_message
-def begin_syncing_service_settings(settings_uuid, transition_entity=None):
-    settings = transition_entity
-    try:
-        backend = settings.get_backend()
-        backend.sync()
-    except ServiceBackendNotImplemented:
-        pass
-
-
-@shared_task
-@transition(models.ServiceSettings, 'begin_creating')
-@save_error_message
-def begin_creating_service_settings(settings_uuid, transition_entity=None):
-    settings = transition_entity
-    try:
-        backend = settings.get_backend()
-        backend.sync()
-    except ServiceBackendNotImplemented:
-        pass
-
-
-@shared_task
-@transition(models.ServiceSettings, 'set_in_sync')
-def sync_service_settings_succeeded(settings_uuid, transition_entity=None, recovering=False):
-    if recovering:
-        settings = transition_entity
-        settings.error_message = ''
-        settings.save()
-        logger.info('Service settings %s successfully recovered.' % settings.name)
-
-
-@shared_task
-@transition(models.ServiceSettings, 'set_erred')
-def sync_service_settings_failed(settings_uuid, transition_entity=None, recovering=False):
-    if recovering:
-        logger.info('Failed to recover service settings %s.' % transition_entity.name)
-
-
-@shared_task
-def recover_erred_service(service_project_link_str, is_iaas=False):
-    try:
-        spl = next(models.ServiceProjectLink.from_string(service_project_link_str))
-    except StopIteration:
-        logger.warning('Missing service project link %s.', service_project_link_str)
-        return
-
-    settings = spl.cloud if is_iaas else spl.service.settings
-
-    try:
-        backend = spl.get_backend()
-        is_active = backend.ping()
-    except (ServiceBackendError, ServiceBackendNotImplemented):
-        is_active = False
-
-    if is_active:
-        if settings.state == SynchronizationStates.ERRED:
-            settings.set_in_sync_from_erred()
-            settings.save()
-    else:
-        logger.info('Failed to recover service settings %s.' % settings)
 
 
 @shared_task(name='nodeconductor.structure.push_ssh_public_keys')
@@ -299,30 +163,47 @@ def detect_vm_coordinates(vm_str):
         vm.save(update_fields=['latitude', 'longitude'])
 
 
-@shared_task(name='nodeconductor.structure.create_spls_and_services_for_shared_settings')
-def create_spls_and_services_for_shared_settings(settings_uuids=None):
-    shared_settings = models.ServiceSettings.objects.all()
-    if settings_uuids:
-        if not isinstance(settings_uuids, (list, tuple)):
-            settings_uuids = [settings_uuids]
-        shared_settings = shared_settings.filter(uuid__in=settings_uuids)
-    else:
-        shared_settings = shared_settings.filter(state=SynchronizationStates.IN_SYNC, shared=True)
+class ConnectSharedSettingsTask(Task):
 
-    for settings in shared_settings:
-        service_model = SupportedServices.get_service_models()[settings.type]['service']
+    def execute(self, service_settings):
+        logger.debug('About to connect service settings "%s" to all available customers' % service_settings.name)
+        if not service_settings.shared:
+            raise ValueError('It is impossible to connect not shared settings')
+        service_model = SupportedServices.get_service_models()[service_settings.type]['service']
 
         with transaction.atomic():
             for customer in models.Customer.objects.all():
-                services = service_model.objects.filter(customer=customer, settings=settings)
-                if not services.exists():
-                    service = service_model.objects.create(
-                        customer=customer, settings=settings, name=settings.name, available_for_all=True)
-                else:
-                    service = services.first()
+                defaults = {'name': service_settings.name, 'available_for_all': True}
+                service, _ = service_model.objects.get_or_create(
+                    customer=customer, settings=service_settings, defaults=defaults)
 
                 service_project_link_model = service.projects.through
                 for project in service.customer.projects.all():
-                    spl = service_project_link_model.objects.filter(project=project, service=service)
-                    if not spl.exists():
-                        service_project_link_model.objects.create(project=project, service=service)
+                    service_project_link_model.objects.get_or_create(project=project, service=service)
+        logger.info('Successfully connected service settings "%s" to all available customers' % service_settings.name)
+
+
+# CeleryBeat tasks
+
+@shared_task(name='nodeconductor.structure.pull_service_settings')
+def pull_service_settings():
+    for service_settings in models.ServiceSettings.objects.filter(state=models.ServiceSettings.States.OK):
+        serialized = core_utils.serialize_instance(service_settings)
+        sync_service_settings.delay(serialized)
+    for service_settings in models.ServiceSettings.objects.filter(state=models.ServiceSettings.States.ERRED):
+        serialized = core_utils.serialize_instance(service_settings)
+        sync_service_settings.apply_async(
+            args=(serialized,),
+            link=StateTransitionTask().si(serialized, state_transition='recover'),
+            link_error=ErrorMessageTask().s(serialized),
+        )
+
+
+# Small work around to use @throttle decorator. Ideally we need to come with
+# solution how to use BackendMethodTask with @throttle.
+@shared_task
+@throttle(concurrency=2, key='service_settings_sync')
+def sync_service_settings(serialized_service_settings):
+    service_settings = core_utils.deserialize_instance(serialized_service_settings)
+    backend = service_settings.get_backend()
+    backend.sync()
