@@ -37,7 +37,7 @@ class BaseExecutor(object):
         return None
 
     @classmethod
-    def execute(cls, instance, async=True, countdown=None, **kwargs):
+    def execute(cls, instance, async=True, countdown=2, **kwargs):
         """ Execute high level-operation """
         cls.pre_apply(instance, async=async, **kwargs)
         result = cls.apply_signature(instance, async=async, countdown=countdown, **kwargs)

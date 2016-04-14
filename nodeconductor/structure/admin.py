@@ -347,8 +347,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         obj.save()
         if not change:
-            # Django does black magic in admin save(), so it is better to schedule tasks with delay.
-            executors.ServiceSettingsCreateExecutor.execute(obj, countdown=2)
+            executors.ServiceSettingsCreateExecutor.execute(obj)
 
 
 class ServiceAdmin(admin.ModelAdmin):
