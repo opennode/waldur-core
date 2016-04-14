@@ -20,7 +20,6 @@ class StructureConfig(AppConfig):
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')
         ProjectGroup = self.get_model('ProjectGroup')
-        ServiceSettings = self.get_model('ServiceSettings')
 
         signals.post_save.connect(
             handlers.log_customer_save,
@@ -240,24 +239,6 @@ class StructureConfig(AppConfig):
             handlers.connect_customer_to_shared_service_settings,
             sender=Customer,
             dispatch_uid='nodeconductor.structure.handlers.connect_customer_to_shared_service_settings',
-        )
-
-        fsm_signals.post_transition.connect(
-            handlers.log_service_sync_failed,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.log_service_sync_failed',
-        )
-
-        fsm_signals.post_transition.connect(
-            handlers.log_service_recovered,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.log_service_recovered',
-        )
-
-        fsm_signals.post_transition.connect(
-            handlers.connect_shared_service_settings_to_customers,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',
         )
 
         signals.post_save.connect(

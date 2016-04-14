@@ -8,7 +8,7 @@ import django_fsm
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0032_make_options_optional'),
+        ('structure', '0033_remove_servicesettings_dummy'),
     ]
 
     operations = [

@@ -263,7 +263,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
     list_filter = (ServiceTypeFilter, 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
-    actions = ['pull', 'create_spls_and_services']
+    actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
@@ -335,7 +335,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     pull = Pull()
 
     class ConnectShared(ExecutorAdminAction):
-        executor = executors.ServiceSettingsPullExecutor
+        executor = executors.ServiceSettingsConnectSharedExecutor
         short_description = 'Create SPLs and services for shared service settings'
 
         def validate(self, service_settings):
@@ -345,9 +345,8 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     connect_shared = ConnectShared()
 
     def save_model(self, request, obj, form, change):
-        created = obj.pk is None
         obj.save()
-        if created:
+        if not change:
             executors.ServiceSettingsCreateExecutor.execute(obj)
 
 

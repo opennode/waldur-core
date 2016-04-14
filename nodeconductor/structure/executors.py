@@ -25,7 +25,7 @@ class ServiceSettingsPullExecutor(executors.ActionExecutor):
             serialized_settings, 'sync', state_transition='begin_updating')
 
 
-class ServiceSettingsConnectSharedExecutor(executors.ActionExecutor):
+class ServiceSettingsConnectSharedExecutor(executors.BaseExecutor):
 
     @classmethod
     def get_task_signature(cls, settings, serialized_settings, **kwargs):
