@@ -52,7 +52,7 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
                 year=prev_date.year,
                 month=prev_date.month,
                 scope=instance.scope,
-                threshold__isnull=False
+                threshold__gt=0
             )
             instance.threshold = prev_estimate.threshold
             instance.save(update_fields=['threshold'])

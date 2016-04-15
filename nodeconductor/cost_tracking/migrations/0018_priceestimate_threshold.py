@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='priceestimate',
             name='threshold',
-            field=models.FloatField(null=True, blank=True),
+            field=models.FloatField(default=0, validators=[django.core.validators.MinValueValidator(0)]),
         ),
     ]

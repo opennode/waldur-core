@@ -5,6 +5,7 @@ import uuid
 from django.conf import settings
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
+from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
 from django.template.loader import render_to_string
@@ -78,7 +79,7 @@ class AlertThresholdMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    threshold = models.FloatField(blank=True, null=True)
+    threshold = models.FloatField(default=0, validators=[validators.MinValueValidator(0)])
 
     def is_over_threshold(self):
         """

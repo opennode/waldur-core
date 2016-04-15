@@ -96,26 +96,20 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         """
         return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
 
-    @decorators.detail_route(methods=['post', 'delete'])
+    @decorators.detail_route(methods=['post'])
     def threshold(self, request, pk=None, **kwargs):
         """
         Run **POST** request against */api/price-estimates/<uuid>/threshold/*
         to set alert threshold for price estimate.
         Request body should be JSON dictionary with threshold field.
-
-        Run **DELETE** request against */api/price-estimates/<uuid>/threshold/*
-        to delete alert threshold for price estimate.
         """
         price_estimate = self.get_object()
         if not self.can_user_modify_price_object(price_estimate.scope):
             raise exceptions.PermissionDenied()
 
-        if self.request.method == 'DELETE':
-            threshold = None
-        else:
-            serializer = AlertThresholdSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            threshold = serializer.validated_data['threshold']
+        serializer = AlertThresholdSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        threshold = serializer.validated_data['threshold']
 
         price_estimate.threshold = threshold
         price_estimate.save(update_fields=['threshold'])

@@ -46,10 +46,3 @@ class PriceEstimateThresholdApiTest(test.APITransactionTestCase):
         self.assertEqual(status.HTTP_200_OK, response.status_code)
         self.estimate.refresh_from_db()
         self.assertEqual(200, self.estimate.threshold)
-
-    def test_staff_can_clear_threshold_of_price_estimate(self):
-        response = self.client.delete(self.url)
-
-        self.assertEqual(status.HTTP_200_OK, response.status_code)
-        self.estimate.refresh_from_db()
-        self.assertEqual(None, self.estimate.threshold)
