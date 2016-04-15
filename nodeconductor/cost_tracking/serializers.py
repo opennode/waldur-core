@@ -1,15 +1,15 @@
 from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
-from django.utils import six, timezone
+from django.utils import six
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
-from nodeconductor.structure.serializers import ProjectSerializer
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
+from nodeconductor.structure.serializers import ProjectSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -116,14 +116,31 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
         return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
 
 
+class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = models.PriceEstimate
+        fields = ('url', 'threshold', 'total')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+
 def get_price_estimate_for_project(serializer, project):
-    now = timezone.now()
-    try:
-        estimate = models.PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
-    except models.PriceEstimate.DoesNotExist:
-        return None
-    else:
-        return estimate.total
+    if 'price_estimates' not in serializer.context:
+        estimates = models.PriceEstimate.get_checkable_objects()
+        if isinstance(serializer.instance, list):
+            estimates = estimates.filter(scope__in=serializer.instance)
+        else:
+            estimates = estimates.filter(scope=serializer.instance)
+        price_estimates = {}
+        for estimate in estimates:
+            price_estimates[estimate.object_id] = estimate
+        serializer.context['price_estimates'] = price_estimates
+
+    estimate = serializer.context['price_estimates'].get(project.id)
+    if estimate:
+        serializer = NestedPriceEstimateSerializer(instance=estimate, context=serializer.context)
+        return serializer.data
 
 
 def add_price_estimate_for_project(sender, fields, **kwargs):
