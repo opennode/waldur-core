@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
-from django.utils import six
+from django.utils import six, timezone
 from django.utils.lru_cache import lru_cache
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
@@ -259,8 +259,13 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     def get_price_estimate(self, project):
         from nodeconductor.cost_tracking.models import PriceEstimate
-        estimate = PriceEstimate.objects.filter(scope=project).last()
-        return estimate.total if estimate else None
+        now = timezone.now()
+        try:
+            estimate = PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
+        except PriceEstimate.DoesNotExist:
+            return None
+        else:
+            return estimate.total
 
     def get_services(self, project):
         if 'services' not in self.context:
