@@ -55,6 +55,7 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
                 threshold__isnull=False
             )
             instance.threshold = prev_estimate.threshold
+            instance.save(update_fields=['threshold'])
         except models.PriceEstimate.DoesNotExist:
             pass
 

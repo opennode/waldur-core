@@ -46,7 +46,7 @@ def alerts_cleanup():
 @shared_task(name='nodeconductor.logging.check_threshold')
 def check_threshold():
     for model in AlertThresholdMixin.get_all_models():
-        for obj in model.objects.get_current_queryset().filter(threshold__isnull=False).iterator():
+        for obj in model.get_checkable_objects().filter(threshold__isnull=False).iterator():
             if obj.is_over_threshold():
                 alert_logger.threshold.warning(
                     'Threshold for {scope_name} is exceeded.',

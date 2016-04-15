@@ -80,14 +80,24 @@ class AlertThresholdMixin(models.Model):
 
     threshold = models.FloatField(blank=True, null=True)
 
-    def is_exceeded(self):
-        return False
+    def is_over_threshold(self):
+        """
+        If returned value is True, alert is generated.
+        """
+        raise NotImplementedError
 
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         from django.apps import apps
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @classmethod
+    def get_checkable_objects(cls):
+        """
+        It should return queryset of objects that should be checked.
+        """
+        return cls.objects.all()
 
 
 class BaseHook(UuidMixin, TimeStampedModel):

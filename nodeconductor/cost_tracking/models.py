@@ -216,6 +216,11 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     def is_over_threshold(self):
         return self.total > self.threshold
 
+    @classmethod
+    def get_checkable_objects(cls):
+        dt = timezone.now()
+        return cls.objects.filter(year=dt.year, month=dt.month)
+
     def __str__(self):
         return '%s for %s-%s %.2f' % (self.scope, self.year, self.month, self.total)
 

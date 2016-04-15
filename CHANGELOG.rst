@@ -19,6 +19,7 @@ Release NEXT
 - Paginate results for customer users endpoint.
 - Enable OpenStack tenant autocreation for service project links.
 - Define default quotas for service project links.
+- Implemented threshold-based alerts for price estimates.
 
 Release 0.93.0
 --------------
