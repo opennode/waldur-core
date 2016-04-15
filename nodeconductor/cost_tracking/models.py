@@ -214,7 +214,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
         return 'uuid', 'scope', 'threshold', 'total', 'consumed'
 
     def is_over_threshold(self):
-        return self.total > self.threshold
+        return self.total >= self.threshold
 
     @classmethod
     def get_checkable_objects(cls):

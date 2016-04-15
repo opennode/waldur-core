@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
-from django.utils import six
+from django.utils import six, timezone
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
@@ -126,19 +126,12 @@ class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
 
 
 def get_price_estimate_for_project(serializer, project):
-    if 'price_estimates' not in serializer.context:
-        estimates = models.PriceEstimate.get_checkable_objects()
-        if isinstance(serializer.instance, list):
-            estimates = estimates.filter(scope__in=serializer.instance)
-        else:
-            estimates = estimates.filter(scope=serializer.instance)
-        price_estimates = {}
-        for estimate in estimates:
-            price_estimates[estimate.object_id] = estimate
-        serializer.context['price_estimates'] = price_estimates
-
-    estimate = serializer.context['price_estimates'].get(project.id)
-    if estimate:
+    now = timezone.now()
+    try:
+        estimate = models.PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
+    except models.PriceEstimate.DoesNotExist:
+        return None
+    else:
         serializer = NestedPriceEstimateSerializer(instance=estimate, context=serializer.context)
         return serializer.data
 
