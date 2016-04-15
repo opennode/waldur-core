@@ -41,6 +41,10 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
             return alert
 
 
+class AlertThresholdSerializer(serializers.Serializer):
+    threshold = serializers.FloatField(min_value=0)
+
+
 class EventSerializer(serializers.Serializer):
     level = serializers.ChoiceField(choices=['debug', 'info', 'warning', 'error'])
     message = serializers.CharField()

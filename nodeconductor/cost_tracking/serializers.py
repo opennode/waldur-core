@@ -19,8 +19,8 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
     class Meta(object):
         model = models.PriceEstimate
         fields = ('url', 'uuid', 'scope', 'total', 'consumed', 'month', 'year',
-                  'is_manually_input', 'scope_name', 'scope_type', 'resource_type')
-        read_only_fields = ('is_manually_input',)
+                  'is_manually_input', 'scope_name', 'scope_type', 'resource_type', 'threshold')
+        read_only_fields = ('is_manually_input', 'threshold')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
