@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
-from django.utils import six, timezone
+from django.utils import six
 from django.utils.lru_cache import lru_cache
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
@@ -209,7 +209,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
-    price_estimate = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.Project
@@ -219,7 +218,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
             'description',
-            'price_estimate',
             'quotas',
             'services',
             'created',
@@ -256,16 +254,6 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'customer',
-
-    def get_price_estimate(self, project):
-        from nodeconductor.cost_tracking.models import PriceEstimate
-        now = timezone.now()
-        try:
-            estimate = PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
-        except PriceEstimate.DoesNotExist:
-            return None
-        else:
-            return estimate.total
 
     def get_services(self, project):
         if 'services' not in self.context:

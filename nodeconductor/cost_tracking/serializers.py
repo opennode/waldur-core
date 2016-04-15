@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
-from django.utils import six
+from django.utils import six, timezone
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
+from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
+from nodeconductor.structure.serializers import ProjectSerializer
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
 
@@ -112,3 +114,21 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
     def get_resource_type(self, obj):
         return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
+
+
+def get_price_estimate_for_project(serializer, project):
+    now = timezone.now()
+    try:
+        estimate = models.PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
+    except models.PriceEstimate.DoesNotExist:
+        return None
+    else:
+        return estimate.total
+
+
+def add_price_estimate_for_project(sender, fields, **kwargs):
+    fields['price_estimate'] = serializers.SerializerMethodField()
+    setattr(sender, 'get_price_estimate', get_price_estimate_for_project)
+
+
+pre_serializer_fields.connect(add_price_estimate_for_project, sender=ProjectSerializer)
