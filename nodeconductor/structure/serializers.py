@@ -209,6 +209,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
+    price_estimate = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.Project
@@ -218,6 +219,7 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups',
             'description',
+            'price_estimate',
             'quotas',
             'services',
             'created',
@@ -254,6 +256,11 @@ class ProjectSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'customer',
+
+    def get_price_estimate(self, project):
+        from nodeconductor.cost_tracking.models import PriceEstimate
+        estimate = PriceEstimate.objects.filter(scope=project).last()
+        return estimate.total if estimate else None
 
     def get_services(self, project):
         if 'services' not in self.context:
