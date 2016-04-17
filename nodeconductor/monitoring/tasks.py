@@ -39,11 +39,10 @@ def update_instance_sla(sla_type):
 
     end_time = int(dt.strftime("%s"))
 
-    instances = Instance.objects.exclude(state__in=[
-        Instance.States.DELETING,
-        Instance.States.PROVISIONING_SCHEDULED,
-        Instance.States.PROVISIONING,
-    ])
+    instances = Instance.objects.exclude(
+        state__in=[Instance.States.DELETING, Instance.States.PROVISIONING_SCHEDULED, Instance.States.PROVISIONING],
+        backend_id='',
+    )
     zabbix_client = ZabbixApiClient()
     for instance in instances:
         try:
