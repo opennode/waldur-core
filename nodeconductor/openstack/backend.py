@@ -1127,6 +1127,20 @@ class OpenStackBackend(ServiceBackend):
 
             self.push_floating_ip_to_instance(instance, server)
 
+            backend_security_groups = server.list_security_group()
+            for bsg in backend_security_groups:
+                if instance.security_groups.filter(security_group__name=bsg.name).exists():
+                    continue
+                try:
+                    security_group = service_project_link.security_groups.get(name=bsg.name)
+                except models.SecurityGroup.DoesNotExist:
+                    logger.error(
+                        'SPL %s (PK: %s) does not have security group "%s", but its instance %s (PK: %s) has.' %
+                        (service_project_link, service_project_link.pk, bsg.name, instance, instance.pk)
+                    )
+                else:
+                    instance.security_groups.create(security_group=security_group)
+
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
