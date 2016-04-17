@@ -1,12 +1,9 @@
 import logging
-import sys
 
 from celery import shared_task
-from django.utils import six
 
 from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.openstack.models import Instance, FloatingIP, Tenant
-from nodeconductor.structure.log import event_logger
 
 
 logger = logging.getLogger(__name__)
