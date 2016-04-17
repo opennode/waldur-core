@@ -29,7 +29,6 @@ class Migration(migrations.Migration):
             model_name='instance',
             name='flavor_disk',
             field=models.PositiveIntegerField(default=0, help_text='Flavor disk size in MiB'),
-            preserve_default=False,
         ),
         migrations.RunPython(init_flavor_disk),
     ]
