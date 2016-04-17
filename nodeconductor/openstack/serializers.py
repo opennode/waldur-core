@@ -624,7 +624,7 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
                     "New flavor is not within the same service settings")
 
             if value.disk < self.instance.flavor_disk:
-                raise serializers.ValidationError("New flavor disk should be greater then previous flavor disk.")
+                raise serializers.ValidationError("New flavor disk should be greater than the previous value.")
 
             quota_errors = spl.validate_quota_change({
                 'vcpu': value.cores - self.instance.cores,
