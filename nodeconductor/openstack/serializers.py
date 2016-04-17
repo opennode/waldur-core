@@ -478,11 +478,12 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips', 'backups', 'backup_schedules',
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules', 'flavor_disk',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
         )
+        read_only_fields = structure_serializers.VirtualMachineSerializer.Meta.read_only_fields + ('flavor_disk',)
 
     def get_fields(self):
         fields = super(InstanceSerializer, self).get_fields()
@@ -621,6 +622,9 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
             if value.settings != spl.service.settings:
                 raise serializers.ValidationError(
                     "New flavor is not within the same service settings")
+
+            if value.disk < self.instance.flavor_disk:
+                raise serializers.ValidationError("New flavor disk should be greater then previous flavor disk.")
 
             quota_errors = spl.validate_quota_change({
                 'vcpu': value.cores - self.instance.cores,

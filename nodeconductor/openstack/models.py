@@ -207,6 +207,7 @@ class Instance(structure_models.VirtualMachineMixin,
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
 
     flavor_name = models.CharField(max_length=255, blank=True)
+    flavor_disk = models.PositiveIntegerField(help_text='Flavor disk size in MiB')
 
     tracker = FieldTracker()
 
