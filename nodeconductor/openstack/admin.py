@@ -7,7 +7,7 @@ from nodeconductor.structure import admin as structure_admin
 from nodeconductor.openstack import executors
 from nodeconductor.openstack.forms import BackupScheduleForm, InstanceForm
 from nodeconductor.openstack.models import OpenStackService, OpenStackServiceProjectLink, Instance, \
-                                           Backup, BackupSchedule, Tenant
+                                           Backup, BackupSchedule, Tenant, Flavor
 
 
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
@@ -111,8 +111,14 @@ class TenantAdmin(structure_admin.ResourceAdmin):
     pull = Pull()
 
 
+class FlavorAdmin(admin.ModelAdmin):
+    list_filter = ('settings',)
+    list_display = ('name', 'settings', 'cores', 'ram', 'disk')
+
+
 admin.site.register(Instance, InstanceAdmin)
 admin.site.register(Tenant, TenantAdmin)
+admin.site.register(Flavor, FlavorAdmin)
 admin.site.register(OpenStackService, structure_admin.ServiceAdmin)
 admin.site.register(OpenStackServiceProjectLink, ServiceProjectLinkAdmin)
 admin.site.register(Backup, BackupAdmin)

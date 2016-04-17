@@ -283,6 +283,7 @@ class OpenStackBackend(ServiceBackend):
         instance.flavor_name = flavor.name
         instance.cores = flavor.cores
         instance.ram = flavor.ram
+        instance.flavor_disk = flavor.disk
         instance.disk = instance.system_volume_size + instance.data_volume_size
         if image:
             instance.min_disk = image.min_disk
