@@ -1136,6 +1136,24 @@ class OpenStackBackend(ServiceBackend):
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
 
+    @log_backend_action('pull instances for tenant')
+    def pull_tenant_instances(self, tenant):
+        spl = tenant.service_project_link
+        States = models.Instance.States
+        for instance in spl.instances.filter(state__in=[States.ONLINE, States.OFFLINE]):
+            try:
+                instance_data = self.get_instance(instance.backend_id).nc_model_data
+            except OpenStackBackendError as e:
+                logger.error('Cannot get data for instance %s (PK: %s). Error: %s', instance, instance.pk, e)
+            else:
+                instance.ram = instance_data['ram']
+                instance.cores = instance_data['cores']
+                instance.disk = instance_data['disk']
+                instance.system_volume_size = instance_data['system_volume_size']
+                instance.data_volume_size = instance_data['data_volume_size']
+                instance.save()
+                logger.info('Instance %s (PK: %s) has been successfully pulled from OpenStack.', instance, instance.pk)
+
     # XXX: This method should be deleted after tenant separation from SPL.
     def cleanup(self, dryrun=True):
         if not self.tenant_id:

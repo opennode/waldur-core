@@ -41,3 +41,4 @@ def pull_tenants_properties():
         core_tasks.BackendMethodTask().delay(serialized_tenant, 'pull_tenant_security_groups')
         core_tasks.BackendMethodTask().delay(serialized_tenant, 'pull_tenant_floating_ips')
         core_tasks.BackendMethodTask().delay(serialized_tenant, 'pull_tenant_quotas')
+        core_tasks.BackendMethodTask().delay(serialized_tenant, 'pull_tenant_instances')
