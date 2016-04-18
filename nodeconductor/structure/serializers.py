@@ -197,7 +197,8 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         return total
 
 
-class ProjectSerializer(PermissionFieldFilteringMixin,
+class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
+                        PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = NestedProjectGroupSerializer(
@@ -316,7 +317,8 @@ class CustomerImageSerializer(serializers.ModelSerializer):
         fields = ['image']
 
 
-class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
+class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
+                         core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
     projects = PermissionProjectSerializer(many=True, read_only=True)
     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)

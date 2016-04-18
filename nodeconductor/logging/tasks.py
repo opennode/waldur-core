@@ -1,8 +1,8 @@
 import logging
 
 from celery import shared_task
-from datetime import datetime
 from django.conf import settings
+from django.utils import timezone
 
 from nodeconductor.logging.loggers import alert_logger, event_logger
 from nodeconductor.logging.models import BaseHook, Alert, AlertThresholdMixin
@@ -40,7 +40,7 @@ def close_alerts_without_scope():
 def alerts_cleanup():
     timespan = settings.NODECONDUCTOR.get('CLOSED_ALERTS_LIFETIME')
     if timespan:
-        Alert.objects.filter(is_closed=True, closed__lte=datetime.now() - timespan).delete()
+        Alert.objects.filter(is_closed=True, closed__lte=timezone.now() - timespan).delete()
 
 
 @shared_task(name='nodeconductor.logging.check_threshold')
