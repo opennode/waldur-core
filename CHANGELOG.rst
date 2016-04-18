@@ -19,6 +19,7 @@ Release NEXT
 - Paginate results for customer users endpoint.
 - Enable OpenStack tenant autocreation for service project links.
 - Define default quotas for service project links.
+- Add possibility to filter certain fields for projects/ and customers/ endpoints.
 
 Release 0.93.0
 --------------
