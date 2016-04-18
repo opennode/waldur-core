@@ -47,7 +47,7 @@ def alerts_cleanup():
 def check_threshold():
     for model in AlertThresholdMixin.get_all_models():
         for obj in model.get_checkable_objects().filter(threshold__gt=0).iterator():
-            if obj.is_over_threshold():
+            if obj.is_over_threshold() and obj.scope:
                 alert_logger.threshold.warning(
                     'Threshold for {scope_name} is exceeded.',
                     scope=obj.scope,
