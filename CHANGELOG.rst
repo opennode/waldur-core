@@ -4,6 +4,11 @@ CHANGELOG
 Release NEXT
 ------------
 
+< nothing yet >
+
+Release 0.94.0
+--------------
+
 - Extended events filter to support filtering by user and time frame.
 - Enable filtering resource by category (vms, apps, private_clouds).
 - Support permission, filters and metadata for OpenStack tenants.
