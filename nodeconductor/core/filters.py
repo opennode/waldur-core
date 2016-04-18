@@ -54,7 +54,6 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
 
     def filter_queryset(self, request, queryset, view):
         filter_class = self.get_filter_class(view, queryset)
-
         if filter_class:
             # XXX: The proper way would be to redefine FilterSetOptions,
             # but it's too much of a boilerplate
@@ -69,9 +68,7 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
                 params.setlist(order_by_field, ordering)
             else:
                 params = request.query_params
-            # pass request as parameter to filter class if it expects such argument
             return filter_class(params, queryset=queryset).qs
-
         return queryset
 
     # noinspection PyMethodMayBeStatic
@@ -91,6 +88,39 @@ class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
             return '-' + ordering
 
         return ordering
+
+    def get_valid_ordering(self, request, filter_class):
+        """
+        Return valid ordering accepted by filter class or None.
+        """
+        order_by_field = getattr(filter_class, 'order_by_field', None)
+        if not order_by_field:
+            # Ordering is not accepted
+            return
+
+        ordering = request.query_params.get(order_by_field)
+        if not ordering:
+            # Ordering is not specified
+            return
+
+        if ordering not in self.get_ordering_choices(filter_class):
+            # Ordering is invalid
+            return
+
+        mapping = getattr(filter_class.Meta, 'order_by_mapping', None)
+        if not mapping:
+            return ordering
+
+        return self._transform_ordering(mapping, ordering)
+
+    def get_ordering_choices(self, filter_class):
+        """
+        Get all ordering choices accepted by filter class for validation.
+        """
+        order_by = getattr(filter_class.Meta, 'order_by', [])
+        order_by_mapping = getattr(filter_class.Meta, 'order_by_mapping', {})
+        order_by_mapping = {v: k for k, v in order_by_mapping.items()}
+        return [self._transform_ordering(order_by_mapping, ordering) for ordering in order_by]
 
 
 class GenericKeyFilterBackend(filters.DjangoFilterBackend):

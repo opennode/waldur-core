@@ -67,11 +67,23 @@ class TemplateGroupFilter(django_filters.FilterSet):
         lookup_type='in',
         queryset=taggit.models.Tag.objects.all(),
     )
+    rtag = django_filters.ModelMultipleChoiceFilter(
+        name='tags__name',
+        to_field_name='name',
+        queryset=taggit.models.Tag.objects.all(),
+        conjoined=True,
+    )
     templates_tag = django_filters.ModelMultipleChoiceFilter(
         name='templates__tags__name',
         to_field_name='name',
         lookup_type='in',
         queryset=taggit.models.Tag.objects.all(),
+    )
+    templates_rtag = django_filters.ModelMultipleChoiceFilter(
+        name='templates__tags__name',
+        to_field_name='name',
+        queryset=taggit.models.Tag.objects.all(),
+        conjoined=True,
     )
     project = URLProjectFilter(view_name='project-detail')
     project_uuid = UUIDProjectFilter()
@@ -79,5 +91,5 @@ class TemplateGroupFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.TemplateGroup
-        fields = ['tag', 'templates_tag', 'name', 'project', 'project_uuid']
+        fields = ['tag', 'rtag', 'templates_tag', 'templates_rtag', 'name', 'project', 'project_uuid']
         order_by = ['name', '-name']

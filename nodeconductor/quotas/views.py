@@ -10,7 +10,7 @@ from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.pagination import UnlimitedLinkHeaderPagination
 from nodeconductor.core.serializers import HistorySerializer
 from nodeconductor.core.utils import datetime_to_timestamp
-from nodeconductor.quotas import models, serializers, filters
+from nodeconductor.quotas import models, serializers, filters, exceptions
 
 
 class QuotaViewSet(mixins.UpdateModelMixin,
@@ -65,10 +65,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
         quota_field = quota.get_field()
         # old style quotas do not have quota_field
         if quota_field is not None and quota_field.is_backend:
-            raise rf_exceptions.APIException(
-                'It is impossible to modify backend quota through this endpoint.',
-                status_code=status.HTTP_409_CONFLICT
-            )
+            raise exceptions.BackendQuotaUpdateError()
 
         limit = serializer.validated_data['limit']
         quota.scope.set_quota_limit(quota.name, limit)

@@ -1,9 +1,9 @@
-from django.contrib.contenttypes.models import ContentType
 from django.http import Http404
+from django.utils import six
 from rest_framework import viewsets, decorators, exceptions, response, permissions, mixins, status
 from rest_framework import filters as rf_filters
 from rest_framework.reverse import reverse
-from taggit.models import Tag
+from taggit.models import TaggedItem
 
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.permissions import has_user_permission_for_instance
@@ -66,7 +66,7 @@ class OpenStackServiceViewSet(structure_views.BaseServiceViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         """
-        To update OpenStack service issue **PUT** or **PATCH** against */api/openstack/<service_uuid>/* 
+        To update OpenStack service issue **PUT** or **PATCH** against */api/openstack/<service_uuid>/*
         as a customer owner. You can update service's `name` and `available_for_all` fields.
 
         Example of a request:
@@ -886,9 +886,7 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         pattern = '^(%s):' % '|'.join([Types.PriceItems.LICENSE_APPLICATION,
                                        Types.PriceItems.LICENSE_OS])
-        instance_ct = ContentType.objects.get_for_model(models.Instance)
-        return Tag.objects.filter(taggit_taggeditem_items__content_type=instance_ct,
-                                  name__regex=pattern)
+        return TaggedItem.tags_for(models.Instance).filter(name__regex=pattern)
 
     def initial(self, request, *args, **kwargs):
         super(LicenseViewSet, self).initial(request, *args, **kwargs)
@@ -926,9 +924,6 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if 'customer' in self.request.query_params:
             queryset = queryset.filter(customer__uuid=self.request.query_params['customer'])
 
-        ids = [instance.id for instance in queryset]
-        tags = self.get_queryset().filter(taggit_taggeditem_items__object_id__in=ids)
-
         tags_map = {
             Types.PriceItems.LICENSE_OS: dict(Types.Os.CHOICES),
             Types.PriceItems.LICENSE_APPLICATION: dict(Types.Applications.CHOICES),
@@ -947,8 +942,8 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
         tags_aggregate = {}
 
-        for tag in tags:
-            opts = tag.name.split(':')
+        for item in TaggedItem.objects.filter(**TaggedItem.bulk_lookup_kwargs(queryset)):
+            opts = item.tag.name.split(':')
             if opts[0] not in tags_map:
                 continue
 
@@ -962,7 +957,7 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             if filter_type and filter_type != tag_dict['type']:
                 continue
 
-            instance = tag.taggit_taggeditem_items.filter(tag=tag).first().content_object
+            instance = item.content_object
             tag_dict.update({
                 'customer_uuid': instance.customer.uuid.hex,
                 'customer_name': instance.customer.name,
@@ -994,14 +989,15 @@ class LicenseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         return response.Response(results)
 
 
-class TenantViewSet(StateExecutorViewSet):
+class TenantViewSet(six.with_metaclass(structure_views.ResourceViewMetaclass,
+                                       structure_views.ResourceViewMixin,
+                                       StateExecutorViewSet)):
     queryset = models.Tenant.objects.all()
     serializer_class = serializers.TenantSerializer
-    lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     create_executor = executors.TenantCreateExecutor
     update_executor = executors.TenantUpdateExecutor
     delete_executor = executors.TenantDeleteExecutor
+    filter_class = structure_filters.BaseResourceStateFilter
 
     @decorators.detail_route(methods=['post'])
     def allocate_floating_ip(self, request, uuid=None):

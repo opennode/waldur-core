@@ -89,3 +89,9 @@ class OpenStackConfig(AppConfig):
             sender=BackupSchedule,
             dispatch_uid='nodeconductor.openstack.handlers.log_backup_schedule_delete',
         )
+
+        signals.post_save.connect(
+            handlers.autocreate_spl_tenant,
+            sender=OpenStackServiceProjectLink,
+            dispatch_uid='nodeconductor.openstack.handlers.autocreate_spl_tenant',
+        )

@@ -32,7 +32,8 @@ class ProjectEventLogger(EventLogger):
         nullable_fields = ['project_group', 'project_previous_name']
         event_types = ('project_deletion_succeeded',
                        'project_update_succeeded',
-                       'project_creation_succeeded')
+                       'project_creation_succeeded',
+                       'project_name_update_succeeded')
 
 
 class ProjectGroupEventLogger(EventLogger):

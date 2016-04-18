@@ -32,7 +32,6 @@ from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.tasks import send_task
 from nodeconductor.core.views import BaseSummaryView, StateExecutorViewSet
 from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
 from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
@@ -69,8 +68,27 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         - customers that the user owns
         - customers that have a project where user has a role
+        """
+        return super(CustomerViewSet, self).list(request, *args, **kwargs)
 
-        A new customer can only be created by users with staff privilege (is_staff=True). Example of a valid request:
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Optional `field` query parameter (can be list) allows to limit what fields are returned.
+        For example, given request /api/customers/<uuid>/?field=uuid&field=name you get response like this:
+
+        .. code-block:: javascript
+
+            {
+                "uuid": "90bcfe38b0124c9bbdadd617b5d739f5",
+                "name": "Ministry of Bells"
+            }
+        """
+        return super(CustomerViewSet, self).retrieve(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
+        A new customer can only be created by users with staff privilege (is_staff=True).
+        Example of a valid request:
 
         .. code-block:: http
 
@@ -87,9 +105,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
                 "contact_details": "Luhamaa 28, 10128 Tallinn",
             }
         """
-        return super(CustomerViewSet, self).list(request, *args, **kwargs)
+        return super(CustomerViewSet, self).create(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
         Deletion of a customer is done through sending a **DELETE** request to the customer instance URI. Please note,
         that if a customer has connected projects or project groups, deletion request will fail with 409 response code.
@@ -102,7 +120,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
             Host: example.com
         """
-        return super(CustomerViewSet, self).retrieve(request, *args, **kwargs)
+        return super(CustomerViewSet, self).destroy(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'users':
@@ -147,8 +165,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def users(self, request, uuid=None):
         """ A list of users connected to the customer """
         customer = self.get_object()
-        serializer = self.get_serializer(customer.get_users(), many=True)
-        return Response(serializer.data)
+        queryset = self.paginate_queryset(customer.get_users())
+        serializer = self.get_serializer(queryset, many=True)
+        return self.get_paginated_response(serializer.data)
 
 
 class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
@@ -182,7 +201,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         To get a list of projects, run **GET** against */api/projects/* as authenticated user.
         Here you can also check actual value for project quotas and project usage
-        ("resource_quota" and "resource_quota_usage" are deprecated).
 
         Note that a user can only see connected projects:
 
@@ -193,8 +211,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         - ?can_manage - return a list of projects where current user is manager, group manager or a customer owner;
         - ?can_admin - return a list of projects where current user is admin;
+        """
+        return super(ProjectViewSet, self).list(request, *args, **kwargs)
 
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Optional `field` query parameter (can be list) allows to limit what fields are returned.
+        For example, given request /api/projects/<uuid>/?field=uuid&field=name you get response like this:
 
+        .. code-block:: javascript
+
+            {
+                "uuid": "90bcfe38b0124c9bbdadd617b5d739f5",
+                "name": "Default"
+            }
+        """
+        return super(ProjectViewSet, self).retrieve(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
         A new project can be created by users with staff privilege (is_staff=True) or customer owners.
         Project resource quota is optional. Example of a valid request:
 
@@ -214,9 +249,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 ]
             }
         """
-        return super(ProjectViewSet, self).list(request, *args, **kwargs)
+        return super(ProjectViewSet, self).create(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
         Deletion of a project is done through sending a **DELETE** request to the project instance URI.
         Please note, that if a project has connected instances, deletion request will fail with 409 response code.
@@ -229,7 +264,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
             Host: example.com
         """
-        return super(ProjectViewSet, self).retrieve(request, *args, **kwargs)
+        return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
 
     def can_create_project_with(self, customer, project_groups):
         user = self.request.user
@@ -507,6 +542,7 @@ class UserViewSet(viewsets.ModelViewSet):
             Accept: application/json
             Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
             Host: example.com
+
             {
                 "username": "sample-user",
                 "full_name": "full name",
@@ -626,7 +662,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def approve_organization(self, request, uuid=None):
         """
         **Deprecated, use**
-        `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ **instead.**:
+        `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ **instead.**
         """
         instance = self.get_object()
 
@@ -965,25 +1001,25 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
     def list(self, request, *args, **kwargs):
         """
         Each customer is associated with a group of users that represent customer owners. The link is maintained
-        through **api/customer-permissions/* endpoint.
+        through **api/customer-permissions/** endpoint.
 
         To list all visible links, run a **GET** query against a list.
         Response will contain a list of customer owners and their brief data.
 
         To add a new user to the customer, **POST** a new relationship to **customer-permissions** endpoint:
 
-            .. code-block:: http
+        .. code-block:: http
 
-                POST /api/customer-permissions/ HTTP/1.1
-                Accept: application/json
-                Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-                Host: example.com
+            POST /api/customer-permissions/ HTTP/1.1
+            Accept: application/json
+            Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
+            Host: example.com
 
-                {
-                    "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-                    "role": "owner",
-                    "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
-                }
+            {
+                "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
+                "role": "owner",
+                "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
+            }
         """
         return super(CustomerPermissionViewSet, self).list(request, *args, **kwargs)
 
@@ -1202,14 +1238,32 @@ class ResourceViewSet(mixins.ListModelMixin,
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
-    filter_class = filters.BaseResourceFilter
 
     def get_queryset(self):
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items()
+                           if k != 'IaaS.Instance'}
+        resource_models = self._filter_by_category(resource_models)
+        resource_models = self._filter_by_types(resource_models)
+
+        return managers.SummaryQuerySet(resource_models.values())
+
+    def _filter_by_types(self, resource_models):
         types = self.request.query_params.getlist('resource_type', None)
-        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items() if k != 'IaaS.Instance'}
         if types:
             resource_models = {k: v for k, v in resource_models.items() if k in types}
-        return managers.SummaryQuerySet(resource_models.values())
+        return resource_models
+
+    def _filter_by_category(self, resource_models):
+        choices = {
+            'apps': models.ResourceMixin.get_app_models(),
+            'vms': models.ResourceMixin.get_vm_models(),
+            'private_clouds': models.ResourceMixin.get_private_cloud_models()
+        }
+        category = self.request.query_params.get('resource_category')
+        category_models = choices.get(category)
+        if category_models:
+            resource_models = {k: v for k, v in resource_models.items() if v in category_models}
+        return resource_models
 
     def list(self, request, *args, **kwargs):
         """
@@ -1217,8 +1271,24 @@ class ResourceViewSet(mixins.ListModelMixin,
         */api/<resource_url>/* as an authenticated user.
 
         It is possible to filter and order by resource-specific fields, but this filters will be applied only to
-        resources that support such filtering. For example it is possible to sort resource by ?o=ram, but sugarcrm crms
+        resources that support such filtering. For example it is possible to sort resource by ?o=ram, but SugarCRM crms
         will ignore this ordering, because they do not support such option.
+
+        Filter resources by type or category
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        There are two query argument to select resources by their type.
+
+        - Specify explicitly list of resource types, for example:
+
+          /api/<resource_endpoint>/?resource_type=DigitalOcean.Droplet&resource_type=OpenStack.Instance
+
+        - Specify category, one of vms, apps or private_clouds, for example:
+
+          /api/<resource_endpoint>/?category=vms
+
+        Filtering by monitoring fields
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
         Resources may have SLA attached to it. Example rendering of SLA:
 
@@ -1269,6 +1339,8 @@ class ResourceViewSet(mixins.ListModelMixin,
 
           /api/<resource_endpoint>/?o=monitoring__installation_state
 
+        Filtering by tags
+        ^^^^^^^^^^^^^^^^^
 
         Resource may have tags attached to it. Example of tags rendering:
 
@@ -1283,7 +1355,8 @@ class ResourceViewSet(mixins.ListModelMixin,
 
         Tags filtering:
 
-         - ?tag=IaaS - filter by full tag name. Can be list.
+         - ?tag=IaaS - filter by full tag name, using method OR. Can be list.
+         - ?rtag=os-family:linux - filter by full tag name, using AND method. Can be list.
          - ?tag__license-os=centos7 - filter by tags with particular prefix.
 
         Tags ordering:
@@ -1343,38 +1416,61 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             "alerts": 12,
             "vms": 1,
             "apps": 0,
+            "private_clouds": 1,
             "services": 1,
             "projects": 1,
             "users": 3
         }
     """
-    queryset = models.Customer.objects.all()
     lookup_field = 'uuid'
+
+    def get_queryset(self):
+        return filter_queryset_for_user(models.Customer.objects.all().only('pk', 'uuid'), self.request.user)
 
     def list(self, request, uuid):
         self.customer = self.get_object()
-        self.customer_uuid = self.customer.uuid.hex
-        self.exclude_features = request.query_params.getlist('exclude_features')
-
-        quotas = {quota['name']: quota['usage']
-                  for quota in self.customer.quotas.values('name', 'usage')}
 
         return Response({
             'alerts': self.get_alerts(),
-            'vms': quotas.get(models.Customer.Quotas.nc_vm_count.name, 0),
-            'apps': quotas.get(models.Customer.Quotas.nc_app_count.name, 0),
-            'projects': quotas.get(models.Customer.Quotas.nc_project_count.name, 0),
-            'services': quotas.get(models.Customer.Quotas.nc_service_count.name, 0),
-            'users': quotas.get(models.Customer.Quotas.nc_user_count.name, 0)
+            'vms': self.get_vms(),
+            'apps': self.get_apps(),
+            'private_clouds': self.get_private_clouds(),
+            'projects': self.get_projects(),
+            'services': self.get_services(),
+            'users': self.customer.get_users().count()
         })
 
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'customer',
-            'uuid': self.customer_uuid,
-            'exclude_features': self.exclude_features,
+            'uuid': self.customer.uuid.hex,
+            'exclude_features': self.request.query_params.getlist('exclude_features'),
             'opened': True
         })
+
+    def get_vms(self):
+        return self._total_count(models.ResourceMixin.get_vm_models())
+
+    def get_apps(self):
+        return self._total_count(models.ResourceMixin.get_app_models())
+
+    def get_private_clouds(self):
+        return self._total_count(models.ResourceMixin.get_private_cloud_models())
+
+    def get_projects(self):
+        return self._count_model(models.Project)
+
+    def get_services(self):
+        models = [item['service'] for item in SupportedServices.get_service_models().values()]
+        return self._total_count(models)
+
+    def _total_count(self, models):
+        return sum(self._count_model(model) for model in models)
+
+    def _count_model(self, model):
+        qs = model.objects.filter(customer=self.customer).only('pk')
+        qs = filter_queryset_for_user(qs, self.request.user)
+        return qs.count()
 
 
 class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
@@ -1382,16 +1478,20 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
     Count number of entities related to project
 
     .. code-block:: javascript
+
         {
             "users": 0,
             "alerts": 2,
             "apps": 0,
             "vms": 1,
+            "private_clouds": 1,
             "premium_support_contracts": 0,
         }
     """
-    queryset = models.Project.objects.all()
     lookup_field = 'uuid'
+
+    def get_queryset(self):
+        return filter_queryset_for_user(models.Project.objects.all().only('pk', 'uuid'), self.request.user)
 
     def list(self, request, uuid):
         self.project = self.get_object()
@@ -1402,6 +1502,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'alerts': self.get_alerts(),
             'vms': self.get_vms(),
             'apps': self.get_apps(),
+            'private_clouds': self.get_private_clouds(),
             'users': self.get_users(),
             'premium_support_contracts': self.get_premium_support_contracts()
         })
@@ -1415,10 +1516,13 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_vm_count).usage
+        return self._total_count(models.ResourceMixin.get_vm_models())
 
     def get_apps(self):
-        return self.project.quotas.get(name=models.Project.Quotas.nc_app_count).usage
+        return self._total_count(models.ResourceMixin.get_app_models())
+
+    def get_private_clouds(self):
+        return self._total_count(models.ResourceMixin.get_private_cloud_models())
 
     def get_users(self):
         return self.get_count('user-list', {
@@ -1430,12 +1534,21 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'project_uuid': self.project_uuid
         })
 
+    def _total_count(self, models):
+        return sum(self._count_model(model) for model in models)
+
+    def _count_model(self, model):
+        qs = model.objects.filter(project=self.project).only('pk')
+        qs = filter_queryset_for_user(qs, self.request.user)
+        return qs.count()
+
 
 class UserCountersView(CounterMixin, viewsets.GenericViewSet):
     """
     Count number of entities related to current user
 
     .. code-block:: javascript
+
         {
             "keys": 1,
             "hooks": 1
@@ -1763,11 +1876,7 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
-class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                              UpdateOnlyByPaidCustomerMixin,
-                                              core_mixins.UserContextMixin,
-                                              viewsets.ModelViewSet)):
-
+class ResourceViewMixin(UpdateOnlyByPaidCustomerMixin):
     class PaidControl:
         customer_path = 'service_project_link__service__customer'
         settings_path = 'service_project_link__service__settings'
@@ -1782,9 +1891,30 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         SlaFilter,
         MonitoringItemFilter,
         filters.TagsFilter,
+        filters.StartTimeFilter
     )
-    filter_class = filters.BaseResourceFilter
     metadata_class = ResourceActionsMetadata
+
+
+class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                              ResourceViewMixin,
+                                              core_mixins.UserContextMixin,
+                                              viewsets.ModelViewSet)):
+    filter_class = filters.BaseResourceFilter
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Optional `field` query parameter (can be list) allows to limit what fields are returned.
+        For example, given request /api/openstack-instances/<uuid>/?field=uuid&field=name you get response like this:
+
+        .. code-block:: javascript
+
+            {
+                "uuid": "90bcfe38b0124c9bbdadd617b5d739f5",
+                "name": "Azure Virtual Machine"
+            }
+        """
+        return super(_BaseResourceViewSet, self).retrieve(request, *args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
@@ -1800,21 +1930,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
                     'Provisioning scheduled. Disabled modifications.')
 
         super(_BaseResourceViewSet, self).initial(request, *args, **kwargs)
-
-    def get_queryset(self):
-        queryset = super(_BaseResourceViewSet, self).get_queryset()
-
-        order = self.request.query_params.get('o', None)
-        if order == 'start_time':
-            queryset = queryset.extra(select={
-                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
-                .order_by('is_null', 'start_time')
-        elif order == '-start_time':
-            queryset = queryset.extra(select={
-                'is_null': 'CASE WHEN start_time IS NULL THEN 0 ELSE 1 END'}) \
-                .order_by('-is_null', '-start_time')
-
-        return queryset
 
     def perform_create(self, serializer):
         service_project_link = serializer.validated_data['service_project_link']
@@ -1882,8 +1997,6 @@ class BaseResourceViewSet(_BaseResourceViewSet):
     def destroy(self, request, resource, uuid=None):
         self.perform_managed_resource_destroy(
             resource, force=resource.state == models.Resource.States.ERRED)
-    destroy.method = 'DELETE'
-    destroy.destructive = True
 
     @detail_route(methods=['post'])
     @safe_operation(valid_state=models.Resource.States.OFFLINE)
@@ -2101,16 +2214,16 @@ class QuotaTimelineCollector(object):
 
     .. code-block:: javascript
 
-    [
-        {
-            "from": start,
-            "to" end,
-            "vcpu_limit": 10,
-            "vcpu_usage": 5,
-            "ram_limit": 4000,
-            "ran_usage": 1000
-        }
-    ]
+        [
+            {
+                "from": start,
+                "to" end,
+                "vcpu_limit": 10,
+                "vcpu_usage": 5,
+                "ram_limit": 4000,
+                "ran_usage": 1000
+            }
+        ]
     """
     def __init__(self):
         self.ranges = set()

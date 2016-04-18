@@ -13,6 +13,8 @@ from nodeconductor.iaas.models import SecurityGroupRuleValidationMixin
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.openstack.backup import BackupBackend, BackupScheduleBackend
 from nodeconductor.openstack.managers import BackupManager
+from nodeconductor.quotas.fields import QuotaField
+from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.utils import get_coordinates_by_ip, Coordinates
 
@@ -33,8 +35,15 @@ class OpenStackService(structure_models.Service):
 
 
 class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
-    QUOTAS_NAMES = ['vcpu', 'ram', 'storage', 'instances', 'security_group_count', 'security_group_rule_count',
-                    'floating_ip_count']
+
+    class Quotas(QuotaModelMixin.Quotas):
+        vcpu = QuotaField(default_limit=20, is_backend=True)
+        ram = QuotaField(default_limit=51200, is_backend=True)
+        storage = QuotaField(default_limit=1024000, is_backend=True)
+        instances = QuotaField(default_limit=30, is_backend=True)
+        security_group_count = QuotaField(default_limit=100, is_backend=True)
+        security_group_rule_count = QuotaField(default_limit=100, is_backend=True)
+        floating_ip_count = QuotaField(default_limit=50, is_backend=True)
 
     service = models.ForeignKey(OpenStackService)
 
@@ -198,6 +207,7 @@ class Instance(structure_models.VirtualMachineMixin,
         default=DEFAULT_DATA_VOLUME_SIZE, help_text='Data disk size in MiB', validators=[MinValueValidator(1 * 1024)])
 
     flavor_name = models.CharField(max_length=255, blank=True)
+    flavor_disk = models.PositiveIntegerField(default=0, help_text='Flavor disk size in MiB')
 
     tracker = FieldTracker()
 
@@ -251,7 +261,7 @@ class BackupSchedule(core_models.UuidMixin,
 
     @classmethod
     def get_url_name(cls):
-        return 'openstack-backup-schedule'
+        return 'openstack-schedule'
 
     def get_backend(self):
         return BackupScheduleBackend(self)
@@ -338,7 +348,8 @@ class Backup(core_models.UuidMixin,
         pass
 
 
-class Tenant(core_models.RuntimeStateMixin, core_models.StateMixin, structure_models.ResourceMixin):
+class Tenant(core_models.RuntimeStateMixin, core_models.StateMixin,
+             structure_models.PrivateCloudMixin, structure_models.ResourceMixin):
     service_project_link = models.ForeignKey(
         OpenStackServiceProjectLink, related_name='tenants', on_delete=models.PROTECT)
 

@@ -1,13 +1,13 @@
 import datetime
 import dateutil.parser
-import functools
 import logging
 import re
 import time
 import uuid
 
-from django.db import transaction
+from django.conf import settings as django_settings
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+from django.db import transaction
 from django.utils import six, dateparse, timezone
 from requests import ConnectionError
 
@@ -30,7 +30,7 @@ from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.models import StateMixin
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackend, ServiceBackendError
+from nodeconductor.structure import ServiceBackend, ServiceBackendError, log_backend_action
 from nodeconductor.structure.log import event_logger
 from nodeconductor.openstack import models
 
@@ -169,30 +169,6 @@ class OpenStackClient(object):
         return ceilometer_client.Client('2', **kwargs)
 
 
-def log_backend_action(action=None):
-    """ Logging for backend method.
-
-    Expects django model instance as first argument.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapped(self, instance, *args, **kwargs):
-            action_name = func.func_name.replace('_', ' ') if action is None else action
-
-            logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
-            try:
-                result = func(self, instance, *args, **kwargs)
-            except OpenStackBackendError as e:
-                logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
-                six.reraise(OpenStackBackendError, e)
-            else:
-                logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
-                            action_name, instance, instance.pk)
-                return result
-        return wrapped
-    return decorator
-
-
 class OpenStackBackend(ServiceBackend):
 
     DEFAULT_TENANT = 'admin'
@@ -282,6 +258,7 @@ class OpenStackBackend(ServiceBackend):
         instance.flavor_name = flavor.name
         instance.cores = flavor.cores
         instance.ram = flavor.ram
+        instance.flavor_disk = flavor.disk
         instance.disk = instance.system_volume_size + instance.data_volume_size
         if image:
             instance.min_disk = image.min_disk
@@ -356,7 +333,7 @@ class OpenStackBackend(ServiceBackend):
         if service_project_link.tenant is not None:
             self.remove_ssh_key_from_tenant(service_project_link.tenant, ssh_key)
 
-    @log_backend_action
+    @log_backend_action()
     def remove_ssh_key_from_tenant(self, tenant, key_name, fingerprint):
         nova = self.nova_client
 
@@ -537,6 +514,15 @@ class OpenStackBackend(ServiceBackend):
 
     @log_backend_action('push quotas for tenant')
     def push_tenant_quotas(self, tenant, quotas):
+        if 'instances' in quotas:
+            # convert instances quota to volumes and snapshots.
+            quotas_ratios = django_settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
+            volume_ratio = quotas_ratios.get('volumes', 4)
+            snapshots_ratio = quotas_ratios.get('snapshots', 20)
+
+            quotas['volumes'] = volume_ratio * quotas['instances']
+            quotas['snapshots'] = snapshots_ratio * quotas['instances']
+
         cinder_quotas = {
             'gigabytes': self.mb2gb(quotas.get('storage')) if 'storage' in quotas else None,
             'volumes': quotas.get('volumes'),
@@ -724,7 +710,9 @@ class OpenStackBackend(ServiceBackend):
 
                 # deleting extra security groups
                 extra_groups.delete()
-                logger.debug('Deleted stale security groups in database')
+                if extra_groups:
+                    logger.debug('Deleted stale security group: %s.',
+                                 ' ,'.join('%s (PK: %s)' % (sg.name, sg.pk) for sg in extra_groups))
 
                 # synchronizing unsynchronized security groups
                 for backend_group in unsynchronized_groups:
@@ -734,7 +722,8 @@ class OpenStackBackend(ServiceBackend):
                         nc_security_group.state = StateMixin.States.OK
                         nc_security_group.save()
                     self.pull_security_group_rules(nc_security_group)
-                logger.debug('Updated existing security groups in database')
+                    logger.debug('Updated existing security group %s (PK: %s).',
+                                 nc_security_group.name, nc_security_group.pk)
 
                 # creating non-existed security groups
                 for backend_group in nonexistent_groups:
@@ -744,7 +733,8 @@ class OpenStackBackend(ServiceBackend):
                         state=StateMixin.States.OK
                     )
                     self.pull_security_group_rules(nc_security_group)
-                    logger.debug('Created new security group %s in database', nc_security_group.uuid)
+                    logger.debug('Created new security group %s (PK: %s).',
+                                 nc_security_group.name, nc_security_group.pk)
 
         except Exception as e:
             event_logger.service_project_link.warning(
@@ -848,6 +838,20 @@ class OpenStackBackend(ServiceBackend):
             tenant.save(update_fields=['backend_id'])
         except keystone_exceptions.ClientException as e:
             six.reraise(OpenStackBackendError, e)
+
+    @log_backend_action()
+    def pull_tenant(self, tenant):
+        keystone = self.keystone_admin_client
+        if not tenant.backend_id:
+            raise OpenStackBackendError('Cannot pull tenant without backend_id')
+        try:
+            backend_tenant = keystone.tenants.get(tenant.backend_id)
+        except keystone_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
+        else:
+            tenant.name = backend_tenant.name
+            tenant.description = backend_tenant.description
+            tenant.save()
 
     @log_backend_action()
     def add_admin_user_to_tenant(self, tenant):
@@ -1083,9 +1087,6 @@ class OpenStackBackend(ServiceBackend):
                     instance.uuid)
                 raise OpenStackBackendError("Timed out waiting for instance %s to provision" % instance.uuid)
 
-            instance.start_time = timezone.now()
-            instance.save()
-
             logger.debug("About to infer internal ip addresses of instance %s", instance.uuid)
             try:
                 server = nova.servers.get(server.id)
@@ -1101,6 +1102,20 @@ class OpenStackBackend(ServiceBackend):
 
             self.push_floating_ip_to_instance(instance, server)
 
+            backend_security_groups = server.list_security_group()
+            for bsg in backend_security_groups:
+                if instance.security_groups.filter(security_group__name=bsg.name).exists():
+                    continue
+                try:
+                    security_group = service_project_link.security_groups.get(name=bsg.name)
+                except models.SecurityGroup.DoesNotExist:
+                    logger.error(
+                        'SPL %s (PK: %s) does not have security group "%s", but its instance %s (PK: %s) has.' %
+                        (service_project_link, service_project_link.pk, bsg.name, instance, instance.pk)
+                    )
+                else:
+                    instance.security_groups.create(security_group=security_group)
+
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
@@ -1109,6 +1124,24 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
+
+    @log_backend_action('pull instances for tenant')
+    def pull_tenant_instances(self, tenant):
+        spl = tenant.service_project_link
+        States = models.Instance.States
+        for instance in spl.instances.filter(state__in=[States.ONLINE, States.OFFLINE]):
+            try:
+                instance_data = self.get_instance(instance.backend_id).nc_model_data
+            except OpenStackBackendError as e:
+                logger.error('Cannot get data for instance %s (PK: %s). Error: %s', instance, instance.pk, e)
+            else:
+                instance.ram = instance_data['ram']
+                instance.cores = instance_data['cores']
+                instance.disk = instance_data['disk']
+                instance.system_volume_size = instance_data['system_volume_size']
+                instance.data_volume_size = instance_data['data_volume_size']
+                instance.save()
+                logger.info('Instance %s (PK: %s) has been successfully pulled from OpenStack.', instance, instance.pk)
 
     # XXX: This method should be deleted after tenant separation from SPL.
     def cleanup(self, dryrun=True):
@@ -1797,27 +1830,12 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE'):
                 logger.error('Failed to start instance %s', instance.uuid)
-                event_logger.resource.error(
-                    'Virtual machine {resource_name} start has failed.',
-                    event_type='resource_start_failed',
-                    event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to start' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to start instance %s', instance.uuid)
-            event_logger.resource.error(
-                'Virtual machine {resource_name} start has failed.',
-                event_type='resource_start_failed',
-                event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
-            instance.start_time = timezone.now()
-            instance.save(update_fields=['start_time'])
-
             logger.info('Successfully started instance %s', instance.uuid)
-            event_logger.resource.info(
-                'Virtual machine {resource_name} has been started.',
-                event_type='resource_start_succeeded',
-                event_context={'resource': instance})
 
     def stop_instance(self, instance):
         nova = self.nova_client
@@ -1834,26 +1852,14 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'SHUTOFF'):
                 logger.error('Failed to stop instance %s', instance.uuid)
-                event_logger.resource.error(
-                    'Virtual machine {resource_name} stop has failed.',
-                    event_type='resource_stop_failed',
-                    event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to stop' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to stop instance %s', instance.uuid)
-            event_logger.resource.error(
-                'Virtual machine {resource_name} stop has failed.',
-                event_type='resource_stop_failed',
-                event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
             instance.start_time = None
             instance.save(update_fields=['start_time'])
             logger.info('Successfully stopped instance %s', instance.uuid)
-            event_logger.resource.info(
-                'Virtual machine {resource_name} has been stopped.',
-                event_type='resource_stop_succeeded',
-                event_context={'resource': instance})
 
     def restart_instance(self, instance):
         nova = self.nova_client
@@ -1863,24 +1869,12 @@ class OpenStackBackend(ServiceBackend):
 
             if not self._wait_for_instance_status(instance.backend_id, nova, 'ACTIVE', retries=80):
                 logger.error('Failed to restart instance %s', instance.uuid)
-                event_logger.resource.error(
-                    'Virtual machine {resource_name} restart has failed.',
-                    event_type='resource_restart_failed',
-                    event_context={'resource': instance})
                 raise OpenStackBackendError('Timed out waiting for instance %s to restart' % instance.uuid)
         except nova_exceptions.ClientException as e:
             logger.exception('Failed to restart instance %s', instance.uuid)
-            event_logger.resource.error(
-                'Virtual machine {resource_name} restart has failed.',
-                event_type='resource_restart_failed',
-                event_context={'resource': instance})
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info('Successfully restarted instance %s', instance.uuid)
-            event_logger.resource.info(
-                'Virtual machine {resource_name} has been restarted.',
-                event_type='resource_restart_succeeded',
-                event_context={'resource': instance})
 
     def delete_instance(self, instance):
         nova = self.nova_client
@@ -1999,16 +1993,14 @@ class OpenStackBackend(ServiceBackend):
             logger.info('Successfully promoted volumes %s', ', '.join(promoted_volume_ids))
         return promoted_volume_ids
 
+    @log_backend_action()
     def update_tenant(self, tenant):
         keystone = self.keystone_admin_client
-        logger.debug('About to update tenant `%s` (PK: %s)', tenant.name, tenant.backend_id)
         try:
             keystone.tenants.update(tenant.backend_id, name=tenant.name, description=tenant.description)
         except keystone_exceptions.NotFound as e:
             logger.error('Tenant with id %s does not exist', tenant.backend_id)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Successfully updated `%s` (PK: %s)', tenant.name, tenant.backend_id)
 
     def create_snapshot(self, volume_id, cinder):
         """

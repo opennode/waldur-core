@@ -1,12 +1,9 @@
 import logging
-import sys
 
 from celery import shared_task
-from django.utils import six
 
 from nodeconductor.core.tasks import save_error_message, transition, throttle
 from nodeconductor.openstack.models import Instance, FloatingIP, Tenant
-from nodeconductor.structure.log import event_logger
 
 
 logger = logging.getLogger(__name__)
@@ -97,19 +94,7 @@ def provision_instance(instance_uuid, transition_entity=None, **kwargs):
     instance = transition_entity
     with throttle(key=instance.service_project_link.service.settings.backend_url):
         backend = instance.get_backend()
-        try:
-            backend.provision_instance(instance, **kwargs)
-        except:
-            event_logger.resource.error(
-                'Resource {resource_name} creation has failed.',
-                event_type='resource_creation_failed',
-                event_context={'resource': instance})
-            six.reraise(*sys.exc_info())
-        else:
-            event_logger.resource.info(
-                'Resource {resource_name} has been created.',
-                event_type='resource_creation_succeeded',
-                event_context={'resource': instance})
+        backend.provision_instance(instance, **kwargs)
 
 
 @shared_task
@@ -118,19 +103,7 @@ def provision_instance(instance_uuid, transition_entity=None, **kwargs):
 def start_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
-    try:
-        backend.start_instance(instance)
-    except:
-        event_logger.resource.error(
-            'Resource {resource_name} start has failed.',
-            event_type='resource_start_failed',
-            event_context={'resource': instance})
-        six.reraise(*sys.exc_info())
-    else:
-        event_logger.resource.info(
-            'Resource {resource_name} has been started.',
-            event_type='resource_start_succeeded',
-            event_context={'resource': instance})
+    backend.start_instance(instance)
 
 
 @shared_task
@@ -139,19 +112,7 @@ def start_instance(instance_uuid, transition_entity=None):
 def stop_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
-    try:
-        backend.stop_instance(instance)
-    except:
-        event_logger.resource.error(
-            'Resource {resource_name} stop has failed.',
-            event_type='resource_stop_failed',
-            event_context={'resource': instance})
-        six.reraise(*sys.exc_info())
-    else:
-        event_logger.resource.info(
-            'Resource {resource_name} has been stopped.',
-            event_type='resource_stop_succeeded',
-            event_context={'resource': instance})
+    backend.stop_instance(instance)
 
 
 @shared_task
@@ -160,19 +121,7 @@ def stop_instance(instance_uuid, transition_entity=None):
 def restart_instance(instance_uuid, transition_entity=None):
     instance = transition_entity
     backend = instance.get_backend()
-    try:
-        backend.restart_instance(instance)
-    except:
-        event_logger.resource.error(
-            'Resource {resource_name} restart has failed.',
-            event_type='resource_restart_failed',
-            event_context={'resource': instance})
-        six.reraise(*sys.exc_info())
-    else:
-        event_logger.resource.info(
-            'Resource {resource_name} has been restarted.',
-            event_type='resource_restart_succeeded',
-            event_context={'resource': instance})
+    backend.restart_instance(instance)
 
 
 @shared_task

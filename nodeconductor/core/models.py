@@ -15,6 +15,7 @@ from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone as django_timezone
 from django.utils.encoding import force_text, python_2_unicode_compatible
+from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
@@ -187,7 +188,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         if user.is_staff:
             return {'user_uuid': cls.objects.values_list('uuid', flat=True)}
         else:
-            return {'user_uuid': [user.uuid.hex]}
+            return {'user_uuid': [user.uuid]}
 
     def clean(self):
         # User email has to be unique or empty
@@ -393,7 +394,7 @@ class StateMixin(ErrorMessageMixin):
     def begin_deleting(self):
         pass
 
-    @transition(field=state, source=States.OK, target=States.UPDATE_SCHEDULED)
+    @transition(field=state, source=[States.OK, States.ERRED], target=States.UPDATE_SCHEDULED)
     def schedule_updating(self):
         pass
 
@@ -409,6 +410,15 @@ class StateMixin(ErrorMessageMixin):
     @transition(field=state, source='*', target=States.ERRED)
     def set_erred(self):
         pass
+
+    @transition(field=state, source=States.ERRED, target=States.OK)
+    def recover(self):
+        pass
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
 
 class ReversionMixin(object):

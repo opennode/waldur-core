@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 import logging
 
 from django.conf import settings
-from django.db import models, transaction
 from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
+from django.db import models, transaction
+from django.utils import timezone
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SshPublicKey, SynchronizationStates
@@ -249,7 +250,7 @@ def log_project_save(sender, instance, created=False, **kwargs):
         if instance.tracker.has_changed('name'):
             event_logger.project.info(
                 'Project has been renamed from {project_previous_name} to {project_name}.',
-                event_type='project_update_succeeded',
+                event_type='project_name_update_succeeded',
                 event_context={
                     'project': instance,
                     'project_group': instance.project_groups.first(),
@@ -381,6 +382,53 @@ def log_resource_imported(sender, instance, **kwargs):
         event_context={'resource': instance})
 
 
+def log_resource_action(sender, instance, name, source, target, **kwargs):
+    if source == Resource.States.PROVISIONING:
+        if target == Resource.States.ONLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been created.',
+                event_type='resource_creation_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} creation has failed.',
+                event_type='resource_creation_failed',
+                event_context={'resource': instance})
+    elif source == Resource.States.STARTING:
+        if target == Resource.States.ONLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been started.',
+                event_type='resource_start_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} start has failed.',
+                event_type='resource_start_failed',
+                event_context={'resource': instance})
+    elif source == Resource.States.STOPPING:
+        if target == Resource.States.OFFLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been stopped.',
+                event_type='resource_stop_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} stop has failed.',
+                event_type='resource_stop_failed',
+                event_context={'resource': instance})
+    elif source == Resource.States.RESTARTING:
+        if target == Resource.States.ONLINE:
+            event_logger.resource.info(
+                'Resource {resource_name} has been restarted.',
+                event_type='resource_restart_succeeded',
+                event_context={'resource': instance})
+        elif target == Resource.States.ERRED:
+            event_logger.resource.error(
+                'Resource {resource_name} restart has failed.',
+                event_type='resource_restart_failed',
+                event_context={'resource': instance})
+
+
 def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
     # Check if geolocation is enabled
     if not settings.NODECONDUCTOR.get('ENABLE_GEOIP', True):
@@ -399,7 +447,7 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
         return
     customer = instance
 
-    for shared_settings in ServiceSettings.objects.filter(shared=True, state=SynchronizationStates.IN_SYNC):
+    for shared_settings in ServiceSettings.objects.filter(shared=True):
         try:
             service_model = SupportedServices.get_service_models()[shared_settings.type]['service']
             service_model.objects.create(customer=customer,
@@ -446,35 +494,14 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
             service_project_link_model.objects.get_or_create(project=project, service=service)
 
 
-def sync_service_settings_with_backend(sender, instance, created=False, **kwargs):
-    if not created:
-        return
-
-    backend = instance.get_backend()
-    if backend.has_global_properties():
-        instance.state = SynchronizationStates.IN_SYNC
-        instance.save(update_fields=['state'])
-        return
-
-    send_task('structure', 'sync_service_settings')(instance.uuid.hex)
-
-
-def log_service_sync_failed(sender, instance, name, source, target, **kwargs):
-    settings = instance
-    message = settings.error_message
-    if message and target == SynchronizationStates.ERRED:
-        logger.error(
-            "Service settings %s has failed to sync with an error: %s", settings.uuid.hex, message)
-
-
-def log_service_recovered(sender, instance, name, source, target, **kwargs):
-    settings = instance
-    if source == SynchronizationStates.ERRED and target == SynchronizationStates.IN_SYNC:
-        logger.info('Service settings %s has been recovered.' % settings)
-
-
 def delete_service_settings(sender, instance, **kwargs):
     """ Delete not shared service settings without services """
     service = instance
     if not service.settings.shared:
         service.settings.delete()
+
+
+def init_resource_start_time(sender, instance, name, source, target, **kwargs):
+    if target == sender.States.ONLINE:
+        instance.start_time = timezone.now()
+        instance.save(update_fields=['start_time'])

@@ -1,9 +1,8 @@
-import uuid
 import logging
 
 from celery import shared_task
-from datetime import datetime
 from django.conf import settings
+from django.utils import timezone
 
 from nodeconductor.logging.loggers import event_logger
 from nodeconductor.logging.models import BaseHook, Alert
@@ -21,10 +20,10 @@ def process_event(event):
 
 def check_event(event, hook):
     # Check that event matches with hook
-    if event['type'] not in hook.event_types:
+    if event['type'] not in hook.all_event_types:
         return False
     for key, uuids in event_logger.get_permitted_objects_uuids(hook.user).items():
-        if key in event['context'] and uuid.UUID(event['context'][key]) in uuids:
+        if key in event['context'] and event['context'][key] in uuids:
             return True
     return False
 
@@ -41,4 +40,4 @@ def close_alerts_without_scope():
 def alerts_cleanup():
     timespan = settings.NODECONDUCTOR.get('CLOSED_ALERTS_LIFETIME')
     if timespan:
-        Alert.objects.filter(is_closed=True, closed__lte=datetime.now() - timespan).delete()
+        Alert.objects.filter(is_closed=True, closed__lte=timezone.now() - timespan).delete()

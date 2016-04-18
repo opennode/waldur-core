@@ -17,7 +17,8 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
-from nodeconductor.structure import models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import (models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
+                                     executors)
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ServiceProjectLink
 
@@ -196,7 +197,8 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         return total
 
 
-class ProjectSerializer(PermissionFieldFilteringMixin,
+class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
+                        PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     project_groups = NestedProjectGroupSerializer(
@@ -315,7 +317,8 @@ class CustomerImageSerializer(serializers.ModelSerializer):
         fields = ['image']
 
 
-class CustomerSerializer(core_serializers.AugmentedSerializerMixin,
+class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
+                         core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
     projects = PermissionProjectSerializer(many=True, read_only=True)
     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
@@ -831,7 +834,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
-            'dummy', 'quotas',
+            'quotas',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
@@ -918,7 +921,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     password = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     token = serializers.CharField(allow_null=True, write_only=True, required=False)
     certificate = serializers.FileField(allow_null=True, write_only=True, required=False)
-    dummy = serializers.BooleanField(write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
     shared = serializers.ReadOnlyField(source='settings.shared')
@@ -933,13 +935,13 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'url',
             'name', 'projects',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'settings', 'settings_uuid', 'dummy',
+            'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
             'available_for_all'
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
-        protected_fields = ('customer', 'settings', 'dummy') + settings_fields
+        protected_fields = ('customer', 'settings') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -1031,7 +1033,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
                 extra_fields += tuple(self.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
 
-            settings_fields += 'dummy',
             if create_settings:
                 args = {f: attrs.get(f) for f in settings_fields if f in attrs}
                 if extra_fields:
@@ -1052,6 +1053,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     pass
 
                 settings.save()
+                executors.ServiceSettingsCreateExecutor.execute(settings)
                 attrs['settings'] = settings
 
             for f in settings_fields + extra_fields:

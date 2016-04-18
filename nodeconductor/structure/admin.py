@@ -2,6 +2,7 @@ from django.conf.urls import patterns, url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.core.exceptions import ValidationError
 from django.db import models as django_models
 from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, RadioSelect
 from django.http import HttpResponseRedirect
@@ -9,11 +10,11 @@ from django.utils import six
 from django.utils.translation import ungettext
 from django.shortcuts import render
 
-from nodeconductor.core.admin import get_admin_url
-from nodeconductor.core.models import SynchronizationStates, User
+from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
+from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices
+from nodeconductor.structure import models, SupportedServices, executors
 
 
 class ChangeReadonlyMixin(object):
@@ -56,6 +57,11 @@ class ResourceCounterFormMixin(object):
 
     get_app_count.short_description = 'Application count'
 
+    def get_private_cloud_count(self, obj):
+        return obj.quotas.get(name=obj.Quotas.nc_private_cloud_count).usage
+
+    get_private_cloud_count.short_description = 'Private cloud count'
+
 
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
@@ -96,7 +102,7 @@ class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAd
               'billing_backend_id', 'balance', 'owners')
     readonly_fields = ['balance']
     actions = ['update_projected_estimate']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count']
+    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     inlines = [QuotaInline]
 
     def update_projected_estimate(self, request, queryset):
@@ -183,7 +189,7 @@ class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonly
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')
 
-    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count']
+    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
@@ -257,7 +263,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
     list_filter = (ServiceTypeFilter, 'state', 'shared')
     change_readonly_fields = ('shared', 'customer')
-    actions = ['sync', 'recover', 'create_spls_and_services']
+    actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
@@ -317,64 +323,31 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
         return render(request, 'structure/service_settings_entities.html', {'projects': projects.values()})
 
-    def sync(self, request, queryset):
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC)
-        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
-        tasks_scheduled = queryset.count()
+    class Pull(ExecutorAdminAction):
+        executor = executors.ServiceSettingsPullExecutor
+        short_description = 'Pull'
 
-        send_task('structure', 'sync_service_settings')(service_uuids)
+        def validate(self, service_settings):
+            States = models.ServiceSettings.States
+            if service_settings.state not in (States.OK, States.ERRED):
+                raise ValidationError('Service settings has to be OK or erred.')
 
-        message = ungettext(
-            'One service settings record scheduled for sync',
-            '%(tasks_scheduled)d service settings records scheduled for sync',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
+    pull = Pull()
 
-        self.message_user(request, message)
+    class ConnectShared(ExecutorAdminAction):
+        executor = executors.ServiceSettingsConnectSharedExecutor
+        short_description = 'Create SPLs and services for shared service settings'
 
-    sync.short_description = "Sync selected service settings with backend"
+        def validate(self, service_settings):
+            if not service_settings.shared:
+                raise ValidationError('It is impossible to connect not shared settings')
 
-    def recover(self, request, queryset):
-        selected_settings = queryset.count()
-        queryset = queryset.filter(state=SynchronizationStates.ERRED)
-        service_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
-        send_task('structure', 'recover_service_settings')(service_uuids)
+    connect_shared = ConnectShared()
 
-        tasks_scheduled = queryset.count()
-        if selected_settings != tasks_scheduled:
-            message = 'Only erred service settings can be recovered'
-            self.message_user(request, message, level=messages.WARNING)
-
-        message = ungettext(
-            'One service settings record scheduled for recover',
-            '%(tasks_scheduled)d service settings records scheduled for recover',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    recover.short_description = "Recover selected service settings"
-
-    def create_spls_and_services(self, request, queryset):
-        selected_settings = queryset.count()
-        queryset = queryset.filter(state=SynchronizationStates.IN_SYNC, shared=True)
-        settings_uuids = [uuid.hex for uuid in queryset.values_list('uuid', flat=True)]
-        send_task('structure', 'create_spls_and_services_for_shared_settings')(settings_uuids)
-
-        tasks_scheduled = queryset.count()
-        if selected_settings != tasks_scheduled:
-            message = 'Only shared, in sync service settings can be scheduled for SPLs and services creation'
-            self.message_user(request, message, level=messages.WARNING)
-
-        message = ungettext(
-            'One service settings record scheduled for SPLs and services creation',
-            '%(tasks_scheduled)d service settings records scheduled for SPLs and services creation',
-            tasks_scheduled)
-        message = message % {'tasks_scheduled': tasks_scheduled}
-
-        self.message_user(request, message)
-
-    create_spls_and_services.short_description = "Create SPLs and services for selected service settings"
+    def save_model(self, request, obj, form, change):
+        obj.save()
+        if not change:
+            executors.ServiceSettingsCreateExecutor.execute(obj)
 
 
 class ServiceAdmin(admin.ModelAdmin):
@@ -385,6 +358,7 @@ class ServiceAdmin(admin.ModelAdmin):
 class ServiceProjectLinkAdmin(admin.ModelAdmin):
     readonly_fields = ('service', 'project')
     list_display = ('get_service_name', 'get_customer_name', 'get_project_name')
+    list_filter = ('service__settings', 'project__name')
     ordering = ('service__customer__name', 'project__name', 'service__name')
     list_display_links = ('get_service_name',)
     search_fields = ('service__customer__name', 'project__name', 'service__name')

@@ -31,11 +31,14 @@ class EventFilterBackend(filters.BaseFilterBackend):
 
         - ?event_type=<string> - type of filtered events. Can be list
         - ?search=<string> - text for FTS. FTS fields: 'message', 'customer_abbreviation', 'importance'
-          'project_group_name', 'cloud_account_name', 'project_name'
+          'project_group_name', 'cloud_account_name', 'project_name', 'user_full_name', 'user_native_name'
         - ?scope=<URL> - url of object that is connected to event
         - ?scope_type=<string> - name of scope type of object that is connected to event (Ex.: project, customer...)
         - ?exclude_features=<feature> (can be list) - exclude event from output if
           it's type corresponds to one of listed features
+        - ?user_username=<string> - user's username
+        - ?from=<timestamp> - beginning UNIX timestamp
+        - ?to=<timestamp> - ending UNIX timestamp
     """
 
     def filter_queryset(self, request, queryset, view):
@@ -53,11 +56,17 @@ class EventFilterBackend(filters.BaseFilterBackend):
         if 'exclude_extra' in request.query_params:
             must_not_terms['event_type'] = must_not_terms.get('event_type', []) + UPDATE_EVENTS
 
+        if 'user_username' in request.query_params:
+            must_terms['user_username'] = [request.query_params.get('user_username')]
+
         if 'scope' in request.query_params:
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
             field._context = {'request': request}
             obj = field.to_internal_value(request.query_params['scope'])
-            must_terms[_convert(obj.__class__.__name__ + '_uuid')] = [obj.uuid.hex]
+            for key, val in obj.filter_by_logged_object().items():
+                # Use "{field_name}.raw" to get the non-analyzed version of the value
+                # https://github.com/elastic/kibana/issues/364
+                must_terms[_convert(key) + '.raw'] = [val]
         elif 'scope_type' in request.query_params:
             choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
             try:
@@ -72,10 +81,21 @@ class EventFilterBackend(filters.BaseFilterBackend):
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
 
+        mapped = {
+            'start': request.query_params.get('from'),
+            'end': request.query_params.get('to'),
+        }
+        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(
+            data={k: v for k, v in mapped.items() if v})
+        timestamp_interval_serializer.is_valid(raise_exception=True)
+        filter_data = timestamp_interval_serializer.get_filter_data()
+
         queryset = queryset.filter(search_text=search_text,
                                    should_terms=should_terms,
                                    must_terms=must_terms,
-                                   must_not_terms=must_not_terms)
+                                   must_not_terms=must_not_terms,
+                                   start=filter_data.get('start'),
+                                   end=filter_data.get('end'))
 
         order_by = request.query_params.get('o', '-@timestamp')
         queryset = queryset.order_by(order_by)

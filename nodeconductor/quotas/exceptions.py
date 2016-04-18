@@ -15,3 +15,8 @@ class CreationConditionFailedQuotaError(QuotaError):
 class QuotaExceededException(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = 'One or more quotas are over limit'
+
+
+class BackendQuotaUpdateError(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = 'It is impossible to modify backend quota through this endpoint.',
