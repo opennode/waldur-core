@@ -4,7 +4,27 @@ CHANGELOG
 Release NEXT
 ------------
 
-< Add changelog here >
+< nothing yet >
+
+Release 0.94.0
+--------------
+
+- Extended events filter to support filtering by user and time frame.
+- Enable filtering resource by category (vms, apps, private_clouds).
+- Support permission, filters and metadata for OpenStack tenants.
+- Added events hook to send them as push notification messages.
+- Enable staff to define mandatory notifications.
+- Emit resource state events for all resource models.
+- Fix events filtering if resource URL is specified as scope.
+- Fix ordering for /resources endpoint.
+- Implement pull operation for OpenStack tenant.
+- Provide filtering by required tags for resources and template groups endpoints.
+- Created event type for project name update.
+- Fix OpenStack license stats endpoint.
+- Paginate results for customer users endpoint.
+- Enable OpenStack tenant autocreation for service project links.
+- Define default quotas for service project links.
+- Add possibility to filter certain fields for projects/ and customers/ endpoints.
 
 Release 0.93.0
 --------------

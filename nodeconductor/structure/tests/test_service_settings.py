@@ -131,7 +131,6 @@ class ServiceSettingsTest(test.APITransactionTestCase):
             "username": "user",
             "password": "secret",
             "type": SupportedServices.Types.OpenStack,
-            "dummy": False,
         }
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:

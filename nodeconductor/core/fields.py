@@ -124,6 +124,14 @@ class MappedChoiceField(serializers.ChoiceField):
         return super(MappedChoiceField, self).to_representation(value)
 
 
+class NaturalChoiceField(MappedChoiceField):
+    def __init__(self, choices=None, **kwargs):
+        super(NaturalChoiceField, self).__init__(
+            choices=[(v, v) for k, v in choices],
+            choice_mappings={v: k for k, v in choices},
+            **kwargs)
+
+
 class JsonField(serializers.Field):
     """
     A read-write DRF field for the jsonfield.JSONField objects.

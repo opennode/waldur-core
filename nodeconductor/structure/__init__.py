@@ -1,10 +1,16 @@
 import collections
+import functools
 import importlib
+import logging
 
 from django.conf import settings
+from django.utils import six
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
+
+logger = logging.getLogger(__name__)
+
 
 default_app_config = 'nodeconductor.structure.apps.StructureConfig'
 
@@ -375,6 +381,30 @@ class SupportedServices(object):
 class ServiceBackendError(Exception):
     """ Base exception for errors occurring during backend communication. """
     pass
+
+
+def log_backend_action(action=None):
+    """ Logging for backend method.
+
+    Expects django model instance as first argument.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapped(self, instance, *args, **kwargs):
+            action_name = func.func_name.replace('_', ' ') if action is None else action
+
+            logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
+            try:
+                result = func(self, instance, *args, **kwargs)
+            except ServiceBackendError as e:
+                logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
+                six.reraise(ServiceBackendError, e)
+            else:
+                logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
+                            action_name, instance, instance.pk)
+                return result
+        return wrapped
+    return decorator
 
 
 class ServiceBackendNotImplemented(NotImplementedError):

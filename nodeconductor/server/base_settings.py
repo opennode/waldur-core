@@ -172,8 +172,8 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
-    'sync-service-settings': {
-        'task': 'nodeconductor.structure.sync_service_settings',
+    'pull-service-settings': {
+        'task': 'nodeconductor.structure.pull_service_settings',
         'schedule': timedelta(minutes=30),
         'args': (),
     },
@@ -244,6 +244,12 @@ CELERYBEAT_SCHEDULE = {
     },
 
     'openstack-pull-tenants': {
+        'task': 'nodeconductor.openstack.pull_tenants',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
+    'openstack-pull-tenants-properties': {
         'task': 'nodeconductor.openstack.pull_tenants_properties',
         'schedule': timedelta(minutes=30),
         'args': (),

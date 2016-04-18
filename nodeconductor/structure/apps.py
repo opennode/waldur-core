@@ -20,7 +20,6 @@ class StructureConfig(AppConfig):
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')
         ProjectGroup = self.get_model('ProjectGroup')
-        ServiceSettings = self.get_model('ServiceSettings')
 
         signals.post_save.connect(
             handlers.log_customer_save,
@@ -164,6 +163,20 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
+            fsm_signals.post_transition.connect(
+                handlers.log_resource_action,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.log_resource_action_{}_{}'.format(
+                    model.__name__, index),
+            )
+
+            fsm_signals.post_transition.connect(
+                handlers.init_resource_start_time,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.init_resource_start_time_{}_{}'.format(
+                    model.__name__, index),
+            )
+
         for index, model in enumerate(Resource.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
                 fsm_signals.post_transition.connect(
@@ -233,30 +246,6 @@ class StructureConfig(AppConfig):
             handlers.connect_customer_to_shared_service_settings,
             sender=Customer,
             dispatch_uid='nodeconductor.structure.handlers.connect_customer_to_shared_service_settings',
-        )
-
-        signals.post_save.connect(
-            handlers.sync_service_settings_with_backend,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.sync_service_settings_with_backend',
-        )
-
-        fsm_signals.post_transition.connect(
-            handlers.log_service_sync_failed,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.log_service_sync_failed',
-        )
-
-        fsm_signals.post_transition.connect(
-            handlers.log_service_recovered,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.log_service_recovered',
-        )
-
-        fsm_signals.post_transition.connect(
-            handlers.connect_shared_service_settings_to_customers,
-            sender=ServiceSettings,
-            dispatch_uid='nodeconductor.structure.handlers.connect_shared_service_settings_to_customers',
         )
 
         signals.post_save.connect(

@@ -1,6 +1,7 @@
-import time
 import calendar
+import importlib
 import requests
+import time
 
 from collections import OrderedDict
 from datetime import datetime
@@ -8,7 +9,7 @@ from datetime import timedelta
 from operator import itemgetter
 
 from django.apps import apps
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse, resolve
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.encoding import force_text
@@ -138,3 +139,45 @@ def deserialize_instance(serialized_instance):
     model_name, pk = serialized_instance.split(':')
     model = apps.get_model(model_name)
     return model._default_manager.get(pk=pk)
+
+
+def serialize_class(cls):
+    """ Serialize Python class """
+    return '{}:{}'.format(cls.__module__, cls.__name__)
+
+
+def deserialize_class(serilalized_cls):
+    """ Deserialize Python class """
+    module_name, cls_name = serilalized_cls.split(':')
+    module = importlib.import_module(module_name)
+    return getattr(module, cls_name)
+
+
+def clear_url(url):
+    """ Remove domain and protocol from url """
+    if url.startswith('http'):
+        return '/' + url.split('/', 3)[-1]
+    return url
+
+
+def get_model_from_resolve_match(match):
+    queryset = match.func.cls.queryset
+    if queryset is not None:
+        return queryset.model
+    else:
+        return match.func.cls.model
+
+
+def instance_from_url(url, user=None):
+    """ Restore instance from URL """
+    # XXX: This circular dependency will be removed then filter_queryset_for_user
+    # will be moved to model manager method
+    from nodeconductor.structure.managers import filter_queryset_for_user
+
+    url = clear_url(url)
+    match = resolve(url)
+    model = get_model_from_resolve_match(match)
+    queryset = model.objects.all()
+    if user is not None:
+        queryset = filter_queryset_for_user(model.objects.all(), user)
+    return queryset.get(**match.kwargs)

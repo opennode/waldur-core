@@ -37,10 +37,10 @@ class BaseExecutor(object):
         return None
 
     @classmethod
-    def execute(cls, instance, async=True, **kwargs):
+    def execute(cls, instance, async=True, countdown=2, **kwargs):
         """ Execute high level-operation """
         cls.pre_apply(instance, async=async, **kwargs)
-        result = cls.apply_signature(instance, async=async, **kwargs)
+        result = cls.apply_signature(instance, async=async, countdown=countdown, **kwargs)
         cls.post_apply(instance, async=async, **kwargs)
         return result
 
@@ -55,7 +55,7 @@ class BaseExecutor(object):
         pass
 
     @classmethod
-    def apply_signature(cls, instance, async=True, **kwargs):
+    def apply_signature(cls, instance, async=True, countdown=None, **kwargs):
         """ Serialize input data and apply signature """
         serialized_instance = utils.serialize_instance(instance)
         # TODO: Add ability to serialize kwargs here and deserialize them in task.
@@ -65,7 +65,7 @@ class BaseExecutor(object):
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
         if async:
-            return signature.apply_async(link=link, link_error=link_error)
+            return signature.apply_async(link=link, link_error=link_error, countdown=countdown)
         else:
             result = signature.apply()
             callback = link if not result.failed() else link_error

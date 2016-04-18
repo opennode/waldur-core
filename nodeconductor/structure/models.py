@@ -114,15 +114,19 @@ class Customer(core_models.UuidMixin,
         )
         nc_user_count = quotas_fields.QuotaField()
         nc_resource_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_all_models(),
+            target_models=lambda: ResourceMixin.get_all_models(),
             path_to_scope='project.customer',
         )
         nc_app_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_app_models(),
+            target_models=lambda: ResourceMixin.get_app_models(),
             path_to_scope='project.customer',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_vm_models(),
+            target_models=lambda: ResourceMixin.get_vm_models(),
+            path_to_scope='project.customer',
+        )
+        nc_private_cloud_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: ResourceMixin.get_private_cloud_models(),
             path_to_scope='project.customer',
         )
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
@@ -316,15 +320,19 @@ class Project(core_models.DescribableMixin,
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
         nc_resource_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_all_models(),
+            target_models=lambda: ResourceMixin.get_all_models(),
             path_to_scope='project',
         )
         nc_app_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_app_models(),
+            target_models=lambda: ResourceMixin.get_app_models(),
             path_to_scope='project',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: Resource.get_vm_models(),
+            target_models=lambda: ResourceMixin.get_vm_models(),
+            path_to_scope='project',
+        )
+        nc_private_cloud_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: ResourceMixin.get_private_cloud_models(),
             path_to_scope='project',
         )
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
@@ -556,7 +564,7 @@ class ProjectGroup(core_models.UuidMixin,
 class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                       core_models.UuidMixin,
                       core_models.NameMixin,
-                      core_models.SynchronizableMixin,
+                      core_models.StateMixin,
                       LoggableMixin):
 
     class Meta:
@@ -578,8 +586,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     options = JSONField(default={}, help_text='Extra options', blank=True)
 
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
-    # TODO: Implement demo mode instead of dummy mode (NC-900)
-    dummy = models.BooleanField(default=False, help_text='Emulate backend operations')
 
     def get_backend(self, **kwargs):
         return SupportedServices.get_service_backend(self.type)(self, **kwargs)
@@ -752,7 +758,8 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
 
     def get_children(self):
         return itertools.chain.from_iterable(
-            m.objects.filter(service_project_link=self) for m in Resource.get_all_models())
+            m.objects.filter(service_project_link=self) for m in
+            SupportedServices.get_related_models(self)['resources'])
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)
@@ -773,6 +780,12 @@ class BaseVirtualMachineMixin(models.Model):
     user_data = models.TextField(
         blank=True, validators=[validate_yaml],
         help_text='Additional data that will be added to instance on provisioning')
+
+    class Meta(object):
+        abstract = True
+
+
+class PrivateCloudMixin(models.Model):
 
     class Meta(object):
         abstract = True
@@ -1071,7 +1084,14 @@ class ResourceMixin(MonitoringModelMixin,
         # TODO: remove once iaas has been deprecated
         from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
-                if not issubclass(resource, VirtualMachineMixin) and not issubclass(resource, Instance)]
+                if not issubclass(resource, VirtualMachineMixin) and
+                not issubclass(resource, Instance) and
+                not issubclass(resource, PrivateCloudMixin)]
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_private_cloud_models(cls):
+        return [resource for resource in cls.get_all_models() if issubclass(resource, PrivateCloudMixin)]
 
     def get_related_resources(self):
         return itertools.chain(
@@ -1103,8 +1123,8 @@ class ResourceMixin(MonitoringModelMixin,
         # For example, returns GitLab group for project
         return [getattr(self, field.name)
                 for field in self._meta.fields
-                if isinstance(field, models.ForeignKey)
-                and issubclass(field.related_model, Resource)]
+                if isinstance(field, models.ForeignKey) and
+                issubclass(field.related_model, Resource)]
 
     def _get_generic_linked_resources(self):
         # For example, returns GitLab group for project
@@ -1133,6 +1153,12 @@ class ResourceMixin(MonitoringModelMixin,
         context['resource_type'] = SupportedServices.get_name_for_model(self)
         return context
 
+    def filter_by_logged_object(self):
+        return {
+            'resource_uuid': self.uuid.hex,
+            'resource_type': SupportedServices.get_name_for_model(self)
+        }
+
     def get_parents(self):
         return [self.service_project_link]
 
@@ -1140,7 +1166,14 @@ class ResourceMixin(MonitoringModelMixin,
         return self.name
 
 
+# deprecated, use NewResource instead.
 class Resource(OldStateResourceMixin, ResourceMixin):
+
+    class Meta(object):
+        abstract = True
+
+
+class NewResource(ResourceMixin, core_models.StateMixin):
 
     class Meta(object):
         abstract = True

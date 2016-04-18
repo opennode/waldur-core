@@ -1,7 +1,6 @@
 from celery import chain
-from django.conf import settings
 
-from nodeconductor.core import tasks, executors
+from nodeconductor.core import tasks, executors, utils
 from nodeconductor.openstack.tasks import delete_tenant_with_spl, SecurityGroupCreationTask
 
 
@@ -36,8 +35,7 @@ class TenantCreateExecutor(executors.CreateExecutor):
 
     @classmethod
     def get_task_signature(cls, tenant, serialized_tenant, pull_security_groups=True, **kwargs):
-        # create tenant, add user to it, create internal network,
-        # pull quotas and security groups.
+        # create tenant, add user to it, create internal network, pull quotas
         creation_tasks = [
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'create_tenant',
@@ -49,17 +47,28 @@ class TenantCreateExecutor(executors.CreateExecutor):
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'create_internal_network',
                 runtime_state='creating internal network for tenant'),
-            tasks.BackendMethodTask().si(
-                serialized_tenant, 'pull_tenant_quotas',
-                runtime_state='pulling tenant quotas',
-                success_runtime_state='online'),
         ]
+        quotas = tenant.service_project_link.quotas.all()
+        quotas = {q.name: int(q.limit) if q.limit.is_integer() else q.limit for q in quotas}
+        creation_tasks.append(tasks.BackendMethodTask().si(
+            serialized_tenant, 'push_tenant_quotas', quotas,
+            runtime_state='pushing tenant quotas',
+            success_runtime_state='online')
+        )
+        # handle security groups
+        # XXX: Create default security groups that was connected to SPL earlier.
+        serialized_executor = utils.serialize_class(SecurityGroupCreateExecutor)
+        for security_group in tenant.service_project_link.security_groups.all():
+            serialized_security_group = utils.serialize_instance(security_group)
+            creation_tasks.append(tasks.ExecutorTask().si(serialized_executor, serialized_security_group))
+
         if pull_security_groups:
             creation_tasks.append(tasks.BackendMethodTask().si(
                 serialized_tenant, 'pull_tenant_security_groups',
                 runtime_state='pulling tenant security groups',
                 success_runtime_state='online')
             )
+
         # initialize external network if it defined in service settings
         service_settings = tenant.service_project_link.service.settings
         external_network_id = service_settings.options.get('external_network_id')
@@ -150,20 +159,20 @@ class TenantPushQuotasExecutor(executors.ActionExecutor):
 
     @classmethod
     def get_task_signature(cls, tenant, serialized_tenant, quotas=None, **kwargs):
-        # convert instances quota to volumes and snapshots.
-        if quotas.get('instances') is not None:
-            quotas_ratios = settings.NODECONDUCTOR.get('OPENSTACK_QUOTAS_INSTANCE_RATIOS', {})
-            volume_ratio = quotas_ratios.get('volumes', 4)
-            snapshots_ratio = quotas_ratios.get('snapshots', 20)
-
-            quotas['volumes'] = volume_ratio * quotas['instances']
-            quotas['snapshots'] = snapshots_ratio * quotas['instances']
-
         return tasks.BackendMethodTask().si(
             serialized_tenant, 'push_tenant_quotas', quotas,
             state_transition='begin_updating',
             runtime_state='updating quotas',
             success_runtime_state='online')
+
+
+class TenantPullExecutor(executors.ActionExecutor):
+
+    @classmethod
+    def get_task_signature(cls, tenant, serialized_tenant, **kwargs):
+        return tasks.BackendMethodTask().si(
+            serialized_tenant, 'pull_tenant',
+            state_transition='begin_updating')
 
 
 class TenantPullSecurityGroupsExecutor(executors.ActionExecutor):

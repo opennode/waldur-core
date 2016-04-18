@@ -32,6 +32,8 @@ class Command(BaseCommand):
 
     def get_quota_duplicate_versions(self, quota):
         versions = reversion.get_for_object(quota).order_by('revision__date_created')
+        if not versions:
+            return []
         duplicates = []
         last_version = versions[0]
         for version in versions[1:]:

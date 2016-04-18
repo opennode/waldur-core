@@ -30,6 +30,8 @@ class ActionSerializer(object):
         }
 
     def is_destructive(self):
+        if self.name == 'destroy':
+            return True
         return getattr(self.func, 'destructive', False)
 
     def get_title(self):
@@ -49,6 +51,8 @@ class ActionSerializer(object):
             return force_text(e)
 
     def get_method(self):
+        if self.name == 'destroy':
+            return 'DELETE'
         return getattr(self.func, 'method', 'POST')
 
     def get_url(self):

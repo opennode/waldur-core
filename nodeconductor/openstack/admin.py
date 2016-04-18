@@ -7,12 +7,13 @@ from nodeconductor.structure import admin as structure_admin
 from nodeconductor.openstack import executors
 from nodeconductor.openstack.forms import BackupScheduleForm, InstanceForm
 from nodeconductor.openstack.models import OpenStackService, OpenStackServiceProjectLink, Instance, \
-                                           Backup, BackupSchedule, Tenant
+                                           Backup, BackupSchedule, Tenant, Flavor
 
 
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
+    list_display = structure_admin.ServiceProjectLinkAdmin.list_display + ('get_tenant',)
     readonly_fields = ('get_service_settings_username', 'get_service_settings_password', 'get_tenant') + \
-                      structure_admin.ServiceProjectLinkAdmin.readonly_fields
+        structure_admin.ServiceProjectLinkAdmin.readonly_fields
 
     def get_service_settings_username(self, obj):
         return obj.service.settings.username
@@ -54,7 +55,7 @@ class InstanceAdmin(structure_admin.VirtualMachineAdmin):
 
 class TenantAdmin(structure_admin.ResourceAdmin):
 
-    actions = ('detect_external_networks', 'allocate_floating_ip', 'pull_security_groups',
+    actions = ('pull', 'detect_external_networks', 'allocate_floating_ip', 'pull_security_groups',
                'pull_floating_ips', 'pull_quotas')
 
     class OKTenantAction(ExecutorAdminAction):
@@ -99,8 +100,25 @@ class TenantAdmin(structure_admin.ResourceAdmin):
 
     pull_quotas = PullQuotas()
 
+    class Pull(ExecutorAdminAction):
+        executor = executors.TenantPullExecutor
+        short_description = 'Pull'
+
+        def validate(self, tenant):
+            if tenant.state not in (Tenant.States.OK, Tenant.States.ERRED):
+                raise ValidationError('Tenant has to be OK or erred.')
+
+    pull = Pull()
+
+
+class FlavorAdmin(admin.ModelAdmin):
+    list_filter = ('settings',)
+    list_display = ('name', 'settings', 'cores', 'ram', 'disk')
+
+
 admin.site.register(Instance, InstanceAdmin)
 admin.site.register(Tenant, TenantAdmin)
+admin.site.register(Flavor, FlavorAdmin)
 admin.site.register(OpenStackService, structure_admin.ServiceAdmin)
 admin.site.register(OpenStackServiceProjectLink, ServiceProjectLinkAdmin)
 admin.site.register(Backup, BackupAdmin)

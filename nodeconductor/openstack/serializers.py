@@ -28,7 +28,8 @@ class ServiceSerializer(structure_serializers.BaseServiceSerializer):
         'availability_zone': 'Default availability zone for provisioned Instances',
         'cpu_overcommit_ratio': '(default: 1)',
         'external_network_id': 'ID of OpenStack external network that will be connected to new service tenants',
-        'coordinates': 'Coordianates of the datacenter, for example: {"latitude": 40.712784, "longitude": -74.005941}'
+        'coordinates': 'Coordianates of the datacenter, for example: {"latitude": 40.712784, "longitude": -74.005941}',
+        'autocreate_tenants': 'Automatically create tenant for new SPL (default: False)',
     }
 
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
@@ -477,11 +478,12 @@ class InstanceSerializer(structure_serializers.VirtualMachineSerializer):
         view_name = 'openstack-instance-detail'
         fields = structure_serializers.VirtualMachineSerializer.Meta.fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
-            'security_groups', 'internal_ips', 'backups', 'backup_schedules',
+            'security_groups', 'internal_ips', 'backups', 'backup_schedules', 'flavor_disk',
         )
         protected_fields = structure_serializers.VirtualMachineSerializer.Meta.protected_fields + (
             'flavor', 'image', 'system_volume_size', 'data_volume_size', 'skip_external_ip_assignment',
         )
+        read_only_fields = structure_serializers.VirtualMachineSerializer.Meta.read_only_fields + ('flavor_disk',)
 
     def get_fields(self):
         fields = super(InstanceSerializer, self).get_fields()
@@ -620,6 +622,9 @@ class InstanceResizeSerializer(structure_serializers.PermissionFieldFilteringMix
             if value.settings != spl.service.settings:
                 raise serializers.ValidationError(
                     "New flavor is not within the same service settings")
+
+            if value.disk < self.instance.flavor_disk:
+                raise serializers.ValidationError("New flavor disk should be greater than the previous value.")
 
             quota_errors = spl.validate_quota_change({
                 'vcpu': value.cores - self.instance.cores,
