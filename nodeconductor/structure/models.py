@@ -1084,8 +1084,8 @@ class ResourceMixin(MonitoringModelMixin,
         from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
                 if not issubclass(resource, VirtualMachineMixin) and
-                not issubclass(resource, Instance)
-                and not issubclass(resource, PrivateCloudMixin)]
+                not issubclass(resource, Instance) and
+                not issubclass(resource, PrivateCloudMixin)]
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -1122,8 +1122,8 @@ class ResourceMixin(MonitoringModelMixin,
         # For example, returns GitLab group for project
         return [getattr(self, field.name)
                 for field in self._meta.fields
-                if isinstance(field, models.ForeignKey)
-                and issubclass(field.related_model, Resource)]
+                if isinstance(field, models.ForeignKey) and
+                issubclass(field.related_model, Resource)]
 
     def _get_generic_linked_resources(self):
         # For example, returns GitLab group for project
@@ -1165,7 +1165,14 @@ class ResourceMixin(MonitoringModelMixin,
         return self.name
 
 
+# deprecated, use NewResource instead.
 class Resource(OldStateResourceMixin, ResourceMixin):
+
+    class Meta(object):
+        abstract = True
+
+
+class NewResource(ResourceMixin, core_models.StateMixin):
 
     class Meta(object):
         abstract = True
