@@ -152,10 +152,13 @@ class ApiDocs(object):
                                 f.write('\n')
 
                         cls = act.callback.cls
+                        if act.docstring:
+                            self._write_docstring(f, act.docstring)
+
                         if act.action:
                             doc = getdoc(getattr(cls, act.action))
                             if doc:
-                                f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
+                                self._write_docstring(f, doc)
                         else:
                             # docs for ViewSets
                             for method, a in act.METHODS:
@@ -168,7 +171,7 @@ class ApiDocs(object):
                                 if action:
                                     doc = getdoc(action, warning=False)
                                     if doc:
-                                        f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
+                                        self._write_docstring(f, doc)
 
                             else:
                                 continue
@@ -180,7 +183,7 @@ class ApiDocs(object):
                                 except AttributeError:
                                     continue
                                 if doc:
-                                    f.write('\n'.join(['\t' + s for s in doc.split('\n')]) + '\n')
+                                    self._write_docstring(f, doc)
 
                     f.write('\n\n')
 
@@ -195,6 +198,9 @@ class ApiDocs(object):
                 "   **",
             ]
             f.writelines([l + '\n' for l in lines])
+
+    def _write_docstring(self, file, docstring):
+        file.write('\n'.join(['\t' + s for s in docstring.split('\n')]) + '\n')
 
 
 class ApiEndpoint(object):
