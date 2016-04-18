@@ -121,7 +121,7 @@ def get_price_estimate_for_project(serializer, project):
     try:
         estimate = models.PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
     except models.PriceEstimate.DoesNotExist:
-        return None
+        return 0.0
     else:
         return estimate.total
 
