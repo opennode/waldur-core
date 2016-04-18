@@ -1,6 +1,5 @@
 import datetime
 import dateutil.parser
-import functools
 import logging
 import re
 import time
@@ -31,7 +30,7 @@ from novaclient import exceptions as nova_exceptions
 
 from nodeconductor.core.models import StateMixin
 from nodeconductor.core.tasks import send_task
-from nodeconductor.structure import ServiceBackend, ServiceBackendError
+from nodeconductor.structure import ServiceBackend, ServiceBackendError, log_backend_action
 from nodeconductor.structure.log import event_logger
 from nodeconductor.openstack import models
 
@@ -168,30 +167,6 @@ class OpenStackClient(object):
         }
 
         return ceilometer_client.Client('2', **kwargs)
-
-
-def log_backend_action(action=None):
-    """ Logging for backend method.
-
-    Expects django model instance as first argument.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapped(self, instance, *args, **kwargs):
-            action_name = func.func_name.replace('_', ' ') if action is None else action
-
-            logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
-            try:
-                result = func(self, instance, *args, **kwargs)
-            except OpenStackBackendError as e:
-                logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
-                six.reraise(OpenStackBackendError, e)
-            else:
-                logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
-                            action_name, instance, instance.pk)
-                return result
-        return wrapped
-    return decorator
 
 
 class OpenStackBackend(ServiceBackend):
@@ -358,7 +333,7 @@ class OpenStackBackend(ServiceBackend):
         if service_project_link.tenant is not None:
             self.remove_ssh_key_from_tenant(service_project_link.tenant, ssh_key)
 
-    @log_backend_action
+    @log_backend_action()
     def remove_ssh_key_from_tenant(self, tenant, key_name, fingerprint):
         nova = self.nova_client
 
@@ -2018,16 +1993,14 @@ class OpenStackBackend(ServiceBackend):
             logger.info('Successfully promoted volumes %s', ', '.join(promoted_volume_ids))
         return promoted_volume_ids
 
+    @log_backend_action()
     def update_tenant(self, tenant):
         keystone = self.keystone_admin_client
-        logger.debug('About to update tenant `%s` (PK: %s)', tenant.name, tenant.backend_id)
         try:
             keystone.tenants.update(tenant.backend_id, name=tenant.name, description=tenant.description)
         except keystone_exceptions.NotFound as e:
             logger.error('Tenant with id %s does not exist', tenant.backend_id)
             six.reraise(OpenStackBackendError, e)
-        else:
-            logger.info('Successfully updated `%s` (PK: %s)', tenant.name, tenant.backend_id)
 
     def create_snapshot(self, volume_id, cinder):
         """
