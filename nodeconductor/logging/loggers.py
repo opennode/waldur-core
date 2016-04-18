@@ -408,8 +408,16 @@ class CustomEventLogger(EventLogger):
         nullable_fields = ('scope',)
 
 
+class ThresholdAlertLogger(AlertLogger):
+    object = 'logging.AlertThresholdMixin'
+
+    class Meta:
+        alert_types = ('threshold_exceeded',)
+
+
 # This global objects represent the default loggers registry
 event_logger = EventLoggerRegistry()
 alert_logger = AlertLoggerRegistry()
 
 event_logger.register('custom', CustomEventLogger)
+alert_logger.register('threshold', ThresholdAlertLogger)

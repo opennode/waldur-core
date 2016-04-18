@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-< nothing yet >
+- Implemented threshold-based alerts for price estimates and quotas.
 
 Release 0.94.0
 --------------
