@@ -36,13 +36,27 @@ class PriceEstimateThresholdAlertTest(test.APITransactionTestCase):
 
 class PriceEstimateThresholdApiTest(test.APITransactionTestCase):
     def setUp(self):
-        self.estimate = PriceEstimateFactory(threshold=100)
         self.client.force_authenticate(UserFactory(is_staff=True))
-        self.url = PriceEstimateFactory.get_url(self.estimate, 'threshold')
 
-    def test_staff_can_update_threshold_of_price_estimate(self):
-        response = self.client.post(self.url, {'threshold': 200})
+    def test_staff_can_set_and_update_threshold_for_project(self):
+        project = ProjectFactory()
 
+        # Price estimate is created implicitly
+        self.set_project_threshold(project, 200)
+
+        # Price estimate is updated
+        self.set_project_threshold(project, 300)
+
+    def set_project_threshold(self, project, threshold):
+        project_url = ProjectFactory.get_url(project)
+
+        url = PriceEstimateFactory.get_list_url() + 'threshold/'
+        response = self.client.post(url, {
+            'threshold': threshold,
+            'scope': project_url
+        })
+        self.assertEqual(status.HTTP_200_OK, response.status_code, response.data)
+
+        response = self.client.get(project_url)
         self.assertEqual(status.HTTP_200_OK, response.status_code)
-        self.estimate.refresh_from_db()
-        self.assertEqual(200, self.estimate.threshold)
+        self.assertEqual(threshold, response.data['price_estimate']['threshold'])

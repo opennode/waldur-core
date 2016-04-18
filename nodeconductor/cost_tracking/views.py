@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
+from django.db import IntegrityError
+from django.utils import timezone
 from rest_framework import viewsets, permissions, exceptions, decorators, response, status
 
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.cost_tracking import models, serializers, filters
-from nodeconductor.logging.serializers import AlertThresholdSerializer
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
@@ -96,25 +97,32 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         """
         return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
 
-    @decorators.detail_route(methods=['post'])
+    @decorators.list_route(methods=['post'])
     def threshold(self, request, pk=None, **kwargs):
         """
-        Run **POST** request against */api/price-estimates/<uuid>/threshold/*
+        Run **POST** request against */api/price-estimates/threshold/*
         to set alert threshold for price estimate.
-        Request body should be JSON dictionary with threshold field.
+        Request body should be JSON dictionary with scope and threshold fields.
         """
-        price_estimate = self.get_object()
-        if not self.can_user_modify_price_object(price_estimate.scope):
+        serializer = serializers.PriceEstimateThresholdSerializer(
+            data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        threshold = serializer.validated_data['threshold']
+        scope = serializer.validated_data['scope']
+
+        if not self.can_user_modify_price_object(scope):
             raise exceptions.PermissionDenied()
 
-        serializer = AlertThresholdSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        threshold = serializer.validated_data['threshold']
+        today = timezone.now()
+        params = dict(scope=scope, year=today.year, month=today.month)
+        try:
+            models.PriceEstimate.objects.create(threshold=threshold, **params)
+        except IntegrityError:
+            models.PriceEstimate.objects.filter(**params).update(threshold=threshold)
 
-        price_estimate.threshold = threshold
-        price_estimate.save(update_fields=['threshold'])
-
-        return response.Response({'detail': 'Threshold for price estimate is updated'}, status=status.HTTP_200_OK)
+        return response.Response({'detail': 'Threshold for price estimate is updated'},
+                                 status=status.HTTP_200_OK)
 
 
 class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):

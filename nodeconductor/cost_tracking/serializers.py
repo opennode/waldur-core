@@ -116,13 +116,15 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
         return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
 
 
+class PriceEstimateThresholdSerializer(serializers.Serializer):
+    threshold = serializers.FloatField(min_value=0)
+    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models())
+
+
 class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.PriceEstimate
-        fields = ('url', 'threshold', 'total')
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
+        fields = ('threshold', 'total')
 
 
 def get_price_estimate_for_project(serializer, project):
