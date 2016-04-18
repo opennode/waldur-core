@@ -2,13 +2,7 @@ from nodeconductor.logging.loggers import AlertLogger, EventLogger, alert_logger
 from nodeconductor.quotas import models
 
 
-class QuotaAlertLogger(AlertLogger):
-    quota = models.Quota
-
-    class Meta:
-        alert_types = ('quota_usage_is_over_threshold',)
-
-
+# Remove once IAAS is deprecated
 class QuotaEventLogger(EventLogger):
     quota = 'quotas.Quota'
     service = 'structure.Service'
@@ -20,5 +14,4 @@ class QuotaEventLogger(EventLogger):
         event_types = ('quota_threshold_reached',)
 
 
-alert_logger.register('quota', QuotaAlertLogger)
 event_logger.register('quota', QuotaEventLogger)
