@@ -758,7 +758,8 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
 
     def get_children(self):
         return itertools.chain.from_iterable(
-            m.objects.filter(service_project_link=self) for m in Resource.get_all_models())
+            m.objects.filter(service_project_link=self) for m in
+            SupportedServices.get_related_models(self)['resources'])
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)

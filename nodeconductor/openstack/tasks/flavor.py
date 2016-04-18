@@ -25,8 +25,9 @@ def change_flavor(instance_uuid, flavor_uuid, transition_entity=None):
 
     instance.ram = flavor.ram
     instance.cores = flavor.cores
+    instance.flavor_disk = flavor.disk
     instance.flavor_name = flavor.name
-    instance.save(update_fields=['ram', 'cores', 'flavor_name'])
+    instance.save(update_fields=['ram', 'cores', 'flavor_name', 'flavor_disk'])
 
     server_id = instance.backend_id
     flavor_id = flavor.backend_id

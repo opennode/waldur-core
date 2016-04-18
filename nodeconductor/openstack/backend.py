@@ -283,6 +283,7 @@ class OpenStackBackend(ServiceBackend):
         instance.flavor_name = flavor.name
         instance.cores = flavor.cores
         instance.ram = flavor.ram
+        instance.flavor_disk = flavor.disk
         instance.disk = instance.system_volume_size + instance.data_volume_size
         if image:
             instance.min_disk = image.min_disk
@@ -1126,6 +1127,20 @@ class OpenStackBackend(ServiceBackend):
 
             self.push_floating_ip_to_instance(instance, server)
 
+            backend_security_groups = server.list_security_group()
+            for bsg in backend_security_groups:
+                if instance.security_groups.filter(security_group__name=bsg.name).exists():
+                    continue
+                try:
+                    security_group = service_project_link.security_groups.get(name=bsg.name)
+                except models.SecurityGroup.DoesNotExist:
+                    logger.error(
+                        'SPL %s (PK: %s) does not have security group "%s", but its instance %s (PK: %s) has.' %
+                        (service_project_link, service_project_link.pk, bsg.name, instance, instance.pk)
+                    )
+                else:
+                    instance.security_groups.create(security_group=security_group)
+
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
                 nova_exceptions.ClientException,
@@ -1134,6 +1149,24 @@ class OpenStackBackend(ServiceBackend):
             six.reraise(OpenStackBackendError, e)
         else:
             logger.info("Successfully provisioned instance %s", instance.uuid)
+
+    @log_backend_action('pull instances for tenant')
+    def pull_tenant_instances(self, tenant):
+        spl = tenant.service_project_link
+        States = models.Instance.States
+        for instance in spl.instances.filter(state__in=[States.ONLINE, States.OFFLINE]):
+            try:
+                instance_data = self.get_instance(instance.backend_id).nc_model_data
+            except OpenStackBackendError as e:
+                logger.error('Cannot get data for instance %s (PK: %s). Error: %s', instance, instance.pk, e)
+            else:
+                instance.ram = instance_data['ram']
+                instance.cores = instance_data['cores']
+                instance.disk = instance_data['disk']
+                instance.system_volume_size = instance_data['system_volume_size']
+                instance.data_volume_size = instance_data['data_volume_size']
+                instance.save()
+                logger.info('Instance %s (PK: %s) has been successfully pulled from OpenStack.', instance, instance.pk)
 
     # XXX: This method should be deleted after tenant separation from SPL.
     def cleanup(self, dryrun=True):
