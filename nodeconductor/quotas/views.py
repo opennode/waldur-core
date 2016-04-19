@@ -55,6 +55,21 @@ class QuotaViewSet(mixins.UpdateModelMixin,
             {
                 "limit": 2000.0
             }
+
+        Example of changing quota threshold:
+
+        .. code-block:: http
+
+            PUT /api/quotas/6ad5f49d6d6c49648573b2b71f44a42b/ HTTP/1.1
+            Content-Type: application/json
+            Accept: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "threshold": 100.0
+            }
+
         """
         return super(QuotaViewSet, self).retrieve(request, *args, **kwargs)
 
@@ -67,8 +82,15 @@ class QuotaViewSet(mixins.UpdateModelMixin,
         if quota_field is not None and quota_field.is_backend:
             raise exceptions.BackendQuotaUpdateError()
 
-        limit = serializer.validated_data['limit']
-        quota.scope.set_quota_limit(quota.name, limit)
+        if 'limit' in serializer.validated_data:
+            limit = serializer.validated_data['limit']
+            quota.scope.set_quota_limit(quota.name, limit)
+
+        if 'threshold' in serializer.validated_data:
+            threshold = serializer.validated_data['threshold']
+            quota.threshold = threshold
+            quota.save(update_fields=['threshold'])
+            serializer.instance.refresh_from_db()
 
     @decorators.detail_route()
     def history(self, request, uuid=None):

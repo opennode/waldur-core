@@ -14,13 +14,14 @@ from model_utils import FieldTracker
 import reversion
 
 from nodeconductor.logging.loggers import LoggableMixin
+from nodeconductor.logging.models import AlertThresholdMixin
 from nodeconductor.quotas import exceptions, managers, fields
 from nodeconductor.core.models import UuidMixin, ReversionMixin, DescendantMixin
 
 
 @python_2_unicode_compatible
 @reversion.register(fields=['usage', 'limit'])
-class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
+class Quota(UuidMixin, AlertThresholdMixin, LoggableMixin, ReversionMixin, models.Model):
     """
     Abstract quota for any resource.
 
@@ -74,6 +75,9 @@ class Quota(UuidMixin, LoggableMixin, ReversionMixin, models.Model):
             return next(f for f in fields if f.name == self.name)
         except StopIteration:
             return
+
+    def is_over_threshold(self):
+        return self.usage >= self.threshold
 
 
 def _fail_silently(method):

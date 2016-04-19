@@ -14,40 +14,6 @@ def add_quotas_to_scope(sender, instance, created=False, **kwargs):
             models.Quota.objects.create(name=quota_name, scope=instance)
 
 
-def check_quota_threshold_breach(sender, instance, **kwargs):
-    # XXX: This import creates circular dependency between quotas and structure
-    # TODO: Move spl-related logging to structure application.
-    from nodeconductor.structure.models import ServiceProjectLink
-
-    quota = instance
-    alert_threshold = 0.8
-
-    if quota.scope is not None:
-        if quota.is_exceeded(threshold=alert_threshold):
-            alert_logger.quota.warning(
-                'Quota {quota_name} is over threshold. Limit: {quota_limit}, usage: {quota_usage}',
-                scope=quota.scope,
-                alert_type='quota_usage_is_over_threshold',
-                alert_context={
-                    'quota': quota
-                })
-
-            if quota.scope in ServiceProjectLink.get_all_models():
-                spl = quota.scope
-                event_logger.quota.warning(
-                    '{quota_name} quota threshold has been reached for project {project_name}.',
-                    event_type='quota_threshold_reached',
-                    event_context={
-                        'quota': quota,
-                        'service': spl.service,
-                        'project': spl.project,
-                        'project_group': spl.project.project_groups.first(),
-                        'threshold': alert_threshold * quota.limit,
-                    })
-        else:
-            alert_logger.quota.close(scope=quota.scope, alert_type='quota_usage_is_over_threshold')
-
-
 # XXX: rewrite global quotas
 def create_global_quotas(**kwargs):
     for model in utils.get_models_with_quotas():

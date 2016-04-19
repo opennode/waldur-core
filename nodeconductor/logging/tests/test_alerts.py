@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework import test, status
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.logging import log, models, loggers
+from nodeconductor.logging import models, loggers
 from nodeconductor.logging.tests import factories
 # Dependency from `structure` application exists only in tests
 from nodeconductor.structure import models as structure_models
