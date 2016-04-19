@@ -4,6 +4,9 @@ CHANGELOG
 Release NEXT
 ------------
 
+Release 0.95.0
+--------------
+
 - Enhance collaborators permission logic.
 - Implemented threshold-based alerts for price estimates and quotas.
 
