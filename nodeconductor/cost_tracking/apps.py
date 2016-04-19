@@ -32,11 +32,17 @@ class CostTrackingConfig(AppConfig):
                           'make_autocalculated_price_estimate_visible_on_manual_estimate_deletion')
         )
 
-        signals.pre_save.connect(
+        signals.post_save.connect(
             handlers.make_autocalculate_price_estimate_invisible_if_manually_created_estimate_exists,
             sender=PriceEstimate,
             dispatch_uid=('nodeconductor.cost_tracking.handlers.'
                           'make_autocalculate_price_estimate_invisible_if_manually_created_estimate_exists')
+        )
+
+        signals.post_save.connect(
+            handlers.copy_threshold_from_previous_price_estimate,
+            sender=PriceEstimate,
+            dispatch_uid='nodeconductor.cost_tracking.handlers.copy_threshold_from_previous_price_estimate'
         )
 
         for index, service in enumerate(structure_models.Service.get_all_models()):

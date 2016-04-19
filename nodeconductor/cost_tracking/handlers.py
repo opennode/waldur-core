@@ -1,5 +1,7 @@
+import datetime
 import logging
 
+from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.core.tasks import send_task
@@ -39,6 +41,23 @@ def make_autocalculate_price_estimate_invisible_if_manually_created_estimate_exi
         if models.PriceEstimate.objects.filter(
                 year=instance.year, scope=instance.scope, month=instance.month, is_manually_input=True).exists():
             instance.is_visible = False
+
+
+def copy_threshold_from_previous_price_estimate(sender, instance, created=False, **kwargs):
+    if created:
+        current_date = datetime.date.today().replace(year=instance.year, month=instance.month)
+        prev_date = current_date - relativedelta(months=1)
+        try:
+            prev_estimate = models.PriceEstimate.objects.get(
+                year=prev_date.year,
+                month=prev_date.month,
+                scope=instance.scope,
+                threshold__gt=0
+            )
+            instance.threshold = prev_estimate.threshold
+            instance.save(update_fields=['threshold'])
+        except models.PriceEstimate.DoesNotExist:
+            pass
 
 
 def create_price_list_items_for_service(sender, instance, created=False, **kwargs):

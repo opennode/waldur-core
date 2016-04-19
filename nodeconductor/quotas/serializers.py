@@ -9,7 +9,7 @@ class QuotaSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Quota
-        fields = ('url', 'uuid', 'name', 'limit', 'usage', 'scope')
+        fields = ('url', 'uuid', 'name', 'limit', 'usage', 'scope', 'threshold')
         read_only_fields = ('uuid', 'name', 'usage')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},

@@ -19,6 +19,8 @@ from gm2m import GM2MField
 from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
 from nodeconductor.cost_tracking import CostTrackingRegister, managers
+from nodeconductor.logging.loggers import LoggableMixin
+from nodeconductor.logging.models import AlertThresholdMixin
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
 
@@ -27,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
-class PriceEstimate(core_models.UuidMixin, models.Model):
+class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     """ Store prices based on both estimates and actual consumption.
         Every record holds a list of leaf estimates with actual data.
 
@@ -207,6 +209,17 @@ class PriceEstimate(core_models.UuidMixin, models.Model):
                 while not (date.month == created.month and date.year == created.year):
                     update_estimate(date.month, date.year, monthly_cost, update_if_exists=False)
                     date -= relativedelta(months=+1)
+
+    def get_log_fields(self):
+        return 'uuid', 'scope', 'threshold', 'total', 'consumed'
+
+    def is_over_threshold(self):
+        return self.total >= self.threshold
+
+    @classmethod
+    def get_checkable_objects(cls):
+        dt = timezone.now()
+        return cls.objects.filter(year=dt.year, month=dt.month)
 
     def __str__(self):
         return '%s for %s-%s %.2f' % (self.scope, self.year, self.month, self.total)

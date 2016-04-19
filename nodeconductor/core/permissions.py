@@ -45,6 +45,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
     """
 
     def __init__(self,
+                 user_field=None,
                  collaborators_query=None,
                  collaborators_filter=None,
                  any_permission=False,
@@ -63,6 +64,10 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         collaborators_filter : dict
             A filter or list of filters to apply to collaborators.
             Default is {}.
+        user_field : string
+            A name of a field with ForeignKey to User object;
+            used to determine straight objects' permission.
+            Default is None.
         any_permission : boolean
             True to give any permission of the specified object to the
             collaborators.
@@ -95,6 +100,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         self.add_permission = add_permission
         self.change_permission = change_permission
         self.delete_permission = delete_permission
+        self.user_field = user_field
 
     def is_permission_allowed(self, perm):
         add_permission = self.get_full_permission_string('add')
@@ -156,6 +162,11 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         elif user_obj.is_active:
             # if the user is staff, allow everything
             if user_obj.is_staff:
+                return True
+
+        if self.user_field:
+            user = getattr(obj, self.user_field)
+            if user and user == user_obj:
                 return True
 
         for query, filt in zip(self.collaborators_queries, self.collaborators_filters):

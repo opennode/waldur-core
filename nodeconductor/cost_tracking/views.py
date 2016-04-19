@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 
-from rest_framework import viewsets, permissions, exceptions
+from django.db import IntegrityError
+from django.utils import timezone
+from rest_framework import viewsets, permissions, exceptions, decorators, response, status
 
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.cost_tracking import models, serializers, filters
@@ -94,6 +96,33 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         replaced with auto calculated (if it exists). Only customer owner and staff can delete price estimates.
         """
         return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
+
+    @decorators.list_route(methods=['post'])
+    def threshold(self, request, pk=None, **kwargs):
+        """
+        Run **POST** request against */api/price-estimates/threshold/*
+        to set alert threshold for price estimate.
+        Request body should be JSON dictionary with scope and threshold fields.
+        """
+        serializer = serializers.PriceEstimateThresholdSerializer(
+            data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+
+        threshold = serializer.validated_data['threshold']
+        scope = serializer.validated_data['scope']
+
+        if not self.can_user_modify_price_object(scope):
+            raise exceptions.PermissionDenied()
+
+        today = timezone.now()
+        params = dict(scope=scope, year=today.year, month=today.month)
+        try:
+            models.PriceEstimate.objects.create(threshold=threshold, **params)
+        except IntegrityError:
+            models.PriceEstimate.objects.filter(**params).update(threshold=threshold)
+
+        return response.Response({'detail': 'Threshold for price estimate is updated'},
+                                 status=status.HTTP_200_OK)
 
 
 class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
