@@ -4,6 +4,8 @@ CHANGELOG
 Release NEXT
 ------------
 
+- Preserve and restore tags for OpenStack backups.
+
 Release 0.95.0
 --------------
 
