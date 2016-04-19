@@ -71,11 +71,13 @@ class Command(BaseCommand):
         instances = self.choose_objects(instances, 1, many=True)
         project_url = self.get_obj_url('project-detail', project)
         for instance in instances:
+            # import instance
             serializer = serializers.InstanceImportSerializer(
                 data={'project': project_url, 'backend_id': instance['id']},
                 context={'service': tenant.service_project_link.service})
             serializer.is_valid(raise_exception=True)
             instance = serializer.save()
+            # add tags
             instance.tags.add('IaaS')
             instance.tags.add('support:basic')
             image_map = {
@@ -94,6 +96,14 @@ class Command(BaseCommand):
                     self.style.WARNING('\nCannot map image %s to tag. Please add tag manually.' % instance.image_name))
             else:
                 instance.tags.add('license_os:%s:%s' % (tag, instance.image_name))
+            # subscribe it to KillBill
+            try:
+                from nodeconductor_killbill.backend import KillBillBackend
+                backend = KillBillBackend(instance.customer)
+                backend.subscribe(instance)
+            except Exception as e:
+                self.stdout.write(
+                    self.style.WARNING('\nFailed to subscribe instance %s to KillBill. Error: %s' % (instance, e)))
 
             self.stdout.write('Instance %s was imported successfully' % instance.name)
 
