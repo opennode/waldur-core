@@ -177,7 +177,6 @@ ALERT_FEATURES = {
     ],
     'quota': [
         'customer_projected_costs_exceeded',
-        'quota_usage_is_over_threshold'
     ]
 }
 

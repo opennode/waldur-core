@@ -8,8 +8,8 @@ from nodeconductor.core.serializers import GenericRelatedField, AugmentedSeriali
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
-from nodeconductor.structure.serializers import ProjectSerializer
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
+from nodeconductor.structure.serializers import ProjectSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -21,8 +21,8 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
     class Meta(object):
         model = models.PriceEstimate
         fields = ('url', 'uuid', 'scope', 'total', 'consumed', 'month', 'year',
-                  'is_manually_input', 'scope_name', 'scope_type', 'resource_type')
-        read_only_fields = ('is_manually_input',)
+                  'is_manually_input', 'scope_name', 'scope_type', 'resource_type', 'threshold')
+        read_only_fields = ('is_manually_input', 'threshold')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -116,14 +116,29 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
         return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
 
 
+class PriceEstimateThresholdSerializer(serializers.Serializer):
+    threshold = serializers.FloatField(min_value=0)
+    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models())
+
+
+class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = models.PriceEstimate
+        fields = ('threshold', 'total')
+
+
 def get_price_estimate_for_project(serializer, project):
     now = timezone.now()
     try:
         estimate = models.PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
     except models.PriceEstimate.DoesNotExist:
-        return 0.0
+        return {
+            'threshold': 0.0,
+            'total': 0.0
+        }
     else:
-        return estimate.total
+        serializer = NestedPriceEstimateSerializer(instance=estimate, context=serializer.context)
+        return serializer.data
 
 
 def add_price_estimate_for_project(sender, fields, **kwargs):

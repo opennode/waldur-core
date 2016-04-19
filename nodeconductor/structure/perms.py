@@ -86,7 +86,7 @@ service_project_link_permission_logic = FilteredCollaboratorsPermissionLogic(
 )
 
 
-def property_permission_logic(prefix):
+def property_permission_logic(prefix, user_field=None):
     return FilteredCollaboratorsPermissionLogic(
         collaborators_query=[
             '%s__service_project_link__project__roles__permission_group__user' % prefix,
@@ -96,6 +96,7 @@ def property_permission_logic(prefix):
             {'%s__service_project_link__project__roles__role_type' % prefix: ProjectRole.ADMINISTRATOR},
             {'%s__service_project_link__project__customer__roles__role_type' % prefix: CustomerRole.OWNER},
         ],
+        user_field=user_field,
         any_permission=True,
     )
 
