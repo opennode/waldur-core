@@ -153,7 +153,11 @@ def add_price_estimate_for_project(sender, fields, **kwargs):
 pre_serializer_fields.connect(add_price_estimate_for_project, sender=ProjectSerializer)
 
 
-def check_project_price_estimate(sender, attrs, **kwargs):
+def check_project_price_estimate(sender, instance, attrs, **kwargs):
+    serializer = instance
+    if serializer.instance:
+        # Skip validation if instance is updated
+        return
     now = timezone.now()
     project = attrs['service_project_link'].project
     try:

@@ -165,7 +165,7 @@ class ExtraValidationSerializerMixin(object):
     """
     def run_validation(self, attrs):
         attrs = super(ExtraValidationSerializerMixin, self).run_validation(attrs)
-        post_validate_attrs.send(sender=self.__class__, attrs=attrs)
+        post_validate_attrs.send(sender=self.__class__, instance=self, attrs=attrs)
         return attrs
 
 
