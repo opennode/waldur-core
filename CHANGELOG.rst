@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-< nothing yet >
+- Enhance collaborators permission logic.
 
 Release 0.94.0
 --------------
