@@ -5,11 +5,12 @@ from django.utils import six, timezone
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
-from nodeconductor.core.signals import pre_serializer_fields
+from nodeconductor.core.signals import pre_serializer_fields, post_validate_attrs
+from nodeconductor.core.utils import get_subclasses
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
-from nodeconductor.structure.serializers import ProjectSerializer
+from nodeconductor.structure.serializers import ProjectSerializer, BaseResourceSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -117,24 +118,27 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class PriceEstimateThresholdSerializer(serializers.Serializer):
-    threshold = serializers.FloatField(min_value=0)
-    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models())
+    threshold = serializers.FloatField(min_value=0, required=True)
+    limit = serializers.FloatField(min_value=0, required=True)
+    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models(), required=True)
 
 
 class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.PriceEstimate
-        fields = ('threshold', 'total')
+        fields = ('threshold', 'total', 'limit')
 
 
 def get_price_estimate_for_project(serializer, project):
     now = timezone.now()
     try:
-        estimate = models.PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
+        estimate = models.PriceEstimate.objects.get(
+            scope=project, year=now.year, month=now.month, is_manually_input=False)
     except models.PriceEstimate.DoesNotExist:
         return {
             'threshold': 0.0,
-            'total': 0.0
+            'total': 0.0,
+            'limit': 0.0
         }
     else:
         serializer = NestedPriceEstimateSerializer(instance=estimate, context=serializer.context)
@@ -147,3 +151,21 @@ def add_price_estimate_for_project(sender, fields, **kwargs):
 
 
 pre_serializer_fields.connect(add_price_estimate_for_project, sender=ProjectSerializer)
+
+
+def check_project_price_estimate(sender, attrs, **kwargs):
+    now = timezone.now()
+    project = attrs['service_project_link'].project
+    try:
+        estimate = models.PriceEstimate.objects.get(
+            scope=project, year=now.year, month=now.month, is_manually_input=False)
+    except models.PriceEstimate.DoesNotExist:
+        return
+    else:
+        if 0 < estimate.limit <= estimate.total:
+            raise serializers.ValidationError({
+                'detail': 'Resource provisioning is disabled because estimated project price is over limit.'
+            })
+
+for serializer in get_subclasses(BaseResourceSerializer):
+    post_validate_attrs.connect(check_project_price_estimate, sender=serializer)

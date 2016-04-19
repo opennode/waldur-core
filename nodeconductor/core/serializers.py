@@ -10,7 +10,7 @@ from rest_framework.fields import Field, ReadOnlyField
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.signals import pre_serializer_fields
+from nodeconductor.core.signals import pre_serializer_fields, post_validate_attrs
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -139,33 +139,57 @@ class GenericRelatedField(Field):
         return obj
 
 
+class ExtraValidationSerializerMixin(object):
+    """
+    This mixin allows to perform extra validation of serializer from dependent
+    applications in a way that doesn't introduce circular dependencies.
+
+    To achieve this, dependent application should subscribe
+    to post_validate_attrs signal and perform extra validation.
+
+    Example of signal handler implementation:
+
+    class BaseResourceSerializer(ExtraValidationSerializerMixin):
+        pass
+
+    from nodeconductor.structure.serializers import BaseResourceSerializer
+
+    def check_project_cost(sender, attrs, **kwargs):
+        if attrs['service_project_link'].project.price.is_over_limit():
+            raise serializers.ValidationError("Project price is over limit.")
+
+    post_validate_attrs.connect(
+        handlers.check_project_cost,
+        sender=BaseResourceSerializer
+    )
+    """
+    def run_validation(self, attrs):
+        attrs = super(ExtraValidationSerializerMixin, self).run_validation(attrs)
+        post_validate_attrs.send(sender=self.__class__, attrs=attrs)
+        return attrs
+
+
 class AugmentedSerializerMixin(object):
     """
-    This mixing provides several extensions to stock Serializer class:
+    This mixin provides several extensions to stock Serializer class:
 
-    1.  Adding extra fields to serializer from dependent applications in a way
+    1.  Add extra fields to serializer from dependent applications in a way
         that doesn't introduce circular dependencies.
 
         To achieve this, dependent application should subscribe
         to pre_serializer_fields signal and inject additional fields.
 
         Example of signal handler implementation:
-            # handlers.py
-            def add_customer_name(sender, fields, **kwargs):
-                fields['customer_name'] = ReadOnlyField(source='customer.name')
 
-            # apps.py
-            class DependentAppConfig(AppConfig):
-                name = 'nodeconductor.structure_dependent'
-                verbose_name = "NodeConductor Structure Enhancements"
+        from nodeconductor.structure.serializers import CustomerSerializer
 
-                def ready(self):
-                    from nodeconductor.structure.serializers import CustomerSerializer
+        def add_customer_name(sender, fields, **kwargs):
+            fields['customer_name'] = ReadOnlyField(source='customer.name')
 
-                    pre_serializer_fields.connect(
-                        handlers.add_customer_name,
-                        sender=CustomerSerializer,
-                    )
+        pre_serializer_fields.connect(
+            handlers.add_customer_name,
+            sender=CustomerSerializer
+        )
 
     2.  Declaratively add attributes fields of related entities for ModelSerializers.
 
@@ -221,7 +245,6 @@ class AugmentedSerializerMixin(object):
                     model = models.Project
                     fields = ('url', 'uuid', 'name', 'customer')
                     protected_fields = ('customer',)
-
     """
 
     def get_fields(self):

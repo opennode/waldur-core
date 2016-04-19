@@ -9,6 +9,7 @@ Release 0.95.0
 
 - Enhance collaborators permission logic.
 - Implemented threshold-based alerts for price estimates and quotas.
+- Disable provisioning for all providers of the project if cost limit is reached.
 
 Release 0.94.0
 --------------

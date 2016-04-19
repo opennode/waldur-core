@@ -181,3 +181,10 @@ def instance_from_url(url, user=None):
     if user is not None:
         queryset = filter_queryset_for_user(model.objects.all(), user)
     return queryset.get(**match.kwargs)
+
+
+def get_subclasses(cls):
+    for subclass in cls.__subclasses__():
+        yield subclass
+        for child in get_subclasses(subclass):
+            yield child
