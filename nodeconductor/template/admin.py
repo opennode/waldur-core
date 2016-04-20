@@ -14,7 +14,7 @@ class BaseTemplateInline(admin.StackedInline):
 
     def get_queryset(self, request):
         qs = super(BaseTemplateInline, self).get_queryset(request)
-        return qs.filter(resource_content_type=self.form.get_resource_content_type())
+        return qs.filter(object_content_type=self.form.get_content_type())
 
 
 class TemplateGroupAdmin(admin.ModelAdmin):
@@ -23,15 +23,15 @@ class TemplateGroupAdmin(admin.ModelAdmin):
     def get_inlines(self):
         if not hasattr(self, '_inlines'):
             self._inlines = []
-            for resource_model in TemplateRegistry.get_resource_models():
-                template_form = TemplateRegistry.get_resource_form(resource_model)
+            for model in TemplateRegistry.get_models():
+                template_form = TemplateRegistry.get_form(model)
 
                 class TemplateInline(BaseTemplateInline):
                     form = template_form
                     verbose_name = "Template for %s %s provision" % (
-                        resource_model._meta.app_label, resource_model._meta.verbose_name)
+                        model._meta.app_label, model._meta.verbose_name)
                     verbose_name_plural = "Templates for %s %s provision" % (
-                        resource_model._meta.app_label, resource_model._meta.verbose_name)
+                        model._meta.app_label, model._meta.verbose_name)
 
                 self._inlines.append(TemplateInline)
         return self._inlines

@@ -68,12 +68,12 @@ class TemplateRegistry(object):
 
     @classmethod
     def register(cls, form):
-        cls._registry[form.get_resource_model()] = form
+        cls._registry[form.get_model()] = form
 
     @classmethod
-    def get_resource_models(cls):
+    def get_models(cls):
         return cls._registry.keys()
 
     @classmethod
-    def get_resource_form(cls, resource_model):
-        return cls._registry[resource_model]
+    def get_form(cls, model):
+        return cls._registry[model]
