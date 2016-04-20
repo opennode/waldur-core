@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
-from django.utils import six, timezone
+from django.utils import six
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
@@ -119,7 +119,12 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
 class PriceEstimateThresholdSerializer(serializers.Serializer):
     threshold = serializers.FloatField(min_value=0, required=True)
-    limit = serializers.FloatField(min_value=0, required=True)
+    limit = serializers.FloatField(required=True)
+    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models(), required=True)
+
+
+class PriceEstimateLimitSerializer(serializers.Serializer):
+    limit = serializers.FloatField(required=True)
     scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models(), required=True)
 
 
@@ -130,15 +135,13 @@ class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
 
 
 def get_price_estimate_for_project(serializer, project):
-    now = timezone.now()
     try:
-        estimate = models.PriceEstimate.objects.get(
-            scope=project, year=now.year, month=now.month, is_manually_input=False)
+        estimate = models.PriceEstimate.objects.get_current(project)
     except models.PriceEstimate.DoesNotExist:
         return {
             'threshold': 0.0,
             'total': 0.0,
-            'limit': 0.0
+            'limit': -1.0
         }
     else:
         serializer = NestedPriceEstimateSerializer(instance=estimate, context=serializer.context)
@@ -158,15 +161,13 @@ def check_project_price_estimate(sender, instance, attrs, **kwargs):
     if serializer.instance:
         # Skip validation if instance is updated
         return
-    now = timezone.now()
     project = attrs['service_project_link'].project
     try:
-        estimate = models.PriceEstimate.objects.get(
-            scope=project, year=now.year, month=now.month, is_manually_input=False)
+        estimate = models.PriceEstimate.objects.get_current(project)
     except models.PriceEstimate.DoesNotExist:
         return
     else:
-        if 0 < estimate.limit <= estimate.total:
+        if estimate.limit != -1 and estimate.total > estimate.limit > 0:
             raise serializers.ValidationError({
                 'detail': 'Resource provisioning is disabled because estimated project price is over limit.'
             })

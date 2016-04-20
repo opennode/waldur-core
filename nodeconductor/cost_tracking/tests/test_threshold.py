@@ -53,7 +53,7 @@ class PriceEstimateThresholdApiTest(test.APITransactionTestCase):
         url = PriceEstimateFactory.get_list_url() + 'threshold/'
         response = self.client.post(url, {
             'threshold': threshold,
-            'limit': 0,
+            'limit': -1,
             'scope': project_url
         })
         self.assertEqual(status.HTTP_200_OK, response.status_code, response.data)

@@ -51,7 +51,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     total = models.FloatField(default=0)
     consumed = models.FloatField(default=0)
     details = JSONField(blank=True)
-    limit = models.FloatField(default=0)
+    limit = models.FloatField(default=-1)
 
     month = models.PositiveSmallIntegerField(validators=[MaxValueValidator(12), MinValueValidator(1)])
     year = models.PositiveSmallIntegerField()

@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-from django.db import IntegrityError
-from django.utils import timezone
 from rest_framework import viewsets, permissions, exceptions, decorators, response, status
 
 from nodeconductor.core.filters import DjangoMappingFilterBackend
@@ -37,6 +35,8 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'threshold':
             return serializers.PriceEstimateThresholdSerializer
+        elif self.action == 'limit':
+            return serializers.PriceEstimateLimitSerializer
         return self.serializer_class
 
     def get_queryset(self):
@@ -103,7 +103,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
 
     @decorators.list_route(methods=['post'])
-    def threshold(self, request, pk=None, **kwargs):
+    def threshold(self, request, **kwargs):
         """
         Run **POST** request against */api/price-estimates/threshold/*
         to set alert threshold for price estimate.
@@ -119,28 +119,53 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
             {
                 "scope": "http://example.com/api/projects/ab2e3d458e8a4ecb9dded36f3e46878d/",
-                "threshold": 100.0,
-                "limit": 100.0
+                "threshold": 100.0
             }
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         threshold = serializer.validated_data['threshold']
+        scope = serializer.validated_data['scope']
+
+        if not self.can_user_modify_price_object(scope):
+            raise exceptions.PermissionDenied()
+
+        models.PriceEstimate.objects.create_or_update(scope, threshold=threshold)
+        return response.Response({'detail': 'Threshold for price estimate is updated'},
+                                 status=status.HTTP_200_OK)
+
+    @decorators.list_route(methods=['post'])
+    def limit(self, request, **kwargs):
+        """
+        Run **POST** request against */api/price-estimates/limit/*
+        to set price estimate limit. In order to cancel limit pass -1.
+        Example request:
+
+        .. code-block:: http
+
+            POST /api/price-estimates/limit/
+            Accept: application/json
+            Content-Type: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "scope": "http://example.com/api/projects/ab2e3d458e8a4ecb9dded36f3e46878d/",
+                "limit": 100.0
+            }
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         limit = serializer.validated_data['limit']
         scope = serializer.validated_data['scope']
 
         if not self.can_user_modify_price_object(scope):
             raise exceptions.PermissionDenied()
 
-        today = timezone.now()
-        params = dict(scope=scope, year=today.year, month=today.month)
-        try:
-            models.PriceEstimate.objects.create(threshold=threshold, limit=limit, **params)
-        except IntegrityError:
-            models.PriceEstimate.objects.filter(**params).update(threshold=threshold, limit=limit)
-
-        return response.Response({'detail': 'Threshold for price estimate is updated'},
+        models.PriceEstimate.objects.create_or_update(scope, limit=limit)
+        return response.Response({'detail': 'Limit for price estimate is updated'},
                                  status=status.HTTP_200_OK)
 
 

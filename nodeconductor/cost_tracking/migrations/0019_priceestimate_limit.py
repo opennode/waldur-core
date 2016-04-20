@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='priceestimate',
             name='limit',
-            field=models.FloatField(default=0),
+            field=models.FloatField(default=-1),
         ),
     ]
