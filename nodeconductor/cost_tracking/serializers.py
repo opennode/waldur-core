@@ -119,7 +119,6 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
 class PriceEstimateThresholdSerializer(serializers.Serializer):
     threshold = serializers.FloatField(min_value=0, required=True)
-    limit = serializers.FloatField(required=True)
     scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models(), required=True)
 
 
