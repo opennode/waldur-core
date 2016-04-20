@@ -92,6 +92,14 @@ class CostTrackingConfig(AppConfig):
                     .format(resource.__name__, index))
             )
 
+            signals.pre_save.connect(
+                handlers.check_project_cost_limit_on_resource_provision,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.check_project_cost_limit_on_resource_provision_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
             signals.post_save.connect(
                 handlers.update_price_estimate_on_resource_spl_change,
                 sender=resource,

@@ -5,8 +5,7 @@ from django.utils import six
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
-from nodeconductor.core.signals import pre_serializer_fields, post_validate_attrs
-from nodeconductor.core.utils import get_subclasses
+from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
@@ -153,23 +152,3 @@ def add_price_estimate_for_project(sender, fields, **kwargs):
 
 
 pre_serializer_fields.connect(add_price_estimate_for_project, sender=ProjectSerializer)
-
-
-def check_project_price_estimate(sender, instance, attrs, **kwargs):
-    serializer = instance
-    if serializer.instance:
-        # Skip validation if instance is updated
-        return
-    project = attrs['service_project_link'].project
-    try:
-        estimate = models.PriceEstimate.objects.get_current(project)
-    except models.PriceEstimate.DoesNotExist:
-        return
-    else:
-        if estimate.limit != -1 and estimate.total > estimate.limit > 0:
-            raise serializers.ValidationError({
-                'detail': 'Resource provisioning is disabled because estimated project price is over limit.'
-            })
-
-for serializer in get_subclasses(BaseResourceSerializer):
-    post_validate_attrs.connect(check_project_price_estimate, sender=serializer)

@@ -10,7 +10,7 @@ from rest_framework.fields import Field, ReadOnlyField
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.signals import pre_serializer_fields, post_validate_attrs
+from nodeconductor.core.signals import pre_serializer_fields
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -137,36 +137,6 @@ class GenericRelatedField(Field):
         if model not in self.related_models:
             raise serializers.ValidationError('%s object does not support such relationship' % str(obj))
         return obj
-
-
-class ExtraValidationSerializerMixin(object):
-    """
-    This mixin allows to perform extra validation of serializer from dependent
-    applications in a way that doesn't introduce circular dependencies.
-
-    To achieve this, dependent application should subscribe
-    to post_validate_attrs signal and perform extra validation.
-
-    Example of signal handler implementation:
-
-    class BaseResourceSerializer(ExtraValidationSerializerMixin):
-        pass
-
-    from nodeconductor.structure.serializers import BaseResourceSerializer
-
-    def check_project_cost(sender, attrs, **kwargs):
-        if attrs['service_project_link'].project.price.is_over_limit():
-            raise serializers.ValidationError("Project price is over limit.")
-
-    post_validate_attrs.connect(
-        handlers.check_project_cost,
-        sender=BaseResourceSerializer
-    )
-    """
-    def run_validation(self, attrs):
-        attrs = super(ExtraValidationSerializerMixin, self).run_validation(attrs)
-        post_validate_attrs.send(sender=self.__class__, instance=self, attrs=attrs)
-        return attrs
 
 
 class AugmentedSerializerMixin(object):

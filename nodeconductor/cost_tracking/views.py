@@ -139,8 +139,9 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     def limit(self, request, **kwargs):
         """
         Run **POST** request against */api/price-estimates/limit/*
-        to set price estimate limit. In order to cancel limit pass -1.
-        Example request:
+        to set price estimate limit. When limit is set, provisioning is disabled
+        if total estimated monthly cost of project and resource exceeds project cost limit.
+        If limit is -1, project cost limit do not apply. Example request:
 
         .. code-block:: http
 

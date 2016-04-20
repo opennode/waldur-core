@@ -15,7 +15,6 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import MappedChoiceField
-from nodeconductor.core.serializers import ExtraValidationSerializerMixin
 from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import (models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
@@ -1168,7 +1167,6 @@ class RelatedResourceSerializer(BasicResourceSerializer):
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
-                             ExtraValidationSerializerMixin,
                              core_serializers.RestrictedSerializerMixin,
                              MonitoringSerializerMixin,
                              PermissionFieldFilteringMixin,
