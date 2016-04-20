@@ -8,7 +8,7 @@ To enable an application to be part of a template, the following steps are requi
        describe template fields.
 
     2. Implement form methods:
-     - get_resource_model - this method should return model of resource that will be provisioned by template.
+     - get_model - this method should return model of resource or service that will be provisioned by template.
      - get_serializer_class - this method should return serializer that will be used for form fields serialization for
                               requests execution.
                               It is highly recommended to use nodeconductor.template.serializers.BaseTemplateSerializer.

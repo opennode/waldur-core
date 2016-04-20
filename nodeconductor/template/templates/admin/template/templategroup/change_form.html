@@ -7,6 +7,10 @@
         <p>It's possible pass data from the provisioned resource as input to the next resource. The passed data can be
         referenced in the template using the following method:
         <code>{% templatetag openvariable %} response.field {% templatetag closevariable %}</code> </p>
+        <p>Tag <code>bootstrap_opts</code> can be used for data processing. 
+        Example: <code> {{ response.user_data|bootstrap_opts:"a" }} </code> will extract option "a" from provisioned
+        object user_data
+        </p>
     </div>
     {% if change %}
         {% if not adminform.form.instance.get_head_template or adminform.form.instance.get_head_template.order_number != 1 %}

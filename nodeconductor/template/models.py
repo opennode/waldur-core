@@ -163,7 +163,8 @@ class Template(core_models.UuidMixin, models.Model):
             context = django_template.Context({'response': previous_template_data})
             for key, value in options.items():
                 if isinstance(value, basestring):
-                    options[key] = django_template.Template(value).render(context)
+                    template = '{% load template_app_tags %}' + value
+                    options[key] = django_template.Template(template).render(context)
 
         # prepare request data: use project from previous_template_data if <use_previous_project> is True
         if self.use_previous_project and not options.get('project'):
