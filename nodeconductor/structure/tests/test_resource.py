@@ -2,8 +2,6 @@ import factory
 
 from rest_framework import test, status
 
-from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.iaas.models import OpenStackSettings
 from nodeconductor.openstack.tests.factories import InstanceFactory
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.models import CustomerRole, Resource

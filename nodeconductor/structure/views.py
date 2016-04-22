@@ -1829,6 +1829,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
         """
         return super(BaseServiceProjectLinkViewSet, self).retrieve(request, *args, **kwargs)
 
+
 def safe_operation(valid_state=None):
     def decorator(view_fn):
         view_fn.valid_state = valid_state
