@@ -4,7 +4,13 @@ CHANGELOG
 Release NEXT
 ------------
 
+< Add here >
+
+Release 0.96.0
+--------------
+
 - Preserve and restore tags for OpenStack backups.
+- Support for provisioning of Zabbix-based monitoring-as-a-Service solutions.
 
 Release 0.95.0
 --------------
@@ -34,6 +40,7 @@ Release 0.94.0
 
 Release 0.93.0
 --------------
+
 - Added Resource import signal.
 - Fixed quota update bug on cascade deletion.
 
