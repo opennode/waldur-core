@@ -550,15 +550,6 @@ class OpenStackBackend(ServiceBackend):
             if neutron_quotas:
                 self.neutron_client.update_quota(tenant.backend_id, {'quota': neutron_quotas})
         except Exception as e:
-            # XXX: event logging should be moved executors level
-            event_logger.service_project_link.warning(
-                'Failed to push quotas to backend.',
-                event_type='service_project_link_sync_failed',
-                event_context={
-                    'service_project_link': tenant.service_project_link,
-                    'error_message': six.text_type(e),
-                }
-            )
             six.reraise(OpenStackBackendError, e)
 
     @log_backend_action('pull quotas for tenant')
@@ -668,14 +659,6 @@ class OpenStackBackend(ServiceBackend):
                         logger.info('Updated existing floating IP port %s in database', nc_ip.uuid)
 
         except Exception as e:
-            event_logger.service_project_link.warning(
-                'Failed to pull floating IPs from backend.',
-                event_type='service_project_link_sync_failed',
-                event_context={
-                    'service_project_link': service_project_link,
-                    'error_message': six.text_type(e),
-                }
-            )
             six.reraise(OpenStackBackendError, e)
 
     @log_backend_action('pull security groups for tenant')
@@ -737,14 +720,6 @@ class OpenStackBackend(ServiceBackend):
                                  nc_security_group.name, nc_security_group.pk)
 
         except Exception as e:
-            event_logger.service_project_link.warning(
-                'Failed to pull security groups from backend.',
-                event_type='service_project_link_sync_failed',
-                event_context={
-                    'service_project_link': service_project_link,
-                    'error_message': six.text_type(e),
-                }
-            )
             six.reraise(OpenStackBackendError, e)
 
     def pull_security_group_rules(self, security_group):

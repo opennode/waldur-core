@@ -973,7 +973,7 @@ class UsageStatsView(views.APIView):
         aggregate_queryset = self._get_aggregate_queryset(request, aggregate_model_name)
 
         if 'uuid' in request.query_params:
-            aggregate_queryset = aggregate_queryset.filter(uuid=request.query_params['uuid'])
+            aggregate_queryset = aggregate_queryset.filter(uuid__in=request.query_params.getlist('uuid'))
 
         # This filters out the vm Instances to those that can be seen
         # by currently logged in user. This is done within each aggregate root separately.
