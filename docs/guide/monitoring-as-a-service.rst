@@ -1,64 +1,72 @@
-Monitoring as a service
-=======================
+Monitoring-as-a-service (MaaS)
+==============================
 
-Monitoring is offered on two levels:
+NodeConductor can be used for implementing a MaaS
+solution for OpenStack VMs with Zabbix monitoring service.
 
-1. As PaaS service - packaging monitoring server and deploying into customer's tenant for the highest flexibility. 
-2. As an 'Advanced monitoring' extension of the Self-service, where configuration of the monitoring system is done in 
-assisted form and monitoring data is partially integrated into a self-service portal. The service is for IaaS VMs only.
+Two approaches for MaaS are available:
 
+1. A pre-packaged Zabbix appliance deployed into defined OpenStack tenant for
+the highest flexibility.
 
-Monitoring as PaaS service
---------------------------
+2. A pre-packaged Zabbix appliance configurable by NodeConductor after the
+deployment of the appliance ("Advanced monitoring"). Intended for use cases
+when OpenStack hosts need to be registered manually or automatically in the
+monitoring server deployed in a tenant.
+
+Below we describe configuration approach for both of the cases.
+
+Zabbix appliance only
+---------------------
 
 Setup
 +++++
 
-1. Create template group:
+1. Create a template group:
 
-  - name, description, icon_url - AppStore parameters
+  - name, description, icon_url - support parameters for the application store
   - tags - PaaS
 
-2. To created group add OpenStack instance provision template:
+2. Add OpenStack Instance template to the template group with the following settings:
 
   - tags - PaaS
-  - service settings - share OpenStack settings
-  - flavor - choose suitable for Zabbix image
-  - image - Zabbix image
-  - data volume, system volume - suitable for Zabbix image
-  - security groups - at least http or https
+  - service settings - OpenStack settings where a VM needs to be provisioned
+  - flavor - default configuration for the created Zabbix server
+  - image - OpenStack image with pre-installed Zabbbix
+  - data volume, system volume - default size for Zabbix deployments
+  - security groups - typically you need to allow at least HTTP and HTTPS traffic
 
+Supported operations by REST client
++++++++++++++++++++++++++++++++++++
 
-Requests from frontend
-++++++++++++++++++++++
-
-Monitoring as PaaS should be threated as any other PaaS service - it has separate security group with tag "PaaS" and 
-receives specific user-data.
-Parameters for provision:
+Zabbix appliance is a basic OpenStack image that supports the following provisioning
+inputs:
 
  - name
  - project
  - user_data
 
-User data format:
+User data can be used to setup Zabbix admin user password:
 
 .. code-block:: yaml
 
     #cloud-config
     runcmd:
-      - [ bootstrap, -a, <Zabbix Admin user password> ]
+      - [ bootstrap, -a, <Zabbix admin user password> ]
 
 
 Advanced monitoring
 -------------------
 
-How it works in NC
-++++++++++++++++++
+Provisioning flow
++++++++++++++++++
 
-NC has separate template group for advance monitoring that contains 2 templates:
+NodeConductor requires a separate template group for advanced monitoring that
+contains 2 templates:
 
- - OpenStack VM template - describes provision details, creates new VM with Zabbix.
- - Zabbix service template - creates Zabbix service, based on created VM details.
+- OpenStack VM template - describing provision details of a new VM with Zabbix;
+
+- Zabbix service template - creating a Zabbix service, based on created VM details.
 
 
 Setup
@@ -66,18 +74,18 @@ Setup
 
 1. Create template group:
 
-  - name, description, icon_url - AppStore parameters.
+  - name, description, icon_url - support parameters for the application store 
   - tags - SaaS
 
 2. Add OpenStack instance provision template:
 
   - tags - SaaS
-  - service settings - shared OpenStack settings
+  - service settings - OpenStack settings where a VM needs to be provisioned
   - flavor - choose suitable for Zabbix image
-  - image - Zabbix image
-  - data volume, system volume - suitable for Zabbix image
-  - security groups - at least http or https
-  - user data ({{ 8|random_password }} - generates random password):
+  - image - OpenStack image with pre-installed Zabbbix
+  - data volume, system volume - default size for Zabbix deployments
+  - security groups - at least HTTP or HTTPS
+  - user data:
 
   .. code-block:: yaml
 
@@ -85,9 +93,12 @@ Setup
       runcmd:
         - [ bootstrap, -a, {{ 8|random_password }}, -p, {{ 8|random_password }}, -l, "%", -u, nodeconductor ]
 
+
+  {{ 8|random_password }} will generate a random password with a length of 8
+
 3. Add Zabbix service provision template:
 
-  - order_number - 2 (should be provisioned right after OpenStack VM)
+  - order_number - 2 (should be provisioned after OpenStack VM)
   - name - {{ response.name }} (use VM name for service)
   - Use project of the previous object - True (connect service to VM project)
   - backend url - http://{{ response.access_url.0 }}/zabbix/api_jsonrpc.php (or https)
