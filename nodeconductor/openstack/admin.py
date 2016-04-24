@@ -7,7 +7,7 @@ from nodeconductor.structure import admin as structure_admin
 from nodeconductor.openstack import executors
 from nodeconductor.openstack.forms import BackupScheduleForm, InstanceForm
 from nodeconductor.openstack.models import OpenStackService, OpenStackServiceProjectLink, Instance, \
-                                           Backup, BackupSchedule, Tenant, Flavor
+                                           Backup, BackupSchedule, Tenant, Flavor, Image
 
 
 class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
@@ -28,7 +28,7 @@ class ServiceProjectLinkAdmin(structure_admin.ServiceProjectLinkAdmin):
     def get_tenant(self, obj):
         tenant = obj.tenant
         if tenant is not None:
-            url = reverse('admin:%s_%s_change' % (tenant._meta.app_label,  tenant._meta.model_name),  args=[tenant.id])
+            url = reverse('admin:%s_%s_change' % (tenant._meta.app_label, tenant._meta.model_name), args=[tenant.id])
             return '<a href="%s">%s</a>' % (url, tenant.name)
         return
 
@@ -116,9 +116,15 @@ class FlavorAdmin(admin.ModelAdmin):
     list_display = ('name', 'settings', 'cores', 'ram', 'disk')
 
 
+class ImageAdmin(admin.ModelAdmin):
+    list_filter = ('settings', )
+    list_display = ('name', 'min_disk', 'min_ram')
+
+
 admin.site.register(Instance, InstanceAdmin)
 admin.site.register(Tenant, TenantAdmin)
 admin.site.register(Flavor, FlavorAdmin)
+admin.site.register(Image, ImageAdmin)
 admin.site.register(OpenStackService, structure_admin.ServiceAdmin)
 admin.site.register(OpenStackServiceProjectLink, ServiceProjectLinkAdmin)
 admin.site.register(Backup, BackupAdmin)

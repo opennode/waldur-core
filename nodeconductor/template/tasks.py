@@ -13,7 +13,7 @@ def schedule_provision(previous_task_data=None, url=None, template_uuid=None, to
     # update templates group result if it is defined
     if template_group_result_uuid is not None:
         template_group_result = models.TemplateGroupResult.objects.get(uuid=template_group_result_uuid)
-        resource_type = SupportedServices.get_name_for_model(template.resource_content_type.model_class())
+        resource_type = SupportedServices.get_name_for_model(template.object_content_type.model_class())
         template_group_result.state_message = '%s provision has been scheduled successfully.' % resource_type
         template_group_result.save()
     return response_data
@@ -22,18 +22,18 @@ def schedule_provision(previous_task_data=None, url=None, template_uuid=None, to
 @shared_task(max_retries=120, default_retry_delay=20)
 @retry_if_false
 def wait_for_provision(previous_task_data=None, template_uuid=None, token_key=None,
-                       template_group_result_uuid=None, success_state='Online', erred_state='Erred'):
+                       template_group_result_uuid=None, success_states=['Online', 'OK'], erred_state='Erred'):
     template_group_result = models.TemplateGroupResult.objects.get(uuid=template_group_result_uuid)
     template = models.Template.objects.get(uuid=template_uuid)
 
     url = previous_task_data['url']
     resource_data = template.get_resource(url, token_key).json()
 
-    resource_type = SupportedServices.get_name_for_model(template.resource_content_type.model_class())
+    resource_type = SupportedServices.get_name_for_model(template.object_content_type.model_class())
     template_group_result.provisioned_resources[resource_type] = url
     template_group_result.save()
     state = resource_data['state']
-    if state == success_state:
+    if state in success_states:
         template_group_result.state_message = '%s has been successfully provisioned.' % resource_type
         template_group_result.save()
         return resource_data

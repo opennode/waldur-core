@@ -57,7 +57,7 @@ class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, model
         template_group_result = TemplateGroupResult.objects.create(group=self)
 
         head_template = self.get_head_template()
-        resource_type = SupportedServices.get_name_for_model(head_template.resource_content_type.model_class())
+        resource_type = SupportedServices.get_name_for_model(head_template.object_content_type.model_class())
         template_group_result.provisioned_resources[resource_type] = head_template_provision_response.json()['url']
 
         token_key = Token.objects.get(user=request.user).key
@@ -127,27 +127,30 @@ class TemplateActionException(Exception):
 class Template(core_models.UuidMixin, models.Model):
     """ Template for application action.
 
-        Currently templates application supports only resource provision actions.
+        Currently templates application supports only provision actions.
         Describes instance default parameters.
     """
     group = models.ForeignKey(TemplateGroup, related_name='templates')
     options = JSONField(default={}, help_text='Default options for resource provision request.')
     tags = TaggableManager()
     service_settings = models.ForeignKey(structure_models.ServiceSettings, related_name='templates', null=True)
-    resource_content_type = models.ForeignKey(
+    object_content_type = models.ForeignKey(
         ContentType, help_text='Content type of resource which provision process is described in template.')
     order_number = models.PositiveSmallIntegerField(
         default=1,
         help_text='Templates in group are sorted by order number. '
                   'Template with smaller order number will be executed first.',
         validators=[validators.MinValueValidator(1)])
-    use_previous_resource_project = models.BooleanField(
+    use_previous_project = models.BooleanField(
         default=False, help_text='If True and project is not defined in template - current resource will use the same '
                                  'project as previous created.')
 
     def get_provison_url(self, request):
-        model_class = self.resource_content_type.model_class()
+        model_class = self.object_content_type.model_class()
         return reverse.reverse('%s-list' % model_class.get_url_name(), request=request)
+
+    def is_service_template(self):
+        return issubclass(self.object_content_type.model_class(), structure_models.Service)
 
     def schedule_provision(self, url, token_key, additional_options=None, previous_template_data=None,
                            ignore_provision_errors=False):
@@ -159,15 +162,17 @@ class Template(core_models.UuidMixin, models.Model):
 
         # prepare request data: insert previous execution response variables as context to request data.
         # Example: {{ response.state }} will be replaced with real state field of previous execution response.
-        if previous_template_data is not None:
-            context = django_template.Context({'response': previous_template_data})
-            for key, value in options.items():
-                if isinstance(value, basestring):
-                    options[key] = django_template.Template(value).render(context)
+        context = django_template.Context({'response': previous_template_data})
+        for key, value in options.items():
+            if isinstance(value, basestring):
+                template = '{% load template_app_tags %}' + value
+                options[key] = django_template.Template(template).render(context)
 
-        # prepare request data: use project from previous_template_data if <use_previous_resource_project> is True
-        if self.use_previous_resource_project and not options.get('project'):
+        # prepare request data: use project from previous_template_data if <use_previous_project> is True
+        if self.use_previous_project and not options.get('project'):
             options['project'] = previous_template_data['project']
+            if self.is_service_template():
+                options['customer'] = previous_template_data['customer']
 
         # prepare request data: get service if service settings and project are defined in options
         if options.get('project') and options.get('service_settings'):
@@ -199,7 +204,7 @@ class Template(core_models.UuidMixin, models.Model):
 
         # execute post request
         response = requests.post(url, headers=headers, json=options, verify=False)
-        ct = self.resource_content_type
+        ct = self.object_content_type
         if not response.ok and not ignore_provision_errors:
             message = 'Failed to schedule %s %s provision.' % (ct.app_label, ct.model)
             details = (
@@ -232,7 +237,7 @@ class Template(core_models.UuidMixin, models.Model):
     def get_resource(self, url, token_key):
         response = requests.get(url, headers={'Authorization': 'Token %s' % token_key}, verify=False)
         if not response.ok:
-            ct = self.resource_content_type
+            ct = self.object_content_type
             message = 'Failed to get %s %s state.' % (ct.app_label, ct.model)
             details = 'GET request to URL %s failed. Response code - %s, content - %s' % (
                       response.request.url, response.status_code, response.content)
@@ -240,7 +245,7 @@ class Template(core_models.UuidMixin, models.Model):
         return response
 
     def __str__(self):
-        return "%s -> %s" % (self.group.name, self.resource_content_type)
+        return "%s -> %s" % (self.group.name, self.object_content_type)
 
 
 class TemplateGroupResult(core_models.UuidMixin, TimeStampedModel):
