@@ -149,6 +149,9 @@ class Template(core_models.UuidMixin, models.Model):
         model_class = self.object_content_type.model_class()
         return reverse.reverse('%s-list' % model_class.get_url_name(), request=request)
 
+    def is_service_template(self):
+        return issubclass(self.object_content_type.model_class(), structure_models.Service)
+
     def schedule_provision(self, url, token_key, additional_options=None, previous_template_data=None,
                            ignore_provision_errors=False):
         """ Prepare request options and issue POST request for resource provision """
@@ -159,16 +162,17 @@ class Template(core_models.UuidMixin, models.Model):
 
         # prepare request data: insert previous execution response variables as context to request data.
         # Example: {{ response.state }} will be replaced with real state field of previous execution response.
-        if previous_template_data is not None:
-            context = django_template.Context({'response': previous_template_data})
-            for key, value in options.items():
-                if isinstance(value, basestring):
-                    template = '{% load template_app_tags %}' + value
-                    options[key] = django_template.Template(template).render(context)
+        context = django_template.Context({'response': previous_template_data})
+        for key, value in options.items():
+            if isinstance(value, basestring):
+                template = '{% load template_app_tags %}' + value
+                options[key] = django_template.Template(template).render(context)
 
         # prepare request data: use project from previous_template_data if <use_previous_project> is True
         if self.use_previous_project and not options.get('project'):
             options['project'] = previous_template_data['project']
+            if self.is_service_template():
+                options['customer'] = previous_template_data['customer']
 
         # prepare request data: get service if service settings and project are defined in options
         if options.get('project') and options.get('service_settings'):
