@@ -6,11 +6,13 @@
         <h4>Resource parameters propagation</h4>
         <p>It's possible pass data from the provisioned resource as input to the next resource. The passed data can be
         referenced in the template using the following method:
-        <code>{% templatetag openvariable %} response.field {% templatetag closevariable %}</code> </p>
-        <p>Tag <code>bootstrap_opts</code> can be used for data processing. 
-        Example: <code> {{ response.user_data|bootstrap_opts:"a" }} </code> will extract option "a" from provisioned
-        object user_data
-        </p>
+        <code>{% templatetag openvariable %} response.field {% templatetag closevariable %}</code>.</p>
+        <p>Filter <code>bootstrap_opts</code> can be used for data processing. Example:
+        <code>{% templatetag openvariable %} response.user_data|bootstrap_opts:"a" {% templatetag closevariable %}</code>
+        will extract option "a" from provisioned object user_data.</p>
+        <p>Filter <code>random_password</code> can be used for random password generation. Example: 
+        <code>{% templatetag openvariable %} 8|random_password {% templatetag closevariable %} - will generate 
+        password with length 8.</code></p>
     </div>
     {% if change %}
         {% if not adminform.form.instance.get_head_template or adminform.form.instance.get_head_template.order_number != 1 %}
