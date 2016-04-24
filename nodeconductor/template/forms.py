@@ -27,7 +27,6 @@ class TemplateForm(forms.ModelForm):
     def get_serializer_class(cls):
         raise NotImplementedError()
 
-    # TODO: rename method to get_model
     @classmethod
     def get_model(cls):
         """ Get model of object which provision parameters are described by form """
