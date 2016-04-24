@@ -915,6 +915,15 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         view_name='servicesettings-detail',
         lookup_field='uuid',
         allow_null=True)
+    # if project is defined service will be automatically connected to projects customer
+    # and SPL between service and project will be created
+    project = serializers.HyperlinkedRelatedField(
+        queryset=models.Project.objects.all(),
+        view_name='project-detail',
+        lookup_field='uuid',
+        allow_null=True,
+        required=False,
+        write_only=True)
 
     backend_url = serializers.URLField(max_length=200, allow_null=True, write_only=True, required=False)
     username = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
@@ -933,7 +942,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         fields = (
             'uuid',
             'url',
-            'name', 'projects',
+            'name', 'projects', 'project',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
             'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
@@ -941,7 +950,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'available_for_all'
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
-        protected_fields = ('customer', 'settings') + settings_fields
+        protected_fields = ('customer', 'settings', 'project') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -1013,6 +1022,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def validate(self, attrs):
         user = self.context['user']
         customer = attrs.get('customer') or self.instance.customer
+        project = attrs.get('project')
+        if project and project.customer != customer:
+            raise serializers.ValidationError(
+                'Service cannot be connected to project that does not belong to services customer.')
+
         settings = attrs.get('settings')
         if not user.is_staff:
             if not customer.has_user(user, models.CustomerRole.OWNER):
@@ -1087,6 +1101,14 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def get_state(self, obj):
         return obj.settings.get_state_display()
+
+    def create(self, attrs):
+        project = attrs.pop('project', None)
+        service = super(BaseServiceSerializer, self).create(attrs)
+        if project:
+            spl = service.projects.through
+            spl.objects.create(project=project, service=service)
+        return service
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,

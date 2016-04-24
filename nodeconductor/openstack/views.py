@@ -853,7 +853,6 @@ class BackupViewSet(mixins.CreateModelMixin,
 
         if not errors:
             try:
-                backend = backup.get_backend()
                 backend.start_restoration(instance.uuid.hex, user_input=user_input, snapshot_ids=snapshot_ids)
             except BackupError:
                 # this should never be hit as the check is done on function entry

@@ -5,8 +5,8 @@ from rest_framework import serializers
 
 from nodeconductor.core import models as core_models
 from nodeconductor.openstack import models
-from nodeconductor.template.forms import TemplateForm
-from nodeconductor.template.serializers import BaseTemplateSerializer
+from nodeconductor.template.forms import ResourceTemplateForm
+from nodeconductor.template.serializers import BaseResourceTemplateSerializer
 
 
 class NestedHyperlinkedRelatedField(serializers.HyperlinkedRelatedField):
@@ -19,7 +19,7 @@ class NestedHyperlinkedRelatedField(serializers.HyperlinkedRelatedField):
         return {'url': super(NestedHyperlinkedRelatedField, self).to_representation(value)}
 
 
-class InstanceProvisionTemplateForm(TemplateForm):
+class InstanceProvisionTemplateForm(ResourceTemplateForm):
     service = forms.ModelChoiceField(
         label="OpenStack service", queryset=models.OpenStackService.objects.all(), required=False)
 
@@ -36,11 +36,11 @@ class InstanceProvisionTemplateForm(TemplateForm):
         widget=FilteredSelectMultiple(verbose_name='Instance security groups', is_stacked=False))
     user_data = forms.CharField(label='User data', widget=AdminTextareaWidget(), required=False)
 
-    class Meta(TemplateForm.Meta):
-        fields = TemplateForm.Meta.fields + ('service', 'project', 'flavor', 'image', 'data_volume_size',
-                                             'system_volume_size')
+    class Meta(ResourceTemplateForm.Meta):
+        fields = ResourceTemplateForm.Meta.fields + ('service', 'project', 'flavor', 'image', 'data_volume_size',
+                                                     'system_volume_size')
 
-    class Serializer(BaseTemplateSerializer):
+    class Serializer(BaseResourceTemplateSerializer):
         service = serializers.HyperlinkedRelatedField(
             view_name='openstack-detail',
             queryset=models.OpenStackService.objects.all(),
@@ -81,5 +81,5 @@ class InstanceProvisionTemplateForm(TemplateForm):
         return cls.Serializer
 
     @classmethod
-    def get_resource_model(cls):
+    def get_model(cls):
         return models.Instance
