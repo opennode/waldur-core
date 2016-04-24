@@ -277,6 +277,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=30),
         'args': (),
     },
+    'check-threshold': {
+        'task': 'nodeconductor.logging.check_threshold',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
 }
 
 CELERY_TASK_THROTTLING = {

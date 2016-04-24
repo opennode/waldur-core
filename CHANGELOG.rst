@@ -4,6 +4,17 @@ CHANGELOG
 Release NEXT
 ------------
 
+- Preserve and restore tags for OpenStack backups.
+
+Release 0.95.0
+--------------
+
+- Enhance collaborators permission logic.
+- Implemented threshold-based alerts for price estimates and quotas.
+
+Release 0.94.0
+--------------
+
 - Extended events filter to support filtering by user and time frame.
 - Enable filtering resource by category (vms, apps, private_clouds).
 - Support permission, filters and metadata for OpenStack tenants.
@@ -19,6 +30,7 @@ Release NEXT
 - Paginate results for customer users endpoint.
 - Enable OpenStack tenant autocreation for service project links.
 - Define default quotas for service project links.
+- Add possibility to filter certain fields for projects/ and customers/ endpoints.
 
 Release 0.93.0
 --------------

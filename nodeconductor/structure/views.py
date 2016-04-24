@@ -68,8 +68,27 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
         - customers that the user owns
         - customers that have a project where user has a role
+        """
+        return super(CustomerViewSet, self).list(request, *args, **kwargs)
 
-        A new customer can only be created by users with staff privilege (is_staff=True). Example of a valid request:
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Optional `field` query parameter (can be list) allows to limit what fields are returned.
+        For example, given request /api/customers/<uuid>/?field=uuid&field=name you get response like this:
+
+        .. code-block:: javascript
+
+            {
+                "uuid": "90bcfe38b0124c9bbdadd617b5d739f5",
+                "name": "Ministry of Bells"
+            }
+        """
+        return super(CustomerViewSet, self).retrieve(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
+        A new customer can only be created by users with staff privilege (is_staff=True).
+        Example of a valid request:
 
         .. code-block:: http
 
@@ -86,9 +105,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
                 "contact_details": "Luhamaa 28, 10128 Tallinn",
             }
         """
-        return super(CustomerViewSet, self).list(request, *args, **kwargs)
+        return super(CustomerViewSet, self).create(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
         Deletion of a customer is done through sending a **DELETE** request to the customer instance URI. Please note,
         that if a customer has connected projects or project groups, deletion request will fail with 409 response code.
@@ -101,7 +120,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
             Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
             Host: example.com
         """
-        return super(CustomerViewSet, self).retrieve(request, *args, **kwargs)
+        return super(CustomerViewSet, self).destroy(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.action == 'users':
@@ -182,7 +201,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """
         To get a list of projects, run **GET** against */api/projects/* as authenticated user.
         Here you can also check actual value for project quotas and project usage
-        ("resource_quota" and "resource_quota_usage" are deprecated).
 
         Note that a user can only see connected projects:
 
@@ -193,8 +211,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         - ?can_manage - return a list of projects where current user is manager, group manager or a customer owner;
         - ?can_admin - return a list of projects where current user is admin;
+        """
+        return super(ProjectViewSet, self).list(request, *args, **kwargs)
 
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Optional `field` query parameter (can be list) allows to limit what fields are returned.
+        For example, given request /api/projects/<uuid>/?field=uuid&field=name you get response like this:
 
+        .. code-block:: javascript
+
+            {
+                "uuid": "90bcfe38b0124c9bbdadd617b5d739f5",
+                "name": "Default"
+            }
+        """
+        return super(ProjectViewSet, self).retrieve(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
         A new project can be created by users with staff privilege (is_staff=True) or customer owners.
         Project resource quota is optional. Example of a valid request:
 
@@ -214,9 +249,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 ]
             }
         """
-        return super(ProjectViewSet, self).list(request, *args, **kwargs)
+        return super(ProjectViewSet, self).create(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
         Deletion of a project is done through sending a **DELETE** request to the project instance URI.
         Please note, that if a project has connected instances, deletion request will fail with 409 response code.
@@ -229,7 +264,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
             Host: example.com
         """
-        return super(ProjectViewSet, self).retrieve(request, *args, **kwargs)
+        return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
 
     def can_create_project_with(self, customer, project_groups):
         user = self.request.user
@@ -507,6 +542,7 @@ class UserViewSet(viewsets.ModelViewSet):
             Accept: application/json
             Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
             Host: example.com
+
             {
                 "username": "sample-user",
                 "full_name": "full name",
@@ -626,7 +662,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def approve_organization(self, request, uuid=None):
         """
         **Deprecated, use**
-        `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ **instead.**:
+        `organization plugin <http://nodeconductor-organization.readthedocs.org/en/stable/>`_ **instead.**
         """
         instance = self.get_object()
 
@@ -965,25 +1001,25 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
     def list(self, request, *args, **kwargs):
         """
         Each customer is associated with a group of users that represent customer owners. The link is maintained
-        through **api/customer-permissions/* endpoint.
+        through **api/customer-permissions/** endpoint.
 
         To list all visible links, run a **GET** query against a list.
         Response will contain a list of customer owners and their brief data.
 
         To add a new user to the customer, **POST** a new relationship to **customer-permissions** endpoint:
 
-            .. code-block:: http
+        .. code-block:: http
 
-                POST /api/customer-permissions/ HTTP/1.1
-                Accept: application/json
-                Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-                Host: example.com
+            POST /api/customer-permissions/ HTTP/1.1
+            Accept: application/json
+            Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
+            Host: example.com
 
-                {
-                    "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-                    "role": "owner",
-                    "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
-                }
+            {
+                "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
+                "role": "owner",
+                "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
+            }
         """
         return super(CustomerPermissionViewSet, self).list(request, *args, **kwargs)
 
@@ -1442,6 +1478,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
     Count number of entities related to project
 
     .. code-block:: javascript
+
         {
             "users": 0,
             "alerts": 2,
@@ -1511,6 +1548,7 @@ class UserCountersView(CounterMixin, viewsets.GenericViewSet):
     Count number of entities related to current user
 
     .. code-block:: javascript
+
         {
             "keys": 1,
             "hooks": 1
@@ -1791,6 +1829,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
         """
         return super(BaseServiceProjectLinkViewSet, self).retrieve(request, *args, **kwargs)
 
+
 def safe_operation(valid_state=None):
     def decorator(view_fn):
         view_fn.valid_state = valid_state
@@ -1863,6 +1902,20 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
                                               core_mixins.UserContextMixin,
                                               viewsets.ModelViewSet)):
     filter_class = filters.BaseResourceFilter
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Optional `field` query parameter (can be list) allows to limit what fields are returned.
+        For example, given request /api/openstack-instances/<uuid>/?field=uuid&field=name you get response like this:
+
+        .. code-block:: javascript
+
+            {
+                "uuid": "90bcfe38b0124c9bbdadd617b5d739f5",
+                "name": "Azure Virtual Machine"
+            }
+        """
+        return super(_BaseResourceViewSet, self).retrieve(request, *args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('update', 'partial_update'):
@@ -2162,16 +2215,16 @@ class QuotaTimelineCollector(object):
 
     .. code-block:: javascript
 
-    [
-        {
-            "from": start,
-            "to" end,
-            "vcpu_limit": 10,
-            "vcpu_usage": 5,
-            "ram_limit": 4000,
-            "ran_usage": 1000
-        }
-    ]
+        [
+            {
+                "from": start,
+                "to" end,
+                "vcpu_limit": 10,
+                "vcpu_usage": 5,
+                "ram_limit": 4000,
+                "ran_usage": 1000
+            }
+        ]
     """
     def __init__(self):
         self.ranges = set()
