@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
         ),
         migrations.RenameField(
             model_name='template',
-            old_name='use_previous_project',
+            old_name='use_previous_resource_project',
             new_name='use_previous_project',
         ),
     ]
