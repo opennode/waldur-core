@@ -1103,10 +1103,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return obj.settings.get_state_display()
 
     def create(self, attrs):
-        project = attrs.pop('project')
+        project = attrs.pop('project', None)
         service = super(BaseServiceSerializer, self).create(attrs)
-        spl = service.projects.through
-        spl.objects.create(project=project, service=service)
+        if project:
+            spl = service.projects.through
+            spl.objects.create(project=project, service=service)
         return service
 
 
