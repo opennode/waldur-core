@@ -128,6 +128,10 @@ for tmpl in TEMPLATES:
     tmpl.setdefault('OPTIONS', {})
     tmpl['OPTIONS']['debug'] = config.getboolean('global', 'template_debug')
 
+# For security reason disable browsable API rendering in production
+if not DEBUG:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'] = ('rest_framework.renderers.JSONRenderer',)
+
 MEDIA_ROOT = config.get('global', 'media_root')
 
 ALLOWED_HOSTS = ['*']
