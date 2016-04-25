@@ -1106,7 +1106,7 @@ class ResourceMixin(MonitoringModelMixin,
 
         return itertools.chain.from_iterable(
             model.objects.filter(**{field.name: self})
-            for model in Resource.get_all_models()
+            for model in ResourceMixin.get_all_models()
             for field in model._meta.virtual_fields
             if isinstance(field, GenericForeignKey))
 
@@ -1116,7 +1116,7 @@ class ResourceMixin(MonitoringModelMixin,
         return itertools.chain.from_iterable(
             rel.related_model.objects.filter(**{rel.field.name: self})
             for rel in self._meta.get_all_related_objects()
-            if issubclass(rel.related_model, Resource)
+            if issubclass(rel.related_model, ResourceMixin)
         )
 
     def _get_concrete_linked_resources(self):
@@ -1124,7 +1124,7 @@ class ResourceMixin(MonitoringModelMixin,
         return [getattr(self, field.name)
                 for field in self._meta.fields
                 if isinstance(field, models.ForeignKey) and
-                issubclass(field.related_model, Resource)]
+                issubclass(field.related_model, ResourceMixin)]
 
     def _get_generic_linked_resources(self):
         # For example, returns GitLab group for project
