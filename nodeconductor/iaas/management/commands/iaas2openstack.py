@@ -511,13 +511,17 @@ class Command(BaseCommand):
             if backup.backup_source not in migrated_iaas_instances:
                 self.stdout.write('[ ] %s' % backup_schedule)
                 continue
+
+            op_instance = op_models.Instance.objects.get(uuid=backup.backup_source.uuid)
+            op_metadata = backup.metadata
+            op_metadata['tags'] = [tag.name for tag in op_instance.tags.all()]
             op_models.Backup.objects.create(
-                instance=op_models.Instance.objects.get(uuid=backup.backup_source.uuid),
+                instance=op_instance,
                 backup_schedule=migrated_backup_schedules.get(backup.backup_schedule, None),
                 kept_until=backup.kept_until,
                 created_at=backup.created_at,
                 state=backup.state,
-                metadata=backup.metadata,
+                metadata=op_metadata,
                 description=backup.description,
             )
             self.stdout.write('[+] %s' % backup)
