@@ -6,24 +6,24 @@ from nodeconductor.template import models
 
 
 class TemplateSerializer(serializers.ModelSerializer):
-    resource_type = serializers.SerializerMethodField()
-    resource_provision_url = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+    provision_url = serializers.SerializerMethodField()
     options = JsonField()
     tags = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.Template
-        fields = ('uuid', 'options', 'tags', 'resource_type', 'resource_provision_url', 'order_number')
+        fields = ('uuid', 'options', 'tags', 'object_type', 'provision_url', 'order_number')
 
-    def get_resource_type(self, obj):
+    def get_object_type(self, obj):
         try:
-            return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
+            return SupportedServices.get_name_for_model(obj.object_content_type.model_class())
         except AttributeError:
-            return '.'.join(obj.resource_content_type.natural_key())
+            return '.'.join(obj.object_content_type.natural_key())
 
-    def get_resource_provision_url(self, obj):
+    def get_provision_url(self, obj):
         request = self.context['request']
-        url_name = obj.resource_content_type.model_class().get_url_name() + '-list'
+        url_name = obj.object_content_type.model_class().get_url_name() + '-list'
         return reverse.reverse(url_name, request=request)
 
     def get_tags(self, template):
@@ -66,6 +66,18 @@ class BaseTemplateSerializer(serializers.Serializer):
         lookup_field='uuid',
         required=False,
     )
+
+
+class BaseServiceTemplateSerializer(BaseTemplateSerializer):
+    customer = serializers.HyperlinkedRelatedField(
+        view_name='customer-detail',
+        queryset=structure_models.Customer.objects.all(),
+        lookup_field='uuid',
+        required=False,
+    )
+
+
+class BaseResourceTemplateSerializer(BaseTemplateSerializer):
     service_settings = serializers.HyperlinkedRelatedField(
         view_name='servicesettings-detail',
         queryset=structure_models.ServiceSettings.objects.all(),
