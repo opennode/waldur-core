@@ -170,6 +170,11 @@ def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):
     if estimate.limit == -1:
         return
 
+    # Early check
+    if estimate.total > estimate.limit:
+        raise exceptions.CostLimitExceeded(
+            detail='Estimated cost of project is over limit.')
+
     try:
         cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)
         monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(resource))
