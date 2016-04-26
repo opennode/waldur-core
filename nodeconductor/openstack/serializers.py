@@ -412,6 +412,7 @@ class BackupRestorationSerializer(serializers.ModelSerializer):
             'key_name', 'key_fingerprint',
             'system_volume_id', 'system_volume_size',
             'data_volume_id', 'data_volume_size',
+            'flavor_name', 'image_name',
             'user_data',
         )
         extra_kwargs = {

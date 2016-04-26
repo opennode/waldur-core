@@ -104,6 +104,8 @@ class BackupBackend(object):
             'key_name': instance.key_name,
             'key_fingerprint': instance.key_fingerprint,
             'user_data': instance.user_data,
+            'flavor_name': instance.flavor_name,
+            'image_name': instance.image_name,
             'tags': [tag.name for tag in instance.tags.all()],
         }
         return metadata
