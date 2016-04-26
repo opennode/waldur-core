@@ -106,13 +106,14 @@ def request_api(request, url_or_view_name, method='GET', data=None, params=None,
 
     response = method(url, headers={'Authorization': 'Token %s' % token.key}, data=data, params=params, verify=verify)
 
-    result = type('Result', (object,), {})
+    result = type('Result', (object,), {'url': url})
     try:
         result.data = response.json()
     except ValueError:
         result.data = None
+    result.text = response.text
     result.total = int(response.headers.get('X-Result-Count', 0))
-    result.success = response.status_code in (200, 201)
+    result.success = response.status_code in (200, 201, 202, 204)
     result.status = response.status_code
 
     return result
