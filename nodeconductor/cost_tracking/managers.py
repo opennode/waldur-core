@@ -1,6 +1,8 @@
 from django.contrib.contenttypes.models import ContentType
-from django.db import models as django_models
+from django.core.exceptions import MultipleObjectsReturned
+from django.db import models as django_models, IntegrityError
 from django.db.models import Q
+from django.utils import timezone
 
 from nodeconductor.core.managers import GenericKeyMixin
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -38,8 +40,28 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
 
     def get_available_models(self):
         """ Return list of models that are acceptable """
-        from nodeconductor.cost_tracking.models import PriceEstimate
-        return PriceEstimate.get_estimated_models()
+        return self.model.get_estimated_models()
+
+    def get_current(self, scope):
+        now = timezone.now()
+        try:
+            return self.get(scope=scope, year=now.year, month=now.month)
+        except MultipleObjectsReturned:
+            return self.get(scope=scope, year=now.year, month=now.month, is_manually_input=True)
+
+    def create_or_update(self, scope, **defaults):
+        """
+        We don't use built-in update_or_create method because
+        we need to deal with manually input and auto-generated price estimates.
+
+        1. If price estimate for current date does not exist yet, we generate it.
+        2. If both auto-generated and manually input price estimates exist, we should update both.
+        """
+        today = timezone.now()
+        try:
+            self.create(scope=scope, year=today.year, month=today.month, is_manually_input=False, **defaults)
+        except IntegrityError:
+            self.filter(scope=scope, year=today.year, month=today.month).update(**defaults)
 
 
 class PriceListItemManager(GenericKeyMixin, UserFilterMixin, django_models.Manager):

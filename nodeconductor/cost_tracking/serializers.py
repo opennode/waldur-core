@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
-from django.utils import six, timezone
+from django.utils import six
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
@@ -9,7 +9,7 @@ from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
-from nodeconductor.structure.serializers import ProjectSerializer
+from nodeconductor.structure.serializers import ProjectSerializer, BaseResourceSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -117,24 +117,29 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class PriceEstimateThresholdSerializer(serializers.Serializer):
-    threshold = serializers.FloatField(min_value=0)
-    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models())
+    threshold = serializers.FloatField(min_value=0, required=True)
+    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models(), required=True)
+
+
+class PriceEstimateLimitSerializer(serializers.Serializer):
+    limit = serializers.FloatField(required=True)
+    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models(), required=True)
 
 
 class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = models.PriceEstimate
-        fields = ('threshold', 'total')
+        fields = ('threshold', 'total', 'limit')
 
 
 def get_price_estimate_for_project(serializer, project):
-    now = timezone.now()
     try:
-        estimate = models.PriceEstimate.objects.get(scope=project, year=now.year, month=now.month)
+        estimate = models.PriceEstimate.objects.get_current(project)
     except models.PriceEstimate.DoesNotExist:
         return {
             'threshold': 0.0,
-            'total': 0.0
+            'total': 0.0,
+            'limit': -1.0
         }
     else:
         serializer = NestedPriceEstimateSerializer(instance=estimate, context=serializer.context)

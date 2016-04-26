@@ -141,31 +141,25 @@ class GenericRelatedField(Field):
 
 class AugmentedSerializerMixin(object):
     """
-    This mixing provides several extensions to stock Serializer class:
+    This mixin provides several extensions to stock Serializer class:
 
-    1.  Adding extra fields to serializer from dependent applications in a way
+    1.  Add extra fields to serializer from dependent applications in a way
         that doesn't introduce circular dependencies.
 
         To achieve this, dependent application should subscribe
         to pre_serializer_fields signal and inject additional fields.
 
         Example of signal handler implementation:
-            # handlers.py
-            def add_customer_name(sender, fields, **kwargs):
-                fields['customer_name'] = ReadOnlyField(source='customer.name')
 
-            # apps.py
-            class DependentAppConfig(AppConfig):
-                name = 'nodeconductor.structure_dependent'
-                verbose_name = "NodeConductor Structure Enhancements"
+        from nodeconductor.structure.serializers import CustomerSerializer
 
-                def ready(self):
-                    from nodeconductor.structure.serializers import CustomerSerializer
+        def add_customer_name(sender, fields, **kwargs):
+            fields['customer_name'] = ReadOnlyField(source='customer.name')
 
-                    pre_serializer_fields.connect(
-                        handlers.add_customer_name,
-                        sender=CustomerSerializer,
-                    )
+        pre_serializer_fields.connect(
+            handlers.add_customer_name,
+            sender=CustomerSerializer
+        )
 
     2.  Declaratively add attributes fields of related entities for ModelSerializers.
 
@@ -221,7 +215,6 @@ class AugmentedSerializerMixin(object):
                     model = models.Project
                     fields = ('url', 'uuid', 'name', 'customer')
                     protected_fields = ('customer',)
-
     """
 
     def get_fields(self):

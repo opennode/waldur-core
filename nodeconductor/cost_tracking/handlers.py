@@ -5,10 +5,9 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister
 from nodeconductor.structure.models import Resource
-from nodeconductor.structure import SupportedServices
-
+from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, ServiceBackendError
 
 logger = logging.getLogger('nodeconductor.cost_tracking')
 
@@ -156,6 +155,41 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
                 parent_estimate.update_from_leaf()
 
         models.PriceEstimate.update_ancestors_for_resource(instance, force=True)
+
+
+def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):
+    resource = instance
+
+    try:
+        project = resource.service_project_link.project
+        estimate = models.PriceEstimate.objects.get_current(project)
+    except models.PriceEstimate.DoesNotExist:
+        return
+
+    # Project cost is unlimited
+    if estimate.limit == -1:
+        return
+
+    # Early check
+    if estimate.total > estimate.limit:
+        raise exceptions.CostLimitExceeded(
+            detail='Estimated cost of project is over limit.')
+
+    try:
+        cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)
+        monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(resource))
+    except ServiceBackendNotImplemented:
+        return
+    except ServiceBackendError as e:
+        logger.error("Failed to get cost estimate for resource %s: %s", resource, e)
+        return
+    except Exception as e:
+        logger.exception("Failed to get cost estimate for resource %s: %s", resource, e)
+        return
+
+    if estimate.total + monthly_cost > estimate.limit:
+        raise exceptions.CostLimitExceeded(
+            detail='Total estimated cost of resource and project is over limit.')
 
 
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
