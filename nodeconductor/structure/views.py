@@ -1399,7 +1399,7 @@ class ServicesViewSet(BaseSummaryView):
 class CounterMixin(object):
     def get_count(self, url, params):
         response = request_api(self.request, url, method='HEAD', params=params)
-        if response.success:
+        if response.ok:
             return response.total
         else:
             logger.warning('Unable to execute API request with URL %s and error %s', url, response.data)

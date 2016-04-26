@@ -175,8 +175,8 @@ class BaseSummaryView(GenericViewSet):
     def get_queryset(self, request):
         def fetch_data(view_name, params):
             response = request_api(request, view_name, params=params)
-            if not response.success:
-                raise APIException(response.data)
+            if not response.ok:
+                raise APIException(response.text)
             return response
 
         data = []
@@ -184,10 +184,11 @@ class BaseSummaryView(GenericViewSet):
             params = self.get_params(request)
             response = fetch_data(url, params)
 
-            if response.total and response.total > len(response.data):
+            json = response.json()
+            if response.total and response.total > len(json):
                 params['page_size'] = response.total
                 response = fetch_data(url, params)
-            data += response.data
+            data += json
         return data
 
     def get_params(self, request):
