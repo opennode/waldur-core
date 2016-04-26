@@ -436,8 +436,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         instance = self.get_object()
         kwargs = {'uuid': instance.service_project_link.tenant.uuid.hex}
         url = reverse('openstack-tenant-detail', kwargs=kwargs, request=request) + 'allocate_floating_ip/'
-        result = request_api(request, url, 'POST')
-        return response.Response(result.data, result.status)
+        response = request_api(request, url, 'POST')
+        return response.Response(response.json(), response.status_code)
 
     allocate_floating_ip.title = 'Allocate floating IP'
 
