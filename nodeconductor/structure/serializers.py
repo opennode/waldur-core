@@ -827,6 +827,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
+    scope = core_serializers.GenericRelatedField(related_models=models.Resource.get_all_models(), required=False)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -834,7 +835,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
-            'quotas',
+            'quotas', 'scope',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
@@ -935,6 +936,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
     error_message = serializers.ReadOnlyField(source='settings.error_message')
+    scope = core_serializers.GenericRelatedField(related_models=models.Resource.get_all_models(), required=False)
 
     class Meta(object):
         model = NotImplemented
@@ -947,9 +949,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
-            'available_for_all'
+            'available_for_all', 'scope'
         )
-        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
+        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
@@ -994,6 +996,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             fields['settings'].queryset = fields['settings'].queryset.filter(type=key)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
+            self.SERVICE_ACCOUNT_FIELDS['scope'] = 'VM that contains service'
             for field in self.Meta.settings_fields:
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]

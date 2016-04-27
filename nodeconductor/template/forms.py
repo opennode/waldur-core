@@ -79,9 +79,10 @@ class ServiceTemplateForm(TemplateForm):
     customer = forms.ModelChoiceField(
         queryset=structure_models.Customer.objects.all(),
         required=False)
+    scope = forms.CharField(required=False)
 
     class Meta(TemplateForm.Meta):
-        fields = TemplateForm.Meta.fields + ('customer',)
+        fields = TemplateForm.Meta.fields + ('customer', 'scope')
 
 
 class ResourceTemplateForm(TemplateForm):

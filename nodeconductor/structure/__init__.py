@@ -288,12 +288,19 @@ class SupportedServices(object):
                 for resource, attrs in service['resources'].items()}
 
     @classmethod
-    @lru_cache(maxsize=1)
+    @lru_cache(maxsize=20)
     def get_service_resources(cls, model):
+        """ Get resource models by service model """
+        key = cls.get_model_key(model)
+        return cls.get_service_name_resources(key)
+
+    @classmethod
+    @lru_cache(maxsize=20)
+    def get_service_name_resources(cls, service_name):
+        """ Get resource models by service name """
         from django.apps import apps
 
-        key = cls.get_model_key(model)
-        resources = cls._registry[key]['resources'].keys()
+        resources = cls._registry[service_name]['resources'].keys()
         return [apps.get_model(resource) for resource in resources]
 
     @classmethod
