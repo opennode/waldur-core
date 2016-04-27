@@ -35,7 +35,7 @@ class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
             raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
 
         if token.created < timezone.now() - timezone.timedelta(hours=24):
-            raise exceptions.AuthenticationFailed('Token has expired.')
+            raise exceptions.AuthenticationFailed(_('Token has expired.'))
 
         return token.user, token
 
