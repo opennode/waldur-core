@@ -1323,6 +1323,16 @@ class OpenStackBackend(ServiceBackend):
             if not dryrun:
                 volume.delete()
 
+        # user
+        keystone = self.keystone_client
+        try:
+            user = keystone.users.find(name=tenant.user_username)
+            logger.info('Deleting user %s that was connected to tenant %s', user.name, tenant.backend_id)
+            if not dryrun:
+                user.delete()
+        except keystone_exceptions.ClientException as e:
+            logger.error('Cannot delete user %s from tenant %s. Error: %s', tenant.user_username, tenant.backend_id, e)
+
         # tenant
         keystone = self.keystone_admin_client
         logger.info("Deleting tenant %s", tenant.backend_id)
