@@ -72,14 +72,23 @@ contains 2 templates:
 Setup
 +++++
 
-1. Create template group:
+1. Add settings for SMS sending to NodeConductor settings:
+
+  .. code-block:: python
+
+  NODECONDUCTOR_ZABBIX_SMS_SETTINGS = {
+      'SMS_EMAIL_FROM': 'email',
+      'SMS_EMAIL_RCPT': 'recipient',
+  }
+
+2. Create template group:
 
   - name, description, icon_url - support parameters for the application store 
   - tags - SaaS
 
-2. Add OpenStack instance provision template:
+3. Add OpenStack instance provision template:
 
-  - tags - SaaS
+  - tags - SaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:advanced
   - service settings - OpenStack settings where a VM needs to be provisioned
   - flavor - choose suitable for Zabbix image
   - image - OpenStack image with pre-installed Zabbbix
@@ -96,25 +105,41 @@ Setup
 
   {{ 8|random_password }} will generate a random password with a length of 8
 
-3. Add Zabbix service provision template:
+4. Add Zabbix service provision template:
 
   - order_number - 2 (should be provisioned after OpenStack VM)
   - name - {{ response.name }} (use VM name for service)
+  - scope - {{ response.url }} (tell service that it is located on given VM)
   - Use project of the previous object - True (connect service to VM project)
   - backend url - http://{{ response.access_url.0 }}/zabbix/api_jsonrpc.php (or https)
   - username - Admin
   - password - {{ response.user_data|bootstrap_opts:"a" }}
+  - tags - advanced
   - database parameters:
 
   .. code-block:: json
 
-       {"engine": "django.db.backends.mysql", "name": "zabbix", "host": "localhost(???)", "user": "nodeconductor", 
+       {"engine": "django.db.backends.mysql", "name": "zabbix", "host": "%", "user": "nodeconductor", 
         "password": "{{ response.user_data|bootstrap_opts:'p' }}", "port": "3306"}
 
 
 Requests from frontend
 ++++++++++++++++++++++
 
-1. Creation. Issue post request to template_group provision endpoint with project and name fields.
+1. Creation. Issue POST request to template_group provision endpoint with project and name fields.
 
-2. TODO: Describe how to connect instance to host.
+2. To get list of all available for instance advanced zabbix services - issue GET request against **/api/zabbix/** with 
+   parameters:
+
+    - project=<instance project>
+    - tag=advanced
+
+3. To create host for instance - issue POST request against **/api/zabbix-hosts/** with instance url as scope. Check 
+   endpoint details for other parameters details.
+
+4. Instance advanced monitoring can be enabled/disabled by changing host status with PUT/PATCH request against 
+   **/api/zabbix-hosts/<uuid>/**.
+
+5. If instance is already monitored - host will appear in <related_resources> with tag "advanced" in service_tags field.
+
+6. Instance advanced monitoring can be configured with PUT/PATCH request against **/api/zabbix-hosts/<uuid>/**.

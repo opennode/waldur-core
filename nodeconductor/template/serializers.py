@@ -75,6 +75,7 @@ class BaseServiceTemplateSerializer(BaseTemplateSerializer):
         lookup_field='uuid',
         required=False,
     )
+    scope = serializers.CharField(required=False)
 
 
 class BaseResourceTemplateSerializer(BaseTemplateSerializer):

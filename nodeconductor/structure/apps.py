@@ -177,6 +177,13 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
+            signals.pre_delete.connect(
+                handlers.delete_service_settings_on_scope_delete,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_on_scope_delete_{}_{}'.format(
+                    model.__name__, index),
+            )
+
         for index, model in enumerate(Resource.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
                 fsm_signals.post_transition.connect(
@@ -260,12 +267,12 @@ class StructureConfig(AppConfig):
                 sender=service_model,
                 dispatch_uid='nodeconductor.structure.handlers.'
                              'connect_service_{}_to_all_projects_if_it_is_available_for_all_{}'.format(
-                                service_model.__name__, index),
+                                 service_model.__name__, index),
             )
 
             signals.post_delete.connect(
-                handlers.delete_service_settings,
+                handlers.delete_service_settings_on_service_delete,
                 sender=service_model,
-                dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_{}_{}'.format(
-                                service_model.__name__, index),
+                dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_on_service_delete_{}_{}'.format(
+                    service_model.__name__, index),
             )

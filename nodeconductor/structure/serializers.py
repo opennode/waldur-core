@@ -827,6 +827,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
+    scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -834,7 +835,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
-            'quotas',
+            'quotas', 'scope',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
@@ -935,6 +936,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
     error_message = serializers.ReadOnlyField(source='settings.error_message')
+    scope = core_serializers.GenericRelatedField(related_models=models.Resource.get_all_models(), required=False)
+    tags = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -947,9 +950,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
-            'available_for_all'
+            'available_for_all', 'scope', 'tags',
         )
-        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
+        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
@@ -977,11 +980,15 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings__uuid',
             'settings__type',
             'settings__shared',
-            'settings__error_message'
+            'settings__error_message',
+            'settings__tags',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
         return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
+
+    def get_tags(self, service):
+        return [t.name for t in service.settings.tags.all()]
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -994,6 +1001,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             fields['settings'].queryset = fields['settings'].queryset.filter(type=key)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
+            # each service settings could be connected to scope
+            self.SERVICE_ACCOUNT_FIELDS['scope'] = 'VM that contains service'
             for field in self.Meta.settings_fields:
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
@@ -1181,11 +1190,16 @@ class ManagedResourceSerializer(BasicResourceSerializer):
 
 class RelatedResourceSerializer(BasicResourceSerializer):
     url = serializers.SerializerMethodField()
+    service_tags = serializers.SerializerMethodField()
 
     def get_url(self, resource):
         return reverse(resource.get_url_name() + '-detail',
                        kwargs={'uuid': resource.uuid.hex},
                        request=self.context['request'])
+
+    def get_service_tags(self, resource):
+        spl = resource.service_project_link
+        return [t.name for t in spl.service.settings.tags.all()]
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
