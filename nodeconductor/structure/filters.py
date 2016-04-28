@@ -555,6 +555,8 @@ class BaseServiceFilter(django_filters.FilterSet):
         lookup_type='in',
         queryset=taggit.models.Tag.objects.all(),
     )
+    # rtag - required tag, support for filtration by tags using AND operation
+    # ?rtag=t1&rtag=t2 - will filter instances that have both t1 and t2.
     rtag = django_filters.ModelMultipleChoiceFilter(
         name='settings__tags__name',
         to_field_name='name',
