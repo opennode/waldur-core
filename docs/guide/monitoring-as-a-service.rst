@@ -88,7 +88,7 @@ Setup
 
 3. Add OpenStack instance provision template:
 
-  - tags - SaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:advance
+  - tags - SaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:advanced
   - service settings - OpenStack settings where a VM needs to be provisioned
   - flavor - choose suitable for Zabbix image
   - image - OpenStack image with pre-installed Zabbbix
@@ -114,7 +114,7 @@ Setup
   - backend url - http://{{ response.access_url.0 }}/zabbix/api_jsonrpc.php (or https)
   - username - Admin
   - password - {{ response.user_data|bootstrap_opts:"a" }}
-  - tags - advance
+  - tags - advanced
   - database parameters:
 
   .. code-block:: json
@@ -128,18 +128,18 @@ Requests from frontend
 
 1. Creation. Issue POST request to template_group provision endpoint with project and name fields.
 
-2. To get list of all available for instance advance zabbix services - issue GET request against **/api/zabbix/** with 
+2. To get list of all available for instance advanced zabbix services - issue GET request against **/api/zabbix/** with 
    parameters:
 
     - project=<instance project>
-    - tag=advance
+    - tag=advanced
 
 3. To create host for instance - issue POST request against **/api/zabbix-hosts/** with instance url as scope. Check 
    endpoint details for other parameters details.
 
-4. Advance monitoring can be enabled/disabled by changing host status with PUT/PATCH request against 
+4. Instance advanced monitoring can be enabled/disabled by changing host status with PUT/PATCH request against 
    **/api/zabbix-hosts/<uuid>/**.
 
-5. TODO: Describe how to get is advance monitoring hosts that are connected to particular resource.
+5. If instance is already monitored - host will appear in <related_resources> with tag advanced.
 
-6. TODO: Describe host edit operations.
+6. Instance advanced monitoring can be configured with PUT/PATCH request against **/api/zabbix-hosts/<uuid>/**.
