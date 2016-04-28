@@ -113,10 +113,7 @@ class ObtainAuthToken(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        token = Token.objects.filter(user=user)
-        if token.exists():
-            token.delete()
-
+        Token.objects.filter(user=user).delete()
         token = Token.objects.create(user=user)
 
         logger.debug('Returning token for successful login of user %s', user)
