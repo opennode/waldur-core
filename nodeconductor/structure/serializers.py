@@ -827,7 +827,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
-    scope = core_serializers.GenericRelatedField(related_models=models.Resource.get_all_models(), required=False)
+    scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
 
     class Meta(object):
         model = models.ServiceSettings

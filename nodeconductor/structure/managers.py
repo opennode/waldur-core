@@ -267,5 +267,5 @@ class ServiceSettingsManager(GenericKeyMixin, models.Manager):
 
     def get_available_models(self):
         """ Return list of models that are acceptable """
-        from nodeconductor.structure.models import Resource
-        return Resource.get_all_models()
+        from nodeconductor.structure.models import ResourceMixin
+        return ResourceMixin.get_all_models()
