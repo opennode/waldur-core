@@ -847,6 +847,24 @@ class OpenStackBackend(ServiceBackend):
         except keystone_exceptions.ClientException as e:
             six.reraise(OpenStackBackendError, e)
 
+    @log_backend_action('add user to tenant')
+    def create_tenant_user(self, tenant):
+        keystone = self.keystone_client
+
+        try:
+            user = keystone.users.create(
+                name=tenant.user_username,
+                password=tenant.user_password,
+            )
+            admin_role = keystone.roles.find(name='Member')
+            keystone.roles.add_user_role(
+                user=user.id,
+                role=admin_role.id,
+                tenant=tenant.backend_id,
+            )
+        except keystone_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
+
     def get_instance(self, instance_id):
         try:
             nova = self.nova_client
