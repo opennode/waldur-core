@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-< Add here >
+- Added expiration time to authorization tokens.
 
 Release 0.96.0
 --------------

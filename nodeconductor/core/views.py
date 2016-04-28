@@ -2,6 +2,7 @@ import logging
 
 from django.contrib import auth
 from django.db.models import ProtectedError
+from django.utils import timezone
 from django.utils.encoding import force_text
 
 from rest_framework import status
@@ -112,7 +113,8 @@ class ObtainAuthToken(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        token, _ = Token.objects.get_or_create(user=user)
+        Token.objects.filter(user=user).delete()
+        token = Token.objects.create(user=user)
 
         logger.debug('Returning token for successful login of user %s', user)
         event_logger.auth.info(
