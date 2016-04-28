@@ -47,3 +47,12 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         self.client.get(self.test_url)
         created2 = Token.objects.values_list('created', flat=True).get(key=token)
         self.assertTrue(created1 < created2)
+
+    def test_token_is_recreated_on_successful_authentication(self):
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        token1 = response.data['token']
+
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        token2 = response.data['token']
+        self.assertNotEqual(token1, token2)
