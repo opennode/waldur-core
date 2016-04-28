@@ -13,12 +13,12 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='tenant',
-            name='admin_password',
+            name='user_password',
             field=models.CharField(max_length=50, blank=True),
         ),
         migrations.AddField(
             model_name='tenant',
-            name='admin_username',
+            name='user_username',
             field=models.CharField(max_length=50, blank=True),
         ),
     ]
