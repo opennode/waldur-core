@@ -8,7 +8,7 @@ from rest_framework import test, status
 from rest_framework.authtoken.models import Token
 
 
-class TokenAuthenticationTest(test.APISimpleTestCase):
+class TokenAuthenticationTest(test.APITransactionTestCase):
     def setUp(self):
         self.username = 'test'
         self.password = 'secret'
@@ -30,20 +30,20 @@ class TokenAuthenticationTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token = response.data['token']
-        mocked_now = timezone.now() + timezone.timedelta(hours=24)
+        mocked_now = timezone.now() + timezone.timedelta(hours=1)
         with patch('django.utils.timezone.now', lambda: mocked_now):
             self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
             response = self.client.get(self.test_url)
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
             self.assertEqual(response.data['detail'], 'Token has expired.')
 
-    def test_token_creation_time_is_updated_on_user_authentication(self):
+    def test_token_creation_time_is_updated_on_every_request(self):
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         token = response.data['token']
         created1 = Token.objects.values_list('created', flat=True).get(key=token)
 
-        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
-        token = response.data['token']
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+        self.client.get(self.test_url)
         created2 = Token.objects.values_list('created', flat=True).get(key=token)
         self.assertTrue(created1 < created2)
