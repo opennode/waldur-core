@@ -13,7 +13,7 @@ class TemplateForm(forms.ModelForm):
 
     class Meta:
         model = Template
-        fields = ('order_number', 'use_previous_project', 'project')
+        fields = ('order_number', 'use_previous_project', 'project', 'tags')
 
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
@@ -22,6 +22,7 @@ class TemplateForm(forms.ModelForm):
             initial.update(self.deserialize(instance))
         kwargs['initial'] = initial
         super(TemplateForm, self).__init__(*args, **kwargs)
+        self.fields['tags'].required = False
 
     @classmethod
     def get_serializer_class(cls):
@@ -96,11 +97,7 @@ class ResourceTemplateForm(TemplateForm):
         required=False)
 
     class Meta(TemplateForm.Meta):
-        fields = TemplateForm.Meta.fields + ('service_settings', 'tags')
-
-    def __init__(self, *args, **kwargs):
-        super(ResourceTemplateForm, self).__init__(*args, **kwargs)
-        self.fields['tags'].required = False
+        fields = TemplateForm.Meta.fields + ('service_settings',)
 
     def save(self, **kwargs):
         """ Serialize form data with template serializer and save serialized data into template """
