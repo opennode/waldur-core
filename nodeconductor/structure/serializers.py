@@ -1190,11 +1190,16 @@ class ManagedResourceSerializer(BasicResourceSerializer):
 
 class RelatedResourceSerializer(BasicResourceSerializer):
     url = serializers.SerializerMethodField()
+    service_tags = serializers.SerializerMethodField()
 
     def get_url(self, resource):
         return reverse(resource.get_url_name() + '-detail',
                        kwargs={'uuid': resource.uuid.hex},
                        request=self.context['request'])
+
+    def get_service_tags(self, resource):
+        spl = resource.service_project_link
+        return [t.name for t in spl.service.settings.tags.all()]
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
