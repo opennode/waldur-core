@@ -140,6 +140,6 @@ Requests from frontend
 4. Instance advanced monitoring can be enabled/disabled by changing host status with PUT/PATCH request against 
    **/api/zabbix-hosts/<uuid>/**.
 
-5. If instance is already monitored - host will appear in <related_resources> with tag advanced.
+5. If instance is already monitored - host will appear in <related_resources> with tag "advanced" in service_tags field.
 
 6. Instance advanced monitoring can be configured with PUT/PATCH request against **/api/zabbix-hosts/<uuid>/**.
