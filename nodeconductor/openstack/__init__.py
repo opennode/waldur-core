@@ -52,21 +52,25 @@ class ApplicationTypes:
     WORDPRESS = 'wordpress'
     POSTGRESQL = 'postgresql'
     ZIMBRA = 'zimbra'
+    ZABBIX = 'zabbix'
 
     CHOICES = (
         (WORDPRESS, 'WordPress'),
         (POSTGRESQL, 'PostgreSQL'),
         (ZIMBRA, 'Zimbra'),
+        (ZABBIX, 'Zabbix'),
     )
 
 
 class SupportTypes:
     BASIC = 'basic'
     PREMIUM = 'premium'
+    ADVANCED = 'advanced'
 
     CHOICES = (
         (BASIC, 'Basic'),
         (PREMIUM, 'Premium'),
+        (ADVANCED, 'Advanced'),
     )
 
 

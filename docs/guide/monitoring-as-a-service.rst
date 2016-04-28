@@ -29,7 +29,7 @@ Setup
 
 2. Add OpenStack Instance template to the template group with the following settings:
 
-  - tags - PaaS
+  - tags - PaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:premium
   - service settings - OpenStack settings where a VM needs to be provisioned
   - flavor - default configuration for the created Zabbix server
   - image - OpenStack image with pre-installed Zabbbix
