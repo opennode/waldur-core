@@ -43,7 +43,10 @@ class TenantCreateExecutor(executors.CreateExecutor):
                 runtime_state='creating tenant'),
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'add_admin_user_to_tenant',
-                runtime_state='adding user to tenant'),
+                runtime_state='adding global admin user to tenant'),
+            tasks.BackendMethodTask().si(
+                serialized_tenant, 'create_tenant_user',
+                runtime_state='creating tenant user'),
             tasks.BackendMethodTask().si(
                 serialized_tenant, 'create_internal_network',
                 runtime_state='creating internal network for tenant'),

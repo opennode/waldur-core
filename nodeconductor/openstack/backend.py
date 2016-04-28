@@ -847,6 +847,24 @@ class OpenStackBackend(ServiceBackend):
         except keystone_exceptions.ClientException as e:
             six.reraise(OpenStackBackendError, e)
 
+    @log_backend_action('add user to tenant')
+    def create_tenant_user(self, tenant):
+        keystone = self.keystone_client
+
+        try:
+            user = keystone.users.create(
+                name=tenant.user_username,
+                password=tenant.user_password,
+            )
+            admin_role = keystone.roles.find(name='Member')
+            keystone.roles.add_user_role(
+                user=user.id,
+                role=admin_role.id,
+                tenant=tenant.backend_id,
+            )
+        except keystone_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
+
     def get_instance(self, instance_id):
         try:
             nova = self.nova_client
@@ -1304,6 +1322,16 @@ class OpenStackBackend(ServiceBackend):
             logger.info("Deleting volume %s from tenant %s", volume.id, tenant.backend_id)
             if not dryrun:
                 volume.delete()
+
+        # user
+        keystone = self.keystone_client
+        try:
+            user = keystone.users.find(name=tenant.user_username)
+            logger.info('Deleting user %s that was connected to tenant %s', user.name, tenant.backend_id)
+            if not dryrun:
+                user.delete()
+        except keystone_exceptions.ClientException as e:
+            logger.error('Cannot delete user %s from tenant %s. Error: %s', tenant.user_username, tenant.backend_id, e)
 
         # tenant
         keystone = self.keystone_admin_client
