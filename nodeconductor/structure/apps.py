@@ -182,7 +182,7 @@ class StructureConfig(AppConfig):
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_on_scope_delete_{}_{}'.format(
                     model.__name__, index),
-            )  # TODO!
+            )
 
         for index, model in enumerate(Resource.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
