@@ -587,6 +587,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
 
     tags = TaggableManager(related_name='+', blank=True)
+    tracker = FieldTracker()
 
     # service settings scope - VM that contains service
     content_type = models.ForeignKey(ContentType, null=True)
@@ -639,11 +640,19 @@ class Service(core_models.SerializableAbstractMixin,
     )
     projects = NotImplemented
 
-    def get_backend(self, **kwargs):
-        return self.settings.get_backend(**kwargs)
+    def __init__(self, *args, **kwargs):
+        AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
+        super(Service, self).__init__(*args, **kwargs)
 
     def __str__(self):
         return self.name
+
+    def get_backend(self, **kwargs):
+        return self.settings.get_backend(**kwargs)
+
+    @property
+    def full_name(self):
+        return ' / '.join([self.settings.name, self.name])
 
     @classmethod
     @lru_cache(maxsize=1)
