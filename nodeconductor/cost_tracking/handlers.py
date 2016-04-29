@@ -44,7 +44,7 @@ def make_autocalculate_price_estimate_invisible_if_manually_created_estimate_exi
 
 def copy_threshold_from_previous_price_estimate(sender, instance, created=False, **kwargs):
     if created:
-        current_date = datetime.date.today().replace(year=instance.year, month=instance.month)
+        current_date = datetime.date.today().replace(year=instance.year, month=instance.month, day=1)
         prev_date = current_date - relativedelta(months=1)
         try:
             prev_estimate = models.PriceEstimate.objects.get(
