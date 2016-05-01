@@ -51,7 +51,8 @@ class CustomMenu(Menu):
         'nodeconductor_zabbix.*',
         'nodeconductor_jira.*',
         'nodeconductor_plus.gitlab.*',
-        'nodeconductor_oracle_dbaas.*'
+        'nodeconductor_oracle_dbaas.*',
+        'nodeconductor_paas_oracle.*',
     )
 
     SUPPORT_MODULES = (
