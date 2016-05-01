@@ -7,7 +7,7 @@ from nodeconductor.openstack import models, executors, handlers
 
 
 class Command(BaseCommand):
-    help_text = "Add default security groups with given names to all tenants to tenants."
+    help_text = "Add default security groups with given names to all tenants."
 
     def add_arguments(self, parser):
         parser.add_argument('names', nargs='+', type=str)
@@ -29,7 +29,7 @@ class Command(BaseCommand):
                 continue
             for group in security_groups:
                 if spl.security_groups.filter(name=group['name']).exists():
-                    self.stdout.write('Tenant %s already have security group %s' % (spl.tenant, group['name']))
+                    self.stdout.write('Tenant %s already has security group %s' % (spl.tenant, group['name']))
                     continue
                 spl.security_groups.create(name=group['name'], description=group['description'])
                 try:
