@@ -651,12 +651,13 @@ NODECONDUCTOR.update({
                     'to_port': 443,
                 },
                 {
-                    'protocol':'tcp',
+                    'protocol': 'tcp',
                     'cidr': '0.0.0.0/0',
                     'from_port': 3306,
                     'to_port': 3306,
-                }
-        }
+                },
+            ),
+        },
     ),
     'OPENSTACK_OVERCOMMIT': (
         {
