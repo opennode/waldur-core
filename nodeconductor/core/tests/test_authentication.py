@@ -48,11 +48,26 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         created2 = Token.objects.values_list('created', flat=True).get(key=token)
         self.assertTrue(created1 < created2)
 
-    def test_token_is_recreated_on_successful_authentication(self):
+    def test_expired_token_is_recreated_on_successful_authentication(self):
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         token1 = response.data['token']
 
+        mocked_now = timezone.now() + timezone.timedelta(hours=1)
+        with patch('django.utils.timezone.now', lambda: mocked_now):
+            response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+            token2 = response.data['token']
+            self.assertNotEqual(token1, token2)
+
+    def test_not_expired_token_creation_time_is_updated_on_authentication(self):
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        token1 = response.data['token']
+        created1 = Token.objects.values_list('created', flat=True).get(key=token1)
+
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
         token2 = response.data['token']
-        self.assertNotEqual(token1, token2)
+        created2 = Token.objects.values_list('created', flat=True).get(key=token2)
+
+        self.assertEqual(token1, token2)
+        self.assertTrue(created1 < created2)
