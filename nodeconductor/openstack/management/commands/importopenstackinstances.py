@@ -4,6 +4,7 @@ import socket
 
 from django.core.management.base import BaseCommand
 from django.core.urlresolvers import reverse
+from rest_framework.exceptions import ValidationError
 
 from nodeconductor.openstack import models, serializers
 from nodeconductor.structure import models as structure_models
@@ -76,7 +77,10 @@ class Command(BaseCommand):
                 data={'project': project_url, 'backend_id': instance['id']},
                 context={'service': tenant.service_project_link.service})
             serializer.is_valid(raise_exception=True)
-            instance = serializer.save()
+            try:
+                instance = serializer.save()
+            except ValidationError as e:
+                self.stdout.write(self.style.MIGRATE_HEADING('\n%s' % e))
             # add tags
             instance.tags.add('IaaS')
             instance.tags.add('support:basic')
