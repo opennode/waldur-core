@@ -332,7 +332,7 @@ class OpenStackBackend(ServiceBackend):
 
     def remove_ssh_key(self, ssh_key, service_project_link):
         if service_project_link.tenant is not None:
-            self.remove_ssh_key_from_tenant(service_project_link.tenant, ssh_key)
+            self.remove_ssh_key_from_tenant(service_project_link.tenant, ssh_key.name, ssh_key.fingerprint)
 
     @log_backend_action()
     def remove_ssh_key_from_tenant(self, tenant, key_name, fingerprint):
