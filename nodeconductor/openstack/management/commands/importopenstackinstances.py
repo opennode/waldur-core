@@ -80,7 +80,7 @@ class Command(BaseCommand):
             try:
                 instance = serializer.save()
             except ValidationError as e:
-                self.stdout.write(self.style.MIGRATE_HEADING('\n%s' % e))
+                self.stdout.write(self.style.ERROR('\n%s' % e))
             # add tags
             instance.tags.add('IaaS')
             instance.tags.add('support:basic')
