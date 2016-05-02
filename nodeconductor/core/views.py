@@ -113,8 +113,14 @@ class ObtainAuthToken(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        Token.objects.filter(user=user).delete()
-        token = Token.objects.create(user=user)
+        old_token = Token.objects.filter(user=user)
+        if old_token.exists() and old_token.first().created > timezone.now() - timezone.timedelta(hours=1):
+            token = old_token.first()
+            token.created = timezone.now()
+            token.save()
+        else:
+            old_token.delete()
+            token = Token.objects.create(user=user)
 
         logger.debug('Returning token for successful login of user %s', user)
         event_logger.auth.info(
