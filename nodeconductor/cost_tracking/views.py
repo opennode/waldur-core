@@ -183,7 +183,11 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """
         To get a list of price list items, run **GET** against */api/price-list-items/* as an authenticated user.
+        """
+        return super(PriceListItemViewSet, self).list(request, *args, **kwargs)
 
+    def create(self, request, *args, **kwargs):
+        """
         Run **POST** request against */api/price-list-items/* to create new price list item.
         Customer owner and staff can create price items.
 
@@ -202,20 +206,26 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
                 "key": "test_key",
                 "value": 100,
                 "service": "http://example.com/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
+                "resource_content_type": "OpenStack.Instance"
                 "item_type": "storage"
             }
         """
-        return super(PriceListItemViewSet, self).list(request, *args, **kwargs)
+        return super(PriceListItemViewSet, self).create(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         """
         Run **PATCH** request against */api/price-list-items/<uuid>/* to update price list item.
-        Only value and units can be updated. Customer owner and staff can update price items.
-
-        Run **DELETE** request against */api/price-list-items/<uuid>/* to delete price list item.
-        Customer owner and staff can delete price items.
+        Only item_type, key value and units can be updated.
+        Only customer owner and staff can update price items.
         """
-        return super(PriceListItemViewSet, self).retrieve(request, *args, **kwargs)
+        return super(PriceListItemViewSet, self).update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Run **DELETE** request against */api/price-list-items/<uuid>/* to delete price list item.
+        Only customer owner and staff can delete price items.
+        """
+        return super(PriceListItemViewSet, self).destroy(request, *args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('partial_update', 'update', 'destroy'):

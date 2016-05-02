@@ -1,15 +1,17 @@
 from __future__ import unicode_literals
 
-from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError
 from django.utils import six
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking.fields import ResourceTypeField
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
-from nodeconductor.structure.serializers import ProjectSerializer, BaseResourceSerializer
+from nodeconductor.structure.serializers import ProjectSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -82,21 +84,36 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
         return data
 
 
-class PriceListItemSerializer(serializers.HyperlinkedModelSerializer):
+class PriceListItemSerializer(AugmentedSerializerMixin,
+                              serializers.HyperlinkedModelSerializer):
     service = GenericRelatedField(related_models=structure_models.Service.get_all_models())
+    resource_content_type = ResourceTypeField(required=True)
 
     class Meta:
         model = models.PriceListItem
-        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service')
+        fields = ('url', 'uuid', 'key', 'item_type', 'value',
+                  'units', 'service', 'resource_content_type')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+        protected_fields = ('resource_content_type', 'service')
 
     def create(self, validated_data):
-        # XXX: This behavior is wrong for services with several resources, find a better approach
-        resource_class = SupportedServices.get_related_models(validated_data['service'])['resources'][0]
-        validated_data['resource_content_type'] = ContentType.objects.get_for_model(resource_class)
-        return super(PriceListItemSerializer, self).create(validated_data)
+        resource_content_type = validated_data['resource_content_type']
+        service = validated_data['service']
+
+        resource = resource_content_type.model_class()
+        valid_resources = SupportedServices.get_related_models(service)['resources']
+
+        if resource not in valid_resources:
+            raise ValidationError('Service does not support required content type')
+
+        validated_data['is_manually_input'] = True
+
+        try:
+            return super(PriceListItemSerializer, self).create(validated_data)
+        except IntegrityError:
+            raise ValidationError('Price list item for service already exists')
 
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):

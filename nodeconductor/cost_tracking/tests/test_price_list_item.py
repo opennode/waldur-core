@@ -1,34 +1,21 @@
 from ddt import ddt, data
-from rest_framework import test, status
+from rest_framework import status
 
-from nodeconductor.cost_tracking import models
-from nodeconductor.cost_tracking.tests import factories
-from nodeconductor.openstack import models as openstack_models
+from nodeconductor.openstack.models import Instance
 from nodeconductor.openstack.tests import factories as openstack_factories
-from nodeconductor.structure import models as structure_models
-from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.structure import SupportedServices
+
+from .. import models
+from . import factories
+from .base_test import BaseCostTrackingTest
 
 
 @ddt
-class PriceListItemListTest(test.APITransactionTestCase):
+class PriceListItemListTest(BaseCostTrackingTest):
 
     def setUp(self):
-        self.users = {
-            'staff': structure_factories.UserFactory(username='staff', is_staff=True),
-            'owner': structure_factories.UserFactory(username='owner'),
-            'administrator': structure_factories.UserFactory(username='administrator'),
-            'manager': structure_factories.UserFactory(username='manager'),
-        }
-
-        self.customer = structure_factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.project)
-
-        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        super(PriceListItemListTest, self).setUp()
+        self.service_project_link.delete()
         self.price_list_item = factories.PriceListItemFactory(service=self.service)
 
     @data('staff', 'owner', 'manager')
@@ -62,32 +49,17 @@ class PriceListItemListTest(test.APITransactionTestCase):
 
 
 @ddt
-class PriceListItemCreateTest(test.APITransactionTestCase):
+class PriceListItemCreateTest(BaseCostTrackingTest):
 
     def setUp(self):
-        self.users = {
-            'staff': structure_factories.UserFactory(username='staff', is_staff=True),
-            'owner': structure_factories.UserFactory(username='owner'),
-            'administrator': structure_factories.UserFactory(username='administrator'),
-            'manager': structure_factories.UserFactory(username='manager'),
-        }
-
-        self.customer = structure_factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.project)
-
-        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
-        openstack_models.OpenStackServiceProjectLink.objects.create(project=self.project, service=self.service)
+        super(PriceListItemCreateTest, self).setUp()
         self.valid_data = {
             'service': openstack_factories.OpenStackServiceFactory.get_url(self.service),
             'value': 100,
             'units': 'UAH',
             'key': 'test_key',
             'item_type': 'storage',
+            'resource_content_type': SupportedServices.get_name_for_model(Instance)
         }
 
     @data('staff', 'owner')
@@ -108,27 +80,19 @@ class PriceListItemCreateTest(test.APITransactionTestCase):
         self.assertFalse(models.PriceListItem.objects.filter(
             service=self.service, value=self.valid_data['value'], item_type=self.valid_data['item_type']).exists())
 
+    def test_if_price_list_item_already_exists_validation_error_is_raised(self):
+        self.client.force_authenticate(self.users['staff'])
+        response = self.client.post(factories.PriceListItemFactory.get_list_url(), data=self.valid_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        response = self.client.post(factories.PriceListItemFactory.get_list_url(), data=self.valid_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 @ddt
-class PriceListItemUpdateTest(test.APITransactionTestCase):
+class PriceListItemUpdateTest(BaseCostTrackingTest):
 
     def setUp(self):
-        self.users = {
-            'staff': structure_factories.UserFactory(username='staff', is_staff=True),
-            'owner': structure_factories.UserFactory(username='owner'),
-            'administrator': structure_factories.UserFactory(username='administrator'),
-            'manager': structure_factories.UserFactory(username='manager'),
-        }
-
-        self.customer = structure_factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.project)
-
-        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        super(PriceListItemUpdateTest, self).setUp()
         self.price_list_item = factories.PriceListItemFactory(service=self.service)
 
     @data('staff', 'owner')

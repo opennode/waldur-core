@@ -54,14 +54,11 @@ class CostTrackingConfig(AppConfig):
                     .format(service.__name__, index))
             )
 
-        # TODO: enable once price list items start being used
-        # Commented out as it's failing on the unique_together constraint when SaltStack tenants are updated
-
-        # signals.post_save.connect(
-        #     handlers.change_price_list_items_if_default_was_changed,
-        #     sender=DefaultPriceListItem,
-        #     dispatch_uid='nodeconductor.cost_tracking.handlers.change_price_list_items_if_default_was_changed'
-        # )
+        signals.post_save.connect(
+            handlers.change_price_list_items_if_default_was_changed,
+            sender=DefaultPriceListItem,
+            dispatch_uid='nodeconductor.cost_tracking.handlers.change_price_list_items_if_default_was_changed'
+        )
 
         signals.post_delete.connect(
             handlers.delete_price_list_items_if_default_was_deleted,

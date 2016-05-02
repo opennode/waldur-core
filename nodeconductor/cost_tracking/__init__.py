@@ -25,6 +25,7 @@ import logging
 from decimal import Decimal
 
 from django.contrib.contenttypes.models import ContentType
+
 from nodeconductor.structure import ServiceBackendNotImplemented
 
 
@@ -87,18 +88,31 @@ class CostTrackingBackend(object):
 
         By default monthly cost estimate is calculated as multiplication
         of default price list items prices on used items time.
+        Cost estimate is calculated using price list of resource's service if possible.
+
         Method should return decimal as result.
         """
-        from nodeconductor.cost_tracking.models import DefaultPriceListItem
+        from nodeconductor.cost_tracking.models import DefaultPriceListItem, PriceListItem
         resource_content_type = ContentType.objects.get_for_model(resource)
-        resource_price_items = DefaultPriceListItem.objects.filter(resource_content_type=resource_content_type)
-        resource_prices = {(item.item_type, item.key): Decimal(item.monthly_rate) for item in resource_price_items}
+
+        default_price_items = DefaultPriceListItem.objects.filter(resource_content_type=resource_content_type)
+        default_price_map = {(item.item_type, item.key): Decimal(item.monthly_rate)
+                             for item in default_price_items}
+
+        service_price_items = PriceListItem.objects.filter(
+            resource_content_type=resource_content_type,
+            service=resource.service_project_link.service
+        )
+        service_price_map = {(item.item_type, item.key): Decimal(item.monthly_rate)
+                             for item in service_price_items}
 
         monthly_cost = 0
         for item_type, item_key, item_count in cls.get_used_items(resource):
-            try:
-                monthly_cost += resource_prices[(item_type, item_key)] * Decimal(format(item_count, ".15g"))
-            except KeyError:
+            key = (item_type, item_key)
+            value = service_price_map.get(key) or default_price_map.get(key)
+            if value is None:
                 logger.error('Can not find price item with key "%s" and type "%s" for resource "%s"',
                              item_key, item_type, resource_content_type.name)
+            else:
+                monthly_cost += value * Decimal(format(item_count, ".15g"))
         return monthly_cost

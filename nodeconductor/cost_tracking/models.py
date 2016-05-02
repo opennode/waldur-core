@@ -264,7 +264,7 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
     objects = managers.PriceListItemManager('service')
 
     class Meta:
-        unique_together = ('key', 'content_type', 'object_id')
+        unique_together = ('content_type', 'object_id', 'resource_content_type', 'item_type', 'key')
 
 
 # XXX: remove it when iaas app is gone

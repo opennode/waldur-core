@@ -1,4 +1,3 @@
-import unittest
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
@@ -12,9 +11,8 @@ class PriceListItemsHandlersTest(TestCase):
 
     def setUp(self):
         self.service = openstack_factories.OpenStackServiceFactory()
-        self.openstack_resource_content_type = ContentType.objects.get_for_model(openstack_models.OpenStackService)
+        self.openstack_resource_content_type = ContentType.objects.get_for_model(openstack_models.Instance)
 
-    @unittest.skip('Disabling till price list items are used in practice')
     def test_new_price_list_item_will_be_created_on_default_item_creation(self):
         default_item = factories.DefaultPriceListItemFactory(resource_content_type=self.openstack_resource_content_type)
 
@@ -26,7 +24,6 @@ class PriceListItemsHandlersTest(TestCase):
             item_type=default_item.item_type).exists()
         )
 
-    @unittest.skip('Disabling till price list items are used in practice')
     def test_price_list_item_will_be_changed_on_default_item_change(self):
         default_item = factories.DefaultPriceListItemFactory(resource_content_type=self.openstack_resource_content_type)
 
@@ -41,7 +38,6 @@ class PriceListItemsHandlersTest(TestCase):
             item_type=default_item.item_type).exists()
         )
 
-    @unittest.skip('Disabling till price list items are used in practice')
     def test_manually_created_price_list_item_value_will_not_be_changed_on_default_item_value_change(self):
         default_item = factories.DefaultPriceListItemFactory(resource_content_type=self.openstack_resource_content_type)
         item = models.PriceListItem.objects.get(
@@ -55,7 +51,6 @@ class PriceListItemsHandlersTest(TestCase):
         reread_item = models.PriceListItem.objects.get(id=item.id)
         self.assertEqual(item.value, reread_item.value)
 
-    @unittest.skip('Disabling till price list items are used in practice')
     def test_manually_created_price_list_item_key_will_not_be_changed_on_default_item_key_change(self):
         default_item = factories.DefaultPriceListItemFactory(resource_content_type=self.openstack_resource_content_type)
         item = models.PriceListItem.objects.get(
@@ -69,7 +64,6 @@ class PriceListItemsHandlersTest(TestCase):
         reread_item = models.PriceListItem.objects.get(id=item.id)
         self.assertEqual(default_item.key, reread_item.key)
 
-    @unittest.skip('Disabling till price list items are used in practice')
     def test_price_list_item_will_be_deleted_if_default_item_deleted(self):
         default_item = factories.DefaultPriceListItemFactory(resource_content_type=self.openstack_resource_content_type)
         item = models.PriceListItem.objects.get(
@@ -78,17 +72,3 @@ class PriceListItemsHandlersTest(TestCase):
         default_item.delete()
 
         self.assertFalse(models.PriceListItem.objects.filter(id=item.id).exists())
-
-    @unittest.skip('Obsolete')
-    def test_ancestor_price_estimate_will_be_decreased_after_descendor_deletion(self):
-        instance = openstack_factories.InstanceFactory()
-        total = 77
-        month = 10
-        year = 2015
-        models.PriceEstimate.update_price_for_scope(instance, month, year, total)
-
-        instance.delete()
-
-        project = instance.service_project_link.project
-        self.assertEqual(models.PriceEstimate.objects.get(scope=project, month=month, year=year).total, 0)
-        self.assertEqual(models.PriceEstimate.objects.get(scope=project.customer, month=month, year=year).total, 0)
