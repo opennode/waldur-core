@@ -192,7 +192,7 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
 # Set to False in order to disable this feature
 NODECONDUCTOR['ENABLE_GEOIP'] = True
 
-# how long unused authentication token should be valid in hours (default: 1 hour)
+# for how long unused authentication token should be valid in hours (default: 1 hour)
 NODECONDUCTOR['TOKEN_LIFETIME'] = 1
 
 DEFAULT_FROM_EMAIL='noreply@example.com'
