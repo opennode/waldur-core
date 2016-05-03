@@ -215,7 +215,7 @@ class Instance(structure_models.VirtualMachineMixin,
 
     @property
     def cloud_project_membership(self):
-        # Temporary backward compatibility
+        # XXX: Temporary backward compatibility. To be removed after IaaS removal.
         return self.service_project_link
 
     def get_log_fields(self):
