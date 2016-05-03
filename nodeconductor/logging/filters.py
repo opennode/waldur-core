@@ -77,7 +77,8 @@ class EventFilterBackend(filters.BaseFilterBackend):
                         request.query_params['scope_type'], ', '.join(choices.keys()))
                 )
             else:
-                must_terms.update(scope_type.get_permitted_objects_uuids(request.user))
+                for field, uuids in scope_type.get_permitted_objects_uuids(request.user).items():
+                    must_terms[field] = [uuid.hex for uuid in uuids]
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
 
