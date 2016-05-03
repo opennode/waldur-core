@@ -115,7 +115,7 @@ class ObtainAuthToken(APIView):
             )
 
         token, _ = Token.objects.get_or_create(user=user)
-        lifetime = timezone.timedelta(hours=settings.NODECONDUCTOR.get('TOKEN_LIFETIME', 1))
+        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
         if token.created < timezone.now() - lifetime:
             token.delete()
             token = Token.objects.create(user=user)
