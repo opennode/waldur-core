@@ -1764,7 +1764,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            customer = serializer.validated_data.pop('project').customer
+            customer = serializer.validated_data['project'].customer
             if not request.user.is_staff and not customer.has_user(request.user):
                 raise PermissionDenied(
                     "Only customer owner or staff are allowed to perform this action.")
