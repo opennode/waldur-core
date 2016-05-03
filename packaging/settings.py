@@ -25,6 +25,9 @@ config_defaults = {
         'static_root': os.path.join(data_dir, 'static'),
         'template_debug': 'false',
     },
+    'auth': {
+        'token_lifetime': 1,
+    },
     'billing': {
         'account': '',
         'api_key': '',
@@ -703,6 +706,7 @@ NODECONDUCTOR.update({
         'verify_certs': config.getboolean('elasticsearch', 'verify_certs'),
         'ca_certs': config.get('elasticsearch', 'ca_certs'),
     },
+    'TOKEN_LIFETIME': timedelta(hours=config.getint('auth', 'token_lifetime')),
 
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
 
