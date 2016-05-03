@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.utils import timezone
@@ -30,7 +31,8 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token = response.data['token']
-        mocked_now = timezone.now() + timezone.timedelta(hours=1)
+        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        mocked_now = timezone.now() + lifetime
         with patch('django.utils.timezone.now', lambda: mocked_now):
             self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
             response = self.client.get(self.test_url)
@@ -53,7 +55,8 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         token1 = response.data['token']
 
-        mocked_now = timezone.now() + timezone.timedelta(hours=1)
+        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        mocked_now = timezone.now() + lifetime
         with patch('django.utils.timezone.now', lambda: mocked_now):
             response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
             token2 = response.data['token']
