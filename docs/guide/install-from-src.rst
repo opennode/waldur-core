@@ -7,7 +7,7 @@ Additional requirements:
 - ``virtualenv``
 - C compiler and development libraries needed to build dependencies
 
-  - CentOS: ``gcc libffi-devel openssl-devel python-devel``
+  - CentOS: ``gcc libffi-devel openssl-devel``
   - Ubuntu: ``gcc libffi-dev libsasl2-dev libssl-dev python-dev``
 
 **NodeConductor installation**
@@ -18,25 +18,26 @@ Additional requirements:
 
     git clone https://github.com/opennode/nodeconductor.git
 
-2. Create a virtualenv:
+2. Create a Virtualenv and update Setuptools:
 
   .. code-block:: bash
 
     cd nodeconductor
     virtualenv venv
+    venv/bin/pip install --upgrade setuptools
 
-3. Install nodeconductor in development mode along with dependencies:
+3. Install NodeConductor in development mode along with dependencies:
 
   .. code-block:: bash
 
     venv/bin/python setup.py develop
 
-4. Create and edit settings file:
+4. Create and edit settings file (see 'Configuration' section for details):
 
   .. code-block:: bash
 
     cp nodeconductor/server/settings.py.example nodeconductor/server/settings.py
-    vim nodeconductor/server/settings.py
+    vi nodeconductor/server/settings.py
 
 5. Initialise database -- SQLite3 database will be created in ``./db.sqlite3`` unless specified otherwise in settings files:
 
@@ -51,6 +52,12 @@ Additional requirements:
     venv/bin/nodeconductor collectstatic --noinput
 
 7. In order to install SAML2_ based authentication you should also install ``nodeconductor-saml2`` plugin.
+
+8. Start NodeConductor:
+
+  .. code-block:: bash
+
+    venv/bin/nodeconductor runserver
 
 Configuration
 +++++++++++++
