@@ -34,7 +34,6 @@ Setup
   - flavor - default configuration for the created Zabbix server
   - image - OpenStack image with pre-installed Zabbbix
   - data volume, system volume - default size for Zabbix deployments
-  - security groups - typically you need to allow at least HTTP and HTTPS traffic
 
 Supported operations by REST client
 +++++++++++++++++++++++++++++++++++
@@ -44,6 +43,7 @@ inputs:
 
  - name
  - project
+ - security groups
  - user_data
 
 User data can be used to setup Zabbix admin user password:
@@ -81,6 +81,12 @@ Setup
       'SMS_EMAIL_RCPT': 'recipient',
   }
 
+2. Add Zabbix security group to all existing tenants:
+
+  .. code-block:: bash
+
+  nodeconductor initsecuritygroups zabbix
+
 2. Create template group:
 
   - name, description, icon_url - support parameters for the application store 
@@ -93,7 +99,6 @@ Setup
   - flavor - choose suitable for Zabbix image
   - image - OpenStack image with pre-installed Zabbbix
   - data volume, system volume - default size for Zabbix deployments
-  - security groups - at least HTTP or HTTPS
   - user data:
 
   .. code-block:: yaml
@@ -126,7 +131,8 @@ Setup
 Requests from frontend
 ++++++++++++++++++++++
 
-1. Creation. Issue POST request to template_group provision endpoint with project and name fields.
+1. To create instance with advance monitoring issue POST request to template_group provision endpoint with project, name
+   and security group named "zabbix".
 
 2. To get list of all available for instance advanced zabbix services - issue GET request against **/api/zabbix/** with 
    parameters:

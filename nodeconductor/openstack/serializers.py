@@ -577,9 +577,9 @@ class InstanceImportSerializer(structure_serializers.BaseResourceImportSerialize
 
         try:
             backend_instance = backend.get_instance(validated_data['backend_id'])
-        except OpenStackBackendError:
+        except OpenStackBackendError as e:
             raise serializers.ValidationError(
-                {'backend_id': "Can't import instance with ID %s" % validated_data['backend_id']})
+                {'backend_id': "Can't import instance with ID %s. Reason: %s" % (validated_data['backend_id'], e)})
 
         backend_security_groups = backend_instance.nc_model_data.pop('security_groups')
         security_groups = spl.security_groups.filter(name__in=backend_security_groups)

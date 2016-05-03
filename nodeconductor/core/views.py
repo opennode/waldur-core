@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib import auth
 from django.db.models import ProtectedError
 from django.utils import timezone
@@ -113,8 +114,14 @@ class ObtainAuthToken(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        Token.objects.filter(user=user).delete()
-        token = Token.objects.create(user=user)
+        token, _ = Token.objects.get_or_create(user=user)
+        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        if token.created < timezone.now() - lifetime:
+            token.delete()
+            token = Token.objects.create(user=user)
+        else:
+            token.created = timezone.now()
+            token.save()
 
         logger.debug('Returning token for successful login of user %s', user)
         event_logger.auth.info(

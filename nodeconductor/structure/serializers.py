@@ -1360,7 +1360,7 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
                 {'backend_id': "This resource is already linked to NodeConductor"})
 
         spl_class = SupportedServices.get_related_models(self.Meta.model)['service_project_link']
-        spl = spl_class.objects.get(service=self.context['service'], project=validated_data['project'])
+        spl = spl_class.objects.get(service=self.context['service'], project=validated_data.pop('project'))
         validated_data['service_project_link'] = spl
 
         return validated_data

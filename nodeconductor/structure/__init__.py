@@ -331,7 +331,13 @@ class SupportedServices(object):
                 ]
             }
         """
-        model_str = cls._get_model_str(model)
+        from nodeconductor.structure.models import ServiceSettings
+
+        if isinstance(model, ServiceSettings):
+            model_str = cls._registry.get(model.type, {}).get('model_name', '')
+        else:
+            model_str = cls._get_model_str(model)
+
         for models in cls.get_service_models().values():
             if model_str == cls._get_model_str(models['service']) or \
                model_str == cls._get_model_str(models['service_project_link']):

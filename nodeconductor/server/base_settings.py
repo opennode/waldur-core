@@ -308,6 +308,8 @@ NODECONDUCTOR = {
         },
     ),
     'TOKEN_KEY': 'x-auth-token',
+    'TOKEN_LIFETIME': timedelta(hours=1),
+
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
 }
