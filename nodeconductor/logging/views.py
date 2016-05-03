@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 from rest_framework import response, viewsets, permissions, status, decorators, mixins
+from rest_framework import filters as rf_filters
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.views import BaseSummaryView
@@ -257,7 +258,7 @@ class BaseHookViewSet(viewsets.ModelViewSet):
     To get a list of all your hooks, run **GET** against */api/hooks/* as an authenticated user.
     """
     permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (core_filters.StaffOrUserFilter,)
+    filter_backends = (core_filters.StaffOrUserFilter, rf_filters.DjangoFilterBackend)
     lookup_field = 'uuid'
 
 
@@ -327,6 +328,7 @@ class EmailHookViewSet(BaseHookViewSet):
 
 class PushHookViewSet(BaseHookViewSet):
     queryset = models.PushHook.objects.all()
+    filter_class = filters.PushHookFilter
     serializer_class = serializers.PushHookSerializer
 
     def list(self, request, *args, **kwargs):
