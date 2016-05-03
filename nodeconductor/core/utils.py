@@ -98,6 +98,9 @@ def request_api(request, url_or_view_name, method='GET', data=None, params=None,
     """
 
     token = Token.objects.get(user=request.user)
+    token.created = timezone.now()
+    token.save()
+
     method = getattr(requests, method.lower())
     if url_or_view_name.startswith('http'):
         url = url_or_view_name

@@ -34,7 +34,8 @@ class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
         if not token.user.is_active:
             raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
 
-        if token.created < timezone.now() - timezone.timedelta(hours=1):
+        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        if token.created < timezone.now() - lifetime:
             raise exceptions.AuthenticationFailed(_('Token has expired.'))
         else:
             token.created = timezone.now()
