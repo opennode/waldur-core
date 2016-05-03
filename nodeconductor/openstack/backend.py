@@ -435,6 +435,7 @@ class OpenStackBackend(ServiceBackend):
 
         for _ in range(retries):
             obj = client_get_method(obj_id)
+            logger.debug('Instance %s status: "%s"' % (obj, obj.status))
 
             if complete_state_predicate(obj):
                 return True
@@ -1074,7 +1075,7 @@ class OpenStackBackend(ServiceBackend):
             instance.data_volume_id = data_volume_id
             instance.save()
 
-            if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
+            if not self._wait_for_instance_status(server.id, nova, 'ACTIVE', 'ERROR'):
                 logger.error(
                     "Failed to provision instance %s: timed out waiting "
                     "for instance to become online",
@@ -1704,7 +1705,7 @@ class OpenStackBackend(ServiceBackend):
                     'tenant_id': tenant.backend_id,
                 }
             })['floatingip']
-        except neutron_exceptions.NeutronClientException as e:
+        except (neutron_exceptions.NeutronClientException, keystone_exceptions.ClientException) as e:
             six.reraise(OpenStackBackendError, e)
         else:
             tenant.service_project_link.floating_ips.create(

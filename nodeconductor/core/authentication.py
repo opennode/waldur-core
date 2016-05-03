@@ -37,8 +37,8 @@ class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
         if token.created < timezone.now() - timezone.timedelta(hours=1):
             raise exceptions.AuthenticationFailed(_('Token has expired.'))
         else:
-            token.created = timezone.now()
-            token.save()
+           token.created = timezone.now()
+           token.save()
 
         return token.user, token
 
