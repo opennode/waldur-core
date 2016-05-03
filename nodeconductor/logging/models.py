@@ -180,11 +180,10 @@ class PushHook(BaseHook):
                 }
         """
 
-        raise NotImplementedError("Nobody knows how it's supposed to work")
-
         conf = settings.NODECONDUCTOR.get('GOOGLE_API') or {}
         keys = conf.get(dict(self.Type.CHOICES)[self.type])
 
+        # XXX: experemental workflow, should be tested in NC-1063, NC-1064
         if not keys or not self.device_id:
             return
 
