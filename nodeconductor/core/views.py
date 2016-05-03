@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.contrib import auth
 from django.db.models import ProtectedError
 from django.utils import timezone
@@ -114,9 +115,10 @@ class ObtainAuthToken(APIView):
             )
 
         token, _ = Token.objects.get_or_create(user=user)
-        if token.created < timezone.now() - timezone.timedelta(hours=1):
+        lifetime = timezone.timedelta(hours=settings.NODECONDUCTOR.get('TOKEN_LIFETIME', 1))
+        if token.created < timezone.now() - lifetime:
             token.delete()
-            Token.objects.create(user=user)
+            token = Token.objects.create(user=user)
         else:
             token.created = timezone.now()
             token.save()
