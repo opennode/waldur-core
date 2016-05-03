@@ -74,7 +74,7 @@ def create_price_list_items_for_service(sender, instance, created=False, **kwarg
             )
 
 
-def change_price_list_items_if_default_was_changed(sender, instance, created=False, **kwargs):
+def create_price_list_item_if_default_is_created(sender, instance, created=False, **kwargs):
     default_item = instance
     if created:
         # if new default item added - we create such item in for each service
@@ -89,25 +89,31 @@ def change_price_list_items_if_default_was_changed(sender, instance, created=Fal
                 units=default_item.units,
                 value=default_item.value
             )
+
+
+def change_price_list_items_if_default_was_changed(sender, instance, created=False, **kwargs):
+    default_item = instance
+    if created:
+        return
+
+    if default_item.tracker.has_changed('key') or default_item.tracker.has_changed('item_type'):
+        # if default item key or item type was changed - it will be changed in each connected item
+        connected_items = models.PriceListItem.objects.filter(
+            key=default_item.tracker.previous('key'),
+            item_type=default_item.tracker.previous('item_type'),
+            resource_content_type=default_item.resource_content_type,
+        )
     else:
-        if default_item.tracker.has_changed('key') or default_item.tracker.has_changed('item_type'):
-            # if default item key or item type was changed - it will be changed in each connected item
-            connected_items = models.PriceListItem.objects.filter(
-                key=default_item.tracker.previous('key'),
-                item_type=default_item.tracker.previous('item_type'),
-                resource_content_type=default_item.resource_content_type,
-            )
-        else:
-            # if default value or units changed - it will be changed in each connected item
-            # that was not edited manually
-            connected_items = models.PriceListItem.objects.filter(
-                key=default_item.key,
-                item_type=default_item.item_type,
-                resource_content_type=default_item.resource_content_type,
-                is_manually_input=False,
-            )
-        connected_items.update(
-            key=default_item.key, item_type=default_item.item_type, units=default_item.units, value=default_item.value)
+        # if default value or units changed - it will be changed in each connected item
+        # that was not edited manually
+        connected_items = models.PriceListItem.objects.filter(
+            key=default_item.key,
+            item_type=default_item.item_type,
+            resource_content_type=default_item.resource_content_type,
+            is_manually_input=False,
+        )
+    connected_items.update(
+        key=default_item.key, item_type=default_item.item_type, units=default_item.units, value=default_item.value)
 
 
 def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):

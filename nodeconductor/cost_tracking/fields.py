@@ -10,7 +10,7 @@ class ResourceTypeField(NaturalChoiceField):
         super(ResourceTypeField, self).__init__(choices=self.get_choices(), **kwargs)
 
     def to_representation(self, value):
-        assert isinstance(value, ContentType)
+        assert isinstance(value, ContentType), 'Resource type should be instance of ContentType'
         return SupportedServices.get_name_for_model(value.model_class())
 
     @lru_cache(maxsize=1)

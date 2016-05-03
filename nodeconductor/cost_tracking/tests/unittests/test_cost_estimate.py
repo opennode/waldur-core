@@ -24,14 +24,14 @@ class CostEstimateTest(TestCase):
         self.assertEqual(total_cost, backend.get_monthly_cost_estimate(self.resource))
 
     def test_cost_estimate_is_calculated_using_service_price_list_item(self):
-        service_item = models.PriceListItem.objects.get(
+        service_item = models.PriceListItem.objects.create(
             service=self.service,
             resource_content_type=self.content_type,
             item_type=self.default_item.item_type,
-            key=self.default_item.key
+            key=self.default_item.key,
+            units=self.default_item.units,
+            value=100
         )
-        service_item.value = 100
-        service_item.save()
 
         monthly_usage = 10
         used_items = [(self.default_item.item_type, self.default_item.key, monthly_usage)]
