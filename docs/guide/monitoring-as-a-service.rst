@@ -44,7 +44,7 @@ Setup
   - host group name - NodeConductor
   - host scope - {{ response.url }}
   - use project of the previous object - True
-  - templates - Template NodeCondcutor Instance, Template PaaS Zabbix
+  - templates - Template NodeCondcutor Instance, Template Paas App Zabbix
 
 4. Add Zabbix IT service template:
 
@@ -56,7 +56,7 @@ Setup
   - algorithm - problem if all children have problem
   - use project of the previous object - True
   - is main - True
-  - trigger - ???(TODO)
+  - trigger - Zabbix is not available
 
 Supported operations by REST client
 +++++++++++++++++++++++++++++++++++
@@ -159,7 +159,7 @@ Setup
   - host group name - NodeConductor
   - host scope - {{ results.0.url }}
   - use project of the previous object - True
-  - templates - Template NodeCondcutor Instance, Template PaaS Zabbix
+  - templates - Template NodeCondcutor Instance, Template Paas App Zabbix
 
 7. Add Zabbix IT service template:
 
@@ -171,7 +171,7 @@ Setup
   - algorithm - problem if all children have problem
   - use project of the previous object - True
   - is main - True
-  - trigger - ???(TODO)
+  - trigger - Zabbix is not available
 
 
 
