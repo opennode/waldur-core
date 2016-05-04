@@ -230,10 +230,8 @@ class AbstractPriceListItem(models.Model):
     class Meta:
         abstract = True
 
-    key = models.CharField(max_length=255)
     value = models.DecimalField("Hourly rate", default=0, max_digits=11, decimal_places=5)
-    units = models.CharField(max_length=255, blank=True)
-    item_type = models.CharField(max_length=255)
+    units = models.CharField(max_length=255, blank=True)  # TODO: Rename to currency
 
     @property
     def monthly_rate(self):
@@ -242,8 +240,13 @@ class AbstractPriceListItem(models.Model):
 
 @python_2_unicode_compatible
 class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, AbstractPriceListItem):
-    """ Default price list item for all resources of supported service types """
+    """
+    Default price list item for all resources of supported service types.
+    It is fetched from cost tracking backend.
+    """
     resource_content_type = models.ForeignKey(ContentType, default=None)
+    key = models.CharField(max_length=255)
+    item_type = models.CharField(max_length=255)
     metadata = JSONField(blank=True)
 
     tracker = FieldTracker()
@@ -251,20 +254,25 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
     def __str__(self):
         return 'Price list item %s: %s = %s for %s' % (self.name, self.key, self.value, self.resource_content_type)
 
+    @property
+    def resource_type(self):
+        return SupportedServices.get_name_for_model(self.resource_content_type.model_class())
+
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
+    """
+    Price list item related to private service.
+    It is entered manually by customer owner.
+    """
     # Generic key to service
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
     service = GenericForeignKey('content_type', 'object_id')
-    resource_content_type = models.ForeignKey(ContentType, related_name='+', default=None)
-
-    is_manually_input = models.BooleanField(default=False)
-
     objects = managers.PriceListItemManager('service')
+    default_price_list_item = models.ForeignKey(DefaultPriceListItem)
 
     class Meta:
-        unique_together = ('content_type', 'object_id', 'resource_content_type', 'item_type', 'key')
+        unique_together = ('content_type', 'object_id', 'default_price_list_item')
 
 
 # XXX: remove it when iaas app is gone

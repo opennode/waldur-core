@@ -1,5 +1,8 @@
 from __future__ import unicode_literals
 
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Prefetch
+
 from rest_framework import viewsets, permissions, exceptions, decorators, response, status
 
 from nodeconductor.core.filters import DjangoMappingFilterBackend
@@ -203,11 +206,9 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
             {
                 "units": "per month",
-                "key": "test_key",
                 "value": 100,
                 "service": "http://example.com/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
-                "resource_content_type": "OpenStack.Instance"
-                "item_type": "storage"
+                "default_price_list_item": "http://example.com/api/default-price-list-items/349d11e28f634f48866089e41c6f71f1/"
             }
         """
         return super(PriceListItemViewSet, self).create(request, *args, **kwargs)
@@ -262,3 +263,57 @@ class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
          - ?resource_type=<string> resource type, for example: 'OpenStack.Instance, 'Oracle.Database')
         """
         return super(DefaultPriceListItemViewSet, self).list(request, *args, **kwargs)
+
+
+class MergedPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated,)
+    filter_class = filters.DefaultPriceListItemFilter
+    filter_backends = (DjangoMappingFilterBackend,)
+    serializer_class = serializers.MergedPriceListItemSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of price list items, run **GET** against */api/merged-price-list-items/*
+        as authenticated user.
+
+        If service is not specified default price list items are displayed.
+        Otherwise service specific price list items are displayed.
+        In this case rendered object contains {"is_manually_input": true}
+
+        In order to specify service pass query parameters:
+        - service_type (Azure, OpenStack etc.)
+        - service_uuid
+
+        Example URL: http://example.com/api/merged-price-list-items/?service_type=Azure&service_uuid=cb658b491f3644a092dd223e894319be
+
+        """
+        return super(MergedPriceListItemViewSet, self).list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = models.DefaultPriceListItem.objects.all()
+        service = self._find_service()
+        if service:
+            price_list_items = models.PriceListItem.objects.filter(service=service)
+            prefetch = Prefetch('pricelistitem_set', queryset=price_list_items, to_attr='service_item')
+            queryset = queryset.prefetch_related(prefetch)
+        return queryset
+
+    def _find_service(self):
+        from nodeconductor.structure import SupportedServices
+
+        service_type = self.request.query_params.get('service_type')
+        service_uuid = self.request.query_params.get('service_uuid')
+        if not service_type or not service_uuid:
+            return
+        rows = SupportedServices.get_service_models()
+        if service_type not in rows:
+            return
+        service_class = rows.get(service_type)['service']
+        try:
+            return service_class.objects.get(uuid=service_uuid)
+        except ObjectDoesNotExist:
+            return None
+
+    def list(self, request, *args, **kwargs):
+        return super(MergedPriceListItemViewSet, self).list(request, *args, **kwargs)

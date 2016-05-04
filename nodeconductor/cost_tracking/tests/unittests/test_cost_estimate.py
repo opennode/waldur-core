@@ -26,10 +26,7 @@ class CostEstimateTest(TestCase):
     def test_cost_estimate_is_calculated_using_service_price_list_item(self):
         service_item = models.PriceListItem.objects.create(
             service=self.service,
-            resource_content_type=self.content_type,
-            item_type=self.default_item.item_type,
-            key=self.default_item.key,
-            units=self.default_item.units,
+            default_price_list_item=self.default_item,
             value=100
         )
 

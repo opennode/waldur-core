@@ -21,7 +21,7 @@ def _get_content_type_queryset(models_list):
 
 
 class PriceListItemAdmin(admin.ModelAdmin):
-    list_display = ('uuid', 'item_type', 'key', 'value', 'units', 'service')
+    list_display = ('uuid', 'default_price_list_item', 'service', 'units', 'value')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "content_type":
@@ -53,9 +53,6 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
     def full_name(self, obj):
         return obj.name or obj.units or obj.uuid
-
-    def resource_type(self, obj):
-        return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "resource_content_type":
@@ -167,8 +164,7 @@ class ApplicationTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'slug')
     prepopulated_fields = {'slug': ('name',)}
 
-# TODO: disabled to reduce confusion. Enable once we start using it.
-# admin.site.register(models.PriceListItem, PriceListItemAdmin)
+admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
 admin.site.register(models.PriceEstimate, PriceEstimateAdmin)
 admin.site.register(models.ApplicationType, ApplicationTypeAdmin)

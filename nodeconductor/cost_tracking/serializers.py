@@ -8,7 +8,6 @@ from rest_framework.exceptions import ValidationError
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
-from nodeconductor.cost_tracking.fields import ResourceTypeField
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
 from nodeconductor.structure.serializers import ProjectSerializer
@@ -87,28 +86,29 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
 class PriceListItemSerializer(AugmentedSerializerMixin,
                               serializers.HyperlinkedModelSerializer):
     service = GenericRelatedField(related_models=structure_models.Service.get_all_models())
-    resource_content_type = ResourceTypeField(required=True)
+    default_price_list_item = serializers.HyperlinkedRelatedField(
+        view_name='defaultpricelistitem-detail',
+        lookup_field='uuid',
+        queryset=models.DefaultPriceListItem.objects.all().select_related('resource_content_type'))
 
     class Meta:
         model = models.PriceListItem
-        fields = ('url', 'uuid', 'key', 'item_type', 'value',
-                  'units', 'service', 'resource_content_type')
+        fields = ('url', 'uuid', 'units', 'value', 'service', 'default_price_list_item')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'default_price_list_item': {'lookup_field': 'uuid'}
         }
-        protected_fields = ('resource_content_type', 'service')
+        protected_fields = ('service', 'default_price_list_item')
 
     def create(self, validated_data):
-        resource_content_type = validated_data['resource_content_type']
+        default_price_list_item = validated_data['default_price_list_item']
         service = validated_data['service']
 
-        resource = resource_content_type.model_class()
+        resource = default_price_list_item.resource_content_type.model_class()
         valid_resources = SupportedServices.get_related_models(service)['resources']
 
         if resource not in valid_resources:
             raise ValidationError('Service does not support required content type')
-
-        validated_data['is_manually_input'] = True
 
         try:
             return super(PriceListItemSerializer, self).create(validated_data)
@@ -117,8 +117,6 @@ class PriceListItemSerializer(AugmentedSerializerMixin,
 
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
-
-    resource_type = serializers.SerializerMethodField()
     value = serializers.FloatField()
     metadata = JSONField()
 
@@ -129,8 +127,29 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
 
-    def get_resource_type(self, obj):
-        return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
+
+class MergedPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
+    value = serializers.SerializerMethodField()
+    units = serializers.SerializerMethodField()
+    is_manually_input = serializers.SerializerMethodField()
+    metadata = JSONField()
+
+    class Meta:
+        model = models.DefaultPriceListItem
+        fields = ('url', 'uuid', 'key', 'item_type', 'units', 'value',
+                  'resource_type', 'metadata', 'is_manually_input')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def get_value(self, obj):
+        return getattr(obj, 'service_item', None) and float(obj.service_item[0].value) or float(obj.value)
+
+    def get_units(self, obj):
+        return getattr(obj, 'service_item', None) and obj.service_item[0].units or obj.units
+
+    def get_is_manually_input(self, obj):
+        return bool(getattr(obj, 'service_item', None))
 
 
 class PriceEstimateThresholdSerializer(serializers.Serializer):

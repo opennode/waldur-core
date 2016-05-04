@@ -1,9 +1,7 @@
 from ddt import ddt, data
 from rest_framework import status
 
-from nodeconductor.openstack.models import Instance
 from nodeconductor.openstack.tests import factories as openstack_factories
-from nodeconductor.structure import SupportedServices
 
 from .. import models
 from . import factories
@@ -53,13 +51,12 @@ class PriceListItemCreateTest(BaseCostTrackingTest):
 
     def setUp(self):
         super(PriceListItemCreateTest, self).setUp()
+        self.default_price_list_item = factories.DefaultPriceListItemFactory()
         self.valid_data = {
             'service': openstack_factories.OpenStackServiceFactory.get_url(self.service),
+            'default_price_list_item': factories.DefaultPriceListItemFactory.get_url(self.default_price_list_item),
             'value': 100,
-            'units': 'UAH',
-            'key': 'test_key',
-            'item_type': 'storage',
-            'resource_content_type': SupportedServices.get_name_for_model(Instance)
+            'units': 'UAH'
         }
 
     @data('staff', 'owner')
@@ -69,7 +66,9 @@ class PriceListItemCreateTest(BaseCostTrackingTest):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(models.PriceListItem.objects.filter(
-            service=self.service, value=self.valid_data['value'], item_type=self.valid_data['item_type']).exists())
+            service=self.service,
+            value=self.valid_data['value'],
+            default_price_list_item=self.default_price_list_item).exists())
 
     @data('manager', 'administrator')
     def test_user_without_permissions_cannot_create_price_list_item(self, user):
@@ -78,7 +77,9 @@ class PriceListItemCreateTest(BaseCostTrackingTest):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, str(response.data) + " " + user)
         self.assertFalse(models.PriceListItem.objects.filter(
-            service=self.service, value=self.valid_data['value'], item_type=self.valid_data['item_type']).exists())
+            service=self.service,
+            value=self.valid_data['value'],
+            default_price_list_item=self.default_price_list_item).exists())
 
     def test_if_price_list_item_already_exists_validation_error_is_raised(self):
         self.client.force_authenticate(self.users['staff'])
