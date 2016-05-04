@@ -22,6 +22,7 @@ from nodeconductor.logging.loggers import LoggableMixin
 
 logger = logging.getLogger(__name__)
 
+
 class BackupSourceAbstractModel(models.Model):
     """
     Abstract model with generic key to backup source
@@ -137,7 +138,7 @@ class BackupSchedule(core_models.UuidMixin,
 
     @classmethod
     def get_url_name(cls):
-        return 'backup-schedules'
+        return 'backupschedule'
 
 
 @python_2_unicode_compatible
@@ -282,7 +283,7 @@ class Backup(core_models.UuidMixin,
 
     @classmethod
     def get_url_name(cls):
-        return 'backups'
+        return 'backup'
 
 
 class BackupStrategy(object):
