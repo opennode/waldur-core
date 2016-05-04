@@ -26,7 +26,7 @@ config_defaults = {
         'template_debug': 'false',
     },
     'auth': {
-        'token_lifetime': 1,
+        'token_lifetime': 3600,
     },
     'billing': {
         'account': '',
@@ -668,7 +668,6 @@ NODECONDUCTOR.update({
             'cpu_overcommit_ratio': config.getint('openstack', 'cpu_overcommit_ratio'),
         },
     ),
-
     'MONITORING': {
         'ZABBIX': {
             'server': config.get('zabbix', 'server_url'),
@@ -706,12 +705,9 @@ NODECONDUCTOR.update({
         'verify_certs': config.getboolean('elasticsearch', 'verify_certs'),
         'ca_certs': config.get('elasticsearch', 'ca_certs'),
     },
-    'TOKEN_LIFETIME': timedelta(hours=config.getint('auth', 'token_lifetime')),
-
+    'TOKEN_LIFETIME': timedelta(seconds=config.getint('auth', 'token_lifetime')),
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
-
     'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
-
 })
 
 NODECONDUCTOR_KILLBILL = {
