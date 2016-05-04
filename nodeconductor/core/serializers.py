@@ -127,6 +127,8 @@ class GenericRelatedField(Field):
         """
         Restores model instance from its url
         """
+        if not data:
+            return None
         request = self._get_request()
         user = request.user
         try:
