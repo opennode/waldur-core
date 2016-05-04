@@ -135,6 +135,10 @@ class BackupSchedule(core_models.UuidMixin,
     def get_log_fields(self):
         return ('uuid', 'name', 'backup_source')
 
+    @classmethod
+    def get_url_name(cls):
+        return 'backup-schedules'
+
 
 @python_2_unicode_compatible
 class Backup(core_models.UuidMixin,
@@ -275,6 +279,10 @@ class Backup(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'name', 'backup_source')
+
+    @classmethod
+    def get_url_name(cls):
+        return 'backups'
 
 
 class BackupStrategy(object):
