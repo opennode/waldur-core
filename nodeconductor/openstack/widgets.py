@@ -50,7 +50,8 @@ class OpenStackTagsWidget(Widget):
         output.append('</select>')
 
         field_name = '%s_%s' % (self.tag_name, 'remote_instance')
-        final_attrs = self.build_attrs(None, name=field_name, value=instance_value, placeholder="Instance UUID")
+        final_attrs = self.build_attrs(None, name=field_name, size=32,
+                                       value=instance_value, placeholder="Instance UUID")
         html = '\n'.join(output) + format_html('<input{} />', flatatt(final_attrs))
 
         return html
