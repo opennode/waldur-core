@@ -28,18 +28,6 @@ config_defaults = {
     'auth': {
         'token_lifetime': 3600,
     },
-    'billing': {
-        'account': '',
-        'api_key': '',
-        'api_secret': '',
-        'api_url': '',
-        'bank': '',
-        'company': '',
-        'currency': 'USD',
-        'logo': '',
-        'password': '',
-        'username': '',
-    },
     'celery': {
         'backup_schedule_execute_period': 600,
         'broker_url': 'redis://localhost',
@@ -194,6 +182,10 @@ elif config.has_section('sqlite3'):
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': config.get('sqlite3', 'path'),
     }
+
+if config.has_section('billing'):
+    warnings.warn(
+        "[billing] section in settings.ini is no longer supported and will be ignored")
 
 # Zabbix database
 if config.get('zabbix', 'db_host') != '':
@@ -709,23 +701,6 @@ NODECONDUCTOR.update({
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
     'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
 })
-
-NODECONDUCTOR_KILLBILL = {
-    'BACKEND': {
-        'api_url': config.get('billing', 'api_url'),
-        'username': config.get('billing', 'username'),
-        'password': config.get('billing', 'password'),
-        'api_key': config.get('billing', 'api_key'),
-        'api_secret': config.get('billing', 'api_secret'),
-        'currency': config.get('billing', 'currency'),
-    },
-    'INVOICE': {
-        'logo': config.get('billing', 'logo'),
-        'company': config.get('billing', 'company'),
-        'bank': config.get('billing', 'bank'),
-        'account': config.get('billing', 'account'),
-    },
-}
 
 
 # Sentry integration
