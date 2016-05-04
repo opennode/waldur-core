@@ -157,11 +157,12 @@ class ElasticsearchClient(object):
                     {'terms': {key: value}} for key, value in self.must_not_terms_filter.items()
                 ]
 
+            if self.timestamp_filter:
+                self['query']['filtered']['filter']['bool'].setdefault('must', {})
+                self['query']['filtered']['filter']['bool']['must']['range'] = {'@timestamp': self.timestamp_filter}
+
             if not self['query']['filtered']['filter']['bool']:
                 del self['query']['filtered']['filter']['bool']
-
-            if self.timestamp_filter:
-                self['query']['filtered']['filter']['range'] = {'@timestamp': self.timestamp_filter}
 
             if self.timestamp_ranges:
                 self["aggs"] = {
