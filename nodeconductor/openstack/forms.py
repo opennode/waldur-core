@@ -27,10 +27,6 @@ class InstanceForm(ModelForm):
             'tags': OpenStackTagsWidget(),
         }
 
-    def __init__(self, *args, **kwargs):
-        super(InstanceForm, self).__init__(*args, **kwargs)
-        self.fields['tags'].widget.form_instance = self
-
     def clean_tags(self):
         tags = self.cleaned_data['tags']
         for tag in 'os', 'application', 'support':

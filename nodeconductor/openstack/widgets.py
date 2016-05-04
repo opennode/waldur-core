@@ -49,19 +49,9 @@ class OpenStackTagsWidget(Widget):
                 '<option value="{}"{}>{}</option>', opt, selected, force_text(txt)))
         output.append('</select>')
 
-        html = '\n'.join(output)
-
-        choices = ('remote-origin', 'Remote Origin'), ('remote-copy', 'Remote Copy')
         field_name = '%s_%s' % (self.tag_name, 'remote_instance')
-        final_attrs = self.build_attrs(None, name=field_name)
-        output = [format_html('<select{}>', flatatt(final_attrs))]
-        for instance in Instance.objects.exclude(uuid=self.form_instance.instance.uuid):
-            selected = ' selected="selected"' if instance.uuid.hex == instance_value else ''
-            output.append(format_html(
-                '<option value="{}"{}>{}</option>', instance.uuid.hex, selected, force_text(instance)))
-        output.append('</select>')
-
-        html += '\n'.join(output)
+        final_attrs = self.build_attrs(None, name=field_name, value=instance_value, placeholder="Instance UUID")
+        html = '\n'.join(output) + format_html('<input{} />', flatatt(final_attrs))
 
         return html
 
