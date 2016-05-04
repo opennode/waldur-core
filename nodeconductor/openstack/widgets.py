@@ -6,23 +6,64 @@ from django.utils.safestring import mark_safe
 from taggit.utils import edit_string_for_tags
 
 from nodeconductor.openstack import Types
+from nodeconductor.openstack.models import Instance
 
 
-class LicenseWidget(Widget):
+class OpenStackTagsWidget(Widget):
 
     def render(self, name, value, attrs=None):
         self.tag_name = name
-        self.tag_value = value
+        self.tag_value = value or []
 
         rows = '<br>'.join([
             self.render_license('OS', Types.PriceItems.LICENSE_OS, Types.Os.CHOICES),
             self.render_license('Application', Types.PriceItems.LICENSE_APPLICATION, Types.Applications.CHOICES),
             self.render_license('Support', Types.PriceItems.SUPPORT, Types.Support.CHOICES),
+            '',  # extra line
+            self.render_remote(),
             '<br>Extra tags: %s' % TextInput().render(
-                name, edit_string_for_tags([t.tag for t in self.tag_value]), attrs=None)
+                name, edit_string_for_tags([t.tag for t in self.tag_value]), attrs={'size': 50})
         ])
 
         return mark_safe('<p>%s</p>' % rows)
+
+    def render_remote(self):
+        tags = []
+        type_value = instance_value = ''
+        for tag in self.tag_value:
+            if tag.tag.name.startswith('remote-'):
+                type_value, instance_value = tag.tag.name.split(':')
+            else:
+                tags.append(tag)
+
+        self.tag_value = tags
+
+        choices = ('remote-origin', 'Origin'), ('remote-copy', 'Copy')
+        field_name = '%s_%s' % (self.tag_name, 'remote_type')
+        final_attrs = self.build_attrs(None, name=field_name)
+        output = [format_html('Remote: <select{}>', flatatt(final_attrs))]
+        output.append('<option value="">None</option>')
+        for opt, txt in choices:
+            selected = ' selected="selected"' if opt == type_value else ''
+            output.append(format_html(
+                '<option value="{}"{}>{}</option>', opt, selected, force_text(txt)))
+        output.append('</select>')
+
+        html = '\n'.join(output)
+
+        choices = ('remote-origin', 'Remote Origin'), ('remote-copy', 'Remote Copy')
+        field_name = '%s_%s' % (self.tag_name, 'remote_instance')
+        final_attrs = self.build_attrs(None, name=field_name)
+        output = [format_html('<select{}>', flatatt(final_attrs))]
+        for instance in Instance.objects.exclude(uuid=self.form_instance.instance.uuid):
+            selected = ' selected="selected"' if instance.uuid.hex == instance_value else ''
+            output.append(format_html(
+                '<option value="{}"{}>{}</option>', instance.uuid.hex, selected, force_text(instance)))
+        output.append('</select>')
+
+        html += '\n'.join(output)
+
+        return html
 
     def render_license(self, title, name, choices):
         field_name = '%s_%s' % (self.tag_name, title.lower())
