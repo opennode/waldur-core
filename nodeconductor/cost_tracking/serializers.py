@@ -102,15 +102,6 @@ class PriceListItemSerializer(AugmentedSerializerMixin,
         protected_fields = ('service', 'default_price_list_item')
 
     def create(self, validated_data):
-        default_price_list_item = validated_data['default_price_list_item']
-        service = validated_data['service']
-
-        resource = default_price_list_item.resource_content_type.model_class()
-        valid_resources = SupportedServices.get_related_models(service)['resources']
-
-        if resource not in valid_resources:
-            raise ValidationError('Service does not support required content type')
-
         try:
             return super(PriceListItemSerializer, self).create(validated_data)
         except IntegrityError:

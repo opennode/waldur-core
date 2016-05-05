@@ -6,6 +6,7 @@ import logging
 from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction, IntegrityError
 from django.utils import timezone
@@ -273,6 +274,16 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
 
     class Meta:
         unique_together = ('content_type', 'object_id', 'default_price_list_item')
+
+    def clean(self):
+        if SupportedServices.is_public_service(self.service):
+            raise ValidationError('Public service does not support price list items')
+
+        resource = self.default_price_list_item.resource_content_type.model_class()
+        valid_resources = SupportedServices.get_related_models(self.service)['resources']
+
+        if resource not in valid_resources:
+            raise ValidationError('Service does not support required content type')
 
 
 # XXX: remove it when iaas app is gone
