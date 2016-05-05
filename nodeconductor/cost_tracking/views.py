@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
 
@@ -7,6 +8,7 @@ from rest_framework import viewsets, permissions, exceptions, decorators, respon
 
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.cost_tracking import models, serializers, filters
+from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
@@ -286,7 +288,6 @@ class MergedPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
         - service_uuid
 
         Example URL: http://example.com/api/merged-price-list-items/?service_type=Azure&service_uuid=cb658b491f3644a092dd223e894319be
-
         """
         return super(MergedPriceListItemViewSet, self).list(request, *args, **kwargs)
 
@@ -294,14 +295,18 @@ class MergedPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = models.DefaultPriceListItem.objects.all()
         service = self._find_service()
         if service:
+            # Filter items by resource type
+            resources = SupportedServices.get_related_models(service)['resources']
+            content_types = ContentType.objects.get_for_models(*resources).values()
+            queryset = queryset.filter(resource_content_type__in=content_types)
+
+            # Attach service-specific items
             price_list_items = models.PriceListItem.objects.filter(service=service)
             prefetch = Prefetch('pricelistitem_set', queryset=price_list_items, to_attr='service_item')
             queryset = queryset.prefetch_related(prefetch)
         return queryset
 
     def _find_service(self):
-        from nodeconductor.structure import SupportedServices
-
         service_type = self.request.query_params.get('service_type')
         service_uuid = self.request.query_params.get('service_uuid')
         if not service_type or not service_uuid:
@@ -314,6 +319,3 @@ class MergedPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
             return service_class.objects.get(uuid=service_uuid)
         except ObjectDoesNotExist:
             return None
-
-    def list(self, request, *args, **kwargs):
-        return super(MergedPriceListItemViewSet, self).list(request, *args, **kwargs)

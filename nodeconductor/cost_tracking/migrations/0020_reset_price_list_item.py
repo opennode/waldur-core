@@ -8,11 +8,26 @@ import uuidfield.fields
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('cost_tracking', '0019_priceestimate_limit'),
         ('contenttypes', '0002_remove_content_type_name'),
-        ('cost_tracking', '0020_delete_price_list_item'),
     ]
 
     operations = [
+        migrations.AlterUniqueTogether(
+            name='pricelistitem',
+            unique_together=set([]),
+        ),
+        migrations.RemoveField(
+            model_name='pricelistitem',
+            name='content_type',
+        ),
+        migrations.RemoveField(
+            model_name='pricelistitem',
+            name='resource_content_type',
+        ),
+        migrations.DeleteModel(
+            name='PriceListItem',
+        ),
         migrations.CreateModel(
             name='PriceListItem',
             fields=[

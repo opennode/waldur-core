@@ -4,6 +4,7 @@ from django.db import IntegrityError
 from django.utils import six
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.reverse import reverse
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.core.signals import pre_serializer_fields
@@ -132,12 +133,13 @@ class MergedPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
     value = serializers.SerializerMethodField()
     units = serializers.SerializerMethodField()
     is_manually_input = serializers.SerializerMethodField()
+    service_price_list_item_url = serializers.SerializerMethodField()
     metadata = JSONField()
 
     class Meta:
         model = models.DefaultPriceListItem
         fields = ('url', 'uuid', 'key', 'item_type', 'units', 'value',
-                  'resource_type', 'metadata', 'is_manually_input')
+                  'resource_type', 'metadata', 'is_manually_input', 'service_price_list_item_url')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -150,6 +152,13 @@ class MergedPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
 
     def get_is_manually_input(self, obj):
         return bool(getattr(obj, 'service_item', None))
+
+    def get_service_price_list_item_url(self, obj):
+        if not getattr(obj, 'service_item', None):
+            return
+        return reverse('pricelistitem-detail',
+                       kwargs={'uuid': obj.service_item[0].uuid.hex},
+                       request=self.context['request'])
 
 
 class PriceEstimateThresholdSerializer(serializers.Serializer):

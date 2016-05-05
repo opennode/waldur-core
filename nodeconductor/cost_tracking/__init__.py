@@ -108,10 +108,15 @@ class CostTrackingBackend(object):
 
     @classmethod
     def _get_price_map(cls, resource):
+        """
+        Return mapping from (item_type, key) to monthly_rate.
+        If service-specific price list item is unavailable, default
+        price list item is used instead for fetching monthly_rate.
+        """
         from nodeconductor.cost_tracking.models import DefaultPriceListItem, PriceListItem
         resource_content_type = ContentType.objects.get_for_model(resource)
 
-        price_list_items = models.PriceListItem.objects.filter(service=resource.service_project_link.service)
+        price_list_items = PriceListItem.objects.filter(service=resource.service_project_link.service)
         prefetch = Prefetch('pricelistitem_set', queryset=price_list_items, to_attr='service_item')
 
         price_items = DefaultPriceListItem.objects\
@@ -123,6 +128,7 @@ class CostTrackingBackend(object):
             key = (item.item_type, item.key)
             val = item.monthly_rate
             if item.service_item:
+                # service_item list either contains one element or empty
                 val = item.service_item[0].monthly_rate
             price_map[key] = Decimal(val)
         return price_map
