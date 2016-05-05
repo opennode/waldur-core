@@ -120,7 +120,7 @@ class Command(BaseCommand):
             visible_name=host_data['name'],
             name=host_data['host'],
             backend_id=host_id,
-            state=Host.States.ONLINE,
+            state=Host.States.OK,
             host_group_name=host_group_name,
             interface_parameters=host_interface_data,
         )
@@ -151,7 +151,7 @@ class Command(BaseCommand):
             sort_order=int(service_data['sortorder']),
             agreed_sla=float(service_data['goodsla']),
             backend_trigger_id=service_data['triggerid'],
-            state=ITService.States.ONLINE,
+            state=ITService.States.OK,
             backend_id=service_data['serviceid'],
             name=service_data['name'],
             trigger=trigger,
