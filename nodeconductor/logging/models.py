@@ -157,8 +157,11 @@ class PushHook(BaseHook):
         ANDROID = 2
         CHOICES = ((IOS, 'iOS'), (ANDROID, 'Android'))
 
+    class Meta:
+        unique_together = 'user', 'device_id', 'type'
+
     type = models.SmallIntegerField(choices=Type.CHOICES)
-    registration_token = models.CharField(max_length=255, blank=True)
+    device_id = models.CharField(max_length=255, null=True, unique=True)
 
     def process(self, event):
         """ Send events as push notification via Google Cloud Messaging.
@@ -180,7 +183,8 @@ class PushHook(BaseHook):
         conf = settings.NODECONDUCTOR.get('GOOGLE_API') or {}
         keys = conf.get(dict(self.Type.CHOICES)[self.type])
 
-        if not keys or not self.registration_token:
+        # XXX: experemental workflow, should be tested in NC-1063, NC-1064
+        if not keys or not self.device_id:
             return
 
         endpoint = 'https://gcm-http.googleapis.com/gcm/send'
@@ -189,7 +193,7 @@ class PushHook(BaseHook):
             'Authorization': 'key=%s' % keys['server_key'],
         }
         payload = {
-            'to': self.registration_token,
+            'to': self.device_id,
             'data': event,
         }
 

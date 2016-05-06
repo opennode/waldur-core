@@ -226,7 +226,8 @@ class SupportedServices(object):
                 'resources': {resource['name']: reverse(resource['list_view'], request=request)
                               for resource in service['resources'].values()},
                 'properties': {resource['name']: reverse(resource['list_view'], request=request)
-                               for resource in service.get('properties', {}).values()}
+                               for resource in service.get('properties', {}).values()},
+                'is_public_service': cls.is_public_service(service_model)
             }
         return data
 
@@ -362,8 +363,16 @@ class SupportedServices(object):
 
     @classmethod
     def get_model_key(cls, model):
+        return cls.get_app_config(model).service_name
+
+    @classmethod
+    def is_public_service(cls, model):
+        return getattr(cls.get_app_config(model), 'is_public_service', False)
+
+    @classmethod
+    def get_app_config(cls, model):
         from django.apps import apps
-        return apps.get_containing_app_config(model.__module__).service_name
+        return apps.get_containing_app_config(model.__module__)
 
     @classmethod
     def get_list_view_for_model(cls, model):

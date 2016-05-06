@@ -5,6 +5,7 @@ Release NEXT
 ------------
 
 - Added expiration time to authorization tokens.
+- Fix filtering events by scope_type and time range.
 
 Release 0.96.0
 --------------

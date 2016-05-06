@@ -35,6 +35,29 @@ Setup
   - image - OpenStack image with pre-installed Zabbbix
   - data volume, system volume - default size for Zabbix deployments
 
+3. Add Zabbix host template for host that will monitor OpenStack instance:
+
+  - order_number - 2
+  - name - {{ response.backend_id }} use OpenStack instance backend id as name
+  - service settings - shared Zabbix
+  - visible name - {{ response.name }}
+  - host group name - NodeConductor
+  - host scope - {{ response.url }}
+  - use project of the previous object - True
+  - templates - Template NodeCondcutor Instance, Template Paas App Zabbix
+
+4. Add Zabbix IT service template:
+
+  - order_number - 3
+  - name - Availability of {{ response.name }}
+  - scope - {{ response.url }}
+  - is_main - True
+  - service settings - shared Zabbix
+  - algorithm - problem if all children have problem
+  - use project of the previous object - True
+  - is main - True
+  - trigger - Zabbix is not available
+
 Supported operations by REST client
 +++++++++++++++++++++++++++++++++++
 
@@ -87,12 +110,12 @@ Setup
 
   nodeconductor initsecuritygroups zabbix
 
-2. Create template group:
+3. Create template group:
 
   - name, description, icon_url - support parameters for the application store 
   - tags - SaaS
 
-3. Add OpenStack instance provision template:
+4. Add OpenStack instance provision template:
 
   - tags - SaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:advanced
   - service settings - OpenStack settings where a VM needs to be provisioned
@@ -110,12 +133,12 @@ Setup
 
   {{ 8|random_password }} will generate a random password with a length of 8
 
-4. Add Zabbix service provision template:
+5. Add Zabbix service provision template:
 
   - order_number - 2 (should be provisioned after OpenStack VM)
   - name - {{ response.name }} (use VM name for service)
   - scope - {{ response.url }} (tell service that it is located on given VM)
-  - Use project of the previous object - True (connect service to VM project)
+  - use project of the previous object - True (connect service to VM project)
   - backend url - http://{{ response.access_url.0 }}/zabbix/api_jsonrpc.php (or https)
   - username - Admin
   - password - {{ response.user_data|bootstrap_opts:"a" }}
@@ -126,6 +149,30 @@ Setup
 
        {"engine": "django.db.backends.mysql", "name": "zabbix", "host": "%", "user": "nodeconductor", 
         "password": "{{ response.user_data|bootstrap_opts:'p' }}", "port": "3306"}
+
+6. Add Zabbix host template for host that will monitor OpenStack instance:
+
+  - order_number - 3
+  - name - {{ results.0.backend_id }} use OpenStack instance backend id as name
+  - service settings - shared Zabbix
+  - visible name - {{ results.0.name }}
+  - host group name - NodeConductor
+  - host scope - {{ results.0.url }}
+  - use project of the previous object - True
+  - templates - Template NodeCondcutor Instance, Template Paas App Zabbix
+
+7. Add Zabbix IT service template:
+
+  - order_number - 4
+  - name - Availability of {{ response.name }}
+  - scope - {{ response.url }}
+  - is_main - True
+  - service settings - shared Zabbix
+  - algorithm - problem if all children have problem
+  - use project of the previous object - True
+  - is main - True
+  - trigger - Zabbix is not available
+
 
 
 Requests from frontend

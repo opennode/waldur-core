@@ -1,15 +1,17 @@
 from __future__ import unicode_literals
 
-from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError
 from django.utils import six
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from rest_framework.reverse import reverse
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
-from nodeconductor.structure.serializers import ProjectSerializer, BaseResourceSerializer
+from nodeconductor.structure.serializers import ProjectSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -82,26 +84,31 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
         return data
 
 
-class PriceListItemSerializer(serializers.HyperlinkedModelSerializer):
+class PriceListItemSerializer(AugmentedSerializerMixin,
+                              serializers.HyperlinkedModelSerializer):
     service = GenericRelatedField(related_models=structure_models.Service.get_all_models())
+    default_price_list_item = serializers.HyperlinkedRelatedField(
+        view_name='defaultpricelistitem-detail',
+        lookup_field='uuid',
+        queryset=models.DefaultPriceListItem.objects.all().select_related('resource_content_type'))
 
     class Meta:
         model = models.PriceListItem
-        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'units', 'service')
+        fields = ('url', 'uuid', 'units', 'value', 'service', 'default_price_list_item')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'default_price_list_item': {'lookup_field': 'uuid'}
         }
+        protected_fields = ('service', 'default_price_list_item')
 
     def create(self, validated_data):
-        # XXX: This behavior is wrong for services with several resources, find a better approach
-        resource_class = SupportedServices.get_related_models(validated_data['service'])['resources'][0]
-        validated_data['resource_content_type'] = ContentType.objects.get_for_model(resource_class)
-        return super(PriceListItemSerializer, self).create(validated_data)
+        try:
+            return super(PriceListItemSerializer, self).create(validated_data)
+        except IntegrityError:
+            raise ValidationError('Price list item for service already exists')
 
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
-
-    resource_type = serializers.SerializerMethodField()
     value = serializers.FloatField()
     metadata = JSONField()
 
@@ -112,8 +119,37 @@ class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
 
-    def get_resource_type(self, obj):
-        return SupportedServices.get_name_for_model(obj.resource_content_type.model_class())
+
+class MergedPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
+    value = serializers.SerializerMethodField()
+    units = serializers.SerializerMethodField()
+    is_manually_input = serializers.SerializerMethodField()
+    service_price_list_item_url = serializers.SerializerMethodField()
+    metadata = JSONField()
+
+    class Meta:
+        model = models.DefaultPriceListItem
+        fields = ('url', 'uuid', 'key', 'item_type', 'units', 'value',
+                  'resource_type', 'metadata', 'is_manually_input', 'service_price_list_item_url')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def get_value(self, obj):
+        return getattr(obj, 'service_item', None) and float(obj.service_item[0].value) or float(obj.value)
+
+    def get_units(self, obj):
+        return getattr(obj, 'service_item', None) and obj.service_item[0].units or obj.units
+
+    def get_is_manually_input(self, obj):
+        return bool(getattr(obj, 'service_item', None))
+
+    def get_service_price_list_item_url(self, obj):
+        if not getattr(obj, 'service_item', None):
+            return
+        return reverse('pricelistitem-detail',
+                       kwargs={'uuid': obj.service_item[0].uuid.hex},
+                       request=self.context['request'])
 
 
 class PriceEstimateThresholdSerializer(serializers.Serializer):
