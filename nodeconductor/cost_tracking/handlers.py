@@ -87,7 +87,7 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
         spl_old = spl_model.objects.get(pk=instance._old_values['service_project_link'])
 
         old_family_scope = [spl_old] + spl_old.get_ancestors()
-        for estimate in models.PriceEstimate.filter(scope=instance, is_manually_input=False):
+        for estimate in models.PriceEstimate.objects.filter(scope=instance, is_manually_input=False):
             qs = models.PriceEstimate.objects.filter(
                 scope__in=old_family_scope, month=estimate.month, year=estimate.year)
             for parent_estimate in qs:
