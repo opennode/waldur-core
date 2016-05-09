@@ -45,6 +45,7 @@ NodeConductor plugins
 .. toctree::
    :maxdepth: 1
 
+   plugins/azure
    plugins/jira
    plugins/killbill
    plugins/openstack/intro
