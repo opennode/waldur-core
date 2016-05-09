@@ -1,3 +1,6 @@
+Import OpenStack instance
+-------------------------
+
 To import OpenStack instance - execute "importopenstackinstance" management command.
 
 .. code-block:: bash
