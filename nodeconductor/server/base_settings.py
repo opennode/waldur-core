@@ -178,12 +178,6 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
-    'recover-erred-services': {
-        'task': 'nodeconductor.structure.recover_erred_services',
-        'schedule': timedelta(minutes=45),
-        'args': (),
-    },
-
     'pull-service-statistics': {
         'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
         'schedule': timedelta(minutes=15),
