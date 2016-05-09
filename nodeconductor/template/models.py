@@ -248,7 +248,7 @@ class Template(core_models.UuidMixin, models.Model):
             message = 'Failed to get %s %s state.' % (ct.app_label, ct.model)
             details = 'GET request to URL %s failed. Response code - %s, content - %s' % (
                       response.request.url, response.status_code, response.content)
-            raise TemplateActionException(message, details, response.status_code)
+            raise TemplateActionException(message, details)
         return response
 
     def __str__(self):

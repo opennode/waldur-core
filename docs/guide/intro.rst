@@ -13,4 +13,6 @@
 .. include:: authentication.rst
 .. include:: pagination.rst
 .. include:: permission_management.rst
+.. include:: import-openstack-instance.rst
+.. include:: monitoring-as-a-service.rst
 .. include:: version.rst

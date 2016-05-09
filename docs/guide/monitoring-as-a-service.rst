@@ -1,5 +1,5 @@
 Monitoring-as-a-service (MaaS)
-==============================
+------------------------------
 
 NodeConductor can be used for implementing a MaaS
 solution for OpenStack VMs with Zabbix monitoring service.
@@ -17,10 +17,10 @@ monitoring server deployed in a tenant.
 Below we describe configuration approach for both of the cases.
 
 Zabbix appliance only
----------------------
++++++++++++++++++++++
 
 Setup
-+++++
+*****
 
 1. Create a template group:
 
@@ -35,31 +35,9 @@ Setup
   - image - OpenStack image with pre-installed Zabbbix
   - data volume, system volume - default size for Zabbix deployments
 
-3. Add Zabbix host template for host that will monitor OpenStack instance:
-
-  - order_number - 2
-  - name - {{ response.backend_id }} use OpenStack instance backend id as name
-  - service settings - shared Zabbix
-  - visible name - {{ response.name }}
-  - host group name - NodeConductor
-  - host scope - {{ response.url }}
-  - use project of the previous object - True
-  - templates - Template NodeCondcutor Instance, Template Paas App Zabbix
-
-4. Add Zabbix IT service template:
-
-  - order_number - 3
-  - name - Availability of {{ response.name }}
-  - scope - {{ response.url }}
-  - is_main - True
-  - service settings - shared Zabbix
-  - algorithm - problem if all children have problem
-  - use project of the previous object - True
-  - is main - True
-  - trigger - Zabbix is not available
 
 Supported operations by REST client
-+++++++++++++++++++++++++++++++++++
+***********************************
 
 Zabbix appliance is a basic OpenStack image that supports the following provisioning
 inputs:
@@ -79,10 +57,10 @@ User data can be used to setup Zabbix admin user password:
 
 
 Advanced monitoring
--------------------
++++++++++++++++++++
 
 Provisioning flow
-+++++++++++++++++
+*****************
 
 NodeConductor requires a separate template group for advanced monitoring that
 contains 2 templates:
@@ -93,7 +71,7 @@ contains 2 templates:
 
 
 Setup
-+++++
+*****
 
 1. Add settings for SMS sending to NodeConductor settings:
 
@@ -150,33 +128,9 @@ Setup
        {"engine": "django.db.backends.mysql", "name": "zabbix", "host": "%", "user": "nodeconductor", 
         "password": "{{ response.user_data|bootstrap_opts:'p' }}", "port": "3306"}
 
-6. Add Zabbix host template for host that will monitor OpenStack instance:
-
-  - order_number - 3
-  - name - {{ results.0.backend_id }} use OpenStack instance backend id as name
-  - service settings - shared Zabbix
-  - visible name - {{ results.0.name }}
-  - host group name - NodeConductor
-  - host scope - {{ results.0.url }}
-  - use project of the previous object - True
-  - templates - Template NodeCondcutor Instance, Template Paas App Zabbix
-
-7. Add Zabbix IT service template:
-
-  - order_number - 4
-  - name - Availability of {{ response.name }}
-  - scope - {{ response.url }}
-  - is_main - True
-  - service settings - shared Zabbix
-  - algorithm - problem if all children have problem
-  - use project of the previous object - True
-  - is main - True
-  - trigger - Zabbix is not available
-
-
 
 Requests from frontend
-++++++++++++++++++++++
+**********************
 
 1. To create instance with advance monitoring issue POST request to template_group provision endpoint with project, name
    and security group named "zabbix".
