@@ -39,7 +39,7 @@ class CustomMenu(Menu):
     """
 
     IAAS_CLOUDS = (
-        'nodeconductor_plus.azure.*',
+        'nodeconductor_azure.*',
         'nodeconductor_plus.aws.*',
         'nodeconductor_plus.digitalocean.*',
         'nodeconductor.openstack.*'
