@@ -1,4 +1,4 @@
-# TODO: move this signal to g-cloud assembly
+# TODO: move this handler to itacloud assembly
 def create_host_for_instance(sender, instance, name, source, target, **kwargs):
     """ Add Zabbix host to OpenStack instance on creation """
     # To avoid cyclic dependencies issues - place imports here

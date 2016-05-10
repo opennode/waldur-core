@@ -1,7 +1,12 @@
 # TODO: move this module code to GCloud assembly
 """ GCloud-specific operations that register Openstack instance in Zabbix """
+import logging
+
 from nodeconductor.structure import models as structure_models
 from nodeconductor.template import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class ZabbixIntegrationError(Exception):
@@ -38,7 +43,7 @@ def _get_instance_templates(instance):
     return templates
 
 
-def _get_instance_trigger(instance):
+def _get_instance_trigger(instance, host):
     zabbix_settings = _get_settings()
     name = settings.DEFAULT_SLA_TRIGGER_NAME
     for tag in instance.tags.all():
@@ -46,7 +51,11 @@ def _get_instance_trigger(instance):
         if tag_prefix in settings.SLA_TRIGGER_NAMES:
             name = settings.SLA_TRIGGER_NAMES[tag_prefix]
             break
-    return models.Trigger.objects.get(name=name, settings=zabbix_settings)
+    try:
+        return models.Trigger.objects.get(name=name, settings=zabbix_settings, template__in=host.templates.all())
+    except models.Trigger.DoesNotExist:
+        logger.error('Cannot find trigger with name `%s` in templates: %s',
+                     name, ', '.join([t.name for t in host.templates.all()]))
 
 
 def register_instance(instance):
@@ -71,7 +80,7 @@ def register_instance(instance):
     host.templates.add(*templates)
     executors.HostCreateExecutor.execute(host, async=False)
     # create Zabbix IT service based on GCloud settings
-    trigger = _get_instance_trigger(instance)
+    trigger = _get_instance_trigger(instance, host)
     it_service = models.ITService.objects.create(
         name='Availability of %s' % host.name,
         host=host,
