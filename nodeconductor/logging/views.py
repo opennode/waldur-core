@@ -7,7 +7,7 @@ from rest_framework import filters as rf_filters
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.views import BaseSummaryView
-from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log
+from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log, utils
 
 
 class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -125,6 +125,11 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         return response.Response(
             [{'point': int(ac['end']), 'object': {'count': ac['count']}} for ac in aggregated_count],
             status=status.HTTP_200_OK)
+
+    @decorators.list_route()
+    def scope_types(self, request, *args, **kwargs):
+        """ Returns a list of scope types acceptable by events filter. """
+        return response.Response([str(m._meta) for m in utils.get_loggable_models()])
 
 
 class AlertViewSet(mixins.CreateModelMixin,

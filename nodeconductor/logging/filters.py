@@ -33,7 +33,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
         - ?search=<string> - text for FTS. FTS fields: 'message', 'customer_abbreviation', 'importance'
           'project_group_name', 'cloud_account_name', 'project_name', 'user_full_name', 'user_native_name'
         - ?scope=<URL> - url of object that is connected to event
-        - ?scope_type=<string> - name of scope type of object that is connected to event (Ex.: project, customer...)
+        - ?scope_type=<string> - name of scope type of object that is connected to event
         - ?exclude_features=<feature> (can be list) - exclude event from output if
           it's type corresponds to one of listed features
         - ?user_username=<string> - user's username
@@ -68,7 +68,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
                 # https://github.com/elastic/kibana/issues/364
                 must_terms[_convert(key) + '.raw'] = [val]
         elif 'scope_type' in request.query_params:
-            choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
+            choices = {str(m._meta): m for m in utils.get_loggable_models()}
             try:
                 scope_type = choices[request.query_params['scope_type']]
             except KeyError:
