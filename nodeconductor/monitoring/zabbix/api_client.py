@@ -244,7 +244,7 @@ class ZabbixApiClient(object):
 
     def get_or_create_hostgroup(self, api, project):
         group_name = self.get_hostgroup_name(project)
-        if not api.hostgroup.exists(name=group_name):
+        if not api.hostgroup.get(filter={'name': group_name}):
             groups = api.hostgroup.create({'name': group_name})
             return {'groupid': groups['groupids'][0]}, True
         else:
@@ -270,7 +270,7 @@ class ZabbixApiClient(object):
 
         visible_name = self.get_host_visible_name(instance) if visible_name is None else visible_name
 
-        if not api.host.exists(host=name):
+        if not api.host.get(filter={'host': name}):
             templates = [{"templateid": templateid}]
             if application_templateid:
                 templates.append({"templateid": application_templateid})
