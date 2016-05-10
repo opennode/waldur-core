@@ -7,6 +7,7 @@ Release NEXT
 - Added expiration time to authorization tokens.
 - Fix filtering events by scope_type and time range.
 - Implemented custom provider pricing configuration.
+- Add filtering of resources by service counters by user visibility.
 
 Release 0.96.0
 --------------
