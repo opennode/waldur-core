@@ -7,7 +7,7 @@ from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
 from django.utils import six
-from django.utils.lru_cache import lru_cache
+from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
@@ -1086,19 +1086,21 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return attrs
 
     def get_resources_count(self, service):
-        return self.get_resources_count_map()[service.pk]
+        return self.get_resources_count_map[service.pk]
 
-    @lru_cache(maxsize=1)
+    @cached_property
     def get_resources_count_map(self):
         resource_models = SupportedServices.get_service_resources(self.Meta.model)
         counts = defaultdict(lambda: 0)
+        user = self.context['request'].user
         for model in resource_models:
             service_path = model.Permissions.service_path
             if isinstance(self.instance, list):
                 query = {service_path + '__in': self.instance}
             else:
                 query = {service_path: self.instance}
-            rows = model.objects.filter(**query).values(service_path)\
+            queryset = filter_queryset_for_user(model.objects.all(), user)
+            rows = queryset.filter(**query).values(service_path)\
                 .annotate(count=django_models.Count('id'))
             for row in rows:
                 service_id = row[service_path]
