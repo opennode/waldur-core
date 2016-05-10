@@ -25,28 +25,40 @@ Correspondence between IaaS endpoints and OpenStack endpoints:
 .. _/api/openstack-backup-schedules/: backup.html#backup-schedules
 
 
-Template groups configuration
-+++++++++++++++++++++++++++++
+Data migration
+++++++++++++++
 
-From version 0.96.0 NodeConductor creates Zabbix Host and ITService for each created instance automatically.
-To prevent conflicts with template groups creation we need to make sure that there is no templates that
-creates Host or ITService.
+1. Run migration command with "dry-run" option to test data migration:
 
-Execute next code in shell to delete all such templates or delete them manually:
+   .. code-block:: bash
 
-.. code-block:: python
+       nodeconductor iaas2openstack --dry-run
 
-    from nodeconductor_zabbix.models import Host, ITService
-    from nodeconductor.template.models import Template
+2. Run migration command without "dry-run" option:
 
-    for template in Template.objects.all():
-        if template.object_content_type.model_class() in (Host, ITService):
-            print template
-            template.delete()
+   .. code-block:: bash
+
+       nodeconductor iaas2openstack
+
+3. From version 0.96.0 NodeConductor creates Zabbix Host and ITService for each created instance automatically.
+   To prevent conflicts with template groups creation we need to make sure that there is no templates that
+   creates Host or ITService.
+
+   Execute next code in shell to delete all such templates or delete them manually:
+
+   .. code-block:: python
+
+       from nodeconductor_zabbix.models import Host, ITService
+       from nodeconductor.template.models import Template
+
+       for template in Template.objects.all():
+           if template.object_content_type.model_class() in (Host, ITService):
+               print template
+               template.delete()
 
 
-To enable Hosts autocreation - add next line to settings:
+4. To enable Hosts autocreation - add next line to settings:
 
-.. code-block:: python
+   .. code-block:: python
 
-    settings.NODECONDUCTOR['IS_ITACLOUD'] = True.
+        settings.NODECONDUCTOR['IS_ITACLOUD'] = True.
