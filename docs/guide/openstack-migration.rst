@@ -28,19 +28,21 @@ Correspondence between IaaS endpoints and OpenStack endpoints:
 Data migration
 ++++++++++++++
 
-1. Run migration command with "dry-run" option to test data migration:
+1. Create shared service settings for new OpenStack.
+
+2. Run migration command with "dry-run" option to test data migration:
 
    .. code-block:: bash
 
        nodeconductor iaas2openstack --dry-run
 
-2. Run migration command without "dry-run" option:
+3. Run migration command without "dry-run" option:
 
    .. code-block:: bash
 
        nodeconductor iaas2openstack
 
-3. From version 0.96.0 NodeConductor creates Zabbix Host and ITService for each created instance automatically.
+4. From version 0.96.0 NodeConductor creates Zabbix Host and ITService for each created instance automatically.
    To prevent conflicts with template groups creation we need to make sure that there is no templates that
    creates Host or ITService.
 
@@ -57,7 +59,7 @@ Data migration
                template.delete()
 
 
-4. To enable Hosts autocreation - add next line to settings:
+5. To enable Hosts autocreation - add next line to settings:
 
    .. code-block:: python
 
