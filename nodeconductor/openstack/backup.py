@@ -160,6 +160,11 @@ class BackupBackend(object):
         if tags and isinstance(tags, list):
             instance.tags.add(*tags)
 
+        # restore user_data
+        user_data = self.backup.metadata.get('user_data')
+        if user_data:
+            instance.user_data = user_data
+
         # create a copy of the volumes to be used by a new VM
         try:
             cloned_volumes_ids = backend.promote_snapshots_to_volumes(

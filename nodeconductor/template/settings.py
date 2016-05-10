@@ -26,7 +26,7 @@ SLA_TRIGGER_NAMES = {
     'license-application:wordpress': 'Wordpress is not available',
     'license-application:postgresql': 'PostgreSQL is not available',
     'license-application:sugar': 'SugarCRM is not available',
-    'license-application:zabbix': 'Zabbix is not available',
+    'license-application:zabbix': 'Zabbix service status',
 }
 
 # Group for all hosts

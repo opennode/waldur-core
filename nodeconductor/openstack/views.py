@@ -838,7 +838,8 @@ class BackupViewSet(mixins.CreateModelMixin,
     @decorators.detail_route(methods=['post'])
     def restore(self, request, uuid):
         """
-        Restore a specified backup. Restoring a backup can take user input.
+        Restore a specified backup.
+        Restoring a backup can take user input that should contain fields `flavor` and `name`.
         Restoration is available only for backups in state ``READY``. If backup is not ready,
         status code of the response will be **409 CONFLICT**.
         """
