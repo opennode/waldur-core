@@ -83,15 +83,15 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         if NodeConductorExtension.is_installed('nodeconductor_killbill'):
             from nodeconductor_killbill.backend import KillBillBackend, KillBillError
 
-            erred_resources = []
+            erred_resources = {}
             subscribed_resources = []
             for model in structure_models.PaidResource.get_all_models():
                 for resource in model.objects.exclude(state=model.States.ERRED):
                     try:
                         backend = KillBillBackend(resource.customer)
                         backend.subscribe(resource)
-                    except KillBillError:
-                        erred_resources.append(resource)
+                    except KillBillError as e:
+                        erred_resources[resource] = str(e)
                     else:
                         resource.last_usage_update_time = None
                         resource.save(update_fields=['last_usage_update_time'])
@@ -109,7 +109,8 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
             if erred_resources:
                 message = gettext('Failed to subscribe resources: %(erred_resources)s')
-                message = message % {'erred_resources': ', '.join([i.name for i in erred_resources])}
+                erred_resources_message = ', '.join(['%s (error: %s)' % (r.name, e) for r, e in erred_resources.items()])
+                message = message % {'erred_resources': erred_resources_message}
                 self.message_user(request, message, level=messages.ERROR)
 
         else:
