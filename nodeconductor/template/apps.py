@@ -10,7 +10,7 @@ class TemplateConfig(AppConfig):
 
     def ready(self):
         if self.is_itacloud:
-            # TODO: this should be moved to GCloud assembly application
+            # TODO: this should be moved to itacloud assembly application
             from nodeconductor.openstack.models import Instance
             from nodeconductor.template import handlers
 
