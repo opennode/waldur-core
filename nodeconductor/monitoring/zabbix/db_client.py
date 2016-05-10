@@ -371,7 +371,7 @@ class ZabbixDBClient(object):
             preceding_values = [
                 value for time, value in actual_values
                 if time < segment_end_timestamp
-                ]
+            ]
             try:
                 value = preceding_values[-1]
             except IndexError:
@@ -394,7 +394,7 @@ class ZabbixDBClient(object):
         name = zabbix_api_client.get_host_name(instance)
         api = zabbix_api_client.get_zabbix_api()
 
-        if api.host.exists(host=name):
+        if api.host.get(filter={'host': name}):
             hostid = api.host.get(filter={'host': name})[0]['hostid']
             # get installation state from DB:
             query = r"""
@@ -414,7 +414,7 @@ class ZabbixDBClient(object):
             parameters = {
                 'key_': zabbix_api_client._settings.get('application-status-item', 'application.status'),
                 'hostid': hostid,
-                'time': datetime_to_timestamp(timezone.now()-timedelta(hours=1)),
+                'time': datetime_to_timestamp(timezone.now() - timedelta(hours=1)),
             }
             try:
                 value = self.execute_query(query, parameters)[0][0]
