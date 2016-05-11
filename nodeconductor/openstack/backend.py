@@ -903,7 +903,7 @@ class OpenStackBackend(ServiceBackend):
 
             try:
                 d = dateparse.parse_datetime(instance.to_dict()['OS-SRV-USG:launched_at'])
-            except (KeyError, ValueError):
+            except (KeyError, ValueError, TypeError):
                 launch_time = None
             else:
                 # At the moment OpenStack does not provide any timezone info,
@@ -930,7 +930,7 @@ class OpenStackBackend(ServiceBackend):
                 internal_ips=ips.get('internal', ''),
                 external_ips=ips.get('external', ''),
 
-                security_groups=[sg['name'] for sg in instance.security_groups],
+                security_groups=[sg['name'] for sg in getattr(instance, 'security_groups', [])],
             )
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
