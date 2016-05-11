@@ -465,6 +465,7 @@ class Command(BaseCommand):
                     state=instance.state,
                     name=instance.name,
                     start_time=instance.start_time,
+                    created=instance.created,
                 )
 
                 # XXX: duplicate UUIDs due to killbill
