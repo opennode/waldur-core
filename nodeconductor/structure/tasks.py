@@ -168,7 +168,7 @@ class ConnectSharedSettingsTask(Task):
     def execute(self, service_settings):
         logger.debug('About to connect service settings "%s" to all available customers' % service_settings.name)
         if not service_settings.shared:
-            raise ValueError('It is impossible to connect not shared settings')
+            raise ValueError('It is impossible to connect non-shared settings')
         service_model = SupportedServices.get_service_models()[service_settings.type]['service']
 
         with transaction.atomic():
