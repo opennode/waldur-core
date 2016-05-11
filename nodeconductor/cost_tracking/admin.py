@@ -85,30 +85,30 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
             erred_resources = {}
             subscribed_resources = []
-            exist_resources = []
+            existing_resources = []
             for model in structure_models.PaidResource.get_all_models():
                 for resource in model.objects.exclude(state=model.States.ERRED):
                     try:
                         backend = KillBillBackend(resource.customer)
-                        is_newly_subscirbed = backend.subscribe(resource)
+                        is_newly_subscribed = backend.subscribe(resource)
                     except KillBillError as e:
                         erred_resources[resource] = str(e)
                     else:
                         resource.last_usage_update_time = None
                         resource.save(update_fields=['last_usage_update_time'])
-                        if is_newly_subscirbed:
+                        if is_newly_subscribed:
                             subscribed_resources.append(resource)
                         else:
-                            exist_resources.append(resource)
+                            existing_resources.append(resource)
 
             if subscribed_resources:
                 message = gettext('Successfully subscribed %s resources: %s')
                 message = message % (len(subscribed_resources), ', '.join(r.name for r in subscribed_resources))
                 self.message_user(request, message)
 
-            if exist_resources:
+            if existing_resources:
                 message = gettext('%s resources were already subscribed: %s')
-                message = message % (len(exist_resources), ', '.join(r.name for r in exist_resources))
+                message = message % (len(existing_resources), ', '.join(r.name for r in existing_resources))
                 self.message_user(request, message)
 
             if erred_resources:
