@@ -386,7 +386,7 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
 
 class ResourceAdmin(admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'backend_id', 'state', 'get_service', 'get_project', 'error_message')
+    list_display = ('uuid', 'name', 'backend_id', 'state', 'get_service', 'get_project', 'error_message')
     list_filter = ('state',)
 
     def get_service(self, obj):
