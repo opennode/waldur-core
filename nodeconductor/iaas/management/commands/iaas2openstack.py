@@ -133,8 +133,11 @@ class Command(BaseCommand):
             self.error(
                 '  IT service for instance %s (UUID: %s) does not exist.' % (iaas_instance.name, iaas_instance.uuid))
             return
-
-        trigger_data = api.trigger.get(filter={'triggerid': service_data['triggerid']}, output='extend')[0]
+        try:
+            trigger_data = api.trigger.get(filter={'triggerid': service_data['triggerid']}, output='extend')[0]
+        except IndexError:
+            self.error('Trigger with id %s does not exist. IT service data: %s' % (service_data['triggerid'], service_data))
+            raise
         try:
             trigger = Trigger.objects.get(name=trigger_data['description'], backend_id=trigger_data['templateid'])
         except Trigger.DoesNotExist:
@@ -328,7 +331,7 @@ class Command(BaseCommand):
             try:
                 self.add_user_to_tenant(clouds[cpm.cloud_id].settings.username, cpm)
             except keystone_exceptions.NotFound:
-                self.stdout.write('  CPM tenant (UUID: %s) does not exist at backend. CPM will be ignored' % cpm.tenant_id)
+                self.warn('CPM tenant (UUID: %s) does not exist at backend. CPM %s will be ignored' % (cpm.tenant_id, cpm))
                 continue
             try:
                 spl = op_models.OpenStackServiceProjectLink.objects.get(
@@ -358,6 +361,10 @@ class Command(BaseCommand):
                                     ' conflict should be handled manually.' % (spl.service, spl.project))
                 else:
                     # TODO: create tenant for SPL here.
+                    if spl.tenant is None:
+                        tenant = spl.create_tenant()
+                    else:
+                        tenant = spl.tenant
                     if spl.tenant_id != cpm.tenant_id:
                         tenant.backend_id = cpm.tenant_id
                         tenant.availability_zone = cpm.availability_zone
@@ -376,7 +383,7 @@ class Command(BaseCommand):
                     service_project_link=cpms[fip.cloud_project_membership_id],
                     backend_id=fip.backend_id)
             except ObjectDoesNotExist:
-                self.stdout.write('[+] %s' % fip)
+                self.stdout.write('[+] %s, status: %s' % (fip.address, fip.status))
                 op_models.FloatingIP.objects.create(
                     service_project_link=cpms[fip.cloud_project_membership_id],
                     backend_id=fip.backend_id,
@@ -394,7 +401,7 @@ class Command(BaseCommand):
                     service_project_link=cpms[sgp.cloud_project_membership_id],
                     backend_id=sgp.backend_id)
             except KeyError:
-                self.warn('DB inconsistency: missed CPM ID %s' % sgp.cloud_project_membership_id)
+                self.warn('Security group %s has link to CPM with id %s that does not exist' % (sgp, sgp.cloud_project_membership_id))
             except ObjectDoesNotExist:
                 self.stdout.write('[+] %s' % sgp)
                 sgroups[sgp.id] = op_models.SecurityGroup.objects.create(
@@ -561,7 +568,7 @@ class Command(BaseCommand):
                 continue
 
             main_template = Template.objects.create(
-                resource_content_type=ContentType.objects.get_for_model(op_models.Instance),
+                object_content_type=ContentType.objects.get_for_model(op_models.Instance),
                 service_settings=op_settings,
                 options={
                     'service_settings': self.get_obj_url('servicesettings-detail', op_settings),

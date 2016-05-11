@@ -28,7 +28,7 @@ Correspondence between IaaS endpoints and OpenStack endpoints:
 Data migration
 ++++++++++++++
 
-1. Create shared service settings for new OpenStack.
+1. Create shared service settings for new OpenStack and Zabbix.
 
 2. Run migration command with "dry-run" option to test data migration:
 
