@@ -464,6 +464,7 @@ class Command(BaseCommand):
                     ram=instance.ram,
                     state=instance.state,
                     name=instance.name,
+                    start_time=instance.start_time,
                 )
 
                 # XXX: duplicate UUIDs due to killbill
@@ -573,6 +574,7 @@ class Command(BaseCommand):
                 options={
                     'service_settings': self.get_obj_url('servicesettings-detail', op_settings),
                     'image': self.get_obj_url('openstack-image-detail', image),
+                    'skip_external_ip_assignment': True,
                 },
                 group=group,
                 order_number=1)

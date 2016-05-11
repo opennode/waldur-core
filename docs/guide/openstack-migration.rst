@@ -28,23 +28,25 @@ Correspondence between IaaS endpoints and OpenStack endpoints:
 Data migration
 ++++++++++++++
 
-0. Create database backup.
+0. Create database backup. Disable event logger. Make sure that NC does not create new events.
 
 1. Create shared service settings for new OpenStack and Zabbix.
 
-2. Run migration command with "dry-run" option to test data migration:
+2. Make sure that all iaas templates has field "os".
+
+3. Run migration command with "dry-run" option to test data migration:
 
    .. code-block:: bash
 
        nodeconductor iaas2openstack --dry-run
 
-3. Run migration command without "dry-run" option:
+4. Run migration command without "dry-run" option:
 
    .. code-block:: bash
 
        nodeconductor iaas2openstack
 
-4. From version 0.96.0 NodeConductor creates Zabbix Host and ITService for each created instance automatically.
+5. From version 0.96.0 NodeConductor creates Zabbix Host and ITService for each created instance automatically.
    To prevent conflicts with template groups creation we need to make sure that there is no templates that
    creates Host or ITService.
 
@@ -60,15 +62,15 @@ Data migration
                print template
                template.delete()
 
-5. To enable Hosts autocreation - add next line to settings:
+6. To enable Hosts autocreation - add next line to settings:
 
    .. code-block:: python
 
         settings.NODECONDUCTOR['IS_ITACLOUD'] = True.
 
-6. Add KillBill settings to nodeconductor_plus.py
+7. Add KillBill settings to nodeconductor_plus.py
 
-7. Check is there any instances without tags:
+8. Check is there any instances without tags:
 
    .. code-block:: python
 
@@ -77,4 +79,22 @@ Data migration
        for model in ResourceMixin.get_all_models():
            print model.__name__, '\n', [i.name for i in model.objects.all() if not i.tags.all()]
 
-8. Make sure that template groups tags are right.
+9. Make sure that template groups tags are right.
+
+10. Make sure that all openstack related template groups have skip_external_ip_assignment == True (except advance monitoring).
+
+11. Make sure that all openstack related template groups have corresponding image. 
+    Portal expects that each OpenStack template has field "image" not null.
+
+12. Delete iaas instances, backups and backup schedules:
+
+    .. code-block:: python
+
+        from nodeconductor.openstack.models import Instance
+        from nodeconductor.backup.models import Backup, BackupSchedule
+
+        Backup.objects.all().delete()
+        BackupSchedule.objects.all().delete()
+        Instance.objects.all().delete()
+
+13. Enable event_logger.
