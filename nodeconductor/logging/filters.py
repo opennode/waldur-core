@@ -168,6 +168,9 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
         if 'opened' in request.query_params:
             queryset = queryset.filter(closed__isnull=True)
 
+        if 'closed' in request.query_params:
+            queryset = queryset.filter(closed__isnull=False)
+
         if 'severity' in request.query_params:
             severity_codes = {v: k for k, v in models.Alert.SeverityChoices.CHOICES}
             severities = [

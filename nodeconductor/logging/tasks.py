@@ -40,7 +40,7 @@ def close_alerts_without_scope():
 def alerts_cleanup():
     timespan = settings.NODECONDUCTOR.get('CLOSED_ALERTS_LIFETIME')
     if timespan:
-        Alert.objects.filter(is_closed=True, closed__lte=timezone.now() - timespan).delete()
+        Alert.objects.filter(closed__lte=timezone.now() - timespan).delete()
 
 
 @shared_task(name='nodeconductor.logging.check_threshold')
