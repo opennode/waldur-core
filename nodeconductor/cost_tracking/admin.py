@@ -85,26 +85,30 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
             erred_resources = {}
             subscribed_resources = []
+            exist_resources = []
             for model in structure_models.PaidResource.get_all_models():
                 for resource in model.objects.exclude(state=model.States.ERRED):
                     try:
                         backend = KillBillBackend(resource.customer)
-                        backend.subscribe(resource)
+                        is_newly_subscirbed = backend.subscribe(resource)
                     except KillBillError as e:
                         erred_resources[resource] = str(e)
                     else:
                         resource.last_usage_update_time = None
                         resource.save(update_fields=['last_usage_update_time'])
-                        subscribed_resources.append(resource)
+                        if is_newly_subscirbed:
+                            subscribed_resources.append(resource)
+                        else:
+                            exist_resources.append(resource)
 
             if subscribed_resources:
-                subscribed_resources_count = len(subscribed_resources)
-                message = ungettext(
-                    'One resource subscribed',
-                    '%(subscribed_resources_count)d resources subscribed',
-                    subscribed_resources_count
-                )
-                message = message % {'subscribed_resources_count': subscribed_resources_count}
+                message = gettext('Successfully subscribed %s resources: %s')
+                message = message % (len(subscribed_resources), ', '.join(r.name for r in subscribed_resources))
+                self.message_user(request, message)
+
+            if exist_resources:
+                message = gettext('%s resources were already subscribed: %s')
+                message = message % (len(exist_resources), ', '.join(r.name for r in exist_resources))
                 self.message_user(request, message)
 
             if erred_resources:
@@ -122,23 +126,24 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
         created_items = []
         for backend in CostTrackingRegister.get_registered_backends():
             try:
-                items = backend.get_default_price_list_items()
+                default_items = backend.get_default_price_list_items()
             except NotImplementedError:
                 continue
             with transaction.atomic():
-                for item in items:
+                for default_item in default_items:
                     item, created = models.DefaultPriceListItem.objects.update_or_create(
-                        resource_content_type=item.resource_content_type,
-                        item_type=item.item_type,
-                        key=item.key,
+                        resource_content_type=default_item.resource_content_type,
+                        item_type=default_item.item_type,
+                        key=default_item.key,
                         defaults={
-                            'value': item.value,
-                            'name': '{}: {}'.format(item.item_type, item.key),
-                            'metadata': item.metadata,
-                            'units': item.units
+                            'name': '{}: {}'.format(default_item.item_type, default_item.key),
+                            'metadata': default_item.metadata,
+                            'units': default_item.units
                         }
                     )
                     if created:
+                        item.value = default_item.value
+                        item.save()
                         created_items.append(item)
         if created_items:
             message = ungettext(
