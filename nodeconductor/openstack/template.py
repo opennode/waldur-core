@@ -35,6 +35,7 @@ class InstanceProvisionTemplateForm(ResourceTemplateForm):
         required=False,
         widget=FilteredSelectMultiple(verbose_name='Instance security groups', is_stacked=False))
     user_data = forms.CharField(label='User data', widget=AdminTextareaWidget(), required=False)
+    skip_external_ip_assignment = forms.BooleanField(required=False)
 
     class Meta(ResourceTemplateForm.Meta):
         fields = ResourceTemplateForm.Meta.fields + ('service', 'project', 'flavor', 'image', 'data_volume_size',
@@ -75,6 +76,7 @@ class InstanceProvisionTemplateForm(ResourceTemplateForm):
             required=False,
         )
         user_data = serializers.CharField(required=False)
+        skip_external_ip_assignment = serializers.BooleanField(required=False)
 
     @classmethod
     def get_serializer_class(cls):

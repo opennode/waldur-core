@@ -28,6 +28,8 @@ Correspondence between IaaS endpoints and OpenStack endpoints:
 Data migration
 ++++++++++++++
 
+0. Create database backup.
+
 1. Create shared service settings for new OpenStack and Zabbix.
 
 2. Run migration command with "dry-run" option to test data migration:
@@ -58,9 +60,21 @@ Data migration
                print template
                template.delete()
 
-
 5. To enable Hosts autocreation - add next line to settings:
 
    .. code-block:: python
 
         settings.NODECONDUCTOR['IS_ITACLOUD'] = True.
+
+6. Add KillBill settings to nodeconductor_plus.py
+
+7. Check is there any instances without tags:
+
+   .. code-block:: python
+
+       from nodeconductor.structure.models import ResourceMixin
+
+       for model in ResourceMixin.get_all_models():
+           print model.__name__, '\n', [i.name for i in model.objects.all() if not i.tags.all()]
+
+8. Make sure that template groups tags are right.

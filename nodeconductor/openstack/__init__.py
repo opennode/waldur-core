@@ -53,12 +53,14 @@ class ApplicationTypes:
     POSTGRESQL = 'postgresql'
     ZIMBRA = 'zimbra'
     ZABBIX = 'zabbix'
+    SUGAR = 'sugar'
 
     CHOICES = (
         (WORDPRESS, 'WordPress'),
         (POSTGRESQL, 'PostgreSQL'),
         (ZIMBRA, 'Zimbra'),
         (ZABBIX, 'Zabbix'),
+        (SUGAR, 'Sugar'),
     )
 
 
