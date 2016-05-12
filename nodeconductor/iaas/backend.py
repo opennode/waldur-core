@@ -5,7 +5,6 @@ import time
 import uuid
 import logging
 import datetime
-import calendar
 import pkg_resources
 import dateutil.parser
 
@@ -35,12 +34,11 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import exceptions as nova_exceptions
 from novaclient.v1_1 import client as nova_client
 
-from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.core.tasks import send_task
 from nodeconductor.iaas.log import event_logger
 from nodeconductor.iaas import models
-from nodeconductor.structure import ServiceBackend, ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import ServiceBackend, ServiceBackendNotImplemented
 
 logger = logging.getLogger(__name__)
 
@@ -338,34 +336,6 @@ class OpenStackBackend(ServiceBackend, OpenStackClient):
 
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
-
-    def get_monthly_cost_estimate(self, instance):
-        if not NodeConductorExtension.is_installed('nodeconductor_killbill'):
-            raise ServiceBackendNotImplemented
-
-        from nodeconductor_killbill.backend import KillBillBackend, KillBillError
-        from nodeconductor.openstack.models import Instance as opInstance
-
-        # XXX: avoid overcharge for resources migrated from IaaS to OpenStack
-        if opInstance.objects.filter(uuid=instance.uuid).exists():
-            raise ServiceBackendNotImplemented
-
-        try:
-            backend = KillBillBackend(instance.customer)
-            invoice = backend.get_invoice_estimate(instance)
-        except KillBillError as e:
-            logger.error("Failed to get cost estimate for instance %s: %s", instance, e)
-            six.reraise(ServiceBackendError, e)
-
-        today = datetime.date.today()
-        if not invoice['start_date'] <= today <= invoice['end_date']:
-            raise ServiceBackendError("Wrong invoice estimate for instance %s: %s" % (instance, invoice))
-
-        # prorata monthly cost estimate based on daily usage cost
-        daily_cost = invoice['amount'] / ((today - invoice['start_date']).days + 1)
-        monthly_cost = daily_cost * calendar.monthrange(today.year, today.month)[1]
-
-        return monthly_cost
 
     # CloudAccount related methods
     def push_cloud_account(self, cloud_account):
@@ -1851,8 +1821,7 @@ class OpenStackBackend(ServiceBackend, OpenStackClient):
                 logger.warning('Tenant with id %s does not exist', membership.tenant_id)
                 six.reraise(CloudBackendError, e)
         else:
-            logger.warning('Cannot update tenant name for cloud project membership %s without tenant ID',
-                        membership)
+            logger.warning('Cannot update tenant name for cloud project membership %s without tenant ID', membership)
 
     # Helper methods
     def get_floating_ips(self, tenant_id, neutron):
