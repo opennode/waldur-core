@@ -1354,18 +1354,20 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
         fields['project'].queryset = self.context['service'].projects.all()
         return fields
 
-    def run_validation(self, data):
-        validated_data = super(BaseResourceImportSerializer, self).run_validation(data)
-
-        if self.Meta.model.objects.filter(backend_id=validated_data['backend_id']).exists():
+    def validate(self, attrs):
+        if self.Meta.model.objects.filter(backend_id=attrs['backend_id']).exists():
             raise serializers.ValidationError(
                 {'backend_id': "This resource is already linked to NodeConductor"})
 
         spl_class = SupportedServices.get_related_models(self.Meta.model)['service_project_link']
-        spl = spl_class.objects.get(service=self.context['service'], project=validated_data.pop('project'))
-        validated_data['service_project_link'] = spl
+        spl = spl_class.objects.get(service=self.context['service'], project=attrs['project'])
+        attrs['service_project_link'] = spl
 
-        return validated_data
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('project')
+        return super(BaseResourceImportSerializer, self).create(validated_data)
 
 
 class VirtualMachineSerializer(BaseResourceSerializer):
