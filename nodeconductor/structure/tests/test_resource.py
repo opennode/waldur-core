@@ -21,7 +21,7 @@ class ResourceQuotasTest(test.APITransactionTestCase):
         data = {'cores': 4, 'ram': 1024, 'disk': 20480}
 
         service_project_link = factories.TestServiceProjectLinkFactory(service=service, project=self.project)
-        resource = factories.TestResourceFactory(service_project_link=service_project_link, cores=data['cores'])
+        resource = factories.TestInstanceFactory(service_project_link=service_project_link, cores=data['cores'])
 
         self.assertEqual(service_project_link.quotas.get(name='instances').usage, 1)
         self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, data['cores'])
