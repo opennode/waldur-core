@@ -33,17 +33,22 @@ class TemplateSerializer(serializers.ModelSerializer):
 class TemplateGroupSerializer(serializers.HyperlinkedModelSerializer):
     templates = TemplateSerializer(many=True)
     tags = serializers.SerializerMethodField()
+    sla = serializers.SerializerMethodField()
 
     class Meta(object):
         model = models.TemplateGroup
         view_name = 'template-group-detail'
-        fields = ('url', 'uuid', 'name', 'icon_url', 'description', 'templates', 'is_active', 'tags')
+        fields = ('url', 'uuid', 'name', 'icon_url', 'description', 'templates', 'is_active', 'tags', 'sla')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
 
     def get_tags(self, template_group):
         return [t.name for t in template_group.tags.all()]
+
+    def get_sla(self, template_group):
+        from nodeconductor.template import settings
+        return settings.AGREED_SLA
 
 
 class TemplateGroupResultSerializer(serializers.HyperlinkedModelSerializer):

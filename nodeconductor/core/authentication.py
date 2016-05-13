@@ -37,9 +37,6 @@ class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
         lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
         if token.created < timezone.now() - lifetime:
             raise exceptions.AuthenticationFailed(_('Token has expired.'))
-        else:
-            token.created = timezone.now()
-            token.save()
 
         return token.user, token
 
@@ -66,6 +63,10 @@ def user_capturing_auth(auth):
             if result is not None:
                 user, _ = result
                 nodeconductor.logging.middleware.set_current_user(user)
+                token = user.auth_token
+                if token:
+                    token.created = timezone.now()
+                    token.save()
             return result
 
     return CapturingAuthentication

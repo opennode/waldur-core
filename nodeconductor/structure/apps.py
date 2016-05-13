@@ -149,7 +149,7 @@ class StructureConfig(AppConfig):
         )
 
         for index, model in enumerate(Resource.get_all_models()):
-            signals.post_delete.connect(
+            signals.pre_delete.connect(
                 handlers.log_resource_deleted,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.log_resource_deleted_{}_{}'.format(
