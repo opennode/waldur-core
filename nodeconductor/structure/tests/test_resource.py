@@ -1,9 +1,7 @@
-import factory
 import unittest
 
 from rest_framework import test, status
 
-from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.models import CustomerRole, Resource
 from nodeconductor.structure.tests import factories
 
@@ -17,50 +15,31 @@ class ResourceQuotasTest(test.APITransactionTestCase):
         self.project = factories.ProjectFactory(customer=self.customer)
 
     def test_auto_quotas_update(self):
-        service_type = 'OpenStack'
-        models = SupportedServices.get_service_models()[service_type]
-        settings = factories.ServiceSettingsFactory(customer=self.customer, type=service_type, shared=False)
+        settings = factories.ServiceSettingsFactory(customer=self.customer, shared=False)
+        service = factories.TestServiceFactory(customer=self.customer, settings=settings)
 
-        class ServiceFactory(factory.DjangoModelFactory):
-            class Meta(object):
-                model = models['service']
+        data = {'cores': 4, 'ram': 1024, 'disk': 20480}
 
-        class ServiceProjectLinkFactory(factory.DjangoModelFactory):
-            class Meta(object):
-                model = models['service_project_link']
+        service_project_link = factories.TestServiceProjectLinkFactory(service=service, project=self.project)
+        resource = factories.TestResourceFactory(service_project_link=service_project_link, cores=data['cores'])
 
-        service = ServiceFactory(customer=self.customer, settings=settings)
+        self.assertEqual(service_project_link.quotas.get(name='instances').usage, 1)
+        self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, data['cores'])
+        self.assertEqual(service_project_link.quotas.get(name='ram').usage, 0)
+        self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)
 
-        for resource_model in models['resources']:
-            if not hasattr(resource_model, 'update_quota_usage'):
-                continue
+        resource.ram = data['ram']
+        resource.disk = data['disk']
+        resource.save()
 
-            class ResourceFactory(factory.DjangoModelFactory):
-                class Meta(object):
-                    model = resource_model
+        self.assertEqual(service_project_link.quotas.get(name='ram').usage, data['ram'])
+        self.assertEqual(service_project_link.quotas.get(name='storage').usage, data['disk'])
 
-            data = {'cores': 4, 'ram': 1024, 'disk': 20480}
-
-            service_project_link = ServiceProjectLinkFactory(service=service, project=self.project)
-            resource = ResourceFactory(service_project_link=service_project_link, cores=data['cores'])
-
-            self.assertEqual(service_project_link.quotas.get(name='instances').usage, 1)
-            self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, data['cores'])
-            self.assertEqual(service_project_link.quotas.get(name='ram').usage, 0)
-            self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)
-
-            resource.ram = data['ram']
-            resource.disk = data['disk']
-            resource.save()
-
-            self.assertEqual(service_project_link.quotas.get(name='ram').usage, data['ram'])
-            self.assertEqual(service_project_link.quotas.get(name='storage').usage, data['disk'])
-
-            resource.delete()
-            self.assertEqual(service_project_link.quotas.get(name='instances').usage, 0)
-            self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, 0)
-            self.assertEqual(service_project_link.quotas.get(name='ram').usage, 0)
-            self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)
+        resource.delete()
+        self.assertEqual(service_project_link.quotas.get(name='instances').usage, 0)
+        self.assertEqual(service_project_link.quotas.get(name='vcpu').usage, 0)
+        self.assertEqual(service_project_link.quotas.get(name='ram').usage, 0)
+        self.assertEqual(service_project_link.quotas.get(name='storage').usage, 0)
 
 
 @unittest.skip("NC-1392: Test resource's view should be available")
