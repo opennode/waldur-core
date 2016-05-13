@@ -10,8 +10,6 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.structure import models
 from nodeconductor.structure.tests import factories
 
-from nodeconductor.openstack.tests import factories as openstack_factories
-
 
 class CreationTimeStatsTest(test.APITransactionTestCase):
 
@@ -124,11 +122,11 @@ class BaseQuotaAggregationTest(test.APITransactionTestCase):
         self.project = factories.ProjectFactory(customer=customer)
 
     def create_links(self, limit1, usage1, limit2, usage2):
-        link1 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        link1 = factories.TestServiceProjectLinkFactory(project=self.project)
         link1.set_quota_limit('vcpu', limit1)
         link1.set_quota_usage('vcpu', usage1)
 
-        link2 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        link2 = factories.TestServiceProjectLinkFactory(project=self.project)
         link2.set_quota_limit('vcpu', limit2)
         link2.set_quota_usage('vcpu', usage2)
 

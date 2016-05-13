@@ -46,7 +46,6 @@ class SupportedServices(object):
     """
 
     class Types(object):
-        OpenStack = 'OpenStack'
         IaaS = 'IaaS'
 
         @classmethod

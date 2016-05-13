@@ -9,7 +9,10 @@ import factory.fuzzy
 from rest_framework.reverse import reverse
 
 from nodeconductor.core import models as core_models
-from nodeconductor.structure import models, SupportedServices
+from nodeconductor.structure import models
+
+from . import TestConfig
+from . import models as test_models
 
 
 class UserFactory(factory.DjangoModelFactory):
@@ -142,10 +145,35 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
     name = factory.Sequence(lambda n: 'Settings %s' % n)
     state = core_models.SynchronizationStates.IN_SYNC
     shared = False
-    type = SupportedServices.Types.OpenStack
+    type = TestConfig.service_name
 
     @classmethod
     def get_url(cls, settings=None):
         if settings is None:
             settings = ServiceSettingsFactory()
         return 'http://testserver' + reverse('servicesettings-detail', kwargs={'uuid': settings.uuid})
+
+
+class TestServiceFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = test_models.TestService
+
+    name = factory.Sequence(lambda n: 'service%s' % n)
+    settings = factory.SubFactory(ServiceSettingsFactory)
+    customer = factory.SubFactory(CustomerFactory)
+
+
+class TestServiceProjectLinkFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = test_models.TestServiceProjectLink
+
+    service = factory.SubFactory(TestServiceFactory)
+    project = factory.SubFactory(ProjectFactory)
+
+
+class TestInstanceFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = test_models.TestInstance
+
+    name = factory.Sequence(lambda n: 'instance%s' % n)
+    service_project_link = factory.SubFactory(TestServiceProjectLinkFactory)

@@ -568,27 +568,23 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         self.assert_quota_usage('nc_project_count', 0)
 
     def test_customer_services_quota_increases_on_service_creation(self):
-        from nodeconductor.openstack.tests import factories as openstack_factories
-        openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        factories.TestServiceFactory(customer=self.customer)
         self.assert_quota_usage('nc_service_count', 1)
 
     def test_customer_services_quota_decreases_on_service_deletion(self):
-        from nodeconductor.openstack.tests import factories as openstack_factories
-        service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        service = factories.TestServiceFactory(customer=self.customer)
         service.delete()
         self.assert_quota_usage('nc_service_count', 0)
 
     def test_customer_and_project_service_project_link_quota_updated(self):
-        from nodeconductor.openstack.tests import factories as openstack_factories
-
         self.assert_quota_usage('nc_service_project_link_count', 0)
-        service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        service = factories.TestServiceFactory(customer=self.customer)
 
         project1 = factories.ProjectFactory(customer=self.customer)
-        openstack_factories.OpenStackServiceProjectLinkFactory(service=service, project=project1)
+        factories.TestServiceProjectLinkFactory(service=service, project=project1)
 
         project2 = factories.ProjectFactory(customer=self.customer)
-        openstack_factories.OpenStackServiceProjectLinkFactory(service=service, project=project2)
+        factories.TestServiceProjectLinkFactory(service=service, project=project2)
 
         self.assertEqual(project1.quotas.get(name='nc_service_project_link_count').usage, 1)
         self.assertEqual(project2.quotas.get(name='nc_service_project_link_count').usage, 1)
