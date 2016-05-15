@@ -170,11 +170,9 @@ class PushHook(BaseHook):
                 # https://developers.google.com/mobile/add
                 NODECONDUCTOR['GOOGLE_API'] = {
                     'Android': {
-                        'project_id': 'nc-android',
                         'server_key': 'AIzaSyA2_7UaVIxXfKeFvxTjQNZbrzkXG9OTCkg',
                     },
                     'iOS': {
-                        'project_id': 'nc-ios',
                         'server_key': 'AIzaSyA34zlG_y5uHOe2FmcJKwfk2vG-3RW05vk',
                     }
                 }
@@ -183,7 +181,6 @@ class PushHook(BaseHook):
         conf = settings.NODECONDUCTOR.get('GOOGLE_API') or {}
         keys = conf.get(dict(self.Type.CHOICES)[self.type])
 
-        # XXX: experemental workflow, should be tested in NC-1063, NC-1064
         if not keys or not self.device_id:
             return
 
@@ -193,7 +190,7 @@ class PushHook(BaseHook):
             'Authorization': 'key=%s' % keys['server_key'],
         }
         payload = {
-            'to': self.device_id,
+            'registration_ids': [self.device_id],
             'data': event,
         }
 
