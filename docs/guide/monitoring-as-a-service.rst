@@ -75,16 +75,16 @@ Setup
 
 1. Add settings for SMS sending to NodeConductor settings:
 
-  .. code-block:: python
+.. code-block:: python
 
-  NODECONDUCTOR_ZABBIX_SMS_SETTINGS = {
+    NODECONDUCTOR_ZABBIX_SMS_SETTINGS = {
       'SMS_EMAIL_FROM': 'email',
       'SMS_EMAIL_RCPT': 'recipient',
-  }
+    }
 
 2. Add Zabbix security group to all existing tenants:
 
-  .. code-block:: bash
+.. code-block:: bash
 
   nodeconductor initsecuritygroups zabbix
 
@@ -102,11 +102,11 @@ Setup
   - data volume, system volume - default size for Zabbix deployments
   - user data:
 
-  .. code-block:: yaml
+.. code-block:: yaml
 
-      #cloud-config
-      runcmd:
-        - [ bootstrap, -a, {{ 8|random_password }}, -p, {{ 8|random_password }}, -l, "%", -u, nodeconductor ]
+  #cloud-config
+  runcmd:
+    - [ bootstrap, -a, {{ 8|random_password }}, -p, {{ 8|random_password }}, -l, "%", -u, nodeconductor ]
 
 
   {{ 8|random_password }} will generate a random password with a length of 8
@@ -123,10 +123,16 @@ Setup
   - tags - advanced
   - database parameters:
 
-  .. code-block:: json
+.. code-block:: json
 
-       {"engine": "django.db.backends.mysql", "name": "zabbix", "host": "%", "user": "nodeconductor", 
-        "password": "{{ response.user_data|bootstrap_opts:'p' }}", "port": "3306"}
+   {
+        "engine": "django.db.backends.mysql",
+        "name": "zabbix",
+        "host": "%",
+        "user": "nodeconductor",
+        "password": "{{ response.user_data|bootstrap_opts:'p' }}",
+        "port": "3306"
+   }
 
 
 Requests from frontend
