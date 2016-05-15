@@ -159,14 +159,15 @@ class ResourceActionsMetadata(SimpleMetadata):
         if 'label' not in field_info:
             field_info['label'] = field_name.replace('_', ' ').title()
 
-        if hasattr(field, 'view_name') and hasattr(field, 'query_params'):
+        if hasattr(field, 'view_name'):
             list_view = field.view_name.replace('-detail', '-list')
             base_url = reverse(list_view, request=self.request)
-            if field.query_params:
-                field_info['type'] = 'select'
-                field_info['url'] = '%s?%s' % (base_url, urlencode(field.query_params))
-                field_info['value_field'] = getattr(field, 'value_field', 'url')
-                field_info['display_name_field'] = getattr(field, 'display_name_field', 'display_name')
+            field_info['type'] = 'select'
+            field_info['url'] = base_url
+            if hasattr(field, 'query_params'):
+                field_info['url'] += '?%s' % urlencode(field.query_params)
+            field_info['value_field'] = getattr(field, 'value_field', 'url')
+            field_info['display_name_field'] = getattr(field, 'display_name_field', 'display_name')
 
         if hasattr(field, 'choices') and not hasattr(field, 'queryset'):
             field_info['choices'] = [

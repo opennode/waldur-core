@@ -1962,13 +1962,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
             event_type='resource_update_succeeded',
             event_context={'resource': resource})
 
-    def perform_destroy(self, resource):
-        resource.delete()
-        event_logger.resource.info(
-            '{resource_full_name} has been deleted.',
-            event_type='resource_deletion_succeeded',
-            event_context={'resource': resource})
-
     def perform_provision(self, serializer):
         raise NotImplementedError
 
