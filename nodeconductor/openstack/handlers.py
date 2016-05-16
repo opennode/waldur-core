@@ -19,6 +19,10 @@ def set_tenant_default_availability_zone(sender, instance=None, **kwargs):
             instance.availability_zone = settings.options.get('availability_zone', '')
 
 
+class SecurityGroupCreateException(Exception):
+    pass
+
+
 def create_initial_security_groups(sender, instance=None, created=False, **kwargs):
     if not created:
         return
@@ -27,35 +31,43 @@ def create_initial_security_groups(sender, instance=None, created=False, **kwarg
     config_groups = nc_settings.get('DEFAULT_SECURITY_GROUPS', [])
 
     for group in config_groups:
-        sg_name = group.get('name')
-        if sg_name in (None, ''):
-            logger.error('Skipping misconfigured security group: parameter "name" not found or is empty.')
-            continue
+        try:
+            create_security_group(instance, group)
+        except SecurityGroupCreateException as e:
+            logger.error(e)
 
-        rules = group.get('rules')
-        if type(rules) not in (list, tuple):
-            logger.error('Skipping misconfigured security group: parameter "rules" should be list or tuple.')
-            continue
 
-        sg_description = group.get('description', None)
-        sg = SecurityGroup.objects.get_or_create(
-            service_project_link=instance,
-            description=sg_description,
-            name=sg_name)[0]
+def create_security_group(spl, group):
+    sg_name = group.get('name')
+    if sg_name in (None, ''):
+        raise SecurityGroupCreateException(
+            'Skipping misconfigured security group: parameter "name" not found or is empty.')
 
-        for rule in rules:
-            if 'icmp_type' in rule:
-                rule['from_port'] = rule.pop('icmp_type')
-            if 'icmp_code' in rule:
-                rule['to_port'] = rule.pop('icmp_code')
+    rules = group.get('rules')
+    if type(rules) not in (list, tuple):
+        raise SecurityGroupCreateException(
+            'Skipping misconfigured security group: parameter "rules" should be list or tuple.')
 
-            try:
-                rule = SecurityGroupRule(security_group=sg, **rule)
-                rule.full_clean()
-            except ValidationError as e:
-                logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e))
-            else:
-                rule.save()
+    sg_description = group.get('description', None)
+    sg = SecurityGroup.objects.get_or_create(
+        service_project_link=spl,
+        description=sg_description,
+        name=sg_name)[0]
+
+    for rule in rules:
+        if 'icmp_type' in rule:
+            rule['from_port'] = rule.pop('icmp_type')
+        if 'icmp_code' in rule:
+            rule['to_port'] = rule.pop('icmp_code')
+
+        try:
+            rule = SecurityGroupRule(security_group=sg, **rule)
+            rule.full_clean()
+        except ValidationError as e:
+            logger.error('Failed to create rule for security group %s: %s.' % (sg_name, e))
+        else:
+            rule.save()
+    return sg
 
 
 def update_tenant_name_on_project_update(sender, instance=None, created=False, **kwargs):

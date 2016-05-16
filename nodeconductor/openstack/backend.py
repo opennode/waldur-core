@@ -261,6 +261,7 @@ class OpenStackBackend(ServiceBackend):
         instance.flavor_disk = flavor.disk
         instance.disk = instance.system_volume_size + instance.data_volume_size
         if image:
+            instance.image_name = image.name
             instance.min_disk = image.min_disk
             instance.min_ram = image.min_ram
         instance.save()
@@ -331,7 +332,7 @@ class OpenStackBackend(ServiceBackend):
 
     def remove_ssh_key(self, ssh_key, service_project_link):
         if service_project_link.tenant is not None:
-            self.remove_ssh_key_from_tenant(service_project_link.tenant, ssh_key)
+            self.remove_ssh_key_from_tenant(service_project_link.tenant, ssh_key.name, ssh_key.fingerprint)
 
     @log_backend_action()
     def remove_ssh_key_from_tenant(self, tenant, key_name, fingerprint):
@@ -434,6 +435,7 @@ class OpenStackBackend(ServiceBackend):
 
         for _ in range(retries):
             obj = client_get_method(obj_id)
+            logger.debug('Instance %s status: "%s"' % (obj, obj.status))
 
             if complete_state_predicate(obj):
                 return True
@@ -846,6 +848,24 @@ class OpenStackBackend(ServiceBackend):
         except keystone_exceptions.ClientException as e:
             six.reraise(OpenStackBackendError, e)
 
+    @log_backend_action('add user to tenant')
+    def create_tenant_user(self, tenant):
+        keystone = self.keystone_client
+
+        try:
+            user = keystone.users.create(
+                name=tenant.user_username,
+                password=tenant.user_password,
+            )
+            admin_role = keystone.roles.find(name='Member')
+            keystone.roles.add_user_role(
+                user=user.id,
+                role=admin_role.id,
+                tenant=tenant.backend_id,
+            )
+        except keystone_exceptions.ClientException as e:
+            six.reraise(OpenStackBackendError, e)
+
     def get_instance(self, instance_id):
         try:
             nova = self.nova_client
@@ -883,7 +903,7 @@ class OpenStackBackend(ServiceBackend):
 
             try:
                 d = dateparse.parse_datetime(instance.to_dict()['OS-SRV-USG:launched_at'])
-            except (KeyError, ValueError):
+            except (KeyError, ValueError, TypeError):
                 launch_time = None
             else:
                 # At the moment OpenStack does not provide any timezone info,
@@ -910,7 +930,7 @@ class OpenStackBackend(ServiceBackend):
                 internal_ips=ips.get('internal', ''),
                 external_ips=ips.get('external', ''),
 
-                security_groups=[sg['name'] for sg in instance.security_groups],
+                security_groups=[sg['name'] for sg in getattr(instance, 'security_groups', [])],
             )
         except (glance_exceptions.ClientException,
                 cinder_exceptions.ClientException,
@@ -1055,7 +1075,7 @@ class OpenStackBackend(ServiceBackend):
             instance.data_volume_id = data_volume_id
             instance.save()
 
-            if not self._wait_for_instance_status(server.id, nova, 'ACTIVE'):
+            if not self._wait_for_instance_status(server.id, nova, 'ACTIVE', 'ERROR'):
                 logger.error(
                     "Failed to provision instance %s: timed out waiting "
                     "for instance to become online",
@@ -1303,6 +1323,16 @@ class OpenStackBackend(ServiceBackend):
             logger.info("Deleting volume %s from tenant %s", volume.id, tenant.backend_id)
             if not dryrun:
                 volume.delete()
+
+        # user
+        keystone = self.keystone_client
+        try:
+            user = keystone.users.find(name=tenant.user_username)
+            logger.info('Deleting user %s that was connected to tenant %s', user.name, tenant.backend_id)
+            if not dryrun:
+                user.delete()
+        except keystone_exceptions.ClientException as e:
+            logger.error('Cannot delete user %s from tenant %s. Error: %s', tenant.user_username, tenant.backend_id, e)
 
         # tenant
         keystone = self.keystone_admin_client
@@ -1675,7 +1705,7 @@ class OpenStackBackend(ServiceBackend):
                     'tenant_id': tenant.backend_id,
                 }
             })['floatingip']
-        except neutron_exceptions.NeutronClientException as e:
+        except (neutron_exceptions.NeutronClientException, keystone_exceptions.ClientException) as e:
             six.reraise(OpenStackBackendError, e)
         else:
             tenant.service_project_link.floating_ips.create(

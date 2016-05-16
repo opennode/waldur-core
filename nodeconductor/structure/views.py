@@ -23,7 +23,7 @@ from rest_framework import views
 from rest_framework import viewsets
 from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
-from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException
+from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException, ValidationError
 from rest_framework.response import Response
 import reversion
 
@@ -1399,7 +1399,7 @@ class ServicesViewSet(BaseSummaryView):
 class CounterMixin(object):
     def get_count(self, url, params):
         response = request_api(self.request, url, method='HEAD', params=params)
-        if response.success:
+        if response.ok:
             return response.total
         else:
             logger.warning('Unable to execute API request with URL %s and error %s', url, response.data)
@@ -1757,14 +1757,14 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                     resources = []
 
                 return Response(resources)
-            except ServiceBackendError as e:
+            except (ServiceBackendError, ValidationError) as e:
                 raise APIException(e)
 
         else:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            customer = serializer.validated_data.pop('project').customer
+            customer = serializer.validated_data['project'].customer
             if not request.user.is_staff and not customer.has_user(request.user):
                 raise PermissionDenied(
                     "Only customer owner or staff are allowed to perform this action.")
@@ -1960,13 +1960,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         event_logger.resource.info(
             message,
             event_type='resource_update_succeeded',
-            event_context={'resource': resource})
-
-    def perform_destroy(self, resource):
-        resource.delete()
-        event_logger.resource.info(
-            '{resource_full_name} has been deleted.',
-            event_type='resource_deletion_succeeded',
             event_context={'resource': resource})
 
     def perform_provision(self, serializer):

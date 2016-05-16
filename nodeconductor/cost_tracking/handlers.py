@@ -5,12 +5,11 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister
 from nodeconductor.structure.models import Resource
-from nodeconductor.structure import SupportedServices
+from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, ServiceBackendError
 
-
-logger = logging.getLogger('nodeconductor.cost_tracking')
+logger = logging.getLogger(__name__)
 
 
 def make_autocalculate_price_estimate_invisible_on_manual_estimate_creation(sender, instance, created=False, **kwargs):
@@ -45,7 +44,7 @@ def make_autocalculate_price_estimate_invisible_if_manually_created_estimate_exi
 
 def copy_threshold_from_previous_price_estimate(sender, instance, created=False, **kwargs):
     if created:
-        current_date = datetime.date.today().replace(year=instance.year, month=instance.month)
+        current_date = datetime.date.today().replace(year=instance.year, month=instance.month, day=1)
         prev_date = current_date - relativedelta(months=1)
         try:
             prev_estimate = models.PriceEstimate.objects.get(
@@ -58,66 +57,6 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
             instance.save(update_fields=['threshold'])
         except models.PriceEstimate.DoesNotExist:
             pass
-
-
-def create_price_list_items_for_service(sender, instance, created=False, **kwargs):
-    if created:
-        service = instance
-        resource_content_type = ContentType.objects.get_for_model(service)
-        for default_item in models.DefaultPriceListItem.objects.filter(resource_content_type=resource_content_type):
-            models.PriceListItem.objects.create(
-                resource_content_type=resource_content_type,
-                service=service,
-                key=default_item.key,
-                item_type=default_item.item_type,
-                value=default_item.value,
-                units=default_item.units,
-            )
-
-
-def change_price_list_items_if_default_was_changed(sender, instance, created=False, **kwargs):
-    default_item = instance
-    if created:
-        # if new default item added - we create such item in for each service
-        model = default_item.resource_content_type.model_class()
-        service_class = SupportedServices.get_related_models(model)['service']
-        for service in service_class.objects.all():
-            models.PriceListItem.objects.create(
-                resource_content_type=default_item.resource_content_type,
-                service=service,
-                key=default_item.key,
-                item_type=default_item.item_type,
-                units=default_item.units,
-                value=default_item.value
-            )
-    else:
-        if default_item.tracker.has_changed('key') or default_item.tracker.has_changed('item_type'):
-            # if default item key or item type was changed - it will be changed in each connected item
-            connected_items = models.PriceListItem.objects.filter(
-                key=default_item.tracker.previous('key'),
-                item_type=default_item.tracker.previous('item_type'),
-                resource_content_type=default_item.resource_content_type,
-            )
-        else:
-            # if default value or units changed - it will be changed in each connected item
-            # that was not edited manually
-            connected_items = models.PriceListItem.objects.filter(
-                key=default_item.key,
-                item_type=default_item.item_type,
-                resource_content_type=default_item.resource_content_type,
-                is_manually_input=False,
-            )
-        connected_items.update(
-            key=default_item.key, item_type=default_item.item_type, units=default_item.units, value=default_item.value)
-
-
-def delete_price_list_items_if_default_was_deleted(sender, instance, **kwargs):
-    default_item = instance
-    models.PriceListItem.objects.filter(
-        key=default_item.tracker.previous('key'),
-        item_type=default_item.tracker.previous('item_type'),
-        resource_content_type=default_item.resource_content_type,
-    ).delete()
 
 
 def update_price_estimate_on_resource_import(sender, instance, **kwargs):
@@ -148,7 +87,7 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
         spl_old = spl_model.objects.get(pk=instance._old_values['service_project_link'])
 
         old_family_scope = [spl_old] + spl_old.get_ancestors()
-        for estimate in models.PriceEstimate.filter(scope=instance, is_manually_input=False):
+        for estimate in models.PriceEstimate.objects.filter(scope=instance, is_manually_input=False):
             qs = models.PriceEstimate.objects.filter(
                 scope__in=old_family_scope, month=estimate.month, year=estimate.year)
             for parent_estimate in qs:
@@ -156,6 +95,41 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
                 parent_estimate.update_from_leaf()
 
         models.PriceEstimate.update_ancestors_for_resource(instance, force=True)
+
+
+def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):
+    resource = instance
+
+    try:
+        project = resource.service_project_link.project
+        estimate = models.PriceEstimate.objects.get_current(project)
+    except models.PriceEstimate.DoesNotExist:
+        return
+
+    # Project cost is unlimited
+    if estimate.limit == -1:
+        return
+
+    # Early check
+    if estimate.total > estimate.limit:
+        raise exceptions.CostLimitExceeded(
+            detail='Estimated cost of project is over limit.')
+
+    try:
+        cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)
+        monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(resource))
+    except ServiceBackendNotImplemented:
+        return
+    except ServiceBackendError as e:
+        logger.error("Failed to get cost estimate for resource %s: %s", resource, e)
+        return
+    except Exception as e:
+        logger.exception("Failed to get cost estimate for resource %s: %s", resource, e)
+        return
+
+    if estimate.total + monthly_cost > estimate.limit:
+        raise exceptions.CostLimitExceeded(
+            detail='Total estimated cost of resource and project is over limit.')
 
 
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):

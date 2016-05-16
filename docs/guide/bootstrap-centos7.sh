@@ -1,16 +1,10 @@
 # Configure repositories
 yum -y install epel-release
-yum -y install https://repos.fedorapeople.org/repos/openstack/openstack-juno/rdo-release-juno-1.noarch.rpm
 yum -y install http://opennodecloud.com/centos/7/nodeconductor-release.rpm
+yum -y install http://opennodecloud.com/centos/7/rdo-release.rpm
 
-# Install and enable services
+# Install dependencies
 yum -y install mariadb-server nodeconductor-wsgi redis
-
-systemctl enable httpd
-systemctl enable mariadb
-systemctl enable nodeconductor-celery
-systemctl enable nodeconductor-celerybeat
-systemctl enable redis
 
 # Start MySQL and Redis
 systemctl start mariadb
@@ -30,3 +24,10 @@ systemctl start httpd
 curl --head http://localhost/api/
 systemctl start nodeconductor-celery
 systemctl start nodeconductor-celerybeat
+
+# (optional) Enable services to start on system boot
+systemctl enable httpd
+systemctl enable mariadb
+systemctl enable nodeconductor-celery
+systemctl enable nodeconductor-celerybeat
+systemctl enable redis

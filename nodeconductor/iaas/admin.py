@@ -66,7 +66,7 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
     search_fields = ('cloud__customer__name', 'project__name', 'cloud__name')
     inlines = [QuotaInline]
 
-    actions = ['pull_cloud_memberships', 'recover_erred_cloud_memberships',
+    actions = ['pull_cloud_memberships',
                'detect_external_networks', 'allocate_floating_ip', 'pull_security_groups',
                'push_security_groups', 'push_ssh_public_keys']
 
@@ -100,25 +100,6 @@ class CloudProjectMembershipAdmin(admin.ModelAdmin):
         self.message_user(request, message)
 
     pull_cloud_memberships.short_description = "Update selected cloud project memberships from backend"
-
-    def recover_erred_cloud_memberships(self, request, queryset):
-        queryset = queryset.filter(state=SynchronizationStates.ERRED)
-        tasks_scheduled = queryset.count()
-        if tasks_scheduled:
-            send_task('structure', 'recover_erred_services')([spl.to_string() for spl in queryset])
-
-        message = ungettext(
-            'One cloud project membership scheduled for recovery',
-            '%(tasks_scheduled)d cloud project memberships scheduled for recovery',
-            tasks_scheduled
-        )
-        message = message % {
-            'tasks_scheduled': tasks_scheduled,
-        }
-
-        self.message_user(request, message)
-
-    recover_erred_cloud_memberships.short_description = "Recover selected cloud project memberships"
 
     def push_ssh_public_keys(self, request, queryset):
         tasks_scheduled = queryset.count()

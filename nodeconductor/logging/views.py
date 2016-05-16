@@ -3,10 +3,11 @@ from __future__ import unicode_literals
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
 from rest_framework import response, viewsets, permissions, status, decorators, mixins
+from rest_framework import filters as rf_filters
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.views import BaseSummaryView
-from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log
+from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log, utils
 
 
 class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -125,6 +126,11 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
             [{'point': int(ac['end']), 'object': {'count': ac['count']}} for ac in aggregated_count],
             status=status.HTTP_200_OK)
 
+    @decorators.list_route()
+    def scope_types(self, request, *args, **kwargs):
+        """ Returns a list of scope types acceptable by events filter. """
+        return response.Response([str(m._meta) for m in utils.get_loggable_models()])
+
 
 class AlertViewSet(mixins.CreateModelMixin,
                    viewsets.ReadOnlyModelViewSet):
@@ -151,6 +157,71 @@ class AlertViewSet(mixins.CreateModelMixin,
         Field scope will contain link to object that cause alert.
         Context - dictionary that contains information about all related to alert objects.
 
+        Alerts can be filtered by:
+         - ?severity=<severity> (can be list)
+         - ?alert_type=<alert_type> (can be list)
+         - ?scope=<url> concrete alert scope
+         - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
+           DEPRECATED use ?content_type instead
+         - ?created_from=<timestamp>
+         - ?created_to=<timestamp>
+         - ?closed_from=<timestamp>
+         - ?closed_to=<timestamp>
+         - ?from=<timestamp> - filter alerts that was active from given date
+         - ?to=<timestamp> - filter alerts that was active to given date
+         - ?opened - if this argument is in GET request endpoint will return only alerts that are not closed
+         - ?closed - if this argument is in GET request endpoint will return only alerts that are closed
+         - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', project', 'project_group')
+         - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result ill contain only
+           object with given uuid)
+         - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
+         - ?content_type=<string> name of scope content type in format <app_name>.<scope_type>
+           (Ex.: structure.project, iaas.instance...)
+         - ?exclude_features=<feature> (can be list) - exclude alert from output if it's type corresponds o one of given features
+
+        Alerts can be ordered by:
+
+         -?o=severity - order by severity
+         -?o=created - order by creation time
+
+        .. code-block:: http
+
+            GET /api/alerts/
+            Accept: application/json
+            Content-Type: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            [
+                {
+                    "url": "http://example.com/api/alerts/e80e48a4e58b48ff9a1320a0aa0d68ab/",
+                    "uuid": "e80e48a4e58b48ff9a1320a0aa0d68ab",
+                    "alert_type": "first_alert",
+                    "message": "message#1",
+                    "severity": "Debug",
+                    "scope": "http://example.com/api/instances/9d1d7e03b0d14fd0b42b5f649dfa3de5/",
+                    "created": "2015-05-29T14:24:27.342Z",
+                    "closed": null,
+                    "context": {
+                        'customer_abbreviation': 'customer_abbreviation',
+                        'customer_contact_details': 'customer details',
+                        'customer_name': 'Customer name',
+                        'customer_uuid': '53c6e86406e349faa7924f4c865b15ab',
+                        'quota_limit': '131072.0',
+                        'quota_name': 'ram',
+                        'quota_usage': '131071',
+                        'quota_uuid': 'f6ae2f7ca86f4e2f9bb64de1015a2815',
+                        'scope_name': 'project X',
+                        'scope_uuid': '0238d71ee1934bd2839d4e71e5f9b91a'
+                    }
+                    "acknowledged": true,
+                }
+            ]
+        """
+        return super(AlertViewSet, self).list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
         Run **POST** against */api/alerts/* to create or update alert. If alert with posted scope and
         alert_type already exists - it will be updated. Only users with staff privileges can create alerts.
 
@@ -171,7 +242,7 @@ class AlertViewSet(mixins.CreateModelMixin,
                 "severity": "Debug"
             }
         """
-        return super(AlertViewSet, self).list(request, *args, **kwargs)
+        return super(AlertViewSet, self).create(request, *args, **kwargs)
 
     @decorators.detail_route(methods=['post'])
     def close(self, request, *args, **kwargs):
@@ -257,7 +328,7 @@ class BaseHookViewSet(viewsets.ModelViewSet):
     To get a list of all your hooks, run **GET** against */api/hooks/* as an authenticated user.
     """
     permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (core_filters.StaffOrUserFilter,)
+    filter_backends = (core_filters.StaffOrUserFilter, rf_filters.DjangoFilterBackend)
     lookup_field = 'uuid'
 
 
@@ -327,6 +398,7 @@ class EmailHookViewSet(BaseHookViewSet):
 
 class PushHookViewSet(BaseHookViewSet):
     queryset = models.PushHook.objects.all()
+    filter_class = filters.PushHookFilter
     serializer_class = serializers.PushHookSerializer
 
     def list(self, request, *args, **kwargs):

@@ -1,7 +1,9 @@
 import pytz
+import urlparse
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.template.defaultfilters import slugify
 from django.utils import timezone
 from netaddr import IPNetwork
 from rest_framework import serializers, reverse
@@ -9,6 +11,7 @@ from taggit.models import Tag
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import JsonField, MappedChoiceField
 from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.openstack.backend import OpenStackBackendError
@@ -412,6 +415,7 @@ class BackupRestorationSerializer(serializers.ModelSerializer):
             'key_name', 'key_fingerprint',
             'system_volume_id', 'system_volume_size',
             'data_volume_id', 'data_volume_size',
+            'flavor_name', 'image_name',
             'user_data',
         )
         extra_kwargs = {
@@ -573,9 +577,9 @@ class InstanceImportSerializer(structure_serializers.BaseResourceImportSerialize
 
         try:
             backend_instance = backend.get_instance(validated_data['backend_id'])
-        except OpenStackBackendError:
+        except OpenStackBackendError as e:
             raise serializers.ValidationError(
-                {'backend_id': "Can't import instance with ID %s" % validated_data['backend_id']})
+                {'backend_id': "Can't import instance with ID %s. Reason: %s" % (validated_data['backend_id'], e)})
 
         backend_security_groups = backend_instance.nc_model_data.pop('security_groups')
         security_groups = spl.security_groups.filter(name__in=backend_security_groups)
@@ -677,16 +681,29 @@ class TenantSerializer(structure_serializers.BaseResourceSerializer):
         model = models.Tenant
         view_name = 'openstack-tenant-detail'
         fields = structure_serializers.BaseResourceSerializer.Meta.fields + (
-            'availability_zone', 'internal_network_id', 'external_network_id',
+            'availability_zone', 'internal_network_id', 'external_network_id', 'user_username', 'user_password',
         )
         read_only_fields = structure_serializers.BaseResourceSerializer.Meta.read_only_fields + (
-            'internal_network_id', 'external_network_id',
+            'internal_network_id', 'external_network_id', 'user_password',
         )
+        protected_fields = structure_serializers.BaseResourceSerializer.Meta.protected_fields + (
+            'user_username',
+        )
+
+    def get_access_url(self, tenant):
+        parsed = urlparse.urlparse(tenant.service_project_link.service.settings.backend_url)
+        return '%s://%s/dashboard' % (parsed.scheme, parsed.hostname)
 
     def create(self, validated_data):
         spl = validated_data['service_project_link']
+        # get availability zone from service settings if it is not defined
         if not validated_data.get('availability_zone'):
             validated_data['availability_zone'] = spl.service.settings.options.get('availability_zone', '')
+        # init tenant user username(if not defined) and password
+        if not validated_data.get('user_username'):
+            name = validated_data['name']
+            validated_data['user_username'] = slugify(name)[:30] + '-user'
+        validated_data['user_password'] = core_utils.pwgen()
         return super(TenantSerializer, self).create(validated_data)
 
 

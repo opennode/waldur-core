@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.template.defaultfilters import slugify
 from django.utils.encoding import python_2_unicode_compatible
 from django_fsm import transition, FSMIntegerField
 from jsonfield import JSONField
@@ -106,7 +107,8 @@ class OpenStackServiceProjectLink(structure_models.ServiceProjectLink):
 
     # XXX: temporary method, should be removed after instance will have tenant as field
     def create_tenant(self):
-        return Tenant.objects.create(name=self.get_tenant_name(), service_project_link=self)
+        name = self.get_tenant_name()
+        return Tenant.objects.create(name=name, service_project_link=self, user_username=slugify(name)[:30] + '-user')
 
 
 class Flavor(LoggableMixin, structure_models.ServiceProperty):
@@ -213,7 +215,7 @@ class Instance(structure_models.VirtualMachineMixin,
 
     @property
     def cloud_project_membership(self):
-        # Temporary backward compatibility
+        # XXX: Temporary backward compatibility. To be removed after IaaS removal.
         return self.service_project_link
 
     def get_log_fields(self):
@@ -359,6 +361,8 @@ class Tenant(core_models.RuntimeStateMixin, core_models.StateMixin,
         max_length=100, blank=True,
         help_text='Optional availability group. Will be used for all instances provisioned in this tenant'
     )
+    user_username = models.CharField(max_length=50, blank=True)
+    user_password = models.CharField(max_length=50, blank=True)
 
     tracker = FieldTracker()
 

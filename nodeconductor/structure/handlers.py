@@ -494,7 +494,7 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
             service_project_link_model.objects.get_or_create(project=project, service=service)
 
 
-def delete_service_settings(sender, instance, **kwargs):
+def delete_service_settings_on_service_delete(sender, instance, **kwargs):
     """ Delete not shared service settings without services """
     service = instance
     if not service.settings.shared:
@@ -505,3 +505,14 @@ def init_resource_start_time(sender, instance, name, source, target, **kwargs):
     if target == sender.States.ONLINE:
         instance.start_time = timezone.now()
         instance.save(update_fields=['start_time'])
+
+
+def delete_service_settings_on_scope_delete(sender, instance, **kwargs):
+    """ If VM that contains service settings were deleted - all settings
+        resources could be safely deleted from NC.
+    """
+    for service_settings in ServiceSettings.objects.filter(scope=instance):
+        resource_models = SupportedServices.get_service_name_resources(service_settings.type)
+        for resource_model in resource_models:
+            resource_model.objects.all().delete()
+        service_settings.delete()

@@ -35,7 +35,7 @@ class AbstractProjectFilter(django_filters.Filter):
             .filter(
                 Q(service_settings__isnull=True) |
                 Q(service_settings__shared=True) |
-                Q(service_settings__service__projects=project)
+                Q(service_settings__customer__projects=project)
             )
         )
         return qs.filter(templates=project_head_templates)

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import collections
 import functools
 import importlib
@@ -226,7 +228,8 @@ class SupportedServices(object):
                 'resources': {resource['name']: reverse(resource['list_view'], request=request)
                               for resource in service['resources'].values()},
                 'properties': {resource['name']: reverse(resource['list_view'], request=request)
-                               for resource in service.get('properties', {}).values()}
+                               for resource in service.get('properties', {}).values()},
+                'is_public_service': cls.is_public_service(service_model)
             }
         return data
 
@@ -288,12 +291,19 @@ class SupportedServices(object):
                 for resource, attrs in service['resources'].items()}
 
     @classmethod
-    @lru_cache(maxsize=1)
+    @lru_cache(maxsize=20)
     def get_service_resources(cls, model):
+        """ Get resource models by service model """
+        key = cls.get_model_key(model)
+        return cls.get_service_name_resources(key)
+
+    @classmethod
+    @lru_cache(maxsize=20)
+    def get_service_name_resources(cls, service_name):
+        """ Get resource models by service name """
         from django.apps import apps
 
-        key = cls.get_model_key(model)
-        resources = cls._registry[key]['resources'].keys()
+        resources = cls._registry[service_name]['resources'].keys()
         return [apps.get_model(resource) for resource in resources]
 
     @classmethod
@@ -324,7 +334,13 @@ class SupportedServices(object):
                 ]
             }
         """
-        model_str = cls._get_model_str(model)
+        from nodeconductor.structure.models import ServiceSettings
+
+        if isinstance(model, ServiceSettings):
+            model_str = cls._registry.get(model.type, {}).get('model_name', '')
+        else:
+            model_str = cls._get_model_str(model)
+
         for models in cls.get_service_models().values():
             if model_str == cls._get_model_str(models['service']) or \
                model_str == cls._get_model_str(models['service_project_link']):
@@ -349,8 +365,16 @@ class SupportedServices(object):
 
     @classmethod
     def get_model_key(cls, model):
+        return cls.get_app_config(model).service_name
+
+    @classmethod
+    def is_public_service(cls, model):
+        return getattr(cls.get_app_config(model), 'is_public_service', False)
+
+    @classmethod
+    def get_app_config(cls, model):
         from django.apps import apps
-        return apps.get_containing_app_config(model.__module__).service_name
+        return apps.get_containing_app_config(model.__module__)
 
     @classmethod
     def get_list_view_for_model(cls, model):

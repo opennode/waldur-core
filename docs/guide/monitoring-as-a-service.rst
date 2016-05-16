@@ -1,5 +1,5 @@
 Monitoring-as-a-service (MaaS)
-==============================
+------------------------------
 
 NodeConductor can be used for implementing a MaaS
 solution for OpenStack VMs with Zabbix monitoring service.
@@ -17,10 +17,10 @@ monitoring server deployed in a tenant.
 Below we describe configuration approach for both of the cases.
 
 Zabbix appliance only
----------------------
++++++++++++++++++++++
 
 Setup
-+++++
+*****
 
 1. Create a template group:
 
@@ -29,21 +29,22 @@ Setup
 
 2. Add OpenStack Instance template to the template group with the following settings:
 
-  - tags - PaaS
+  - tags - PaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:premium
   - service settings - OpenStack settings where a VM needs to be provisioned
   - flavor - default configuration for the created Zabbix server
   - image - OpenStack image with pre-installed Zabbbix
   - data volume, system volume - default size for Zabbix deployments
-  - security groups - typically you need to allow at least HTTP and HTTPS traffic
+
 
 Supported operations by REST client
-+++++++++++++++++++++++++++++++++++
+***********************************
 
 Zabbix appliance is a basic OpenStack image that supports the following provisioning
 inputs:
 
  - name
  - project
+ - security groups
  - user_data
 
 User data can be used to setup Zabbix admin user password:
@@ -56,10 +57,10 @@ User data can be used to setup Zabbix admin user password:
 
 
 Advanced monitoring
--------------------
++++++++++++++++++++
 
 Provisioning flow
-+++++++++++++++++
+*****************
 
 NodeConductor requires a separate template group for advanced monitoring that
 contains 2 templates:
@@ -70,51 +71,88 @@ contains 2 templates:
 
 
 Setup
-+++++
+*****
 
-1. Create template group:
+1. Add settings for SMS sending to NodeConductor settings:
+
+.. code-block:: python
+
+    NODECONDUCTOR_ZABBIX_SMS_SETTINGS = {
+      'SMS_EMAIL_FROM': 'email',
+      'SMS_EMAIL_RCPT': 'recipient',
+    }
+
+2. Add Zabbix security group to all existing tenants:
+
+.. code-block:: bash
+
+  nodeconductor initsecuritygroups zabbix
+
+3. Create template group:
 
   - name, description, icon_url - support parameters for the application store 
   - tags - SaaS
 
-2. Add OpenStack instance provision template:
+4. Add OpenStack instance provision template:
 
-  - tags - SaaS
+  - tags - SaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:advanced
   - service settings - OpenStack settings where a VM needs to be provisioned
   - flavor - choose suitable for Zabbix image
   - image - OpenStack image with pre-installed Zabbbix
   - data volume, system volume - default size for Zabbix deployments
-  - security groups - at least HTTP or HTTPS
   - user data:
 
-  .. code-block:: yaml
+.. code-block:: yaml
 
-      #cloud-config
-      runcmd:
-        - [ bootstrap, -a, {{ 8|random_password }}, -p, {{ 8|random_password }}, -l, "%", -u, nodeconductor ]
+  #cloud-config
+  runcmd:
+    - [ bootstrap, -a, {{ 8|random_password }}, -p, {{ 8|random_password }}, -l, "%", -u, nodeconductor ]
 
 
   {{ 8|random_password }} will generate a random password with a length of 8
 
-3. Add Zabbix service provision template:
+5. Add Zabbix service provision template:
 
   - order_number - 2 (should be provisioned after OpenStack VM)
   - name - {{ response.name }} (use VM name for service)
-  - Use project of the previous object - True (connect service to VM project)
+  - scope - {{ response.url }} (tell service that it is located on given VM)
+  - use project of the previous object - True (connect service to VM project)
   - backend url - http://{{ response.access_url.0 }}/zabbix/api_jsonrpc.php (or https)
   - username - Admin
   - password - {{ response.user_data|bootstrap_opts:"a" }}
+  - tags - advanced
   - database parameters:
 
-  .. code-block:: json
+.. code-block:: json
 
-       {"engine": "django.db.backends.mysql", "name": "zabbix", "host": "localhost(???)", "user": "nodeconductor", 
-        "password": "{{ response.user_data|bootstrap_opts:'p' }}", "port": "3306"}
+   {
+        "engine": "django.db.backends.mysql",
+        "name": "zabbix",
+        "host": "%",
+        "user": "nodeconductor",
+        "password": "{{ response.user_data|bootstrap_opts:'p' }}",
+        "port": "3306"
+   }
 
 
 Requests from frontend
-++++++++++++++++++++++
+**********************
 
-1. Creation. Issue post request to template_group provision endpoint with project and name fields.
+1. To create instance with advance monitoring issue POST request to template_group provision endpoint with project, name
+   and security group named "zabbix".
 
-2. TODO: Describe how to connect instance to host.
+2. To get list of all available for instance advanced zabbix services - issue GET request against **/api/zabbix/** with 
+   parameters:
+
+    - project=<instance project>
+    - tag=advanced
+
+3. To create host for instance - issue POST request against **/api/zabbix-hosts/** with instance url as scope. Check 
+   endpoint details for other parameters details.
+
+4. Instance advanced monitoring can be enabled/disabled by changing host status with PUT/PATCH request against 
+   **/api/zabbix-hosts/<uuid>/**.
+
+5. If instance is already monitored - host will appear in <related_resources> with tag "advanced" in service_tags field.
+
+6. Instance advanced monitoring can be configured with PUT/PATCH request against **/api/zabbix-hosts/<uuid>/**.

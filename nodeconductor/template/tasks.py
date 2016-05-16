@@ -9,10 +9,11 @@ from nodeconductor.template import models
 def schedule_provision(previous_task_data=None, url=None, template_uuid=None, token_key=None,
                        additional_options=None, template_group_result_uuid=None):
     template = models.Template.objects.get(uuid=template_uuid)
-    response_data = template.schedule_provision(url, token_key, additional_options, previous_task_data).json()
+    template_group_result = models.TemplateGroupResult.objects.filter(uuid=template_group_result_uuid).first()
+    response_data = template.schedule_provision(
+        url, token_key, additional_options, previous_task_data, template_group_result=template_group_result).json()
     # update templates group result if it is defined
-    if template_group_result_uuid is not None:
-        template_group_result = models.TemplateGroupResult.objects.get(uuid=template_group_result_uuid)
+    if template_group_result is not None:
         resource_type = SupportedServices.get_name_for_model(template.object_content_type.model_class())
         template_group_result.state_message = '%s provision has been scheduled successfully.' % resource_type
         template_group_result.save()
@@ -35,6 +36,7 @@ def wait_for_provision(previous_task_data=None, template_uuid=None, token_key=No
     state = resource_data['state']
     if state in success_states:
         template_group_result.state_message = '%s has been successfully provisioned.' % resource_type
+        template_group_result.provisioned_resources_data.append(resource_data)
         template_group_result.save()
         return resource_data
     elif state != erred_state:
@@ -66,3 +68,12 @@ def template_group_execution_failed(self, task_uuid, template_group_result_uuid)
     template_group_result.is_finished = True
     template_group_result.is_erred = True
     template_group_result.save()
+
+
+# TODO: move this signal to gcloud assembly application
+@shared_task
+def register_instance_in_zabbix(instance_uuid):
+    from nodeconductor.openstack.models import Instance
+    from nodeconductor.template.zabbix import register_instance
+    instance = Instance.objects.get(uuid=instance_uuid)
+    register_instance(instance)

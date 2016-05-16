@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
-from django.db import IntegrityError
-from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Prefetch
+
 from rest_framework import viewsets, permissions, exceptions, decorators, response, status
 
 from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.cost_tracking import models, serializers, filters
+from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
@@ -33,6 +36,13 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     )
     filter_class = filters.PriceEstimateFilter
     permission_classes = (permissions.IsAuthenticated,)
+
+    def get_serializer_class(self):
+        if self.action == 'threshold':
+            return serializers.PriceEstimateThresholdSerializer
+        elif self.action == 'limit':
+            return serializers.PriceEstimateLimitSerializer
+        return self.serializer_class
 
     def get_queryset(self):
         return models.PriceEstimate.objects.filtered_for_user(self.request.user).filter(is_visible=True).order_by(
@@ -67,7 +77,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
         Request example:
 
-        .. code-block:: javascript
+        .. code-block:: http
 
             POST /api/price-estimates/
             Accept: application/json
@@ -98,14 +108,26 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
 
     @decorators.list_route(methods=['post'])
-    def threshold(self, request, pk=None, **kwargs):
+    def threshold(self, request, **kwargs):
         """
         Run **POST** request against */api/price-estimates/threshold/*
         to set alert threshold for price estimate.
-        Request body should be JSON dictionary with scope and threshold fields.
+        Example request:
+
+        .. code-block:: http
+
+            POST /api/price-estimates/threshold/
+            Accept: application/json
+            Content-Type: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "scope": "http://example.com/api/projects/ab2e3d458e8a4ecb9dded36f3e46878d/",
+                "threshold": 100.0
+            }
         """
-        serializer = serializers.PriceEstimateThresholdSerializer(
-            data=request.data, context={'request': request})
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         threshold = serializer.validated_data['threshold']
@@ -114,14 +136,42 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         if not self.can_user_modify_price_object(scope):
             raise exceptions.PermissionDenied()
 
-        today = timezone.now()
-        params = dict(scope=scope, year=today.year, month=today.month)
-        try:
-            models.PriceEstimate.objects.create(threshold=threshold, **params)
-        except IntegrityError:
-            models.PriceEstimate.objects.filter(**params).update(threshold=threshold)
-
+        models.PriceEstimate.objects.create_or_update(scope, threshold=threshold)
         return response.Response({'detail': 'Threshold for price estimate is updated'},
+                                 status=status.HTTP_200_OK)
+
+    @decorators.list_route(methods=['post'])
+    def limit(self, request, **kwargs):
+        """
+        Run **POST** request against */api/price-estimates/limit/*
+        to set price estimate limit. When limit is set, provisioning is disabled
+        if total estimated monthly cost of project and resource exceeds project cost limit.
+        If limit is -1, project cost limit do not apply. Example request:
+
+        .. code-block:: http
+
+            POST /api/price-estimates/limit/
+            Accept: application/json
+            Content-Type: application/json
+            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
+            Host: example.com
+
+            {
+                "scope": "http://example.com/api/projects/ab2e3d458e8a4ecb9dded36f3e46878d/",
+                "limit": 100.0
+            }
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        limit = serializer.validated_data['limit']
+        scope = serializer.validated_data['scope']
+
+        if not self.can_user_modify_price_object(scope):
+            raise exceptions.PermissionDenied()
+
+        models.PriceEstimate.objects.create_or_update(scope, limit=limit)
+        return response.Response({'detail': 'Limit for price estimate is updated'},
                                  status=status.HTTP_200_OK)
 
 
@@ -138,7 +188,11 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """
         To get a list of price list items, run **GET** against */api/price-list-items/* as an authenticated user.
+        """
+        return super(PriceListItemViewSet, self).list(request, *args, **kwargs)
 
+    def create(self, request, *args, **kwargs):
+        """
         Run **POST** request against */api/price-list-items/* to create new price list item.
         Customer owner and staff can create price items.
 
@@ -154,23 +208,27 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
             {
                 "units": "per month",
-                "key": "test_key",
                 "value": 100,
                 "service": "http://example.com/api/oracle/d4060812ca5d4de390e0d7a5062d99f6/",
-                "item_type": "storage"
+                "default_price_list_item": "http://example.com/api/default-price-list-items/349d11e28f634f48866089e41c6f71f1/"
             }
         """
-        return super(PriceListItemViewSet, self).list(request, *args, **kwargs)
+        return super(PriceListItemViewSet, self).create(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         """
         Run **PATCH** request against */api/price-list-items/<uuid>/* to update price list item.
-        Only value and units can be updated. Customer owner and staff can update price items.
-
-        Run **DELETE** request against */api/price-list-items/<uuid>/* to delete price list item.
-        Customer owner and staff can delete price items.
+        Only item_type, key value and units can be updated.
+        Only customer owner and staff can update price items.
         """
-        return super(PriceListItemViewSet, self).retrieve(request, *args, **kwargs)
+        return super(PriceListItemViewSet, self).update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Run **DELETE** request against */api/price-list-items/<uuid>/* to delete price list item.
+        Only customer owner and staff can delete price items.
+        """
+        return super(PriceListItemViewSet, self).destroy(request, *args, **kwargs)
 
     def initial(self, request, *args, **kwargs):
         if self.action in ('partial_update', 'update', 'destroy'):
@@ -207,3 +265,57 @@ class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
          - ?resource_type=<string> resource type, for example: 'OpenStack.Instance, 'Oracle.Database')
         """
         return super(DefaultPriceListItemViewSet, self).list(request, *args, **kwargs)
+
+
+class MergedPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
+    lookup_field = 'uuid'
+    permission_classes = (permissions.IsAuthenticated,)
+    filter_class = filters.DefaultPriceListItemFilter
+    filter_backends = (DjangoMappingFilterBackend,)
+    serializer_class = serializers.MergedPriceListItemSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        To get a list of price list items, run **GET** against */api/merged-price-list-items/*
+        as authenticated user.
+
+        If service is not specified default price list items are displayed.
+        Otherwise service specific price list items are displayed.
+        In this case rendered object contains {"is_manually_input": true}
+
+        In order to specify service pass query parameters:
+        - service_type (Azure, OpenStack etc.)
+        - service_uuid
+
+        Example URL: http://example.com/api/merged-price-list-items/?service_type=Azure&service_uuid=cb658b491f3644a092dd223e894319be
+        """
+        return super(MergedPriceListItemViewSet, self).list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = models.DefaultPriceListItem.objects.all()
+        service = self._find_service()
+        if service:
+            # Filter items by resource type
+            resources = SupportedServices.get_related_models(service)['resources']
+            content_types = ContentType.objects.get_for_models(*resources).values()
+            queryset = queryset.filter(resource_content_type__in=content_types)
+
+            # Attach service-specific items
+            price_list_items = models.PriceListItem.objects.filter(service=service)
+            prefetch = Prefetch('pricelistitem_set', queryset=price_list_items, to_attr='service_item')
+            queryset = queryset.prefetch_related(prefetch)
+        return queryset
+
+    def _find_service(self):
+        service_type = self.request.query_params.get('service_type')
+        service_uuid = self.request.query_params.get('service_uuid')
+        if not service_type or not service_uuid:
+            return
+        rows = SupportedServices.get_service_models()
+        if service_type not in rows:
+            return
+        service_class = rows.get(service_type)['service']
+        try:
+            return service_class.objects.get(uuid=service_uuid)
+        except ObjectDoesNotExist:
+            return None

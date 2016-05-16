@@ -104,6 +104,8 @@ class BackupBackend(object):
             'key_name': instance.key_name,
             'key_fingerprint': instance.key_fingerprint,
             'user_data': instance.user_data,
+            'flavor_name': instance.flavor_name,
+            'image_name': instance.image_name,
             'tags': [tag.name for tag in instance.tags.all()],
         }
         return metadata
@@ -157,6 +159,11 @@ class BackupBackend(object):
         tags = self.backup.metadata.get('tags')
         if tags and isinstance(tags, list):
             instance.tags.add(*tags)
+
+        # restore user_data
+        user_data = self.backup.metadata.get('user_data')
+        if user_data:
+            instance.user_data = user_data
 
         # create a copy of the volumes to be used by a new VM
         try:

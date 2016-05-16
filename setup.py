@@ -68,7 +68,7 @@ else:
 
 setup(
     name='nodeconductor',
-    version='0.96.0',
+    version='0.97.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
