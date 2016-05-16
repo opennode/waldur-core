@@ -191,7 +191,7 @@ class PushHook(BaseHook):
             'Authorization': 'key=%s' % keys['server_key'],
         }
         payload = {
-            'registration_ids': [self.token],
+            'to': self.token,
             'data': event,
         }
 
