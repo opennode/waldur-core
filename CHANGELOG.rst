@@ -4,10 +4,17 @@ CHANGELOG
 Release NEXT
 ------------
 
+- <nothing yet>
+
+Release 0.97.0
+--------------
+
 - Added expiration time to authorization tokens.
 - Fix filtering events by scope_type and time range.
 - Implemented custom provider pricing configuration.
 - Add filtering of resources by service counters by user visibility.
+- Fixed push notifications through GCM.
+- Bugfixes.
 
 Release 0.96.0
 --------------
