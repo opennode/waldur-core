@@ -19,9 +19,7 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 Requires: logrotate
 Requires: MySQL-python
-Requires: python-ceilometerclient = 1.0.12
 Requires: python-celery >= 3.1.15, python-celery < 3.2
-Requires: python-cinderclient = 1.1.1
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.8, python-django < 1.9
 Requires: python-django-admin-tools = 0.7.0
@@ -37,12 +35,7 @@ Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.17.5
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
-Requires: python-glanceclient = 1:0.15.0
-Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
-Requires: python-keystoneclient = 1:0.11.1
-Requires: python-neutronclient = 2.3.9
-Requires: python-novaclient = 1:2.20.0
 Requires: python-pillow >= 2.0.0
 Requires: python-redis = 2.10.3
 Requires: python-requests = 2.6.0
