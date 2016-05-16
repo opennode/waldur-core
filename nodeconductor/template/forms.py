@@ -13,7 +13,7 @@ class TemplateForm(forms.ModelForm):
 
     class Meta:
         model = Template
-        fields = ('order_number', 'use_previous_project', 'project')
+        fields = ('order_number', 'use_previous_project', 'project', 'tags')
 
     def __init__(self, *args, **kwargs):
         instance = kwargs.get('instance')
@@ -22,6 +22,7 @@ class TemplateForm(forms.ModelForm):
             initial.update(self.deserialize(instance))
         kwargs['initial'] = initial
         super(TemplateForm, self).__init__(*args, **kwargs)
+        self.fields['tags'].required = False
 
     @classmethod
     def get_serializer_class(cls):
@@ -72,6 +73,9 @@ class TemplateForm(forms.ModelForm):
         self.instance.options = self.serialize(self.cleaned_data)
         self.instance.object_content_type = self.get_content_type()
         self.instance.save()
+        self.instance.tags.clear()
+        for tag in self.cleaned_data.pop('tags', []):
+            self.instance.tags.add(tag)
         return self.instance
 
 
@@ -79,9 +83,10 @@ class ServiceTemplateForm(TemplateForm):
     customer = forms.ModelChoiceField(
         queryset=structure_models.Customer.objects.all(),
         required=False)
+    scope = forms.CharField(required=False)
 
     class Meta(TemplateForm.Meta):
-        fields = TemplateForm.Meta.fields + ('customer',)
+        fields = TemplateForm.Meta.fields + ('customer', 'scope')
 
 
 class ResourceTemplateForm(TemplateForm):
@@ -95,11 +100,7 @@ class ResourceTemplateForm(TemplateForm):
         required=False)
 
     class Meta(TemplateForm.Meta):
-        fields = TemplateForm.Meta.fields + ('service_settings', 'tags')
-
-    def __init__(self, *args, **kwargs):
-        super(ResourceTemplateForm, self).__init__(*args, **kwargs)
-        self.fields['tags'].required = False
+        fields = TemplateForm.Meta.fields + ('service_settings',)
 
     def save(self, **kwargs):
         """ Serialize form data with template serializer and save serialized data into template """
@@ -107,8 +108,4 @@ class ResourceTemplateForm(TemplateForm):
             self.instance.service_settings = self.cleaned_data['service'].settings
         if self.cleaned_data.get('service_settings'):
             self.instance.service_settings = self.cleaned_data['service_settings']
-        self.instance = super(ResourceTemplateForm, self).save(**kwargs)
-        self.instance.tags.clear()
-        for tag in self.cleaned_data.pop('tags', []):
-            self.instance.tags.add(tag)
-        return self.instance
+        return super(ResourceTemplateForm, self).save(**kwargs)

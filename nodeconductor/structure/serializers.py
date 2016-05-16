@@ -7,7 +7,7 @@ from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models
 from django.utils import six
-from django.utils.lru_cache import lru_cache
+from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
@@ -827,6 +827,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
+    scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -834,7 +835,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
-            'quotas',
+            'quotas', 'scope',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
@@ -935,6 +936,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
     error_message = serializers.ReadOnlyField(source='settings.error_message')
+    scope = core_serializers.GenericRelatedField(related_models=models.Resource.get_all_models(), required=False)
+    tags = serializers.SerializerMethodField()
 
     class Meta(object):
         model = NotImplemented
@@ -947,9 +950,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
-            'available_for_all'
+            'available_for_all', 'scope', 'tags',
         )
-        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate')
+        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
@@ -977,11 +980,15 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings__uuid',
             'settings__type',
             'settings__shared',
-            'settings__error_message'
+            'settings__error_message',
+            'settings__tags',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
         return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
+
+    def get_tags(self, service):
+        return [t.name for t in service.settings.tags.all()]
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -994,6 +1001,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             fields['settings'].queryset = fields['settings'].queryset.filter(type=key)
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
+            # each service settings could be connected to scope
+            self.SERVICE_ACCOUNT_FIELDS['scope'] = 'VM that contains service'
             for field in self.Meta.settings_fields:
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
@@ -1077,19 +1086,21 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return attrs
 
     def get_resources_count(self, service):
-        return self.get_resources_count_map()[service.pk]
+        return self.get_resources_count_map[service.pk]
 
-    @lru_cache(maxsize=1)
+    @cached_property
     def get_resources_count_map(self):
         resource_models = SupportedServices.get_service_resources(self.Meta.model)
         counts = defaultdict(lambda: 0)
+        user = self.context['request'].user
         for model in resource_models:
             service_path = model.Permissions.service_path
             if isinstance(self.instance, list):
                 query = {service_path + '__in': self.instance}
             else:
                 query = {service_path: self.instance}
-            rows = model.objects.filter(**query).values(service_path)\
+            queryset = filter_queryset_for_user(model.objects.all(), user)
+            rows = queryset.filter(**query).values(service_path)\
                 .annotate(count=django_models.Count('id'))
             for row in rows:
                 service_id = row[service_path]
@@ -1181,11 +1192,16 @@ class ManagedResourceSerializer(BasicResourceSerializer):
 
 class RelatedResourceSerializer(BasicResourceSerializer):
     url = serializers.SerializerMethodField()
+    service_tags = serializers.SerializerMethodField()
 
     def get_url(self, resource):
         return reverse(resource.get_url_name() + '-detail',
                        kwargs={'uuid': resource.uuid.hex},
                        request=self.context['request'])
+
+    def get_service_tags(self, resource):
+        spl = resource.service_project_link
+        return [t.name for t in spl.service.settings.tags.all()]
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
@@ -1338,18 +1354,20 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
         fields['project'].queryset = self.context['service'].projects.all()
         return fields
 
-    def run_validation(self, data):
-        validated_data = super(BaseResourceImportSerializer, self).run_validation(data)
-
-        if self.Meta.model.objects.filter(backend_id=validated_data['backend_id']).exists():
+    def validate(self, attrs):
+        if self.Meta.model.objects.filter(backend_id=attrs['backend_id']).exists():
             raise serializers.ValidationError(
                 {'backend_id': "This resource is already linked to NodeConductor"})
 
         spl_class = SupportedServices.get_related_models(self.Meta.model)['service_project_link']
-        spl = spl_class.objects.get(service=self.context['service'], project=validated_data['project'])
-        validated_data['service_project_link'] = spl
+        spl = spl_class.objects.get(service=self.context['service'], project=attrs['project'])
+        attrs['service_project_link'] = spl
 
-        return validated_data
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('project')
+        return super(BaseResourceImportSerializer, self).create(validated_data)
 
 
 class VirtualMachineSerializer(BaseResourceSerializer):

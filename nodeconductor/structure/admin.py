@@ -266,7 +266,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
-              'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message')
+              'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message', 'tags')
     inlines = [QuotaInline]
 
     def get_type_display(self, obj):
@@ -386,7 +386,7 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
 
 class ResourceAdmin(admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'backend_id', 'state', 'get_service', 'get_project', 'error_message')
+    list_display = ('uuid', 'name', 'backend_id', 'state', 'get_service', 'get_project', 'error_message')
     list_filter = ('state',)
 
     def get_service(self, obj):

@@ -88,6 +88,10 @@ class Cloud(core_models.UuidMixin, core_models.NameMixin, LoggableMixin,
     def get_url_name(cls):
         return 'cloud'
 
+    @property
+    def full_name(self):
+        return self.name
+
     def __str__(self):
         return self.name
 

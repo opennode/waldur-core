@@ -1,35 +1,20 @@
 from ddt import ddt, data
-from rest_framework import test, status
+from rest_framework import status
 
-from nodeconductor.cost_tracking import models
-from nodeconductor.cost_tracking.tests import factories
 # dependency from openstack application exists only in tests
 from nodeconductor.openstack.tests import factories as openstack_factories
-from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
+
+from .. import models
+from . import factories
+from .base_test import BaseCostTrackingTest
 
 
 @ddt
-class PriceEstimateListTest(test.APITransactionTestCase):
+class PriceEstimateListTest(BaseCostTrackingTest):
 
     def setUp(self):
-        self.users = {
-            'staff': structure_factories.UserFactory(username='staff', is_staff=True),
-            'owner': structure_factories.UserFactory(username='owner'),
-            'administrator': structure_factories.UserFactory(username='administrator'),
-            'manager': structure_factories.UserFactory(username='manager'),
-        }
-
-        self.customer = structure_factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.project)
-
-        cloud = openstack_factories.OpenStackServiceFactory(customer=self.customer)
-        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project, cloud=cloud)
+        super(PriceEstimateListTest, self).setUp()
 
         self.link_price_estimate = factories.PriceEstimateFactory(
             year=2012, month=10, scope=self.service_project_link, is_manually_input=True)
@@ -94,26 +79,10 @@ class PriceEstimateListTest(test.APITransactionTestCase):
 
 
 @ddt
-class PriceEstimateCreateTest(test.APITransactionTestCase):
+class PriceEstimateCreateTest(BaseCostTrackingTest):
 
     def setUp(self):
-        self.users = {
-            'staff': structure_factories.UserFactory(username='staff', is_staff=True),
-            'owner': structure_factories.UserFactory(username='owner'),
-            'administrator': structure_factories.UserFactory(username='administrator'),
-            'manager': structure_factories.UserFactory(username='manager'),
-        }
-
-        self.customer = structure_factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.project)
-        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
-        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(
-            project=self.project, service=self.service)
+        super(PriceEstimateCreateTest, self).setUp()
 
         self.valid_data = {
             'scope': openstack_factories.OpenStackServiceProjectLinkFactory.get_url(self.service_project_link),
@@ -165,26 +134,10 @@ class PriceEstimateCreateTest(test.APITransactionTestCase):
         self.assertFalse(reread_price_estimate.is_visible)
 
 
-class PriceEstimateUpdateTest(test.APITransactionTestCase):
+class PriceEstimateUpdateTest(BaseCostTrackingTest):
 
     def setUp(self):
-        self.users = {
-            'staff': structure_factories.UserFactory(username='staff', is_staff=True),
-            'owner': structure_factories.UserFactory(username='owner'),
-            'administrator': structure_factories.UserFactory(username='administrator'),
-            'manager': structure_factories.UserFactory(username='manager'),
-        }
-
-        self.customer = structure_factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.project)
-
-        cloud = openstack_factories.OpenStackServiceFactory(customer=self.customer)
-        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project, cloud=cloud)
+        super(PriceEstimateUpdateTest, self).setUp()
 
         self.price_estimate = factories.PriceEstimateFactory(scope=self.service_project_link)
         self.valid_data = {
@@ -216,26 +169,10 @@ class PriceEstimateUpdateTest(test.APITransactionTestCase):
         self.assertFalse(reread_price_estimate.is_manually_input)
 
 
-class PriceEstimateDeleteTest(test.APITransactionTestCase):
+class PriceEstimateDeleteTest(BaseCostTrackingTest):
 
     def setUp(self):
-        self.users = {
-            'staff': structure_factories.UserFactory(username='staff', is_staff=True),
-            'owner': structure_factories.UserFactory(username='owner'),
-            'administrator': structure_factories.UserFactory(username='administrator'),
-            'manager': structure_factories.UserFactory(username='manager'),
-        }
-
-        self.customer = structure_factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_group = structure_factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.project)
-
-        cloud = openstack_factories.OpenStackServiceFactory(customer=self.customer)
-        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project, cloud=cloud)
+        super(PriceEstimateDeleteTest, self).setUp()
 
         self.manual_link_price_estimate = factories.PriceEstimateFactory(
             scope=self.service_project_link, is_manually_input=True)

@@ -436,8 +436,8 @@ class InstanceViewSet(structure_views.BaseResourceViewSet):
         instance = self.get_object()
         kwargs = {'uuid': instance.service_project_link.tenant.uuid.hex}
         url = reverse('openstack-tenant-detail', kwargs=kwargs, request=request) + 'allocate_floating_ip/'
-        result = request_api(request, url, 'POST')
-        return response.Response(result.data, result.status)
+        response = request_api(request, url, 'POST')
+        return response.Response(response.json(), response.status_code)
 
     allocate_floating_ip.title = 'Allocate floating IP'
 
@@ -838,7 +838,8 @@ class BackupViewSet(mixins.CreateModelMixin,
     @decorators.detail_route(methods=['post'])
     def restore(self, request, uuid):
         """
-        Restore a specified backup. Restoring a backup can take user input.
+        Restore a specified backup.
+        Restoring a backup can take user input that should contain fields `flavor` and `name`.
         Restoration is available only for backups in state ``READY``. If backup is not ready,
         status code of the response will be **409 CONFLICT**.
         """

@@ -120,7 +120,7 @@ class Command(BaseCommand):
             visible_name=host_data['name'],
             name=host_data['host'],
             backend_id=host_id,
-            state=Host.States.ONLINE,
+            state=Host.States.OK,
             host_group_name=host_group_name,
             interface_parameters=host_interface_data,
         )
@@ -133,8 +133,11 @@ class Command(BaseCommand):
             self.error(
                 '  IT service for instance %s (UUID: %s) does not exist.' % (iaas_instance.name, iaas_instance.uuid))
             return
-
-        trigger_data = api.trigger.get(filter={'triggerid': service_data['triggerid']}, output='extend')[0]
+        try:
+            trigger_data = api.trigger.get(filter={'triggerid': service_data['triggerid']}, output='extend')[0]
+        except IndexError:
+            self.error('Trigger with id %s does not exist. IT service data: %s' % (service_data['triggerid'], service_data))
+            raise
         try:
             trigger = Trigger.objects.get(name=trigger_data['description'], backend_id=trigger_data['templateid'])
         except Trigger.DoesNotExist:
@@ -151,7 +154,7 @@ class Command(BaseCommand):
             sort_order=int(service_data['sortorder']),
             agreed_sla=float(service_data['goodsla']),
             backend_trigger_id=service_data['triggerid'],
-            state=ITService.States.ONLINE,
+            state=ITService.States.OK,
             backend_id=service_data['serviceid'],
             name=service_data['name'],
             trigger=trigger,
@@ -328,7 +331,7 @@ class Command(BaseCommand):
             try:
                 self.add_user_to_tenant(clouds[cpm.cloud_id].settings.username, cpm)
             except keystone_exceptions.NotFound:
-                self.stdout.write('  CPM tenant (UUID: %s) does not exist at backend. CPM will be ignored' % cpm.tenant_id)
+                self.warn('CPM tenant (UUID: %s) does not exist at backend. CPM %s will be ignored' % (cpm.tenant_id, cpm))
                 continue
             try:
                 spl = op_models.OpenStackServiceProjectLink.objects.get(
@@ -358,6 +361,10 @@ class Command(BaseCommand):
                                     ' conflict should be handled manually.' % (spl.service, spl.project))
                 else:
                     # TODO: create tenant for SPL here.
+                    if spl.tenant is None:
+                        tenant = spl.create_tenant()
+                    else:
+                        tenant = spl.tenant
                     if spl.tenant_id != cpm.tenant_id:
                         tenant.backend_id = cpm.tenant_id
                         tenant.availability_zone = cpm.availability_zone
@@ -376,7 +383,7 @@ class Command(BaseCommand):
                     service_project_link=cpms[fip.cloud_project_membership_id],
                     backend_id=fip.backend_id)
             except ObjectDoesNotExist:
-                self.stdout.write('[+] %s' % fip)
+                self.stdout.write('[+] %s, status: %s' % (fip.address, fip.status))
                 op_models.FloatingIP.objects.create(
                     service_project_link=cpms[fip.cloud_project_membership_id],
                     backend_id=fip.backend_id,
@@ -394,7 +401,7 @@ class Command(BaseCommand):
                     service_project_link=cpms[sgp.cloud_project_membership_id],
                     backend_id=sgp.backend_id)
             except KeyError:
-                self.warn('DB inconsistency: missed CPM ID %s' % sgp.cloud_project_membership_id)
+                self.warn('Security group %s has link to CPM with id %s that does not exist' % (sgp, sgp.cloud_project_membership_id))
             except ObjectDoesNotExist:
                 self.stdout.write('[+] %s' % sgp)
                 sgroups[sgp.id] = op_models.SecurityGroup.objects.create(
@@ -457,6 +464,8 @@ class Command(BaseCommand):
                     ram=instance.ram,
                     state=instance.state,
                     name=instance.name,
+                    start_time=instance.start_time,
+                    created=instance.created,
                 )
 
                 # XXX: duplicate UUIDs due to killbill
@@ -511,13 +520,17 @@ class Command(BaseCommand):
             if backup.backup_source not in migrated_iaas_instances:
                 self.stdout.write('[ ] %s' % backup_schedule)
                 continue
+
+            op_instance = op_models.Instance.objects.get(uuid=backup.backup_source.uuid)
+            op_metadata = backup.metadata
+            op_metadata['tags'] = [tag.name for tag in op_instance.tags.all()]
             op_models.Backup.objects.create(
-                instance=op_models.Instance.objects.get(uuid=backup.backup_source.uuid),
+                instance=op_instance,
                 backup_schedule=migrated_backup_schedules.get(backup.backup_schedule, None),
                 kept_until=backup.kept_until,
                 created_at=backup.created_at,
                 state=backup.state,
-                metadata=backup.metadata,
+                metadata=op_metadata,
                 description=backup.description,
             )
             self.stdout.write('[+] %s' % backup)
@@ -557,11 +570,12 @@ class Command(BaseCommand):
                 continue
 
             main_template = Template.objects.create(
-                resource_content_type=ContentType.objects.get_for_model(op_models.Instance),
+                object_content_type=ContentType.objects.get_for_model(op_models.Instance),
                 service_settings=op_settings,
                 options={
                     'service_settings': self.get_obj_url('servicesettings-detail', op_settings),
                     'image': self.get_obj_url('openstack-image-detail', image),
+                    'skip_external_ip_assignment': True,
                 },
                 group=group,
                 order_number=1)
@@ -569,60 +583,5 @@ class Command(BaseCommand):
             _, tags = self.license2tags(tmpl)
             main_template.tags.add(*tags)
             main_template.tags.add(tmpl.type)
-
-            if self.zabbix_settings:
-                from nodeconductor_zabbix.models import Host, ITService, Trigger, Template as ZabbixTemplate
-
-                zabbix_templates = [ZabbixTemplate.objects.get(
-                    name='Template NodeConductor Instance', settings=self.zabbix_settings)]
-                if main_template.tags.filter(name__contains='zimbra'):
-                    zabbix_templates.append(ZabbixTemplate.objects.get(
-                        name='Template PaaS App Zimbra', settings=self.zabbix_settings))
-                    trigger_name = 'Zimbra is not available'
-                elif main_template.tags.filter(name__contains='wordpr'):
-                    zabbix_templates.append(ZabbixTemplate.objects.get(
-                        name='Template PaaS App Wordpress', settings=self.zabbix_settings))
-                    trigger_name = 'Wordpress is not available'
-                elif main_template.tags.filter(name__contains='postgre'):
-                    zabbix_templates.append(ZabbixTemplate.objects.get(
-                        name='Template PaaS App PostgreSQL', settings=self.zabbix_settings))
-                    trigger_name = 'PostgreSQL is not available'
-                else:
-                    trigger_name = 'Missing data about the VM'
-
-                Template.objects.create(
-                    resource_content_type=ContentType.objects.get_for_model(Host),
-                    service_settings=self.zabbix_settings,
-                    options={
-                        'service_settings': self.get_obj_url('servicesettings-detail', self.zabbix_settings),
-                        'visible_name': '{{ response.name }}',
-                        'scope': '{{ response.url }}',
-                        'name': '{{ response.backend_id }}',
-                        'host_group_name': 'NodeConductor',
-                        'templates': [{'url': self.get_obj_url('zabbix-template-detail', t)} for t in zabbix_templates],
-                    },
-                    use_previous_resource_project=True,
-                    group=group,
-                    order_number=2)
-
-                trigger = Trigger.objects.get(
-                    name=trigger_name, template__name='Template NodeConductor Instance', settings=self.zabbix_settings)
-
-                Template.objects.create(
-                    resource_content_type=ContentType.objects.get_for_model(ITService),
-                    service_settings=self.zabbix_settings,
-                    options={
-                        'service_settings': self.get_obj_url('servicesettings-detail', self.zabbix_settings),
-                        'host': '{{ response.url }}',
-                        'name': 'Availabilty of {{ response.name }}',
-                        'agreed_sla': 95,
-                        'sort_order': 1,
-                        'is_main': True,
-                        'trigger': self.get_obj_url('zabbix-trigger-detail', trigger),
-                        'algorithm': 'problem, if all children have problems',
-                    },
-                    use_previous_resource_project=True,
-                    group=group,
-                    order_number=3)
 
         ServiceSettings.objects.filter(id__in=new_settings).update(shared=True)

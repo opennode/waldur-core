@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.forms import ModelForm
 
 from nodeconductor.openstack.models import Instance
-from nodeconductor.openstack.widgets import LicenseWidget
+from nodeconductor.openstack.widgets import OpenStackTagsWidget
 from nodeconductor.structure.log import event_logger
 
 
@@ -24,7 +24,7 @@ class InstanceForm(ModelForm):
         model = Instance
         exclude = 'uuid',
         widgets = {
-            'tags': LicenseWidget(),
+            'tags': OpenStackTagsWidget(),
         }
 
     def clean_tags(self):
@@ -43,5 +43,9 @@ class InstanceForm(ModelForm):
                         'license_type': 'IaaS' if tag == 'os' else 'PaaS',
                     }
                 )
+
+        remote = self.data.get('tags_remote_type')
+        if remote:
+            tags.append(':'.join([remote, self.data.get('tags_remote_instance')]))
 
         return tags

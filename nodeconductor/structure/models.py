@@ -7,6 +7,7 @@ from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxLengthValidator
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -29,7 +30,7 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
-from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user
+from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user, ServiceSettingsManager
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
@@ -582,10 +583,18 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     token = models.CharField(max_length=255, blank=True, null=True)
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
-
     options = JSONField(default={}, help_text='Extra options', blank=True)
-
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
+
+    tags = TaggableManager(related_name='+', blank=True)
+    tracker = FieldTracker()
+
+    # service settings scope - VM that contains service
+    content_type = models.ForeignKey(ContentType, null=True)
+    object_id = models.PositiveIntegerField(null=True)
+    scope = GenericForeignKey('content_type', 'object_id')
+
+    objects = ServiceSettingsManager('scope')
 
     def get_backend(self, **kwargs):
         return SupportedServices.get_service_backend(self.type)(self, **kwargs)
@@ -631,11 +640,19 @@ class Service(core_models.SerializableAbstractMixin,
     )
     projects = NotImplemented
 
-    def get_backend(self, **kwargs):
-        return self.settings.get_backend(**kwargs)
+    def __init__(self, *args, **kwargs):
+        AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
+        super(Service, self).__init__(*args, **kwargs)
 
     def __str__(self):
         return self.name
+
+    def get_backend(self, **kwargs):
+        return self.settings.get_backend(**kwargs)
+
+    @property
+    def full_name(self):
+        return ' / '.join([self.settings.name, self.name])
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -1106,7 +1123,7 @@ class ResourceMixin(MonitoringModelMixin,
 
         return itertools.chain.from_iterable(
             model.objects.filter(**{field.name: self})
-            for model in Resource.get_all_models()
+            for model in ResourceMixin.get_all_models()
             for field in model._meta.virtual_fields
             if isinstance(field, GenericForeignKey))
 
@@ -1116,7 +1133,7 @@ class ResourceMixin(MonitoringModelMixin,
         return itertools.chain.from_iterable(
             rel.related_model.objects.filter(**{rel.field.name: self})
             for rel in self._meta.get_all_related_objects()
-            if issubclass(rel.related_model, Resource)
+            if issubclass(rel.related_model, ResourceMixin)
         )
 
     def _get_concrete_linked_resources(self):
@@ -1124,7 +1141,7 @@ class ResourceMixin(MonitoringModelMixin,
         return [getattr(self, field.name)
                 for field in self._meta.fields
                 if isinstance(field, models.ForeignKey) and
-                issubclass(field.related_model, Resource)]
+                issubclass(field.related_model, ResourceMixin)]
 
     def _get_generic_linked_resources(self):
         # For example, returns GitLab group for project
@@ -1151,6 +1168,16 @@ class ResourceMixin(MonitoringModelMixin,
         context['resource_full_name'] = self.full_name
         # required for lookups in ElasticSearch by the client
         context['resource_type'] = SupportedServices.get_name_for_model(self)
+
+        # XXX: a hack for IaaS / PaaS / SaaS tags
+        # XXX: should be moved to itacloud assembly
+        if self.tags.filter(name='IaaS').exists():
+            context['resource_delivery_model'] = 'IaaS'
+        elif self.tags.filter(name='PaaS').exists():
+            context['resource_delivery_model'] = 'PaaS'
+        elif self.tags.filter(name='SaaS').exists():
+            context['resource_delivery_model'] = 'SaaS'
+
         return context
 
     def filter_by_logged_object(self):

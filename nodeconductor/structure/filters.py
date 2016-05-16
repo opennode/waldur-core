@@ -544,10 +544,29 @@ class BaseServiceFilter(django_filters.FilterSet):
     project_uuid = django_filters.CharFilter(name='projects__uuid', distinct=True)
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
     shared = django_filters.BooleanFilter(name='settings__shared', distinct=True)
+    type = core_filters.MappedChoiceFilter(
+        name='settings__type',
+        choices=SupportedServices.Types.get_direct_filter_mapping(),
+        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping()
+    )
+    tag = django_filters.ModelMultipleChoiceFilter(
+        name='settings__tags__name',
+        to_field_name='name',
+        lookup_type='in',
+        queryset=taggit.models.Tag.objects.all(),
+    )
+    # rtag - required tag, support for filtration by tags using AND operation
+    # ?rtag=t1&rtag=t2 - will filter instances that have both t1 and t2.
+    rtag = django_filters.ModelMultipleChoiceFilter(
+        name='settings__tags__name',
+        to_field_name='name',
+        queryset=taggit.models.Tag.objects.all(),
+        conjoined=True,
+    )
 
     class Meta(object):
         model = models.Service
-        fields = ('name', 'project_uuid', 'customer', 'project', 'settings', 'shared')
+        fields = ('name', 'project_uuid', 'customer', 'project', 'settings', 'shared', 'type', 'tag', 'rtag')
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):

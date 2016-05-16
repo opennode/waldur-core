@@ -7,7 +7,7 @@ from django_fsm.signals import post_transition
 
 class CostTrackingConfig(AppConfig):
     name = 'nodeconductor.cost_tracking'
-    verbose_name = 'Cost Tracking'
+    verbose_name = 'Cost tracking'
 
     def ready(self):
         from nodeconductor.core.handlers import preserve_fields_before_update
@@ -16,7 +16,6 @@ class CostTrackingConfig(AppConfig):
         from nodeconductor.structure.signals import resource_imported
 
         PriceEstimate = self.get_model('PriceEstimate')
-        DefaultPriceListItem = self.get_model('DefaultPriceListItem')
 
         signals.post_save.connect(
             handlers.make_autocalculate_price_estimate_invisible_on_manual_estimate_creation,
@@ -45,30 +44,6 @@ class CostTrackingConfig(AppConfig):
             dispatch_uid='nodeconductor.cost_tracking.handlers.copy_threshold_from_previous_price_estimate'
         )
 
-        for index, service in enumerate(structure_models.Service.get_all_models()):
-            signals.post_save.connect(
-                handlers.create_price_list_items_for_service,
-                sender=service,
-                dispatch_uid=(
-                    'nodeconductor.cost_tracking.handlers.create_price_list_items_for_service_{}_{}'
-                    .format(service.__name__, index))
-            )
-
-        # TODO: enable once price list items start being used
-        # Commented out as it's failing on the unique_together constraint when SaltStack tenants are updated
-
-        # signals.post_save.connect(
-        #     handlers.change_price_list_items_if_default_was_changed,
-        #     sender=DefaultPriceListItem,
-        #     dispatch_uid='nodeconductor.cost_tracking.handlers.change_price_list_items_if_default_was_changed'
-        # )
-
-        signals.post_delete.connect(
-            handlers.delete_price_list_items_if_default_was_deleted,
-            sender=DefaultPriceListItem,
-            dispatch_uid='nodeconductor.cost_tracking.handlers.delete_price_list_items_if_default_was_deleted'
-        )
-
         signals.post_save.connect(
             handlers.update_price_estimate_ancestors,
             sender=PriceEstimate,
@@ -89,6 +64,14 @@ class CostTrackingConfig(AppConfig):
                 sender=resource,
                 dispatch_uid=(
                     'nodeconductor.cost_tracking.handlers.preserve_fields_before_update_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
+            signals.pre_save.connect(
+                handlers.check_project_cost_limit_on_resource_provision,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.check_project_cost_limit_on_resource_provision_{}_{}'
                     .format(resource.__name__, index))
             )
 

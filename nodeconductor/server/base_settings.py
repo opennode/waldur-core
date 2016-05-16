@@ -178,18 +178,6 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
-    'recover-erred-services': {
-        'task': 'nodeconductor.structure.recover_erred_services',
-        'schedule': timedelta(minutes=45),
-        'args': (),
-    },
-
-    'recover-erred-service-settings': {
-        'task': 'nodeconductor.structure.recover_service_settings',
-        'schedule': timedelta(minutes=45),
-        'args': (),
-    },
-
     'pull-service-statistics': {
         'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
         'schedule': timedelta(minutes=15),
@@ -314,6 +302,8 @@ NODECONDUCTOR = {
         },
     ),
     'TOKEN_KEY': 'x-auth-token',
+    'TOKEN_LIFETIME': timedelta(hours=1),
+
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
 }

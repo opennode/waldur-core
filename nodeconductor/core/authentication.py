@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
+from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 import rest_framework.authentication
 from rest_framework import exceptions
@@ -23,6 +24,21 @@ class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
         if not auth:
             auth = request.query_params.get(TOKEN_KEY, '')
         return auth
+
+    def authenticate_credentials(self, key):
+        try:
+            token = self.model.objects.select_related('user').get(key=key)
+        except self.model.DoesNotExist:
+            raise exceptions.AuthenticationFailed(_('Invalid token.'))
+
+        if not token.user.is_active:
+            raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
+
+        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        if token.created < timezone.now() - lifetime:
+            raise exceptions.AuthenticationFailed(_('Token has expired.'))
+
+        return token.user, token
 
     def authenticate(self, request):
         auth = self.get_authorization_value(request).split()
@@ -47,6 +63,10 @@ def user_capturing_auth(auth):
             if result is not None:
                 user, _ = result
                 nodeconductor.logging.middleware.set_current_user(user)
+                token = user.auth_token
+                if token:
+                    token.created = timezone.now()
+                    token.save()
             return result
 
     return CapturingAuthentication

@@ -1,7 +1,9 @@
 import logging
 
+from django.conf import settings
 from django.contrib import auth
 from django.db.models import ProtectedError
+from django.utils import timezone
 from django.utils.encoding import force_text
 
 from rest_framework import status
@@ -25,7 +27,25 @@ from nodeconductor.logging.loggers import event_logger
 logger = logging.getLogger(__name__)
 
 
-class ObtainAuthToken(APIView):
+class RefreshTokenMixin(object):
+    """
+    This mixin is used in both password and social auth (implemented via plugin).
+    Mixin allows to create new token if it does not exist yet or if it has already expired.
+    Token is refreshed if it has not expired yet.
+    """
+    def refresh_token(self, user):
+        token, _ = Token.objects.get_or_create(user=user)
+        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        if token.created < timezone.now() - lifetime:
+            token.delete()
+            token = Token.objects.create(user=user)
+        else:
+            token.created = timezone.now()
+            token.save()
+        return token
+
+
+class ObtainAuthToken(RefreshTokenMixin, APIView):
     """
     Api view loosely based on DRF's default ObtainAuthToken,
     but with the responses formats and status codes aligned with BasicAuthentication behavior.
@@ -112,7 +132,7 @@ class ObtainAuthToken(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        token, _ = Token.objects.get_or_create(user=user)
+        token = self.refresh_token(user)
 
         logger.debug('Returning token for successful login of user %s', user)
         event_logger.auth.info(
@@ -175,8 +195,8 @@ class BaseSummaryView(GenericViewSet):
     def get_queryset(self, request):
         def fetch_data(view_name, params):
             response = request_api(request, view_name, params=params)
-            if not response.success:
-                raise APIException(response.data)
+            if not response.ok:
+                raise APIException(response.text)
             return response
 
         data = []
@@ -184,10 +204,11 @@ class BaseSummaryView(GenericViewSet):
             params = self.get_params(request)
             response = fetch_data(url, params)
 
-            if response.total and response.total > len(response.data):
+            json = response.json()
+            if response.total and response.total > len(json):
                 params['page_size'] = response.total
                 response = fetch_data(url, params)
-            data += response.data
+            data += json
         return data
 
     def get_params(self, request):

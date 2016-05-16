@@ -6,6 +6,8 @@ from operator import or_
 
 from django.db import models
 
+from nodeconductor.core.managers import GenericKeyMixin
+
 
 def filter_queryset_for_user(queryset, user):
     filtered_relations = ('customer', 'project', 'project_group')
@@ -185,7 +187,7 @@ class SummaryQuerySet(object):
             return list(itertools.islice(chained_querysets, val.start, val.stop))
         else:
             try:
-                return itertools.islice(chained_querysets, val, val+1).next()
+                return itertools.islice(chained_querysets, val, val + 1).next()
             except StopIteration:
                 raise IndexError
 
@@ -258,3 +260,12 @@ class SummaryQuerySet(object):
             else:
                 # subseq has been exhausted, therefore remove it from the queue
                 heapq.heappop(heap)
+
+
+class ServiceSettingsManager(GenericKeyMixin, models.Manager):
+    """ Allows to filter and get service settings by generic key """
+
+    def get_available_models(self):
+        """ Return list of models that are acceptable """
+        from nodeconductor.structure.models import ResourceMixin
+        return ResourceMixin.get_all_models()

@@ -39,7 +39,7 @@ class CustomMenu(Menu):
     """
 
     IAAS_CLOUDS = (
-        'nodeconductor_plus.azure.*',
+        'nodeconductor_azure.*',
         'nodeconductor_plus.aws.*',
         'nodeconductor_plus.digitalocean.*',
         'nodeconductor.openstack.*'
@@ -51,7 +51,8 @@ class CustomMenu(Menu):
         'nodeconductor_zabbix.*',
         'nodeconductor_jira.*',
         'nodeconductor_plus.gitlab.*',
-        'nodeconductor_oracle_dbaas.*'
+        'nodeconductor_oracle_dbaas.*',
+        'nodeconductor_paas_oracle.*',
     )
 
     SUPPORT_MODULES = (
