@@ -1,8 +1,7 @@
 # Configure repositories
 yum -y install epel-release
-yum -y install https://repos.fedorapeople.org/repos/openstack/EOL/openstack-juno/rdo-release-juno-1.noarch.rpm
-sed -i 's,openstack/openstack-juno,openstack/EOL/openstack-juno,' /etc/yum.repos.d/rdo-release.repo
 yum -y install http://opennodecloud.com/centos/7/nodeconductor-release.rpm
+yum -y install http://opennodecloud.com/centos/7/rdo-release.rpm
 
 # Install dependencies
 yum -y install mariadb-server nodeconductor-wsgi redis
