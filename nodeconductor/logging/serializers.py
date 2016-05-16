@@ -92,7 +92,7 @@ class PushHookSerializer(BaseHookSerializer):
 
     class Meta(BaseHookSerializer.Meta):
         model = models.PushHook
-        fields = BaseHookSerializer.Meta.fields + ('type', 'device_id')
+        fields = BaseHookSerializer.Meta.fields + ('type', 'device_id', 'token')
 
     def get_hook_type(self, hook):
         return 'pushhook'
