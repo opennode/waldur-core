@@ -16,14 +16,18 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates
 from nodeconductor.iaas import models as iaas_models
 from nodeconductor.monitoring.zabbix.api_client import ZabbixApiClient
-from nodeconductor.openstack import Types
-from nodeconductor.openstack import models as op_models
-from nodeconductor.openstack.apps import OpenStackConfig
 from nodeconductor.quotas.handlers import init_quotas
 from nodeconductor.structure.models import ServiceSettings
 from nodeconductor.template.models import TemplateGroup, Template
 
 zbx = NodeConductorExtension.is_installed('nodeconductor_zabbix')
+
+if NodeConductorExtension.is_installed('nodeconductor_openstack'):
+    from nodeconductor_openstack import Types
+    from nodeconductor_openstack import models as op_models
+    from nodeconductor_openstack.apps import OpenStackConfig
+else:
+    raise RuntimeError("Module nodeconductor-openstack should be installed for OpenStack migration")
 
 
 class Command(BaseCommand):

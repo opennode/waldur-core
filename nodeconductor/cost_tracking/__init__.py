@@ -24,7 +24,6 @@ Add-on connection:
 import logging
 from decimal import Decimal
 
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import Prefetch
 
 from nodeconductor.structure import ServiceBackendNotImplemented
@@ -113,6 +112,7 @@ class CostTrackingBackend(object):
         If service-specific price list item is unavailable, default
         price list item is used instead for fetching monthly_rate.
         """
+        from django.contrib.contenttypes.models import ContentType
         from nodeconductor.cost_tracking.models import DefaultPriceListItem, PriceListItem
         resource_content_type = ContentType.objects.get_for_model(resource)
 

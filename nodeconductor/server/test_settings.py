@@ -16,6 +16,7 @@ DATABASES = {
 
 INSTALLED_APPS += (
     'nodeconductor.quotas.tests',
+    'nodeconductor.structure.tests',
 )
 
 BROKER_URL = 'sqla+sqlite:///:memory:'

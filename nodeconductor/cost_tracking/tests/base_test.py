@@ -1,6 +1,5 @@
 from rest_framework import test
 
-from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -23,6 +22,6 @@ class BaseCostTrackingTest(test.APITransactionTestCase):
         self.project_group.add_user(self.users['manager'], structure_models.ProjectGroupRole.MANAGER)
         self.project_group.projects.add(self.project)
 
-        self.service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
-        self.service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(
+        self.service = structure_factories.TestServiceFactory(customer=self.customer)
+        self.service_project_link = structure_factories.TestServiceProjectLinkFactory(
             project=self.project, service=self.service)

@@ -16,7 +16,6 @@ from nodeconductor.backup import urls as backup_urls
 from nodeconductor.iaas import urls as iaas_urls
 from nodeconductor.logging import urls as logging_urls
 from nodeconductor.monitoring import urls as monitoring_urls
-from nodeconductor.openstack import urls as openstack_urls
 from nodeconductor.quotas import urls as quotas_urls
 from nodeconductor.structure import urls as structure_urls
 from nodeconductor.template import urls as template_urls
@@ -31,7 +30,6 @@ cost_tracking_urls.register_in(router)
 iaas_urls.register_in(router)
 logging_urls.register_in(router)
 monitoring_urls.register_in(router)
-openstack_urls.register_in(router)
 quotas_urls.register_in(router)
 structure_urls.register_in(router)
 template_urls.register_in(router)

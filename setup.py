@@ -35,36 +35,12 @@ install_requires = [
     'iptools>=0.6.1',
     'jsonfield==1.0.0',
     'Pillow>=2.0.0,<3.0.0',
-    'python-ceilometerclient==1.0.12',
-    'python-cinderclient==1.1.1',
-    'python-glanceclient==0.15.0',
-    'python-keystoneclient==0.11.1',
-    'python-neutronclient==2.3.9',
-    'python-novaclient==2.20.0',
     'PyYAML>=3.10',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
 ]
-
-
-# RPM installation does not need oslo, cliff and stevedore libs -
-# they are required only for installation with setuptools
-try:
-    action = sys.argv[1]
-except IndexError:
-    pass
-else:
-    if action in ['develop', 'install', 'test', 'bdist_egg']:
-        install_requires += [
-            'cliff==1.7.0',
-            'oslo.config==1.4.0',
-            'oslo.i18n==1.0.0',
-            'oslo.utils==1.0.0',
-            'stevedore==1.0.0',
-        ]
-
 
 setup(
     name='nodeconductor',

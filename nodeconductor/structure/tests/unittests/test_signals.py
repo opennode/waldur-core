@@ -1,9 +1,8 @@
 from django.test import TestCase
 
-from nodeconductor.core.models import SynchronizationStates
-from nodeconductor.openstack import models as openstack_models
-from nodeconductor.structure import models, SupportedServices
+from nodeconductor.structure import models
 from nodeconductor.structure.tests import factories
+from nodeconductor.structure.tests import models as test_models
 
 
 class ProjectSignalsTest(TestCase):
@@ -33,14 +32,13 @@ class ProjectGroupSignalsTest(TestCase):
 class ServiceSettingsSignalsTest(TestCase):
 
     def setUp(self):
-        self.openstack_shared_service_settings = factories.ServiceSettingsFactory(
-            type=SupportedServices.Types.OpenStack, shared=True)
+        self.shared_service_settings = factories.ServiceSettingsFactory(shared=True)
 
     def test_shared_service_is_created_for_new_customer(self):
         customer = factories.CustomerFactory()
 
-        self.assertTrue(openstack_models.OpenStackService.objects.filter(
-            customer=customer, settings=self.openstack_shared_service_settings, available_for_all=True).exists())
+        self.assertTrue(test_models.TestService.objects.filter(
+            customer=customer, settings=self.shared_service_settings, available_for_all=True).exists())
 
 
 class ServiceProjectLinkSignalsTest(TestCase):
@@ -76,11 +74,12 @@ class ServiceProjectLinkSignalsTest(TestCase):
         self.assertFalse(self.link_exists(other_project, service))
 
     def create_service(self, customer, available_for_all):
-        service_settings = factories.ServiceSettingsFactory(type=SupportedServices.Types.OpenStack, shared=False)
-        return openstack_models.OpenStackService.objects.create(name='test',
-                                                                customer=customer,
-                                                                settings=service_settings,
-                                                                available_for_all=available_for_all)
+        service_settings = factories.ServiceSettingsFactory(shared=False)
+        return test_models.TestService.objects.create(name='test',
+                                                      customer=customer,
+                                                      settings=service_settings,
+                                                      available_for_all=available_for_all)
+
     def link_exists(self, project, service):
-        return openstack_models.OpenStackServiceProjectLink.objects.filter(
+        return test_models.TestServiceProjectLink.objects.filter(
             project=project, service=service).exists()

@@ -41,7 +41,6 @@ INSTALLED_APPS = (
     'nodeconductor.structure',
     'nodeconductor.template',
     'nodeconductor.cost_tracking',
-    'nodeconductor.openstack',
     'nodeconductor.iaas',
 
     'rest_framework',
@@ -166,15 +165,37 @@ CELERYBEAT_SCHEDULE = {
         'args': ('yearly',),
     },
 
-    'sync-services': {
-        'task': 'nodeconductor.iaas.sync_services',
-        'schedule': timedelta(minutes=60),
-        'args': (),
-    },
-
     'pull-service-settings': {
         'task': 'nodeconductor.structure.pull_service_settings',
         'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
+    'update-current-month-cost-projections': {
+        'task': 'nodeconductor.cost_tracking.update_projected_estimate',
+        'schedule': timedelta(hours=24),
+        'args': (),
+    },
+
+    'close-alerts-without-scope': {
+        'task': 'nodeconductor.logging.close_alerts_without_scope',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+    'cleanup-alerts': {
+        'task': 'nodeconductor.logging.alerts_cleanup',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+    'check-threshold': {
+        'task': 'nodeconductor.logging.check_threshold',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
+
+    'sync-services': {
+        'task': 'nodeconductor.iaas.sync_services',
+        'schedule': timedelta(minutes=60),
         'args': (),
     },
 
@@ -207,6 +228,12 @@ CELERYBEAT_SCHEDULE = {
         'args': (),
     },
 
+    'pull-instances-installation-state': {
+        'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
+        'schedule': timedelta(minutes=1),
+        'args': (),
+    },
+
     'execute-backup-schedules-old': {
         'task': 'nodeconductor.backup.tasks.execute_schedules',
         'schedule': timedelta(minutes=10),
@@ -216,58 +243,6 @@ CELERYBEAT_SCHEDULE = {
     'delete-expired-backups-old': {
         'task': 'nodeconductor.backup.tasks.delete_expired_backups',
         'schedule': timedelta(minutes=10),
-        'args': (),
-    },
-
-    'openstack-schedule-backups': {
-        'task': 'nodeconductor.openstack.schedule_backups',
-        'schedule': timedelta(minutes=10),
-        'args': (),
-    },
-
-    'openstack-delete-expired-backups': {
-        'task': 'nodeconductor.openstack.delete_expired_backups',
-        'schedule': timedelta(minutes=10),
-        'args': (),
-    },
-
-    'openstack-pull-tenants': {
-        'task': 'nodeconductor.openstack.pull_tenants',
-        'schedule': timedelta(minutes=30),
-        'args': (),
-    },
-
-    'openstack-pull-tenants-properties': {
-        'task': 'nodeconductor.openstack.pull_tenants_properties',
-        'schedule': timedelta(minutes=30),
-        'args': (),
-    },
-
-    'pull-instances-installation-state': {
-        'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
-        'schedule': timedelta(minutes=1),
-        'args': (),
-    },
-
-    'update-current-month-cost-projections': {
-        'task': 'nodeconductor.cost_tracking.update_projected_estimate',
-        'schedule': timedelta(hours=24),
-        'args': (),
-    },
-
-    'close-alerts-without-scope': {
-        'task': 'nodeconductor.logging.close_alerts_without_scope',
-        'schedule': timedelta(minutes=30),
-        'args': (),
-    },
-    'cleanup-alerts': {
-        'task': 'nodeconductor.logging.alerts_cleanup',
-        'schedule': timedelta(minutes=30),
-        'args': (),
-    },
-    'check-threshold': {
-        'task': 'nodeconductor.logging.check_threshold',
-        'schedule': timedelta(minutes=30),
         'args': (),
     },
 }
@@ -281,26 +256,6 @@ CELERY_TASK_THROTTLING = {
 
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
-    'DEFAULT_SECURITY_GROUPS': (
-        {
-            'name': 'ssh',
-            'description': 'Security group for secure shell access and ping',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 22,
-                    'to_port': 22,
-                },
-                {
-                    'protocol': 'icmp',
-                    'cidr': '0.0.0.0/0',
-                    'icmp_type': -1,
-                    'icmp_code': -1,
-                },
-            ),
-        },
-    ),
     'TOKEN_KEY': 'x-auth-token',
     'TOKEN_LIFETIME': timedelta(hours=1),
 
