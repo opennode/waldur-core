@@ -166,11 +166,6 @@ class PriceEstimateAdmin(admin.ModelAdmin):
     search_fields = ('month', 'year', 'object_id', 'total')
 
 
-class ApplicationTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'slug')
-    prepopulated_fields = {'slug': ('name',)}
-
 admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
 admin.site.register(models.PriceEstimate, PriceEstimateAdmin)
-admin.site.register(models.ApplicationType, ApplicationTypeAdmin)

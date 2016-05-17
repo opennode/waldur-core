@@ -48,34 +48,6 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def __init__(self, **kwargs):
         FluentIndexDashboard.__init__(self, **kwargs)
-        self.children.append(modules.Group(
-            title="IaaS",
-            display="tabs",
-            children=[
-                modules.ModelList(
-                    title='Virtual Machine',
-                    models=('nodeconductor.iaas.models.Instance',
-                            'nodeconductor.iaas.models.InstanceSlaHistory',
-                            'nodeconductor.iaas.models.Template',
-                            'nodeconductor.iaas.models.TemplateLicense',
-                            )
-                ),
-                modules.ModelList(
-                    title='Cloud',
-                    models=('nodeconductor.iaas.models.Cloud',
-                            'nodeconductor.iaas.models.CloudProjectMembership',
-                            'nodeconductor.iaas.models.OpenStackSettings',
-                            )
-                ),
-                modules.ModelList(
-                    title='Network',
-                    models=('nodeconductor.iaas.models.FloatingIP',
-                            'nodeconductor.iaas.models.IpMapping',
-                            'nodeconductor.iaas.models.SecurityGroup',
-                            )
-                ),
-            ]
-        ))
 
         billing_models = ['nodeconductor.cost_tracking.*']
         if NodeConductorExtension.is_installed('nodeconductor_killbill'):

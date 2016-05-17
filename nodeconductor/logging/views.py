@@ -176,7 +176,7 @@ class AlertViewSet(mixins.CreateModelMixin,
            object with given uuid)
          - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
          - ?content_type=<string> name of scope content type in format <app_name>.<scope_type>
-           (Ex.: structure.project, iaas.instance...)
+           (Ex.: structure.project, openstack.instance...)
          - ?exclude_features=<feature> (can be list) - exclude alert from output if it's type corresponds o one of given features
 
         Alerts can be ordered by:
@@ -380,7 +380,7 @@ class EmailHookViewSet(BaseHookViewSet):
 
             {
                 "events": [
-                    "iaas_instance_start_succeeded"
+                    "openstack_instance_start_succeeded"
                 ],
                 "email": "test@example.com"
             }

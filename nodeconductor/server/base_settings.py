@@ -35,13 +35,11 @@ INSTALLED_APPS = (
     'nodeconductor.landing',
     'nodeconductor.logging',
     'nodeconductor.core',
-    'nodeconductor.backup',
     'nodeconductor.monitoring',
     'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.template',
     'nodeconductor.cost_tracking',
-    'nodeconductor.iaas',
 
     'rest_framework',
     'rest_framework.authtoken',
@@ -191,66 +189,6 @@ CELERYBEAT_SCHEDULE = {
         'task': 'nodeconductor.logging.check_threshold',
         'schedule': timedelta(minutes=30),
         'args': (),
-    },
-
-    'sync-services': {
-        'task': 'nodeconductor.iaas.sync_services',
-        'schedule': timedelta(minutes=60),
-        'args': (),
-    },
-
-    'pull-service-statistics': {
-        'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
-        'schedule': timedelta(minutes=15),
-        'args': (),
-    },
-    'pull-cloud-project-memberships': {
-        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_memberships',
-        'schedule': timedelta(minutes=30),
-        'args': (),
-    },
-
-    'check-cloud-project-memberships-quotas': {
-        'task': 'nodeconductor.iaas.tasks.iaas.check_cloud_memberships_quotas',
-        'schedule': timedelta(minutes=1440),
-        'args': (),
-    },
-
-    'sync-instances-with-zabbix': {
-        'task': 'nodeconductor.iaas.tasks.iaas.sync_instances_with_zabbix',
-        'schedule': timedelta(minutes=30),
-        'args': (),
-    },
-
-    'create-zabbix-hosts-and-services': {
-        'task': 'nodeconductor.iaas.tasks.zabbix.zabbix_create_host_and_service_for_all_instances',
-        'schedule': timedelta(hours=1),
-        'args': (),
-    },
-
-    'pull-instances-installation-state': {
-        'task': 'nodeconductor.iaas.tasks.zabbix.pull_instances_installation_state',
-        'schedule': timedelta(minutes=1),
-        'args': (),
-    },
-
-    'execute-backup-schedules-old': {
-        'task': 'nodeconductor.backup.tasks.execute_schedules',
-        'schedule': timedelta(minutes=10),
-        'args': (),
-    },
-
-    'delete-expired-backups-old': {
-        'task': 'nodeconductor.backup.tasks.delete_expired_backups',
-        'schedule': timedelta(minutes=10),
-        'args': (),
-    },
-}
-
-CELERY_TASK_THROTTLING = {
-    'nodeconductor.iaas.tasks.openstack.openstack_provision_instance': {
-        'concurrency': 1,
-        'retry_delay': 30,
     },
 }
 
