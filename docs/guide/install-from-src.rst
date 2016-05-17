@@ -114,7 +114,11 @@ Therefore configuration might look like this:
                 'postgresql-templateid': '10109',
                 'application-status-item': 'application.status',
             }
-        }
+        },
+        'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
+            'volumes': 4,
+            'snapshots': 20,
+        },
     }
 
 **Available settings**
