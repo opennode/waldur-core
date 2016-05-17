@@ -1,5 +1,4 @@
 import factory
-import unittest
 
 from mock_django import mock_signal_receiver
 from django.core.urlresolvers import reverse
@@ -43,7 +42,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
     # Possible solutions:
     #  1. Make this text abstract and override it in other applications.
     #  2. Register factories and other test related stuff for each application and use them in this test.
-    @unittest.skip("NC-1392: Test resource's view should be available")
     @override_nodeconductor_settings(SUSPEND_UNPAID_CUSTOMERS=True)
     def test_modify_suspended_services_and_resources(self):
         self.client.force_authenticate(user=self.user)
@@ -111,7 +109,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
                         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
 
-@unittest.skip("NC-1392: Test resource's view should be available")
 class ServiceResourcesCounterTest(test.APITransactionTestCase):
     """
     There's one shared service. Also there are 2 users each of which has one project.

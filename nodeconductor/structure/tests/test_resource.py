@@ -1,12 +1,9 @@
-import unittest
-
 from rest_framework import test, status
 
 from nodeconductor.structure.models import Resource
 from nodeconductor.structure.tests import factories
 
 
-@unittest.skip("NC-1392: Test resource's view should be available")
 class ResourceRemovalTest(test.APITransactionTestCase):
     def setUp(self):
         self.user = factories.UserFactory(is_staff=True)
