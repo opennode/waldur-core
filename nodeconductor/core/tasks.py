@@ -168,7 +168,7 @@ class Throttle(object):
             @shared_task(name="change_instance")
             def change_instance1(instance_uuid):
                 instance = Instance.objects.get(uuid=instance_uuid)
-                with throttle(key=instance.cloud_project_membership.cloud.auth_url):
+                with throttle(key=instance.service_project_link.service.settings.backend_url):
                     instance.change_instance()
 
             @shared_task()

@@ -1,5 +1,5 @@
 # TODO: Move all this settings to separate application G-Cloud assembly.
-""" Configurations for G-Cloud specific actions. """
+""" Configurations for itacloud specific actions. """
 
 # Name of shared settings that will be used for creating default hosts
 SHARED_ZABBIX_SETTINGS_NAME = 'Zabbix'
