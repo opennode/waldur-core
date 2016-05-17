@@ -7,5 +7,5 @@ To import OpenStack instance - execute "importopenstackinstance" management comm
 
     $ nodeconductor importopenstackinstance
 
-KillBill and Zabbix plugin should be installed for a successful command execution.
+OpenStack, KillBill and Zabbix plugins should be installed for a successful command execution.
 
