@@ -789,26 +789,13 @@ def validate_yaml(value):
         raise ValidationError('A valid YAML value is required.')
 
 
-# This extra class required in order not to get into a mess with current iaas implementation
-class BaseVirtualMachineMixin(models.Model):
-    key_name = models.CharField(max_length=50, blank=True)
-    key_fingerprint = models.CharField(max_length=47, blank=True)
-
-    user_data = models.TextField(
-        blank=True, validators=[validate_yaml],
-        help_text='Additional data that will be added to instance on provisioning')
-
-    class Meta(object):
-        abstract = True
-
-
 class PrivateCloudMixin(models.Model):
 
     class Meta(object):
         abstract = True
 
 
-class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
+class VirtualMachineMixin(CoordinatesMixin):
     def __init__(self, *args, **kwargs):
         AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
         super(VirtualMachineMixin, self).__init__(*args, **kwargs)
@@ -823,6 +810,13 @@ class VirtualMachineMixin(BaseVirtualMachineMixin, CoordinatesMixin):
     internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
 
     image_name = models.CharField(max_length=150, blank=True)
+
+    key_name = models.CharField(max_length=50, blank=True)
+    key_fingerprint = models.CharField(max_length=47, blank=True)
+
+    user_data = models.TextField(
+        blank=True, validators=[validate_yaml],
+        help_text='Additional data that will be added to instance on provisioning')
 
     class Meta(object):
         abstract = True
@@ -1090,19 +1084,13 @@ class ResourceMixin(MonitoringModelMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_vm_models(cls):
-        # TODO: remove once iaas has been deprecated
-        from nodeconductor.iaas.models import Instance
-        return [resource for resource in cls.get_all_models()
-                if issubclass(resource, VirtualMachineMixin) or issubclass(resource, Instance)]
+        return [resource for resource in cls.get_all_models() if issubclass(resource, VirtualMachineMixin)]
 
     @classmethod
     @lru_cache(maxsize=1)
     def get_app_models(cls):
-        # TODO: remove once iaas has been deprecated
-        from nodeconductor.iaas.models import Instance
         return [resource for resource in cls.get_all_models()
                 if not issubclass(resource, VirtualMachineMixin) and
-                not issubclass(resource, Instance) and
                 not issubclass(resource, PrivateCloudMixin)]
 
     @classmethod

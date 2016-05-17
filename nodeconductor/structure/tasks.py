@@ -9,7 +9,6 @@ from django.db import transaction
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask, Task
 from nodeconductor.core.models import SshPublicKey
-from nodeconductor.iaas.backend import CloudBackendError
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
 from nodeconductor.structure.utils import deserialize_ssh_key, deserialize_user, GeoIpException
@@ -54,7 +53,7 @@ def push_ssh_public_key(ssh_public_key_uuid, service_project_link_str):
             public_key.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
-    except (ServiceBackendError, CloudBackendError):
+    except ServiceBackendError:
         logger.warning(
             'Failed to push SSH key %s to service project link %s.',
             public_key.uuid, service_project_link_str,
@@ -80,7 +79,7 @@ def remove_ssh_public_key(key_data, service_project_link_str):
             public_key.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
-    except (ServiceBackendError, CloudBackendError):
+    except ServiceBackendError:
         logger.warning(
             'Failed to remove SSH key %s from service project link %s.',
             public_key.uuid, service_project_link_str,
@@ -109,7 +108,7 @@ def add_user(user_uuid, service_project_link_str):
             user.uuid, service_project_link_str)
     except ServiceBackendNotImplemented:
         pass
-    except (ServiceBackendError, CloudBackendError):
+    except ServiceBackendError:
         logger.warning(
             'Failed to add user %s for service project link %s',
             user.uuid, service_project_link_str,

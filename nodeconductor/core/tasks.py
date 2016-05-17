@@ -383,14 +383,14 @@ def send_task(app_label, task_name):
         nodeconductor.<app_label>.<task_name>
 
         .. code-block:: python
-            @shared_task(name='nodeconductor.iaas.provision_instance')
+            @shared_task(name='nodeconductor.openstack.provision_instance')
             def provision_instance_fn(instance_uuid, backend_flavor_id)
                 pass
 
         Call it by name:
 
         .. code-block:: python
-            send_task('iaas', 'provision_instance')(instance_uuid, backend_flavor_id)
+            send_task('openstack', 'provision_instance')(instance_uuid, backend_flavor_id)
 
         Which is identical to:
 

@@ -138,10 +138,10 @@ class EventLogger(BaseLogger):
 
         .. code-block:: python
 
-            from nodeconductor.iaas.models import Cloud
+            from nodeconductor.openstack.models import Tenant
 
             class QuotaEventLogger(EventLogger):
-                cloud_account = Cloud
+                tenant = Tenant
                 project = 'structure.Project'
                 threshold = float
                 quota_type = basestring
@@ -157,7 +157,7 @@ class EventLogger(BaseLogger):
                 event_context=dict(
                     quota_type=quota.name,
                     project=membership.project,
-                    cloud_account=membership.cloud,
+                    tenant=tenant,
                     threshold=threshold * quota.limit)
             )
     """
