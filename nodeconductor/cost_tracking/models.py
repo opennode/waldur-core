@@ -284,12 +284,3 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
 
         if resource not in valid_resources:
             raise ValidationError('Service does not support required content type')
-
-
-# XXX: remove it when iaas app is gone
-@python_2_unicode_compatible
-class ApplicationType(core_models.NameMixin, models.Model):
-    slug = models.CharField(max_length=150, unique=True)
-
-    def __str__(self):
-        return self.name

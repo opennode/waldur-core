@@ -155,7 +155,6 @@ class SupportedServices(object):
     def get_resources(cls, request=None):
         """ Get a list of resources endpoints.
             {
-                "IaaS.Instance": "/api/iaas-resources/",
                 "DigitalOcean.Droplet": "/api/digitalocean-droplets/",
                 "Oracle.Database": "/api/oracle-databases/",
                 "GitLab.Group": "/api/gitlab-groups/",
@@ -278,7 +277,6 @@ class SupportedServices(object):
                 'DigitalOcean.Droplet': nodeconductor_plus.digitalocean.models.Droplet,
                 'GitLab.Group': nodeconductor_plus.gitlab.models.Group,
                 'GitLab.Project': nodeconductor_plus.gitlab.models.Project,
-                'IaaS.Instance': nodeconductor.iaas.models.Instance,
                 'Oracle.Database': nodeconductor_oracle_dbaas.models.Database
             }
 

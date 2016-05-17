@@ -598,27 +598,6 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         self.assert_quota_usage('nc_service_count', 1)
         self.assert_quota_usage('nc_service_project_link_count', 0)
 
-    # XXX: this test should be rewritten after instances will become part of general services
-    def test_customer_instances_quota_increases_on_instance_creation(self):
-        from nodeconductor.iaas.tests import factories as iaas_factories
-        project = factories.ProjectFactory(customer=self.customer)
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        cpm = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
-        iaas_factories.InstanceFactory(cloud_project_membership=cpm)
-
-        self.assert_quota_usage('nc_resource_count', 1)
-
-    # XXX: this test should be rewritten after instances will become part of general services
-    def test_customer_instances_quota_decreases_on_instance_deletion(self):
-        from nodeconductor.iaas.tests import factories as iaas_factories
-        project = factories.ProjectFactory(customer=self.customer)
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        cpm = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
-        instance = iaas_factories.InstanceFactory(cloud_project_membership=cpm)
-        instance.delete()
-
-        self.assert_quota_usage('nc_resource_count', 0)
-
     def test_customer_users_quota_increases_on_adding_owner(self):
         user = factories.UserFactory()
         self.customer.add_user(user, CustomerRole.OWNER)
