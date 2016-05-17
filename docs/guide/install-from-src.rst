@@ -74,51 +74,29 @@ Therefore configuration might look like this:
 .. code-block:: python
 
     NODECONDUCTOR = {
+        'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
+        'ELASTICSEARCH': {
+            'username': 'username',
+            'password': 'password',
+            'host': 'example.com',
+            'port': '9999',
+            'protocol': 'https',
+        },
+        'ENABLE_GEOIP': True,
         'EXTENSIONS_AUTOREGISTER': True,
-        'DEFAULT_SECURITY_GROUPS': (
-            {
-                'name': 'ssh',
-                'description': 'Security group for secure shell access',
-                'rules': (
-                    {
-                        'protocol': 'tcp',
-                        'cidr': '0.0.0.0/0',
-                        'from_port': 22,
-                        'to_port': 22,
-                    },
-                    {
-                        'protocol': 'icmp',
-                        'cidr': '0.0.0.0/0',
-                        'icmp_type': -1,
-                        'icmp_code': -1,
-                    },
-                ),
+        'GOOGLE_API': {
+            'Android': {
+                'server_key': 'AIzaSyA2_7UaVIxXfKeFvxTjQNZbrzkXG9OTCkg',
             },
-        ),
-        'MONITORING': {
-            'ZABBIX': {
-                'server': 'http://zabbix.example.com/zabbix',
-                'username': 'admin',
-                'password': 'zabbix',
-                'interface_parameters': {'ip': '0.0.0.0', 'main': 1, 'port': '10050', 'type': 1, 'useip': 1, 'dns': ''},
-                'templateid': '10106',
-                'groupid': '8',
-                'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
-                'FAIL_SILENTLY': True,
-                'HISTORY_RECORDS_INTERVAL': 60,
-                'TRENDS_RECORDS_INTERVAL': 60,
-                'HISTORY_DATE_RANGE': 48,
-                # application-specific templates
-                'wordpress-templateid': '10107',
-                'zimbra-templateid': '10108',
-                'postgresql-templateid': '10109',
-                'application-status-item': 'application.status',
+            'iOS': {
+                'server_key': 'AIzaSyA34zlG_y5uHOe2FmcJKwfk2vG-3RW05vk',
             }
         },
-        'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
-            'volumes': 4,
-            'snapshots': 20,
-        },
+        'SHOW_ALL_USERS': False,
+        'SUSPEND_UNPAID_CUSTOMERS': False,
+        'OWNER_CAN_MANAGE_CUSTOMER': False,
+        'TOKEN_KEY': 'x-auth-token',
+        'TOKEN_LIFETIME': timedelta(hours=1),
     }
 
 **Available settings**
@@ -128,59 +106,6 @@ Therefore configuration might look like this:
     CLOSED_ALERTS_LIFETIME
       Specifies closed alerts lifetime (timedelta value, for example timedelta(hours=1)).
       Expired closed alerts will be removed during the cleanup.
-
-    DEFAULT_SECURITY_GROUPS
-      A list of security groups that will be created in IaaS backend for each cloud.
-
-      Each entry is a dictionary with the following keys:
-
-      name
-        Short name of the security group.
-
-      description
-        Detailed description of the security group.
-
-      rules
-        List of firewall rules that make up the security group.
-
-        Each entry is a dictionary with the following keys:
-
-        protocol
-          Transport layer protocol the rule applies to.
-          Must be one of *tcp*, *udp* or *icmp*.
-
-        cidr
-          IPv4 network of packet source.
-          Must be a string in `CIDR notation`_.
-
-        from_port
-          Start of packet destination port range.
-          Must be a number in range from 1 to 65535.
-
-          For *tcp* and *udp* protocols only.
-
-        to_port
-          End of packet destination port range.
-          Must be a number in range from 1 to 65535.
-          Must not be less than **from_port**.
-
-          For *tcp* and *udp* protocols only.
-
-        icmp_type
-          ICMP type of the packet.
-          Must be a number in range from -1 to 255.
-
-          See also: `ICMP Types and Codes`_.
-
-          For *icmp* protocol only.
-
-        icmp_code
-          ICMP code of the packet.
-          Must be a number in range from -1 to 255.
-
-          See also: `ICMP Types and Codes`_.
-
-          For *icmp* protocol only.
 
     ELASTICSEARCH
       Dictionary of Elasticsearch parameters.
@@ -218,66 +143,14 @@ Therefore configuration might look like this:
         Android
           Settings for Android devices.
 
-            project_id
-              Google Cloud messaging project ID.
-
             server_key
               Google Cloud messaging server key.
 
         IOS
           Settings for IOS devices.
 
-            project_id
-              Google Cloud messaging project ID.
-
             server_key
               Google Cloud messaging server key.
-
-    MONITORING
-      Dictionary of available monitoring engines.
-
-      ZABBIX
-        Dictionary of Zabbix monitoring engine parameters.
-
-          server
-            URL of Zabbix server (string).
-
-          username
-            Username of Zabbix user account (string).
-            This user must be able to create zabbix hostgroups, hosts, templates and IT services.
-
-          password
-            Password of Zabbix user account (string).
-
-          interface_parameters
-            Dictionary of parameters for Zabbix hosts interface.
-            Have to contain keys: 'main', 'port', 'ip', 'type', 'useip', 'dns'.
-
-          templateid
-            Id of default Zabbix host template (string).
-
-          groupid
-            Id of default Zabbix host group (string).
-
-          default_service_parameters
-            Dictionary of default parameters for Zabbix IT services.
-            Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'.
-
-          FAIL_SILENTLY
-            If True - ignores Zabbix API exceptions and do not add any messages to logger (boolean).
-
-          HISTORY_RECORDS_INTERVAL
-            The time for maximal interval between history usage records in Zabbix (number of minutes).
-
-          TRENDS_RECORDS_INTERVAL
-            The time for maximal interval between trends usage records in Zabbix (number of minutes).
-
-          HISTORY_DATE_RANGE
-            The time interval on which Zabbix will use records from history table (number of hours).
-
-          There could be also application-specific parameters specified:
-            For example, wordpress-templateid, zimbra-templateid,
-            postgresql-templateid, application-status-item.
 
     SHOW_ALL_USERS
       Indicates whether user can see all other users in `api/users/` endpoint (boolean).
@@ -286,17 +159,8 @@ Therefore configuration might look like this:
       If it is set to True, then only customers with positive balance will be able
       to modify entities such as services and resources (boolean).
 
-    OPENSTACK_QUOTAS_INSTANCE_RATIOS
-      Dictionary of default ratio values per instance.
-
-        volumes
-          Number of volumes per instance.
-
-        snapshots
-          Number of snapshots per instance.
-
     OWNER_CAN_MANAGE_CUSTOMER
-      Indicates whether user who has owner role in customer can manage it (boolean).
+      Indicates whether user can manage owned customers (boolean).
 
     TOKEN_KEY
       Header for token authentication. For example, 'x-auth-token'.
@@ -311,41 +175,6 @@ For example,
 .. code-block:: python
 
     DEFAULT_FROM_EMAIL='noreply@example.com'
-
-
-NodeConductor also needs access to Zabbix database. For that a read-only user needs to be created in Zabbix database.
-
-Zabbix database connection is configured as follows:
-
-.. code-block:: python
-
-    DATABASES = {
-        'zabbix': {
-            'ENGINE': 'django.db.backends.mysql',
-            'HOST': 'zabbix_db_host',
-            'NAME': 'zabbix_db_name',
-            'PORT': 'zabbix_db_port',
-            'USER': 'zabbix_db_user',
-            'PASSWORD': 'zabbix_db_password',
-        }
-    }
-
-.. glossary::
-
-    zabbix_db_host
-      Hostname of the Zabbix database.
-
-    zabbix_db_port
-      Port of the Zabbix database.
-
-    zabbix_db_name
-      Zabbix database name.
-
-    zabbix_db_user
-      User for connecting to Zabbix database.
-
-    zabbix_db_password
-      Password for connecting to Zabbix database.
 
 See also: `Django database settings`_.
 
