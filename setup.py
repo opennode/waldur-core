@@ -57,7 +57,6 @@ setup(
         'tests': tests_requires,
     },
     entry_points={
-        'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
         'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,
