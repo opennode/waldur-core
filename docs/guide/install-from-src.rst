@@ -74,6 +74,7 @@ Therefore configuration might look like this:
 .. code-block:: python
 
     NODECONDUCTOR = {
+        'EXTENSIONS_AUTOREGISTER': True,
         'DEFAULT_SECURITY_GROUPS': (
             {
                 'name': 'ssh',
@@ -103,17 +104,26 @@ Therefore configuration might look like this:
                 'templateid': '10106',
                 'groupid': '8',
                 'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
+                'FAIL_SILENTLY': True,
+                'HISTORY_RECORDS_INTERVAL': 60,
+                'TRENDS_RECORDS_INTERVAL': 60,
+                'HISTORY_DATE_RANGE': 48,
+                # application-specific templates
+                'wordpress-templateid': '10107',
+                'zimbra-templateid': '10108',
+                'postgresql-templateid': '10109',
+                'application-status-item': 'application.status',
             }
-        },
-        'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
-            'volumes': 4,
-            'snapshots': 20,
-        },
+        }
     }
 
 **Available settings**
 
 .. glossary::
+
+    CLOSED_ALERTS_LIFETIME
+      Specifies closed alerts lifetime (timedelta value, for example timedelta(hours=1)).
+      Expired closed alerts will be removed during the cleanup.
 
     DEFAULT_SECURITY_GROUPS
       A list of security groups that will be created in IaaS backend for each cloud.
@@ -168,6 +178,57 @@ Therefore configuration might look like this:
 
           For *icmp* protocol only.
 
+    ELASTICSEARCH
+      Dictionary of Elasticsearch parameters.
+
+        host
+          Elasticsearch host (string).
+
+        port
+          Elasticsearch port (integer).
+
+        protocol
+          Elasticsearch server access protocol (string).
+
+        username
+          Username for accessing Elasticsearch server (string).
+
+        password
+          Password for accessing Elasticsearch server (string).
+
+        verify_certs
+          Enables verification of Elasticsearch server TLS certificates (boolean).
+
+        ca_certs
+          Path to the TLS certificate bundle (string).
+
+    ENABLE_GEOIP
+      Indicates whether geolocation is enabled (boolean).
+
+    EXTENSIONS_AUTOREGISTER
+      Defines whether extensions should be automatically registered (boolean).
+
+    GOOGLE_API
+      Settings dictionary for Google Cloud Messaging.
+
+        Android
+          Settings for Android devices.
+
+            project_id
+              Google Cloud messaging project ID.
+
+            server_key
+              Google Cloud messaging server key.
+
+        IOS
+          Settings for IOS devices.
+
+            project_id
+              Google Cloud messaging project ID.
+
+            server_key
+              Google Cloud messaging server key.
+
     MONITORING
       Dictionary of available monitoring engines.
 
@@ -175,34 +236,54 @@ Therefore configuration might look like this:
         Dictionary of Zabbix monitoring engine parameters.
 
           server
-            URL of Zabbix server.
+            URL of Zabbix server (string).
 
           username
-            Username of Zabbix user account.
+            Username of Zabbix user account (string).
             This user must be able to create zabbix hostgroups, hosts, templates and IT services.
 
           password
-            Password of Zabbix user account.
+            Password of Zabbix user account (string).
 
           interface_parameters
             Dictionary of parameters for Zabbix hosts interface.
             Have to contain keys: 'main', 'port', 'ip', 'type', 'useip', 'dns'.
 
           templateid
-            Id of default Zabbix host template.
+            Id of default Zabbix host template (string).
 
           groupid
-            Id of default Zabbix host group.
+            Id of default Zabbix host group (string).
 
           default_service_parameters
-            Default parameters for Zabbix IT services.
+            Dictionary of default parameters for Zabbix IT services.
             Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'.
 
           FAIL_SILENTLY
-            If True - ignores Zabbix API exceptions and do not add any messages to logger
+            If True - ignores Zabbix API exceptions and do not add any messages to logger (boolean).
+
+          HISTORY_RECORDS_INTERVAL
+            The time for maximal interval between history usage records in Zabbix (number of minutes).
+
+          TRENDS_RECORDS_INTERVAL
+            The time for maximal interval between trends usage records in Zabbix (number of minutes).
+
+          HISTORY_DATE_RANGE
+            The time interval on which Zabbix will use records from history table (number of hours).
+
+          There could be also application-specific parameters specified:
+            For example, wordpress-templateid, zimbra-templateid,
+            postgresql-templateid, application-status-item.
+
+    SHOW_ALL_USERS
+      Indicates whether user can see all other users in `api/users/` endpoint (boolean).
+
+    SUSPEND_UNPAID_CUSTOMERS
+      If it is set to True, then only customers with positive balance will be able
+      to modify entities such as services and resources (boolean).
 
     OPENSTACK_QUOTAS_INSTANCE_RATIOS
-      Default ratio values per instance.
+      Dictionary of default ratio values per instance.
 
         volumes
           Number of volumes per instance.
@@ -210,28 +291,22 @@ Therefore configuration might look like this:
         snapshots
           Number of snapshots per instance.
 
-    BILLING
-      Dictionary of billing engine parameters.
+    OWNER_CAN_MANAGE_CUSTOMER
+      Indicates whether user who has owner role in customer can manage it (boolean).
 
-        backend
-          Path to Kill Bill driver.
+    TOKEN_KEY
+      Header for token authentication. For example, 'x-auth-token'.
 
-        api_url
-          URL of Kill Bill API.
+    TOKEN_LIFETIME
+      Specifies authentication token lifetime (timedelta value, for example timedelta(hours=1)).
 
-        username
-            Username of Kill Bill admin account.
 
-        password
-            Password of Kill Bill admin account.
+NodeConductor will send notifications from email address specified in **DEFAULT_FROM_EMAIL** variable.
+For example,
 
-        api_key
-            Kill Bill tenant API key.
+.. code-block:: python
 
-        api_secret
-            Kill Bill tenant API secret.
-
-        Additional Kill Bill parameters. For example: **currency**.
+    DEFAULT_FROM_EMAIL='noreply@example.com'
 
 
 NodeConductor also needs access to Zabbix database. For that a read-only user needs to be created in Zabbix database.
