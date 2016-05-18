@@ -152,16 +152,6 @@ CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
 
 # Regular tasks
 CELERYBEAT_SCHEDULE = {
-    'update-instance-monthly-slas': {
-        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
-        'schedule': timedelta(minutes=5),
-        'args': ('monthly',),
-    },
-    'update-instance-yearly-slas': {
-        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
-        'schedule': timedelta(minutes=10),
-        'args': ('yearly',),
-    },
 
     'pull-service-settings': {
         'task': 'nodeconductor.structure.pull_service_settings',
