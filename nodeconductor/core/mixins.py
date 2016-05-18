@@ -67,15 +67,19 @@ class StateMixin(object):
         return super(StateMixin, self).initial(request, *args, **kwargs)
 
 
-class CreateExecutorMixin(object):
+class AsyncExecutor(object):
+    async_executor = True
+
+
+class CreateExecutorMixin(AsyncExecutor):
     create_executor = NotImplemented
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        self.create_executor.execute(instance)
+        self.create_executor.execute(instance, async=self.async_executor)
 
 
-class UpdateExecutorMixin(object):
+class UpdateExecutorMixin(AsyncExecutor):
     update_executor = NotImplemented
 
     def perform_update(self, serializer):
@@ -87,14 +91,15 @@ class UpdateExecutorMixin(object):
         super(UpdateExecutorMixin, self).perform_update(serializer)
         instance.refresh_from_db()
         updated_fields = {f.name for f, v in before_update_fields.items() if v != getattr(instance, f.attname)}
-        self.update_executor.execute(instance, updated_fields=updated_fields)
+        self.update_executor.execute(instance, async=self.async_executor, updated_fields=updated_fields)
 
 
-class DeleteExecutorMixin(object):
+class DeleteExecutorMixin(AsyncExecutor):
     delete_executor = NotImplemented
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        self.delete_executor.execute(instance, force=instance.state == models.StateMixin.States.ERRED)
+        self.delete_executor.execute(
+            instance, async=self.async_executor, force=instance.state == models.StateMixin.States.ERRED)
         return response.Response(
             {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
