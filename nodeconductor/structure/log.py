@@ -135,26 +135,6 @@ class ResourceEventLogger(EventLogger):
         )
 
 
-class ServiceSettingsEventLogger(EventLogger):
-    service_settings = models.ServiceSettings
-    error_message = six.text_type
-
-    class Meta:
-        nullable_fields = ['error_message']
-        event_types = ('service_settings_sync_failed',
-                       'service_settings_recovered')
-
-
-class ServiceProjectLinkEventLogger(EventLogger):
-    service_project_link = models.ServiceProjectLink
-    error_message = six.text_type
-
-    class Meta:
-        event_types = ('service_project_link_creation_failed',
-                       'service_project_link_sync_failed',
-                       'service_project_link_recovered')
-
-
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
@@ -166,5 +146,3 @@ event_logger.register('project_group', ProjectGroupEventLogger)
 event_logger.register('licenses', LicensesEventLogger)
 event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)
-event_logger.register('service_settings', ServiceSettingsEventLogger)
-event_logger.register('service_project_link', ServiceProjectLinkEventLogger)
