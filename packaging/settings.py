@@ -29,19 +29,11 @@ config_defaults = {
         'token_lifetime': 3600,
     },
     'celery': {
-        'backup_schedule_execute_period': 600,
         'broker_url': 'redis://localhost',
-        'cloud_account_pull_period': 3600,
-        'cloud_project_membership_pull_period': 1800,
-        'cloud_project_membership_quota_check_period': 86400,
         'expired_backup_delete_period': 600,
-        'instance_monthly_sla_update_period': 300,
         'instance_provisioning_concurrency': 3,
-        'instance_yearly_sla_update_period': 600,
-        'instance_zabbix_sync_period': 1800,
         'recover_erred_services_period': 1800,
         'result_backend_url': 'redis://localhost',
-        'service_statistics_update_period': 600,
     },
     'elasticsearch': {
         'host': '',
@@ -376,68 +368,16 @@ CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
 # Regular tasks
 # See also: http://celery.readthedocs.org/en/latest/userguide/periodic-tasks.html#entries
 CELERYBEAT_SCHEDULE.update({
-    'delete-expired-backups': {
-        'task': 'nodeconductor.backup.tasks.delete_expired_backups',
-        'schedule': timedelta(seconds=config.getint('celery', 'expired_backup_delete_period')),
-        'args': (),
-    },
-    'execute-backup-schedules': {
-        'task': 'nodeconductor.backup.tasks.execute_schedules',
-        'schedule': timedelta(seconds=config.getint('celery', 'backup_schedule_execute_period')),
-        'args': (),
-    },
-    'check-cloud-project-memberships-quotas': {
-        'task': 'nodeconductor.iaas.tasks.iaas.check_cloud_memberships_quotas',
-        'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_quota_check_period')),
-        'args': (),
-    },
-    'sync-services': {
-        'task': 'nodeconductor.iaas.sync_services',
-        'schedule': timedelta(seconds=config.getint('celery', 'cloud_account_pull_period')),
-        'args': (),
-    },
     'recover-erred-services': {
         'task': 'nodeconductor.structure.recover_erred_services',
         'schedule': timedelta(seconds=config.getint('celery', 'recover_erred_services_period')),
         'args': (),
-    },
-    'pull-cloud-project-memberships': {
-        'task': 'nodeconductor.iaas.tasks.iaas.pull_cloud_memberships',
-        'schedule': timedelta(seconds=config.getint('celery', 'cloud_project_membership_pull_period')),
-        'args': (),
-    },
-    'pull-service-statistics': {
-        'task': 'nodeconductor.iaas.tasks.iaas.pull_service_statistics',
-        'schedule': timedelta(seconds=config.getint('celery', 'service_statistics_update_period')),
-        'args': (),
-    },
-    'sync-instances-with-zabbix': {
-        'task': 'nodeconductor.iaas.tasks.iaas.sync_instances_with_zabbix',
-        'schedule': timedelta(seconds=config.getint('celery', 'instance_zabbix_sync_period')),
-        'args': (),
-    },
-    'update-instance-monthly-slas': {
-        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
-        'schedule': timedelta(seconds=config.getint('celery', 'instance_monthly_sla_update_period')),
-        'args': ('monthly',),
-    },
-    'update-instance-yearly-slas': {
-        'task': 'nodeconductor.monitoring.tasks.update_instance_sla',
-        'schedule': timedelta(seconds=config.getint('celery', 'instance_yearly_sla_update_period')),
-        'args': ('yearly',),
     },
 })
 
 for app in INSTALLED_APPS:
     if app.startswith('nodeconductor_'):
         LOGGING['loggers'][app] = LOGGING['loggers']['nodeconductor']
-
-# NodeConductor throttling settings for celery tasks
-CELERY_TASK_THROTTLING = {
-    'nodeconductor.iaas.tasks.openstack.openstack_provision_instance': {
-        'concurrency': config.getint('celery', 'instance_provisioning_concurrency'),
-    },
-}
 
 # NodeConductor internal configuration
 # See also: http://nodeconductor.readthedocs.org/en/stable/guide/intro.html#id1
