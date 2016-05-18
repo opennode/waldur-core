@@ -198,7 +198,7 @@ class PushHook(BaseHook):
             'to': self.token,
             "notification": {
                 "body": event.get('message', 'New event'),
-                "title": settings.NODECONDUCTOR.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
+                "title": conf.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
                 "image": "icon",
             },
             'data': event,
