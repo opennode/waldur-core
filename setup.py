@@ -49,23 +49,6 @@ install_requires = [
 ]
 
 
-# RPM installation does not need oslo, cliff and stevedore libs -
-# they are required only for installation with setuptools
-try:
-    action = sys.argv[1]
-except IndexError:
-    pass
-else:
-    if action in ['develop', 'install', 'test', 'bdist_egg']:
-        install_requires += [
-            'cliff==1.7.0',
-            'oslo.config==1.4.0',
-            'oslo.i18n==1.0.0',
-            'oslo.utils==1.0.0',
-            'stevedore==1.0.0',
-        ]
-
-
 setup(
     name='nodeconductor',
     version='0.97.0',
