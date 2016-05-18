@@ -1,5 +1,5 @@
-# TODO: move this module code to GCloud assembly
-""" GCloud-specific operations that register Openstack instance in Zabbix """
+# TODO: move this module code to itacloud assembly
+""" Itacloud-specific operations that register Openstack instance in Zabbix """
 import logging
 
 from nodeconductor.structure import models as structure_models
@@ -68,7 +68,7 @@ def register_instance(instance):
     # get SPL that links instance project and defined Zabbix settings
     spl = models.ZabbixServiceProjectLink.objects.get(
         project=instance.service_project_link.project, service__settings=zabbix_settings)
-    # create Zabbix Host based on GCloud settings
+    # create Zabbix Host based on itacloud settings
     host = models.Host.objects.create(
         scope=instance,
         service_project_link=spl,
@@ -79,7 +79,7 @@ def register_instance(instance):
     templates = _get_instance_templates(instance)
     host.templates.add(*templates)
     executors.HostCreateExecutor.execute(host, async=False)
-    # create Zabbix IT service based on GCloud settings
+    # create Zabbix IT service based on itacloud settings
     trigger = _get_instance_trigger(instance, host)
     it_service = models.ITService.objects.create(
         name='Availability of %s' % host.name,

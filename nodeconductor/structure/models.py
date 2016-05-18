@@ -344,7 +344,7 @@ class Project(core_models.DescribableMixin,
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()
 
-    # XXX: Hack for gcloud and logging
+    # XXX: Hack for  itacloud and logging
     @property
     def project_group(self):
         return self.project_groups.first()
@@ -684,9 +684,7 @@ class Service(core_models.SerializableAbstractMixin,
 
     def get_children(self):
         return itertools.chain.from_iterable(
-            m.objects.filter(**{
-                'cloud' if 'cloud' in m._meta.get_all_field_names() else 'service': self
-            }) for m in ServiceProjectLink.get_all_models())
+            m.objects.filter(service=self) for m in ServiceProjectLink.get_all_models())
 
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
