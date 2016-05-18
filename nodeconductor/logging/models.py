@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import uuid
+import logging
 
 from django.conf import settings
 from django.contrib.contenttypes import fields as ct_fields
@@ -19,6 +20,8 @@ from uuidfield import UUIDField
 from nodeconductor.core.utils import timestamp_to_datetime
 from nodeconductor.logging import managers
 
+
+logger = logging.getLogger(__name__)
 
 class UuidMixin(models.Model):
     # There is circular dependency between logging and core applications.
@@ -195,6 +198,7 @@ class PushHook(BaseHook):
             'data': event,
         }
 
+        logger.debug('Submitting GCM push notification with headers %s, payload: %s' % (headers, payload))
         requests.post(endpoint, json=payload, headers=headers)
 
 
