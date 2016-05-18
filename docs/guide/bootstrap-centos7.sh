@@ -1,7 +1,6 @@
 # Configure repositories
 yum -y install epel-release
 yum -y install http://opennodecloud.com/centos/7/nodeconductor-release.rpm
-yum -y install http://opennodecloud.com/centos/7/rdo-release.rpm
 
 # Install dependencies
 yum -y install mariadb-server nodeconductor-wsgi redis
