@@ -48,7 +48,6 @@ install_requires = [
     'sqlparse>=0.1.11',
 ]
 
-
 setup(
     name='nodeconductor',
     version='0.97.0',
