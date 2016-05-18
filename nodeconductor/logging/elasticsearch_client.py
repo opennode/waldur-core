@@ -23,6 +23,17 @@ class ElasticsearchResultListError(ElasticsearchError):
     pass
 
 
+class EmptyQueryset(object):
+    def __len__(self):
+        return 0
+
+    def count(self):
+        return 0
+
+    def __getitem__(self, key):
+        return []
+
+
 class ElasticsearchResultList(object):
     """ List of results acceptable by django pagination """
 
