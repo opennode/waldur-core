@@ -201,7 +201,9 @@ class PushHook(BaseHook):
                 "title": conf.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
                 "image": "icon",
             },
-            'data': event,
+            'data': {
+                'event': event
+            },
         }
 
         logger.debug('Submitting GCM push notification with headers %s, payload: %s' % (headers, payload))
