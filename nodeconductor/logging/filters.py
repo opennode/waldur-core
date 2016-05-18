@@ -11,6 +11,7 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.core.filters import ExternalFilterBackend
 from nodeconductor.logging import models, utils
+from nodeconductor.logging.elasticsearch_client import EmptyQueryset
 from nodeconductor.logging.loggers import event_logger
 from nodeconductor.logging.features import features_to_events, features_to_alerts, UPDATE_EVENTS
 
@@ -77,7 +78,10 @@ class EventFilterBackend(filters.BaseFilterBackend):
                         request.query_params['scope_type'], ', '.join(choices.keys()))
                 )
             else:
-                for field, uuids in scope_type.get_permitted_objects_uuids(request.user).items():
+                permitted_items = scope_type.get_permitted_objects_uuids(request.user).items()
+                if not permitted_items:
+                    return EmptyQueryset()
+                for field, uuids in permitted_items:
                     must_terms[field] = [uuid.hex for uuid in uuids]
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
