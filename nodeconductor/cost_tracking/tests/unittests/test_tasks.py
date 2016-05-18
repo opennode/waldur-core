@@ -1,5 +1,3 @@
-import unittest
-
 from dateutil.relativedelta import relativedelta
 
 from django.test import TransactionTestCase
@@ -7,12 +5,11 @@ from django.utils import timezone
 
 from nodeconductor.cost_tracking.models import PriceEstimate
 from nodeconductor.cost_tracking.tasks import update_projected_estimate
-from nodeconductor.cost_tracking import CostTrackingBackend
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.structure.tests import TestTrackingBackend
 
 
-@unittest.skip("NC-1392: Test CostTrackingBackend required")
 class UpdateProjectedEstimateTest(TransactionTestCase):
 
     def setUp(self):
@@ -33,7 +30,7 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
 
         # mock estimate calculation task for tests:
         self.INSTANCE_MONTHLY_COST = 10
-        CostTrackingBackend.get_monthly_cost_estimate = classmethod(lambda c, i: self.INSTANCE_MONTHLY_COST)
+        TestTrackingBackend.get_monthly_cost_estimate = classmethod(lambda c, i: self.INSTANCE_MONTHLY_COST)
 
     def test_estimate_calculation_for_current_month_if_parents_has_no_estimates(self):
         update_projected_estimate(customer_uuid=self.customer.uuid.hex)

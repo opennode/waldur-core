@@ -1,5 +1,3 @@
-import unittest
-
 from rest_framework import test, status
 
 from nodeconductor.logging.models import Alert
@@ -8,7 +6,6 @@ from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.tests import factories
 
 
-@unittest.skip("NC-1392: Test resource's view should be available")
 class FilterAlertsByAggregateTest(test.APITransactionTestCase):
 
     def setUp(self):

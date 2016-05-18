@@ -1,5 +1,3 @@
-import unittest
-
 from mock_django import mock_signal_receiver
 from django.core.urlresolvers import reverse
 from rest_framework import test
@@ -36,7 +34,6 @@ class SuspendServiceTest(test.APITransactionTestCase):
             self.assertEqual(customer.balance, amount)
 
 
-@unittest.skip("NC-1392: Test resource's view should be available")
 class ServiceResourcesCounterTest(test.APITransactionTestCase):
     """
     There's one shared service. Also there are 2 users each of which has one project.

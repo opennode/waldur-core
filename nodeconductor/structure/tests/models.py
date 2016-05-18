@@ -25,9 +25,17 @@ class TestServiceProjectLink(structure_models.ServiceProjectLink):
         security_group_rule_count = QuotaField(default_limit=100, is_backend=True)
         floating_ip_count = QuotaField(default_limit=50, is_backend=True)
 
+    @classmethod
+    def get_url_name(cls):
+        return 'test-spl'
+
 
 class TestInstance(structure_models.VirtualMachineMixin,
                    structure_models.PaidResource,
                    structure_models.Resource):
 
     service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
+
+    @classmethod
+    def get_url_name(cls):
+        return 'test-instances'

@@ -19,6 +19,8 @@ INSTALLED_APPS += (
     'nodeconductor.structure.tests',
 )
 
+ROOT_URLCONF = 'nodeconductor.structure.tests.urls'
+
 BROKER_URL = 'sqla+sqlite:///:memory:'
 CELERY_RESULT_BACKEND = 'db+sqlite:///:memory:'
 
