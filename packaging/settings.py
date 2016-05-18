@@ -30,9 +30,6 @@ config_defaults = {
     },
     'celery': {
         'broker_url': 'redis://localhost',
-        'expired_backup_delete_period': 600,
-        'instance_provisioning_concurrency': 3,
-        'recover_erred_services_period': 1800,
         'result_backend_url': 'redis://localhost',
     },
     'elasticsearch': {
@@ -360,20 +357,6 @@ BROKER_URL = config.get('celery', 'broker_url')
 
 # See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-result-backend
 CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
-
-# See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-accept-content
-# Not needed: set to 'json' in base_settings.py
-#CELERY_ACCEPT_CONTENT = ['json']
-
-# Regular tasks
-# See also: http://celery.readthedocs.org/en/latest/userguide/periodic-tasks.html#entries
-CELERYBEAT_SCHEDULE.update({
-    'recover-erred-services': {
-        'task': 'nodeconductor.structure.recover_erred_services',
-        'schedule': timedelta(seconds=config.getint('celery', 'recover_erred_services_period')),
-        'args': (),
-    },
-})
 
 for app in INSTALLED_APPS:
     if app.startswith('nodeconductor_'):
