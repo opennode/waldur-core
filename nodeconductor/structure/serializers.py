@@ -181,6 +181,9 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
             total += model.objects.filter(**query).count()
         return total
 
+    def get_shared(self, link):
+        return link.service.settings.shared
+
 
 class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
                         PermissionFieldFilteringMixin,
