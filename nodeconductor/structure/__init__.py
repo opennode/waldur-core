@@ -48,7 +48,6 @@ class SupportedServices(object):
     """
 
     class Types(object):
-        IaaS = 'IaaS'
 
         @classmethod
         def get_direct_filter_mapping(cls):
@@ -267,7 +266,7 @@ class SupportedServices(object):
     @classmethod
     def get_service_project_link(cls, service_model):
         return next(m.related_model for m in service_model._meta.get_all_related_objects()
-                    if m.name == 'cloudprojectmembership' or m.name.endswith('serviceprojectlink'))
+                    if m.name.endswith('serviceprojectlink'))
 
     @classmethod
     @lru_cache(maxsize=1)

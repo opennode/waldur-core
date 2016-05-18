@@ -325,7 +325,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self._check_user_direct_access_customer(self.customers['owned'], status.HTTP_200_OK)
 
-    def test_user_can_see_its_owner_membership_in_a_cloud_he_is_owner_of(self):
+    def test_user_can_see_its_owner_membership_in_a_service_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
         for customer in self.customers['owned']:
             response = self.client.get(self._get_customer_url(customer))

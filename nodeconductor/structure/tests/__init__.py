@@ -1,6 +1,12 @@
 from django.apps import AppConfig
 
+from nodeconductor.cost_tracking import CostTrackingRegister, CostTrackingBackend
+
 default_app_config = 'nodeconductor.structure.tests.TestConfig'
+
+
+class TestTrackingBackend(CostTrackingBackend):
+    pass
 
 
 class TestConfig(AppConfig):
@@ -9,17 +15,12 @@ class TestConfig(AppConfig):
     service_name = 'Test'
 
     def ready(self):
-        from nodeconductor.structure import SupportedServices
+        from nodeconductor.structure import SupportedServices, ServiceBackend
         from .serializers import ServiceSerializer  # XXX: registry serializer
 
-        TestService = self.get_model('TestService')
-        TestInstance = self.get_model('TestInstance')
+        class TestBackend(ServiceBackend):
+            def destroy(self, resource, force=False):
+                pass
 
-        SupportedServices._registry[self.service_name] = {
-            'model_name': str(TestService._meta),
-            'name': self.service_name,
-            'resources': {
-                str(TestInstance._meta): {'name': TestInstance.__class__.__name__},
-            },
-            'properties': {},
-        }
+        SupportedServices.register_backend(TestBackend)
+        CostTrackingRegister.register(self.label, TestTrackingBackend)

@@ -1,5 +1,3 @@
-import unittest
-
 from ddt import ddt, data
 from rest_framework import status
 
@@ -10,7 +8,6 @@ from . import factories
 from .base_test import BaseCostTrackingTest
 
 
-@unittest.skip("NC-1392: Test resource's view should be available")
 @ddt
 class PriceListItemListTest(BaseCostTrackingTest):
 
@@ -49,7 +46,6 @@ class PriceListItemListTest(BaseCostTrackingTest):
         self.assertNotIn(other_price_list_item.uuid.hex, [el['uuid'] for el in response.data])
 
 
-@unittest.skip("NC-1392: Test resource's view should be available")
 @ddt
 class PriceListItemCreateTest(BaseCostTrackingTest):
 
@@ -94,7 +90,6 @@ class PriceListItemCreateTest(BaseCostTrackingTest):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-@unittest.skip("NC-1392: Test resource's view should be available")
 @ddt
 class PriceListItemUpdateTest(BaseCostTrackingTest):
 

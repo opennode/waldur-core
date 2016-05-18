@@ -2,7 +2,6 @@ from django.db import transaction
 from django.db.models import signals
 
 from nodeconductor.quotas import models, utils, fields
-from nodeconductor.quotas.log import alert_logger, event_logger
 from nodeconductor.quotas.exceptions import CreationConditionFailedQuotaError
 
 

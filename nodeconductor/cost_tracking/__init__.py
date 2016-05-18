@@ -13,12 +13,12 @@ Add-on connection:
 
     1. Implement CostTrackingBackend interface.
 
-        class IaaSCostTrackingBackend(CostTrackingBackend):
+        class OpenStackCostTrackingBackend(CostTrackingBackend):
             ...
 
     2. Add application to add-on register.
 
-        CostTrackingRegister.register(self.label, cost_tracking.IaaSCostTrackingBackend)
+        CostTrackingRegister.register(self.label, cost_tracking.OpenStackCostTrackingBackend)
 
 """
 import logging

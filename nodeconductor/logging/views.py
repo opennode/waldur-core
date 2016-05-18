@@ -161,7 +161,7 @@ class AlertViewSet(mixins.CreateModelMixin,
          - ?severity=<severity> (can be list)
          - ?alert_type=<alert_type> (can be list)
          - ?scope=<url> concrete alert scope
-         - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
+         - ?scope_type=<string> name of scope type (Ex.: instance, service_project_link, project...)
            DEPRECATED use ?content_type instead
          - ?created_from=<timestamp>
          - ?created_to=<timestamp>

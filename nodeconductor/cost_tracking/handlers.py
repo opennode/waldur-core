@@ -76,11 +76,7 @@ def update_price_estimate_ancestors(sender, instance, created=False, **kwargs):
 
 
 def update_price_estimate_on_resource_spl_change(sender, instance, created=False, **kwargs):
-    try:
-        # XXX: drop support of IaaS app
-        is_changed = not created and instance.service_project_link_id != instance._old_values['service_project_link']
-    except AttributeError:
-        is_changed = False
+    is_changed = not created and instance.service_project_link_id != instance._old_values['service_project_link']
 
     if is_changed:
         spl_model = SupportedServices.get_related_models(instance)['service_project_link']
