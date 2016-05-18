@@ -8,6 +8,7 @@ from rest_framework import filters as rf_filters
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log, utils
+from nodeconductor.logging.loggers import get_event_groups, get_alert_groups
 
 
 class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -130,6 +131,14 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     def scope_types(self, request, *args, **kwargs):
         """ Returns a list of scope types acceptable by events filter. """
         return response.Response([str(m._meta) for m in utils.get_loggable_models()])
+
+    @decorators.list_route()
+    def event_groups(self, request, *args, **kwargs):
+        """
+        Returns a list of groups with event types.
+        Group is used in exclude_features query param.
+        """
+        return response.Response(get_event_groups())
 
 
 class AlertViewSet(mixins.CreateModelMixin,
@@ -320,6 +329,14 @@ class AlertViewSet(mixins.CreateModelMixin,
             raise PermissionDenied('You do not have permission to perform this action.')
 
         super(AlertViewSet, self).perform_create(serializer)
+
+    @decorators.list_route()
+    def alert_groups(self, request, *args, **kwargs):
+        """
+        Returns a list of groups with alert types.
+        Group is used in exclude_features query param.
+        """
+        return response.Response(get_alert_groups())
 
 
 class BaseHookViewSet(viewsets.ModelViewSet):
