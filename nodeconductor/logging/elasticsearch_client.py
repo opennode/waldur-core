@@ -152,6 +152,10 @@ class ElasticsearchClient(object):
                     {'terms': {key: value}} for key, value in self.must_terms_filter.items()
                 ]
 
+            # Valid event has event_type field
+            self['query']['filtered']['filter']['bool'].setdefault('must', {})
+            self['query']['filtered']['filter']['bool']['must']['exists'] = {'field': 'event_type'}
+
             if self.must_not_terms_filter:
                 self['query']['filtered']['filter']['bool']['must_not'] = [
                     {'terms': {key: value}} for key, value in self.must_not_terms_filter.items()
