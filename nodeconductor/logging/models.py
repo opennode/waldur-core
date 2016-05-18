@@ -173,6 +173,7 @@ class PushHook(BaseHook):
 
                 # https://developers.google.com/mobile/add
                 NODECONDUCTOR['GOOGLE_API'] = {
+                    'NOTIFICATION_TITLE': "NodeConductor notification",
                     'Android': {
                         'server_key': 'AIzaSyA2_7UaVIxXfKeFvxTjQNZbrzkXG9OTCkg',
                     },
@@ -195,6 +196,11 @@ class PushHook(BaseHook):
         }
         payload = {
             'to': self.token,
+            "notification": {
+                "body": event.get('message', 'New event'),
+                "title": conf.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
+                "image": "icon",
+            },
             'data': event,
         }
 
