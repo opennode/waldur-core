@@ -152,6 +152,9 @@ Therefore configuration might look like this:
             server_key
               Google Cloud messaging server key.
 
+        NOTIFICATION_TITLE
+           String to be displayed in the notification pop-up title.
+
     SHOW_ALL_USERS
       Indicates whether user can see all other users in `api/users/` endpoint (boolean).
 
