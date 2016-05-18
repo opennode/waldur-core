@@ -134,7 +134,23 @@ class ElasticsearchClient(object):
                 self.timestamp_ranges.append(timestamp_range)
 
         def prepare(self):
-            self['query'] = {'filtered': {'filter': {'bool': {}}}}
+            # Valid event has event_type field
+            self['query'] = {
+                'filtered': {
+                    'filter': {
+                        'bool': {
+                            'must': [
+                                {
+                                    'exists': {
+                                        'field': 'event_type'
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+
             if self.queries:
                 self['query']['filtered']['query'] = {
                     'query_string': {
@@ -148,13 +164,9 @@ class ElasticsearchClient(object):
                 ]
 
             if self.must_terms_filter:
-                self['query']['filtered']['filter']['bool']['must'] = [
+                self['query']['filtered']['filter']['bool']['must'].extend([
                     {'terms': {key: value}} for key, value in self.must_terms_filter.items()
-                ]
-
-            # Valid event has event_type field
-            self['query']['filtered']['filter']['bool'].setdefault('must', {})
-            self['query']['filtered']['filter']['bool']['must']['exists'] = {'field': 'event_type'}
+                ])
 
             if self.must_not_terms_filter:
                 self['query']['filtered']['filter']['bool']['must_not'] = [
@@ -162,11 +174,8 @@ class ElasticsearchClient(object):
                 ]
 
             if self.timestamp_filter:
-                self['query']['filtered']['filter']['bool'].setdefault('must', {})
-                self['query']['filtered']['filter']['bool']['must']['range'] = {'@timestamp': self.timestamp_filter}
-
-            if not self['query']['filtered']['filter']['bool']:
-                del self['query']['filtered']['filter']['bool']
+                self['query']['filtered']['filter']['bool']['must'].append({
+                    'range': {'@timestamp': self.timestamp_filter}})
 
             if self.timestamp_ranges:
                 self["aggs"] = {
