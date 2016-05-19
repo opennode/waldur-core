@@ -8,6 +8,7 @@ class AuthEventLogger(EventLogger):
     class Meta:
         event_types = ('auth_logged_in_with_username',
                        'auth_logged_out')
+        event_groups = {'users': event_types}
 
 
 class UserEventLogger(EventLogger):
@@ -21,6 +22,17 @@ class UserEventLogger(EventLogger):
                        'user_password_updated',
                        'user_activated',
                        'user_deactivated')
+        event_groups = {
+            'users': (
+                'user_activated',
+                'user_deactivated',
+                'user_creation_succeeded',
+                'user_deletion_succeeded',
+                'user_update_succeeded'
+            ),
+            'password': ('user_password_updated',),
+            'update': ('user_update_succeeded',)
+        }
 
 
 class SshPublicKeyEventLogger(EventLogger):
@@ -29,6 +41,7 @@ class SshPublicKeyEventLogger(EventLogger):
     class Meta:
         event_types = ('ssh_key_creation_succeeded',
                        'ssh_key_deletion_succeeded')
+        event_groups = {'ssh': event_types}
 
 
 event_logger.register('auth', AuthEventLogger)

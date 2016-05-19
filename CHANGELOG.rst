@@ -4,7 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 
-- <nothing yet>
+- Expose groups for event types and alert types.
 
 Release 0.97.0
 --------------
