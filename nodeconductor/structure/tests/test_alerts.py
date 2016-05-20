@@ -29,11 +29,13 @@ class FilterAlertsByAggregateTest(test.APITransactionTestCase):
             project_alerts = (
                 AlertFactory(scope=project),
                 AlertFactory(scope=resource),
-                AlertFactory(scope=spl),
-                AlertFactory(scope=service)
+                AlertFactory(scope=spl)
             )
 
-            customer_alerts = project_alerts + (AlertFactory(scope=customer),)
+            customer_alerts = project_alerts + (
+                AlertFactory(scope=service),
+                AlertFactory(scope=customer)
+            )
 
             self.users.append(user)
             self.customers.append(customer)
