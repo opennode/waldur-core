@@ -4,6 +4,7 @@ import collections
 import functools
 import importlib
 import logging
+import sys
 
 from django.conf import settings
 from django.utils import six
@@ -416,12 +417,14 @@ def log_backend_action(action=None):
             logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
             try:
                 result = func(self, instance, *args, **kwargs)
-            except ServiceBackendError as e:
+            except ServiceBackendError:
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
-                six.reraise(ServiceBackendError, e)
+                exc = list(sys.exc_info())
+                exc[0] = ServiceBackendError
+                six.reraise(**exc)
             else:
                 logger.debug('Action `%s` was executed successfully for `%s` (PK: %s).',
-                            action_name, instance, instance.pk)
+                             action_name, instance, instance.pk)
                 return result
         return wrapped
     return decorator

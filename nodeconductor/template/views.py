@@ -1,5 +1,3 @@
-from simplejson import JSONDecodeError
-
 from rest_framework import viewsets, decorators, exceptions, status
 from rest_framework.response import Response
 
@@ -77,7 +75,7 @@ class TemplateGroupViewSet(viewsets.ReadOnlyModelViewSet):
         if not response.ok:
             try:
                 return Response(response.json(), status=response.status_code)
-            except JSONDecodeError:
+            except ValueError:
                 return Response(
                     {'Error message': 'cannot schedule head template provision %s' % response.content},
                     status=response.status_code)
