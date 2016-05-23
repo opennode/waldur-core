@@ -165,6 +165,8 @@ class PushHook(BaseHook):
 
     type = models.SmallIntegerField(choices=Type.CHOICES)
     device_id = models.CharField(max_length=255, null=True, unique=True)
+    device_manufacturer = models.CharField(max_length=255, null=True, blank=True)
+    device_model = models.CharField(max_length=255, null=True, blank=True)
     token = models.CharField(max_length=255, null=True, unique=True)
 
     def process(self, event):
