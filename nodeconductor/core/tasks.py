@@ -8,7 +8,7 @@ from celery import current_app, current_task, Task as CeleryTask
 from celery.execute import send_task as send_celery_task
 from celery.exceptions import MaxRetriesExceededError
 from django.conf import settings
-from django.db import transaction, IntegrityError, DatabaseError
+from django.db import transaction, IntegrityError, DatabaseError, models as django_models
 from django.db.models import ObjectDoesNotExist
 from django.utils import six
 from django_fsm import TransitionNotAllowed
@@ -427,6 +427,8 @@ class Task(CeleryTask):
         self.pre_execute(instance)
         result = self.execute(instance, *self.args, **self.kwargs)
         self.post_execute(instance)
+        if result and isinstance(result, django_models.Model):
+            result = utils.serialize_instance(result)
         return result
 
     def pre_execute(self, instance):
@@ -437,6 +439,12 @@ class Task(CeleryTask):
         raise NotImplementedError('%s should implement method `execute`' % self.__class__.__name__)
 
     def post_execute(self, instance):
+        pass
+
+
+class EmptyTask(CeleryTask):
+
+    def run(self, *args, **kwargs):
         pass
 
 
@@ -471,7 +479,7 @@ class StateTransitionTask(Task):
 
     # Empty execute method allows to use StateTransitionTask as standalone task
     def execute(self, instance, *args, **kwargs):
-        pass
+        return instance
 
 
 class RuntimeStateChangeTask(Task):
