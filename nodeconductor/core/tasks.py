@@ -442,12 +442,6 @@ class Task(CeleryTask):
         pass
 
 
-class EmptyTask(CeleryTask):
-
-    def run(self, *args, **kwargs):
-        pass
-
-
 class StateTransitionTask(Task):
     """ Execute only instance state transition """
 
