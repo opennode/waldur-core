@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from nodeconductor.core.models import NameMixin
-from nodeconductor.monitoring.managers import ResourceSlaManager, ResourceItemManager
+from nodeconductor.monitoring.managers import ResourceSlaManager, ResourceItemManager, ResourceSlaStateTransitionManager
 
 
 class ScopeMixin(models.Model):
@@ -39,6 +39,7 @@ class ResourceSlaStateTransition(ScopeMixin):
     period = models.CharField(max_length=10)
     timestamp = models.IntegerField()
     state = models.BooleanField(default=False, help_text="If state is True resource became available")
+    objects = ResourceSlaStateTransitionManager()
 
     class Meta:
         unique_together = ('timestamp', 'period', 'content_type', 'object_id')

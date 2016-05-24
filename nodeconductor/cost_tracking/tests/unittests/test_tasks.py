@@ -5,10 +5,9 @@ from django.utils import timezone
 
 from nodeconductor.cost_tracking.models import PriceEstimate
 from nodeconductor.cost_tracking.tasks import update_projected_estimate
-from nodeconductor.openstack.cost_tracking import OpenStackCostTrackingBackend
-from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.structure.tests import TestTrackingBackend
 
 
 class UpdateProjectedEstimateTest(TransactionTestCase):
@@ -16,19 +15,22 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
     def setUp(self):
         self.customer = structure_factories.CustomerFactory()
         self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.spl1 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
-        self.spl2 = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
+        self.spl1 = structure_factories.TestServiceProjectLinkFactory(project=self.project)
+        self.spl2 = structure_factories.TestServiceProjectLinkFactory(project=self.project)
 
         two_months_ago = timezone.now() - relativedelta(months=+2)
-        self.instance1 = openstack_factories.InstanceFactory(service_project_link=self.spl1,
-                                                             state=structure_models.Resource.States.ONLINE,
-                                                             created=two_months_ago)
-        self.instance2 = openstack_factories.InstanceFactory(service_project_link=self.spl2,
-                                                             state=structure_models.Resource.States.ONLINE,
-                                                             created=two_months_ago)
+        self.instance1 = structure_factories.TestInstanceFactory(
+            service_project_link=self.spl1,
+            state=structure_models.Resource.States.ONLINE,
+            created=two_months_ago)
+        self.instance2 = structure_factories.TestInstanceFactory(
+            service_project_link=self.spl2,
+            state=structure_models.Resource.States.ONLINE,
+            created=two_months_ago)
+
         # mock estimate calculation task for tests:
         self.INSTANCE_MONTHLY_COST = 10
-        OpenStackCostTrackingBackend.get_monthly_cost_estimate = classmethod(lambda c, i: self.INSTANCE_MONTHLY_COST)
+        TestTrackingBackend.get_monthly_cost_estimate = classmethod(lambda c, i: self.INSTANCE_MONTHLY_COST)
 
     def test_estimate_calculation_for_current_month_if_parents_has_no_estimates(self):
         update_projected_estimate(customer_uuid=self.customer.uuid.hex)

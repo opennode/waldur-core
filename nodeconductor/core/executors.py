@@ -72,7 +72,7 @@ class BaseExecutor(object):
             if callback is not None:
                 cls._apply_callback(callback, result)
 
-        return result
+        return result.get()  # wait until task is ready
 
     @classmethod
     def _apply_callback(cls, callback, result):

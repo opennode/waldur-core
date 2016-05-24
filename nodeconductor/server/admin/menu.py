@@ -40,9 +40,9 @@ class CustomMenu(Menu):
 
     IAAS_CLOUDS = (
         'nodeconductor_azure.*',
+        'nodeconductor_openstack.*'
         'nodeconductor_plus.aws.*',
         'nodeconductor_plus.digitalocean.*',
-        'nodeconductor.openstack.*'
     )
 
     APPLICATION_PROVIDERS = (
@@ -77,7 +77,7 @@ class CustomMenu(Menu):
                 models=('nodeconductor.core.*',
                         'nodeconductor_organization.*',
                         'nodeconductor.structure.*',
-                )
+                        )
             ),
             CustomAppList(
                 _('IaaS clouds'),
@@ -91,6 +91,4 @@ class CustomMenu(Menu):
                 _('Subscriptions and support'),
                 models=self.SUPPORT_MODULES,
             ),
-
-
         ]

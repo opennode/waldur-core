@@ -738,8 +738,8 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
       multiple projects.
     - Projects are connected to project groups, whereas the project may belong to multiple project groups,
       and the project group may contain multiple projects.
-    - Projects are connected to clouds, whereas the project may contain multiple clouds,
-      and the cloud may belong to multiple projects.
+    - Projects are connected to services, whereas the project may contain multiple services,
+      and the service may belong to multiple projects.
     - Staff members can list all available projects of any customer and create new projects.
     - Customer owners can list all projects that belong to any of the customers they own.
       Customer owners can also create projects for the customers they own.
@@ -1240,8 +1240,7 @@ class ResourceViewSet(mixins.ListModelMixin,
     filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
 
     def get_queryset(self):
-        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items()
-                           if k != 'IaaS.Instance'}
+        resource_models = {k: v for k, v in SupportedServices.get_resource_models().items()}
         resource_models = self._filter_by_category(resource_models)
         resource_models = self._filter_by_types(resource_models)
 
@@ -1576,8 +1575,8 @@ class UpdateOnlyByPaidCustomerMixin(object):
 
     @staticmethod
     def _check_paid_status(settings, customer):
-        # Check for shared settings only or missed settings in case of IaaS
-        if settings is None or settings.shared:
+        # Check for shared settings only
+        if settings.shared:
             if customer and customer.balance is not None and customer.balance <= 0:
                 raise PermissionDenied(
                     "Your balance is %s. Action disabled." % customer.balance)

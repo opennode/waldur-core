@@ -6,6 +6,7 @@ import decimal
 import datetime
 import importlib
 import logging
+from collections import defaultdict
 
 from django.apps import apps
 from django.contrib.contenttypes import models as ct_models
@@ -38,7 +39,10 @@ class BaseLogger(object):
         self.supported_types = self.get_supported_types()
 
     def get_supported_types(self):
-        raise NotImplemented('Method is not implemented')
+        raise NotImplemented
+
+    def get_supported_groups(self):
+        raise NotImplemented
 
     def get_nullable_fields(self):
         return getattr(self._meta, 'nullable_fields', [])
@@ -138,10 +142,10 @@ class EventLogger(BaseLogger):
 
         .. code-block:: python
 
-            from nodeconductor.iaas.models import Cloud
+            from nodeconductor.openstack.models import Tenant
 
             class QuotaEventLogger(EventLogger):
-                cloud_account = Cloud
+                tenant = Tenant
                 project = 'structure.Project'
                 threshold = float
                 quota_type = basestring
@@ -157,7 +161,7 @@ class EventLogger(BaseLogger):
                 event_context=dict(
                     quota_type=quota.name,
                     project=membership.project,
-                    cloud_account=membership.cloud,
+                    tenant=tenant,
                     threshold=threshold * quota.limit)
             )
     """
@@ -168,6 +172,9 @@ class EventLogger(BaseLogger):
 
     def get_supported_types(self):
         return getattr(self._meta, 'event_types', tuple())
+
+    def get_supported_groups(self):
+        return getattr(self._meta, 'event_groups', {})
 
     def info(self, *args, **kwargs):
         self.process('info', *args, **kwargs)
@@ -232,6 +239,9 @@ class AlertLogger(BaseLogger):
 
     def get_supported_types(self):
         return getattr(self._meta, 'alert_types', tuple())
+
+    def get_supported_groups(self):
+        return getattr(self._meta, 'alert_groups', {})
 
     def info(self, *args, **kwargs):
         return self.process(models.Alert.SeverityChoices.INFO, *args, **kwargs)
@@ -368,6 +378,20 @@ class BaseLoggerRegistry(object):
             events.update(elogger.get_supported_types())
         return list(sorted(events))
 
+    def get_all_groups(self):
+        groups = defaultdict(set)
+        for elogger in self.get_loggers():
+            for group, items in elogger.get_supported_groups().items():
+                groups[group].update(set(items))
+        return dict(groups)
+
+    def expand_groups(self, groups):
+        items = set()
+        mapping = self.get_all_groups()
+        for group in groups:
+            items.update(mapping.get(group, []))
+        return list(sorted(items))
+
 
 class EventLoggerRegistry(BaseLoggerRegistry):
 
@@ -395,6 +419,22 @@ def get_valid_events():
 
 def get_valid_alerts():
     return alert_logger.get_all_types()
+
+
+def get_event_groups():
+    return event_logger.get_all_groups()
+
+
+def get_alert_groups():
+    return alert_logger.get_all_groups()
+
+
+def expand_event_groups(groups):
+    return event_logger.expand_groups(groups)
+
+
+def expand_alert_groups(groups):
+    return alert_logger.expand_groups(groups)
 
 
 class CustomEventLogger(EventLogger):

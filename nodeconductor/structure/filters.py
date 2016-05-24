@@ -791,8 +791,11 @@ class AggregateFilter(BaseExternalFilter):
         query = {serializer.data['aggregate'] + '__in': aggregates_ids}
 
         all_models = (models.Resource.get_all_models() +
-                      models.Service.get_all_models() +
                       models.ServiceProjectLink.get_all_models())
+
+        if serializer.data['aggregate'] == 'customer':
+            all_models += models.Service.get_all_models()
+
         for model in all_models:
             qs = model.objects.filter(**query).all()
             querysets.append(filter_queryset_for_user(qs, request.user))

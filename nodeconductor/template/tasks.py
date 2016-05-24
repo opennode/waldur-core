@@ -68,12 +68,3 @@ def template_group_execution_failed(self, task_uuid, template_group_result_uuid)
     template_group_result.is_finished = True
     template_group_result.is_erred = True
     template_group_result.save()
-
-
-# TODO: move this signal to gcloud assembly application
-@shared_task
-def register_instance_in_zabbix(instance_uuid):
-    from nodeconductor.openstack.models import Instance
-    from nodeconductor.template.zabbix import register_instance
-    instance = Instance.objects.get(uuid=instance_uuid)
-    register_instance(instance)

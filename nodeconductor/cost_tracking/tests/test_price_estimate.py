@@ -1,8 +1,6 @@
 from ddt import ddt, data
 from rest_framework import status
 
-# dependency from openstack application exists only in tests
-from nodeconductor.openstack.tests import factories as openstack_factories
 from nodeconductor.structure.tests import factories as structure_factories
 
 from .. import models
@@ -85,7 +83,7 @@ class PriceEstimateCreateTest(BaseCostTrackingTest):
         super(PriceEstimateCreateTest, self).setUp()
 
         self.valid_data = {
-            'scope': openstack_factories.OpenStackServiceProjectLinkFactory.get_url(self.service_project_link),
+            'scope': structure_factories.TestServiceProjectLinkFactory.get_url(self.service_project_link),
             'total': 100,
             'details': {'ram': 50, 'disk': 50},
             'month': 7,
@@ -141,7 +139,7 @@ class PriceEstimateUpdateTest(BaseCostTrackingTest):
 
         self.price_estimate = factories.PriceEstimateFactory(scope=self.service_project_link)
         self.valid_data = {
-            'scope': openstack_factories.OpenStackServiceProjectLinkFactory.get_url(self.service_project_link),
+            'scope': structure_factories.TestServiceProjectLinkFactory.get_url(self.service_project_link),
             'total': 100,
             'details': {'ram': 50, 'disk': 50},
             'month': 7,
@@ -149,8 +147,8 @@ class PriceEstimateUpdateTest(BaseCostTrackingTest):
         }
 
     def test_price_estimate_scope_cannot_be_updated(self):
-        other_service_project_link = openstack_factories.OpenStackServiceProjectLinkFactory(project=self.project)
-        self.valid_data['scope'] = openstack_factories.OpenStackServiceProjectLinkFactory.get_url(
+        other_service_project_link = structure_factories.TestServiceProjectLinkFactory(project=self.project)
+        self.valid_data['scope'] = structure_factories.TestServiceProjectLinkFactory.get_url(
             other_service_project_link)
 
         self.client.force_authenticate(self.users['staff'])
