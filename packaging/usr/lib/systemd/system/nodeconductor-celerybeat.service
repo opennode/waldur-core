@@ -1,0 +1,26 @@
+[Unit]
+Description=Celery beat
+After=network.target
+
+[Service]
+Type=forking
+User=nodeconductor
+Group=nodeconductor
+PermissionsStartOnly=true
+EnvironmentFile=/etc/nodeconductor/celery.conf
+WorkingDirectory=/var/lib/nodeconductor
+ExecStartPre=/usr/bin/mkdir -p /run/nodeconductor/celerybeat
+ExecStartPre=/usr/bin/chown -R nodeconductor:nodeconductor /run/nodeconductor/celerybeat
+ExecStart=/usr/bin/celery beat \
+    --app=${CELERY_APP} \
+    --detach \
+    --logfile=${CELERYBEAT_LOG_FILE} \
+    --loglevel=${CELERYBEAT_LOG_LEVEL} \
+    --pidfile=/var/run/nodeconductor/celerybeat/beat.pid \
+    --workdir=/var/lib/nodeconductor \
+    $CELERYBEAT_OPTS
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -4,6 +4,7 @@ import collections
 import functools
 import importlib
 import logging
+import sys
 
 from django.conf import settings
 from django.utils import six
@@ -48,8 +49,6 @@ class SupportedServices(object):
     """
 
     class Types(object):
-        OpenStack = 'OpenStack'
-        IaaS = 'IaaS'
 
         @classmethod
         def get_direct_filter_mapping(cls):
@@ -156,7 +155,6 @@ class SupportedServices(object):
     def get_resources(cls, request=None):
         """ Get a list of resources endpoints.
             {
-                "IaaS.Instance": "/api/iaas-resources/",
                 "DigitalOcean.Droplet": "/api/digitalocean-droplets/",
                 "Oracle.Database": "/api/oracle-databases/",
                 "GitLab.Group": "/api/gitlab-groups/",
@@ -269,7 +267,7 @@ class SupportedServices(object):
     @classmethod
     def get_service_project_link(cls, service_model):
         return next(m.related_model for m in service_model._meta.get_all_related_objects()
-                    if m.name == 'cloudprojectmembership' or m.name.endswith('serviceprojectlink'))
+                    if m.name.endswith('serviceprojectlink'))
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -279,7 +277,6 @@ class SupportedServices(object):
                 'DigitalOcean.Droplet': nodeconductor_plus.digitalocean.models.Droplet,
                 'GitLab.Group': nodeconductor_plus.gitlab.models.Group,
                 'GitLab.Project': nodeconductor_plus.gitlab.models.Project,
-                'IaaS.Instance': nodeconductor.iaas.models.Instance,
                 'Oracle.Database': nodeconductor_oracle_dbaas.models.Database
             }
 
@@ -420,12 +417,14 @@ def log_backend_action(action=None):
             logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
             try:
                 result = func(self, instance, *args, **kwargs)
-            except ServiceBackendError as e:
+            except ServiceBackendError:
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
-                six.reraise(ServiceBackendError, e)
+                exc = list(sys.exc_info())
+                exc[0] = ServiceBackendError
+                six.reraise(**exc)
             else:
-                logger.info('Action `%s` was executed successfully for `%s` (PK: %s).',
-                            action_name, instance, instance.pk)
+                logger.debug('Action `%s` was executed successfully for `%s` (PK: %s).',
+                             action_name, instance, instance.pk)
                 return result
         return wrapped
     return decorator

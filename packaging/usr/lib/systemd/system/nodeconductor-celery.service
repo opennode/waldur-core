@@ -1,0 +1,32 @@
+[Unit]
+Description=Celery workers
+After=network.target
+
+[Service]
+Type=forking
+User=nodeconductor
+Group=nodeconductor
+PermissionsStartOnly=true
+EnvironmentFile=/etc/nodeconductor/celery.conf
+WorkingDirectory=/var/lib/nodeconductor
+ExecStartPre=/usr/bin/mkdir -p /run/nodeconductor/celery
+ExecStartPre=/usr/bin/chown -R nodeconductor:nodeconductor /run/nodeconductor/celery
+ExecStart=/usr/bin/celery multi start $CELERYD_NODES \
+    --app=${CELERY_APP} \
+    --logfile=${CELERYD_LOG_FILE} \
+    --loglevel=${CELERYD_LOG_LEVEL} \
+    --pidfile=/var/run/nodeconductor/celery/%%n.pid \
+    $CELERYD_OPTS
+ExecStop=/usr/bin/celery multi stopwait $CELERYD_NODES \
+    --pidfile=/var/run/nodeconductor/celery/%%n.pid
+ExecReload=/usr/bin/celery multi restart $CELERYD_NODES \
+    --app=${CELERY_APP} \
+    --logfile=${CELERYD_LOG_FILE} \
+    --loglevel=${CELERYD_LOG_LEVEL} \
+    --pidfile=/var/run/nodeconductor/celery/%%n.pid \
+    $CELERYD_OPTS
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

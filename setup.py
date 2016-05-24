@@ -10,7 +10,7 @@ dev_requires = [
 tests_requires = [
     'ddt>=1.0.0',
     'factory_boy==2.4.1',
-    'mock==1.0.1',
+    'mock>=1.0.1',
     'mock-django==0.6.6',
     'six>=1.9.0',
     'sqlalchemy>=1.0.12',
@@ -35,12 +35,6 @@ install_requires = [
     'iptools>=0.6.1',
     'jsonfield==1.0.0',
     'Pillow>=2.0.0,<3.0.0',
-    'python-ceilometerclient==1.0.12',
-    'python-cinderclient==1.1.1',
-    'python-glanceclient==0.15.0',
-    'python-keystoneclient==0.11.1',
-    'python-neutronclient==2.3.9',
-    'python-novaclient==2.20.0',
     'PyYAML>=3.10',
     'pyzabbix>=0.7.2',
     'redis==2.10.3',
@@ -48,27 +42,9 @@ install_requires = [
     'sqlparse>=0.1.11',
 ]
 
-
-# RPM installation does not need oslo, cliff and stevedore libs -
-# they are required only for installation with setuptools
-try:
-    action = sys.argv[1]
-except IndexError:
-    pass
-else:
-    if action in ['develop', 'install', 'test', 'bdist_egg']:
-        install_requires += [
-            'cliff==1.7.0',
-            'oslo.config==1.4.0',
-            'oslo.i18n==1.0.0',
-            'oslo.utils==1.0.0',
-            'stevedore==1.0.0',
-        ]
-
-
 setup(
     name='nodeconductor',
-    version='0.97.0',
+    version='0.98.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
@@ -81,7 +57,6 @@ setup(
         'tests': tests_requires,
     },
     entry_points={
-        'backup_strategies': ('Instance = nodeconductor.iaas.backup.instance_backup:InstanceBackupStrategy',),
         'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,

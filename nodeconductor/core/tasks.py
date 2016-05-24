@@ -168,7 +168,7 @@ class Throttle(object):
             @shared_task(name="change_instance")
             def change_instance1(instance_uuid):
                 instance = Instance.objects.get(uuid=instance_uuid)
-                with throttle(key=instance.cloud_project_membership.cloud.auth_url):
+                with throttle(key=instance.service_project_link.service.settings.backend_url):
                     instance.change_instance()
 
             @shared_task()
@@ -383,14 +383,14 @@ def send_task(app_label, task_name):
         nodeconductor.<app_label>.<task_name>
 
         .. code-block:: python
-            @shared_task(name='nodeconductor.iaas.provision_instance')
+            @shared_task(name='nodeconductor.openstack.provision_instance')
             def provision_instance_fn(instance_uuid, backend_flavor_id)
                 pass
 
         Call it by name:
 
         .. code-block:: python
-            send_task('iaas', 'provision_instance')(instance_uuid, backend_flavor_id)
+            send_task('openstack', 'provision_instance')(instance_uuid, backend_flavor_id)
 
         Which is identical to:
 

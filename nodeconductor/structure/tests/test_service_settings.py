@@ -6,7 +6,6 @@ from rest_framework import test
 
 from django.core.urlresolvers import reverse
 
-from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.models import ServiceSettings, CustomerRole
 from nodeconductor.structure.tests import factories
 
@@ -30,7 +29,7 @@ class ServiceSettingsTest(test.APITransactionTestCase):
             'shared': factories.ServiceSettingsFactory(shared=True),
             'inaccessible': factories.ServiceSettingsFactory(customer=self.customers['inaccessible']),
             'owned': factories.ServiceSettingsFactory(
-                customer=self.customers['owned'], backend_url='bk.url', password='123', type=SupportedServices.Types.OpenStack),
+                customer=self.customers['owned'], backend_url='bk.url', password='123'),
         }
 
         # Token is excluded, because it is not available for OpenStack
@@ -130,7 +129,7 @@ class ServiceSettingsTest(test.APITransactionTestCase):
             "backend_url": "http://example.com",
             "username": "user",
             "password": "secret",
-            "type": SupportedServices.Types.OpenStack,
+            "type": "DemoService",
         }
 
         with patch('celery.app.base.Celery.send_task') as mocked_task:

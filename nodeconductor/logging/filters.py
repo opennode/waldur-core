@@ -11,8 +11,8 @@ from rest_framework.serializers import ValidationError
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.core.filters import ExternalFilterBackend
 from nodeconductor.logging import models, utils
-from nodeconductor.logging.loggers import event_logger
-from nodeconductor.logging.features import features_to_events, features_to_alerts, UPDATE_EVENTS
+from nodeconductor.logging.elasticsearch_client import EmptyQueryset
+from nodeconductor.logging.loggers import event_logger, expand_event_groups, expand_alert_groups
 
 
 def _convert(name):
@@ -49,12 +49,13 @@ class EventFilterBackend(filters.BaseFilterBackend):
         if 'event_type' in request.query_params:
             must_terms['event_type'] = request.query_params.getlist('event_type')
 
+        # Group events by features in order to prevent large HTTP GET request
         if 'exclude_features' in request.query_params:
             features = request.query_params.getlist('exclude_features')
-            must_not_terms['event_type'] = features_to_events(features)
+            must_not_terms['event_type'] = expand_event_groups(features)
 
         if 'exclude_extra' in request.query_params:
-            must_not_terms['event_type'] = must_not_terms.get('event_type', []) + UPDATE_EVENTS
+            must_not_terms['event_type'] = must_not_terms.get('event_type', []) + expand_event_groups(['update'])
 
         if 'user_username' in request.query_params:
             must_terms['user_username'] = [request.query_params.get('user_username')]
@@ -77,7 +78,10 @@ class EventFilterBackend(filters.BaseFilterBackend):
                         request.query_params['scope_type'], ', '.join(choices.keys()))
                 )
             else:
-                for field, uuids in scope_type.get_permitted_objects_uuids(request.user).items():
+                permitted_items = scope_type.get_permitted_objects_uuids(request.user).items()
+                if not permitted_items:
+                    return EmptyQueryset()
+                for field, uuids in permitted_items:
                     must_terms[field] = [uuid.hex for uuid in uuids]
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
@@ -194,9 +198,10 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
         if 'alert_type' in request.query_params:
             queryset = queryset.filter(alert_type__in=request.query_params.getlist('alert_type'))
 
+        # Group alerts by features in order to prevent large HTTP GET request
         if 'exclude_features' in request.query_params:
             features = request.query_params.getlist('exclude_features')
-            queryset = queryset.exclude(alert_type__in=features_to_alerts(features))
+            queryset = queryset.exclude(alert_type__in=expand_alert_groups(features))
 
         return queryset
 

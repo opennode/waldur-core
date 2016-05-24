@@ -3,8 +3,16 @@ CHANGELOG
 
 Release NEXT
 ------------
+- <Nothing yet>
 
-- <nothing yet>
+
+Release 0.98.0
+--------------
+
+- Expose groups for event types and alert types.
+- Added group types for alerts and events.
+- Cleaned up OpenStack dependencies from core.
+- Bugfixes.
 
 Release 0.97.0
 --------------

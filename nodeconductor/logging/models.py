@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import uuid
+import logging
 
 from django.conf import settings
 from django.contrib.contenttypes import fields as ct_fields
@@ -19,6 +20,8 @@ from uuidfield import UUIDField
 from nodeconductor.core.utils import timestamp_to_datetime
 from nodeconductor.logging import managers
 
+
+logger = logging.getLogger(__name__)
 
 class UuidMixin(models.Model):
     # There is circular dependency between logging and core applications.
@@ -162,6 +165,8 @@ class PushHook(BaseHook):
 
     type = models.SmallIntegerField(choices=Type.CHOICES)
     device_id = models.CharField(max_length=255, null=True, unique=True)
+    device_manufacturer = models.CharField(max_length=255, null=True, blank=True)
+    device_model = models.CharField(max_length=255, null=True, blank=True)
     token = models.CharField(max_length=255, null=True, unique=True)
 
     def process(self, event):
@@ -170,6 +175,7 @@ class PushHook(BaseHook):
 
                 # https://developers.google.com/mobile/add
                 NODECONDUCTOR['GOOGLE_API'] = {
+                    'NOTIFICATION_TITLE': "NodeConductor notification",
                     'Android': {
                         'server_key': 'AIzaSyA2_7UaVIxXfKeFvxTjQNZbrzkXG9OTCkg',
                     },
@@ -192,9 +198,17 @@ class PushHook(BaseHook):
         }
         payload = {
             'to': self.token,
-            'data': event,
+            "notification": {
+                "body": event.get('message', 'New event'),
+                "title": conf.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
+                "image": "icon",
+            },
+            'data': {
+                'event': event
+            },
         }
 
+        logger.debug('Submitting GCM push notification with headers %s, payload: %s' % (headers, payload))
         requests.post(endpoint, json=payload, headers=headers)
 
 

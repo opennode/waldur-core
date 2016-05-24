@@ -4,8 +4,7 @@ from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking import models
-from nodeconductor.openstack import models as openstack_models
-from nodeconductor.openstack.tests import factories as openstack_factories
+from nodeconductor.structure.tests import models as test_models
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -44,7 +43,7 @@ class DefaultPriceListItemFactory(AbstractPriceListItemFactory):
         model = models.DefaultPriceListItem
 
     resource_content_type = factory.LazyAttribute(
-        lambda _: ContentType.objects.get_for_model(openstack_models.Instance))
+        lambda _: ContentType.objects.get_for_model(test_models.TestInstance))
 
     key = factory.Sequence(lambda n: 'price list item %s' % n)
     item_type = factory.Iterator(['flavor', 'storage'])
@@ -66,7 +65,7 @@ class PriceListItemFactory(AbstractPriceListItemFactory):
     class Meta(object):
         model = models.PriceListItem
 
-    service = factory.SubFactory(openstack_factories.OpenStackServiceFactory)
+    service = factory.SubFactory(structure_factories.TestServiceFactory)
     default_price_list_item = factory.SubFactory(DefaultPriceListItemFactory)
 
     @classmethod

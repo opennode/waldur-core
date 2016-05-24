@@ -74,199 +74,110 @@ Therefore configuration might look like this:
 .. code-block:: python
 
     NODECONDUCTOR = {
-        'DEFAULT_SECURITY_GROUPS': (
-            {
-                'name': 'ssh',
-                'description': 'Security group for secure shell access',
-                'rules': (
-                    {
-                        'protocol': 'tcp',
-                        'cidr': '0.0.0.0/0',
-                        'from_port': 22,
-                        'to_port': 22,
-                    },
-                    {
-                        'protocol': 'icmp',
-                        'cidr': '0.0.0.0/0',
-                        'icmp_type': -1,
-                        'icmp_code': -1,
-                    },
-                ),
+        'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
+        'ELASTICSEARCH': {
+            'username': 'username',
+            'password': 'password',
+            'host': 'example.com',
+            'port': '9999',
+            'protocol': 'https',
+        },
+        'ENABLE_GEOIP': True,
+        'EXTENSIONS_AUTOREGISTER': True,
+        'GOOGLE_API': {
+            'Android': {
+                'server_key': 'AIzaSyA2_7UaVIxXfKeFvxTjQNZbrzkXG9OTCkg',
             },
-        ),
-        'MONITORING': {
-            'ZABBIX': {
-                'server': 'http://zabbix.example.com/zabbix',
-                'username': 'admin',
-                'password': 'zabbix',
-                'interface_parameters': {'ip': '0.0.0.0', 'main': 1, 'port': '10050', 'type': 1, 'useip': 1, 'dns': ''},
-                'templateid': '10106',
-                'groupid': '8',
-                'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
+            'iOS': {
+                'server_key': 'AIzaSyA34zlG_y5uHOe2FmcJKwfk2vG-3RW05vk',
             }
         },
-        'OPENSTACK_QUOTAS_INSTANCE_RATIOS': {
-            'volumes': 4,
-            'snapshots': 20,
-        },
+        'SHOW_ALL_USERS': False,
+        'SUSPEND_UNPAID_CUSTOMERS': False,
+        'OWNER_CAN_MANAGE_CUSTOMER': False,
+        'TOKEN_KEY': 'x-auth-token',
+        'TOKEN_LIFETIME': timedelta(hours=1),
     }
 
 **Available settings**
 
 .. glossary::
 
-    DEFAULT_SECURITY_GROUPS
-      A list of security groups that will be created in IaaS backend for each cloud.
+    CLOSED_ALERTS_LIFETIME
+      Specifies closed alerts lifetime (timedelta value, for example timedelta(hours=1)).
+      Expired closed alerts will be removed during the cleanup.
 
-      Each entry is a dictionary with the following keys:
+    ELASTICSEARCH
+      Dictionary of Elasticsearch parameters.
 
-      name
-        Short name of the security group.
+        host
+          Elasticsearch host (string).
 
-      description
-        Detailed description of the security group.
-
-      rules
-        List of firewall rules that make up the security group.
-
-        Each entry is a dictionary with the following keys:
+        port
+          Elasticsearch port (integer).
 
         protocol
-          Transport layer protocol the rule applies to.
-          Must be one of *tcp*, *udp* or *icmp*.
-
-        cidr
-          IPv4 network of packet source.
-          Must be a string in `CIDR notation`_.
-
-        from_port
-          Start of packet destination port range.
-          Must be a number in range from 1 to 65535.
-
-          For *tcp* and *udp* protocols only.
-
-        to_port
-          End of packet destination port range.
-          Must be a number in range from 1 to 65535.
-          Must not be less than **from_port**.
-
-          For *tcp* and *udp* protocols only.
-
-        icmp_type
-          ICMP type of the packet.
-          Must be a number in range from -1 to 255.
-
-          See also: `ICMP Types and Codes`_.
-
-          For *icmp* protocol only.
-
-        icmp_code
-          ICMP code of the packet.
-          Must be a number in range from -1 to 255.
-
-          See also: `ICMP Types and Codes`_.
-
-          For *icmp* protocol only.
-
-    MONITORING
-      Dictionary of available monitoring engines.
-
-      ZABBIX
-        Dictionary of Zabbix monitoring engine parameters.
-
-          server
-            URL of Zabbix server.
-
-          username
-            Username of Zabbix user account.
-            This user must be able to create zabbix hostgroups, hosts, templates and IT services.
-
-          password
-            Password of Zabbix user account.
-
-          interface_parameters
-            Dictionary of parameters for Zabbix hosts interface.
-            Have to contain keys: 'main', 'port', 'ip', 'type', 'useip', 'dns'.
-
-          templateid
-            Id of default Zabbix host template.
-
-          groupid
-            Id of default Zabbix host group.
-
-          default_service_parameters
-            Default parameters for Zabbix IT services.
-            Have to contain keys: 'algorithm', 'showsla', 'sortorder', 'goodsla'.
-
-          FAIL_SILENTLY
-            If True - ignores Zabbix API exceptions and do not add any messages to logger
-
-    OPENSTACK_QUOTAS_INSTANCE_RATIOS
-      Default ratio values per instance.
-
-        volumes
-          Number of volumes per instance.
-
-        snapshots
-          Number of snapshots per instance.
-
-    BILLING
-      Dictionary of billing engine parameters.
-
-        backend
-          Path to Kill Bill driver.
-
-        api_url
-          URL of Kill Bill API.
+          Elasticsearch server access protocol (string).
 
         username
-            Username of Kill Bill admin account.
+          Username for accessing Elasticsearch server (string).
 
         password
-            Password of Kill Bill admin account.
+          Password for accessing Elasticsearch server (string).
 
-        api_key
-            Kill Bill tenant API key.
+        verify_certs
+          Enables verification of Elasticsearch server TLS certificates (boolean).
 
-        api_secret
-            Kill Bill tenant API secret.
+        ca_certs
+          Path to the TLS certificate bundle (string).
 
-        Additional Kill Bill parameters. For example: **currency**.
+    ENABLE_GEOIP
+      Indicates whether geolocation is enabled (boolean).
+
+    EXTENSIONS_AUTOREGISTER
+      Defines whether extensions should be automatically registered (boolean).
+
+    GOOGLE_API
+      Settings dictionary for Google Cloud Messaging.
+
+        Android
+          Settings for Android devices.
+
+            server_key
+              Google Cloud messaging server key.
+
+        IOS
+          Settings for IOS devices.
+
+            server_key
+              Google Cloud messaging server key.
+
+        NOTIFICATION_TITLE
+           String to be displayed in the notification pop-up title.
+
+    SHOW_ALL_USERS
+      Indicates whether user can see all other users in `api/users/` endpoint (boolean).
+
+    SUSPEND_UNPAID_CUSTOMERS
+      If it is set to True, then only customers with positive balance will be able
+      to modify entities such as services and resources (boolean).
+
+    OWNER_CAN_MANAGE_CUSTOMER
+      Indicates whether user can manage owned customers (boolean).
+
+    TOKEN_KEY
+      Header for token authentication. For example, 'x-auth-token'.
+
+    TOKEN_LIFETIME
+      Specifies authentication token lifetime (timedelta value, for example timedelta(hours=1)).
 
 
-NodeConductor also needs access to Zabbix database. For that a read-only user needs to be created in Zabbix database.
-
-Zabbix database connection is configured as follows:
+NodeConductor will send notifications from email address specified in **DEFAULT_FROM_EMAIL** variable.
+For example,
 
 .. code-block:: python
 
-    DATABASES = {
-        'zabbix': {
-            'ENGINE': 'django.db.backends.mysql',
-            'HOST': 'zabbix_db_host',
-            'NAME': 'zabbix_db_name',
-            'PORT': 'zabbix_db_port',
-            'USER': 'zabbix_db_user',
-            'PASSWORD': 'zabbix_db_password',
-        }
-    }
-
-.. glossary::
-
-    zabbix_db_host
-      Hostname of the Zabbix database.
-
-    zabbix_db_port
-      Port of the Zabbix database.
-
-    zabbix_db_name
-      Zabbix database name.
-
-    zabbix_db_user
-      User for connecting to Zabbix database.
-
-    zabbix_db_password
-      Password for connecting to Zabbix database.
+    DEFAULT_FROM_EMAIL='noreply@example.com'
 
 See also: `Django database settings`_.
 

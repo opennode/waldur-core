@@ -1,7 +1,7 @@
 from ddt import ddt, data
 from rest_framework import status
 
-from nodeconductor.openstack.tests import factories as openstack_factories
+from nodeconductor.structure.tests import factories as structure_factories
 
 from .. import models
 from . import factories
@@ -38,7 +38,7 @@ class PriceListItemListTest(BaseCostTrackingTest):
         self.client.force_authenticate(self.users['staff'])
         response = self.client.get(
             factories.PriceListItemFactory.get_list_url(),
-            data={'service': openstack_factories.OpenStackServiceFactory.get_url(self.service)}
+            data={'service': structure_factories.TestServiceFactory.get_url(self.service)}
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -53,7 +53,7 @@ class PriceListItemCreateTest(BaseCostTrackingTest):
         super(PriceListItemCreateTest, self).setUp()
         self.default_price_list_item = factories.DefaultPriceListItemFactory()
         self.valid_data = {
-            'service': openstack_factories.OpenStackServiceFactory.get_url(self.service),
+            'service': structure_factories.TestServiceFactory.get_url(self.service),
             'default_price_list_item': factories.DefaultPriceListItemFactory.get_url(self.default_price_list_item),
             'value': 100,
             'units': 'UAH'
@@ -88,6 +88,7 @@ class PriceListItemCreateTest(BaseCostTrackingTest):
 
         response = self.client.post(factories.PriceListItemFactory.get_list_url(), data=self.valid_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 @ddt
 class PriceListItemUpdateTest(BaseCostTrackingTest):

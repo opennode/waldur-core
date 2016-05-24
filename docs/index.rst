@@ -48,7 +48,7 @@ NodeConductor plugins
    plugins/azure
    plugins/jira
    plugins/killbill
-   plugins/openstack/intro
+   plugins/openstack
    plugins/oracle
    plugins/organization
    plugins/paypal

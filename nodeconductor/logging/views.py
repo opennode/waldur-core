@@ -8,6 +8,7 @@ from rest_framework import filters as rf_filters
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.views import BaseSummaryView
 from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log, utils
+from nodeconductor.logging.loggers import get_event_groups, get_alert_groups
 
 
 class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -131,6 +132,14 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         """ Returns a list of scope types acceptable by events filter. """
         return response.Response([str(m._meta) for m in utils.get_loggable_models()])
 
+    @decorators.list_route()
+    def event_groups(self, request, *args, **kwargs):
+        """
+        Returns a list of groups with event types.
+        Group is used in exclude_features query param.
+        """
+        return response.Response(get_event_groups())
+
 
 class AlertViewSet(mixins.CreateModelMixin,
                    viewsets.ReadOnlyModelViewSet):
@@ -161,7 +170,7 @@ class AlertViewSet(mixins.CreateModelMixin,
          - ?severity=<severity> (can be list)
          - ?alert_type=<alert_type> (can be list)
          - ?scope=<url> concrete alert scope
-         - ?scope_type=<string> name of scope type (Ex.: instance, cloud_project_membership, project...)
+         - ?scope_type=<string> name of scope type (Ex.: instance, service_project_link, project...)
            DEPRECATED use ?content_type instead
          - ?created_from=<timestamp>
          - ?created_to=<timestamp>
@@ -176,7 +185,7 @@ class AlertViewSet(mixins.CreateModelMixin,
            object with given uuid)
          - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts
          - ?content_type=<string> name of scope content type in format <app_name>.<scope_type>
-           (Ex.: structure.project, iaas.instance...)
+           (Ex.: structure.project, openstack.instance...)
          - ?exclude_features=<feature> (can be list) - exclude alert from output if it's type corresponds o one of given features
 
         Alerts can be ordered by:
@@ -321,6 +330,14 @@ class AlertViewSet(mixins.CreateModelMixin,
 
         super(AlertViewSet, self).perform_create(serializer)
 
+    @decorators.list_route()
+    def alert_groups(self, request, *args, **kwargs):
+        """
+        Returns a list of groups with alert types.
+        Group is used in exclude_features query param.
+        """
+        return response.Response(get_alert_groups())
+
 
 class BaseHookViewSet(viewsets.ModelViewSet):
     """
@@ -380,7 +397,7 @@ class EmailHookViewSet(BaseHookViewSet):
 
             {
                 "events": [
-                    "iaas_instance_start_succeeded"
+                    "openstack_instance_start_succeeded"
                 ],
                 "email": "test@example.com"
             }

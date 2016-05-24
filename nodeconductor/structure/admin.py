@@ -306,9 +306,6 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         projects = {}
 
         for name, model in SupportedServices.get_service_models().items():
-            if name == SupportedServices.Types.IaaS:
-                continue
-
             services = model['service'].objects.filter(settings=settings).values_list('id', flat=True)
             for spl in model['service_project_link'].objects.filter(service__in=services):
                 projects.setdefault(spl.project.id, {

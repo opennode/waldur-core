@@ -5,12 +5,12 @@ from django.test import TestCase
 
 from nodeconductor.cost_tracking import models, CostTrackingBackend
 from nodeconductor.cost_tracking.tests import factories
-from nodeconductor.openstack.tests import factories as openstack_factories
+from nodeconductor.structure.tests.factories import TestInstanceFactory
 
 
 class CostEstimateTest(TestCase):
     def setUp(self):
-        self.resource = openstack_factories.InstanceFactory()
+        self.resource = TestInstanceFactory()
         self.service = self.resource.service_project_link.service
         self.content_type = ContentType.objects.get_for_model(self.resource)
         self.default_item = factories.DefaultPriceListItemFactory(resource_content_type=self.content_type)

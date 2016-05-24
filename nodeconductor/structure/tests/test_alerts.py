@@ -1,9 +1,7 @@
-import factory
 from rest_framework import test, status
 
 from nodeconductor.logging.models import Alert
 from nodeconductor.logging.tests.factories import AlertFactory
-from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.tests import factories
 
@@ -31,11 +29,13 @@ class FilterAlertsByAggregateTest(test.APITransactionTestCase):
             project_alerts = (
                 AlertFactory(scope=project),
                 AlertFactory(scope=resource),
-                AlertFactory(scope=spl),
-                AlertFactory(scope=service)
+                AlertFactory(scope=spl)
             )
 
-            customer_alerts = project_alerts + (AlertFactory(scope=customer),)
+            customer_alerts = project_alerts + (
+                AlertFactory(scope=service),
+                AlertFactory(scope=customer)
+            )
 
             self.users.append(user)
             self.customers.append(customer)
@@ -75,23 +75,8 @@ class FilterAlertsByAggregateTest(test.APITransactionTestCase):
         self.assertEqual(expected, actual)
 
     def create_resource(self, customer, project):
-        service_type = 'OpenStack'
-        models = SupportedServices.get_service_models()[service_type]
-
-        class ServiceFactory(factory.DjangoModelFactory):
-            class Meta(object):
-                model = models['service']
-
-        class ServiceProjectLinkFactory(factory.DjangoModelFactory):
-            class Meta(object):
-                model = models['service_project_link']
-
-        class ResourceFactory(factory.DjangoModelFactory):
-            class Meta(object):
-                model = models['resources'][0]
-
-        settings = factories.ServiceSettingsFactory(customer=customer, type=service_type)
-        service = ServiceFactory(customer=customer, settings=settings)
-        spl = ServiceProjectLinkFactory(service=service, project=project)
-        resource = ResourceFactory(service_project_link=spl)
+        settings = factories.ServiceSettingsFactory(customer=customer)
+        service = factories.TestServiceFactory(customer=customer, settings=settings)
+        spl = factories.TestServiceProjectLinkFactory(service=service, project=project)
+        resource = factories.TestInstanceFactory(service_project_link=spl)
         return resource

@@ -148,12 +148,8 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         """
         URL of service settings
         """
-        try:
-            return reverse(
-                'servicesettings-detail', kwargs={'uuid': link.service.settings.uuid}, request=self.context['request'])
-        except AttributeError:
-            # IaaS cloud does not have settings
-            return ''
+        return reverse(
+            'servicesettings-detail', kwargs={'uuid': link.service.settings.uuid}, request=self.context['request'])
 
     def get_url(self, link):
         """
@@ -172,18 +168,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     # XXX: SPL is intended to become stateless. For backward compatiblity we are returning here state from connected
     # service settings. To be removed once SPL becomes stateless.
     def get_state(self, link):
-        try:
-            return link.service.settings.get_state_display()
-        except AttributeError:
-            # XXX: remove once IaaS Cloud is gone
-            return 'In Sync'  # arbitrary value
-
-    def get_shared(self, link):
-        # XXX: Backward compatibility with IAAS Cloud
-        try:
-            return link.service.settings.shared
-        except AttributeError:
-            return False
+        return link.service.settings.get_state_display()
 
     def get_resources_count(self, link):
         """
@@ -195,6 +180,9 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
             query = {model.Permissions.project_path.split('__')[0]: link}
             total += model.objects.filter(**query).count()
         return total
+
+    def get_shared(self, link):
+        return link.service.settings.shared
 
 
 class ProjectSerializer(core_serializers.RestrictedSerializerMixin,

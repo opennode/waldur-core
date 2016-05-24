@@ -325,7 +325,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
         self._check_user_direct_access_customer(self.customers['owned'], status.HTTP_200_OK)
 
-    def test_user_can_see_its_owner_membership_in_a_cloud_he_is_owner_of(self):
+    def test_user_can_see_its_owner_membership_in_a_service_he_is_owner_of(self):
         self.client.force_authenticate(user=self.users['owner'])
         for customer in self.customers['owned']:
             response = self.client.get(self._get_customer_url(customer))
@@ -568,27 +568,23 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         self.assert_quota_usage('nc_project_count', 0)
 
     def test_customer_services_quota_increases_on_service_creation(self):
-        from nodeconductor.openstack.tests import factories as openstack_factories
-        openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        factories.TestServiceFactory(customer=self.customer)
         self.assert_quota_usage('nc_service_count', 1)
 
     def test_customer_services_quota_decreases_on_service_deletion(self):
-        from nodeconductor.openstack.tests import factories as openstack_factories
-        service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        service = factories.TestServiceFactory(customer=self.customer)
         service.delete()
         self.assert_quota_usage('nc_service_count', 0)
 
     def test_customer_and_project_service_project_link_quota_updated(self):
-        from nodeconductor.openstack.tests import factories as openstack_factories
-
         self.assert_quota_usage('nc_service_project_link_count', 0)
-        service = openstack_factories.OpenStackServiceFactory(customer=self.customer)
+        service = factories.TestServiceFactory(customer=self.customer)
 
         project1 = factories.ProjectFactory(customer=self.customer)
-        openstack_factories.OpenStackServiceProjectLinkFactory(service=service, project=project1)
+        factories.TestServiceProjectLinkFactory(service=service, project=project1)
 
         project2 = factories.ProjectFactory(customer=self.customer)
-        openstack_factories.OpenStackServiceProjectLinkFactory(service=service, project=project2)
+        factories.TestServiceProjectLinkFactory(service=service, project=project2)
 
         self.assertEqual(project1.quotas.get(name='nc_service_project_link_count').usage, 1)
         self.assertEqual(project2.quotas.get(name='nc_service_project_link_count').usage, 1)
@@ -601,27 +597,6 @@ class CustomerQuotasTest(test.APITransactionTestCase):
 
         self.assert_quota_usage('nc_service_count', 1)
         self.assert_quota_usage('nc_service_project_link_count', 0)
-
-    # XXX: this test should be rewritten after instances will become part of general services
-    def test_customer_instances_quota_increases_on_instance_creation(self):
-        from nodeconductor.iaas.tests import factories as iaas_factories
-        project = factories.ProjectFactory(customer=self.customer)
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        cpm = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
-        iaas_factories.InstanceFactory(cloud_project_membership=cpm)
-
-        self.assert_quota_usage('nc_resource_count', 1)
-
-    # XXX: this test should be rewritten after instances will become part of general services
-    def test_customer_instances_quota_decreases_on_instance_deletion(self):
-        from nodeconductor.iaas.tests import factories as iaas_factories
-        project = factories.ProjectFactory(customer=self.customer)
-        cloud = iaas_factories.CloudFactory(customer=self.customer)
-        cpm = iaas_factories.CloudProjectMembershipFactory(cloud=cloud, project=project)
-        instance = iaas_factories.InstanceFactory(cloud_project_membership=cpm)
-        instance.delete()
-
-        self.assert_quota_usage('nc_resource_count', 0)
 
     def test_customer_users_quota_increases_on_adding_owner(self):
         user = factories.UserFactory()
