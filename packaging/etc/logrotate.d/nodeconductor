@@ -1,0 +1,10 @@
+/var/log/nodeconductor/*.log {
+    compress
+    copytruncate
+    daily
+    delaycompress
+    missingok
+    notifempty
+    rotate 91
+    su nodeconductor nodeconductor
+}
