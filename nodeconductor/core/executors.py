@@ -73,9 +73,8 @@ class BaseExecutor(object):
 
         if isinstance(signature.type, tasks.BackendMethodTask):
             try:
-                _, method_name = signature.args
-                signature.kwargs['_shadow_name'] += ':%s' % method_name
-            except ValueError:
+                signature.kwargs['_shadow_name'] += ':%s' % signature.args[1]
+            except IndexError:
                 pass
 
         if async:
