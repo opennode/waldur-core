@@ -1,3 +1,5 @@
+from celery import chord
+
 from nodeconductor.core import utils, tasks
 
 
@@ -14,17 +16,17 @@ class BaseExecutor(object):
 
     @classmethod
     def get_task_signature(cls, instance, serialized_instance, **kwargs):
-        """ Get Celery signature or primitive that describes executor action.
+        """ Get Celery signature or chain that describes executor action.
 
         Each task should be subclass of LowLevelTask class.
         Celery Signature and Primitives:
          - http://docs.celeryproject.org/en/latest/userguide/canvas.html
         Examples:
          - to execute only one task - return Signature of necessary task: `task.si(serialized_instance)`
-         - to execute several tasks - return Chain or Group of tasks: `chain(t1.s(), t2.s())`
-        Note! Celery Chord is not supported.
+         - to execute several tasks - return Chain of tasks: `chain(t1.s(), t2.s())`
+        Note! Celery chord and group is not supported. Use BaseChordExecutor for parallel tasks execution.
         """
-        raise NotImplementedError('Executor %s should implement method `get_tasks`' % cls.__name__)
+        raise NotImplementedError('Executor %s should implement method `get_task_signature`' % cls.__name__)
 
     @classmethod
     def get_success_signature(cls, instance, serialized_instance, **kwargs):
@@ -84,6 +86,27 @@ class BaseExecutor(object):
 
 class ExecutorException(Exception):
     pass
+
+
+class BaseChordExecutor(BaseExecutor):
+    """ Allows to use Celery chord for tasks execution.
+
+        Uses tasks from `get_task_signature` method as chord head and
+        task from `get_success_signature` - as chord callback.
+    """
+
+    @classmethod
+    def apply_signature(cls, instance, async=True, countdown=None, **kwargs):
+        """ Serialize input data and apply chord """
+        if not async:
+            raise ExecutorException('Chord executor cannot be executed synchronously')
+        serialized_instance = utils.serialize_instance(instance)
+
+        head = cls.get_task_signature(instance, serialized_instance, **kwargs)
+        callback = cls.get_success_signature(instance, serialized_instance, **kwargs)
+        link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
+
+        return chord(head.set(link_error=[link_error]), callback).delay()
 
 
 class ErrorExecutorMixin(object):
