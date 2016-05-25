@@ -71,6 +71,13 @@ class BaseExecutor(object):
         for obj in (signature, link, link_error):
             obj.kwargs['_shadow_name'] = shadow_name
 
+        if isinstance(signature.type, tasks.BackendMethodTask):
+            try:
+                _, method_name = signature.args
+                signature.kwargs['_shadow_name'] += ':%s' % method_name
+            except ValueError:
+                pass
+
         if async:
             return signature.apply_async(link=link, link_error=link_error, countdown=countdown)
         else:
