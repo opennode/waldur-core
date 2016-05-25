@@ -106,7 +106,7 @@ class BaseChordExecutor(BaseExecutor):
         callback = cls.get_success_signature(instance, serialized_instance, **kwargs)
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
-        return chord(head, callback.set(link_error=[link_error])).delay()
+        return chord(head.set(link_error=[link_error]), callback).delay()
 
 
 class ErrorExecutorMixin(object):
