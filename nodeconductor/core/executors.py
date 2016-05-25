@@ -1,4 +1,5 @@
 from celery import chord
+from celery.worker.job import Request
 
 from nodeconductor.core import utils, tasks
 
@@ -65,6 +66,10 @@ class BaseExecutor(object):
         signature = cls.get_task_signature(instance, serialized_instance, **kwargs)
         link = cls.get_success_signature(instance, serialized_instance, **kwargs)
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
+
+        shadow_name = '.'.join([cls.__module__, cls.__name__])
+        for obj in (signature, link, link_error):
+            obj.kwargs['_shadow_name'] = shadow_name
 
         if async:
             return signature.apply_async(link=link, link_error=link_error, countdown=countdown)
@@ -195,3 +200,16 @@ class ActionExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     def pre_apply(cls, instance, **kwargs):
         instance.schedule_updating()
         instance.save(update_fields=['state'])
+
+
+def log_celery_task(task):
+    shadow_name = task.kwargs.pop('_shadow_name', '')
+    return '{0.name}[{0.id}]{1}{2}{3}'.format(
+        task,
+        ' name:{0}'.format(shadow_name) if shadow_name else '',
+        ' eta:[{0}]'.format(task.eta) if task.eta else '',
+        ' expires:[{0}]'.format(task.expires) if task.expires else '',
+    )
+
+# XXX: drop the hack and use shadow name in celery 4.0
+Request.__str__ = log_celery_task
