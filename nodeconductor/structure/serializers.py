@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import json
+
 from collections import defaultdict, OrderedDict
 
 from django.conf import settings
@@ -1002,11 +1004,17 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def build_unknown_field(self, field_name, model_class):
         if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
             if field_name in self.SERVICE_ACCOUNT_EXTRA_FIELDS:
-                return serializers.CharField, {
+                backend = SupportedServices.get_service_backend(self.Meta.model)
+                kwargs = {
                     'write_only': True,
                     'required': False,
                     'allow_blank': True,
-                    'help_text': self.SERVICE_ACCOUNT_EXTRA_FIELDS[field_name]}
+                    'help_text': self.SERVICE_ACCOUNT_EXTRA_FIELDS[field_name],
+                }
+                if field_name in backend.DEFAULTS:
+                    kwargs['help_text'] += ' (default: %s)' % json.dumps(backend.DEFAULTS[field_name])
+                    kwargs['initial'] = backend.DEFAULTS[field_name]
+                return serializers.CharField, kwargs
 
         return super(BaseServiceSerializer, self).build_unknown_field(field_name, model_class)
 
@@ -1045,6 +1053,12 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 extra_fields += tuple(self.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
 
             if create_settings:
+                required = getattr(self.Meta, 'required_fields', tuple())
+                for field in settings_fields:
+                    if field in required and field not in attrs:
+                        error = self.fields[field].error_messages['required']
+                        raise serializers.ValidationError({field: unicode(error)})
+
                 args = {f: attrs.get(f) for f in settings_fields if f in attrs}
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
