@@ -13,7 +13,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.98.0
-Release: 1.el7
+Release: 2.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
@@ -35,6 +35,7 @@ Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.17.5
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
+Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
 Requires: python-redis = 2.10.3
@@ -200,6 +201,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Fri May 27 2016 Juri Hudolejev <juri@opennodecloud.com> - 0.98.0-2.el7
+- Fix RPM dependencies
+
 * Tue May 24 2016 Jenkins <jenkins@opennodecloud.com> - 0.98.0-1.el7
 - New upstream release
 
