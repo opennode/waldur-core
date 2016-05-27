@@ -133,6 +133,8 @@ class SupportedServices(object):
 
     @classmethod
     def get_service_backend(cls, key):
+        if not isinstance(key, basestring):
+            key = cls.get_model_key(key)
         try:
             return cls._registry[key]['backend']
         except IndexError:
@@ -436,6 +438,8 @@ class ServiceBackendNotImplemented(NotImplementedError):
 
 class ServiceBackend(object):
     """ Basic service backed with only common methods pre-defined. """
+
+    DEFAULTS = {}
 
     def __init__(self, settings, **kwargs):
         pass
