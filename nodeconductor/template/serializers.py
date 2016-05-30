@@ -34,11 +34,19 @@ class TemplateGroupSerializer(serializers.HyperlinkedModelSerializer):
     templates = TemplateSerializer(many=True)
     tags = serializers.SerializerMethodField()
     sla = serializers.SerializerMethodField()
+    service_settings_name = serializers.ReadOnlyField(source='get_head_template.service_settings.name')
+    service_settings = serializers.HyperlinkedRelatedField(
+        source='get_head_template.service_settings',
+        lookup_field='uuid',
+        read_only=True,
+        view_name='servicesettings-detail',
+    )
 
     class Meta(object):
         model = models.TemplateGroup
         view_name = 'template-group-detail'
-        fields = ('url', 'uuid', 'name', 'icon_url', 'description', 'templates', 'is_active', 'tags', 'sla')
+        fields = ('url', 'uuid', 'name', 'icon_url', 'description', 'templates', 'is_active', 'tags', 'sla',
+                  'service_settings_name', 'service_settings')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
