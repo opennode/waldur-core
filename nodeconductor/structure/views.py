@@ -11,7 +11,9 @@ from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import transaction, IntegrityError
 from django.db.models import Q
+from django.http import Http404
 from django.utils import six, timezone
+from django.views.static import serve
 from django_fsm import TransitionNotAllowed
 
 from rest_framework import filters as rf_filters
@@ -170,11 +172,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return self.get_paginated_response(serializer.data)
 
 
-class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
+class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generics.DestroyAPIView):
 
     queryset = models.Customer.objects.all()
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerImageSerializer
+
+    def retrieve(self, request, uuid=None):
+        image = self.get_object().image
+        if not image:
+            raise Http404
+        return serve(request, image.path, document_root='/')
 
     def perform_destroy(self, instance):
         instance.image = None
