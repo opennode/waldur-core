@@ -67,17 +67,17 @@ class BaseExecutor(object):
         link = cls.get_success_signature(instance, serialized_instance, **kwargs)
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
-        shadow_name = '.'.join([cls.__module__, cls.__name__])
-        for obj in (signature, link, link_error):
-            obj.kwargs['_shadow_name'] = shadow_name
-
-        if isinstance(signature.type, tasks.BackendMethodTask):
-            try:
-                signature.kwargs['_shadow_name'] += ':%s' % signature.args[1]
-            except IndexError:
-                pass
-
         if async:
+            shadow_name = '.'.join([cls.__module__, cls.__name__])
+            for obj in (signature, link, link_error):
+                obj.kwargs['_shadow_name'] = shadow_name
+
+            if isinstance(signature.type, tasks.BackendMethodTask):
+                try:
+                    signature.kwargs['_shadow_name'] += ':%s' % signature.args[1]
+                except IndexError:
+                    pass
+
             return signature.apply_async(link=link, link_error=link_error, countdown=countdown)
         else:
             result = signature.apply()
