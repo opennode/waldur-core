@@ -291,14 +291,6 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         return super(ProjectSerializer, self).update(instance, validated_data)
 
 
-class DefaultImageField(serializers.ImageField):
-    def to_representation(self, image):
-        if image:
-            return super(DefaultImageField, self).to_representation(image)
-        else:
-            return settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
-
-
 class CustomerImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField()
 
@@ -313,7 +305,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
     projects = PermissionProjectSerializer(many=True, read_only=True)
     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
-    image = DefaultImageField(required=False, read_only=True)
+    image = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
@@ -333,6 +325,11 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
         }
         # Balance should be modified by nodeconductor_paypal app
         read_only_fields = ('balance', )
+
+    def get_image(self, customer):
+        if not customer.image:
+            return None  # XXX: backward compatibility
+        return reverse('customer_image', kwargs={'uuid': customer.uuid}, request=self.context['request'])
 
     @staticmethod
     def eager_load(queryset):
