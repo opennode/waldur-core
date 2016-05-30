@@ -1,3 +1,26 @@
+Documentation policy FAQ
+========================
+
+1. Do I need to put all endpoints docs in one file or separately?
+
+- API endpoints docs go to source code and are extracted into RST.
+
+2. Where I should add general plugin description?
+
+    2 places:
+
+    - Link in NodeConductor docs.
+    - Expanded overview in the Introduction section of the plugin docs.
+
+3. Where should I describe plugins objects features - quotas, cost tracking, etc?
+
+    - In the guide section.
+
+5. Where can I see all development policies and guides?
+
+    - NodeConductor documentation, developer section.
+
+
 API documentation
 =================
 
