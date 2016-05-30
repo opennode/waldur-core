@@ -180,10 +180,9 @@ class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generi
 
     def retrieve(self, request, uuid=None):
         image = self.get_object().image
-        path = image.path if image else django_settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
-        if not path:
+        if not image:
             raise Http404
-        return serve(request, path, document_root='/')
+        return serve(request, image.path, document_root='/')
 
     def perform_destroy(self, instance):
         instance.image = None

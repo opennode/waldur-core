@@ -1,5 +1,3 @@
-import unittest
-
 from django.test.utils import override_settings
 from django.core.urlresolvers import reverse
 from rest_framework import status
@@ -65,7 +63,6 @@ class ImageUploadTest(test.APISimpleTestCase):
         response = self.client.delete(self.url)
         self.assertEqual(status.HTTP_204_NO_CONTENT, response.status_code, response.data)
 
-    @unittest.skip('Irrelevant')
     @override_nodeconductor_settings(DEFAULT_CUSTOMER_LOGO='default_logo.jpg')
     def assert_default_logo(self):
         url = reverse('customer-detail', kwargs={'uuid': self.customer.uuid.hex})

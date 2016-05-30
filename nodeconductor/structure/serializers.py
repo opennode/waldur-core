@@ -328,7 +328,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
 
     def get_image(self, customer):
         if not customer.image:
-            return None  # XXX: backward compatibility
+            return settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
         return reverse('customer_image', kwargs={'uuid': customer.uuid}, request=self.context['request'])
 
     @staticmethod
