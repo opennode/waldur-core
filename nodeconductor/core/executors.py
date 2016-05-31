@@ -103,9 +103,23 @@ class ExecutorException(Exception):
 class BaseChordExecutor(BaseExecutor):
     """ Allows to use Celery chord for tasks execution.
 
-        Uses tasks from `get_task_signature` method as chord head and
-        task from `get_success_signature` - as chord callback.
+        `get_task_signature` - should return chord head,
+        `get_callback_signature` - should return chord callback, by default returns empty task.
+
+        It is possible to use BaseChordExecutor with state transition executors:
+        Example:
+            class CustomExecutor(CreateExecutor, BaseChordExecutor):
+                ...
+        Make sure that BaseChordExecutor class goes after state transition executor,
+        because it need to override `apply_signature` method.
+
+        Note! Synchronous mode is not supported.
     """
+
+    @classmethod
+    def get_callback_signature(cls, instance, serialized_instance, **kwargs):
+        """ Get Celery signature of task that should be applied as chord callback. """
+        return tasks.EmptyTask().si()
 
     @classmethod
     def apply_signature(cls, instance, async=True, countdown=None, **kwargs):
@@ -115,10 +129,11 @@ class BaseChordExecutor(BaseExecutor):
         serialized_instance = utils.serialize_instance(instance)
 
         head = cls.get_task_signature(instance, serialized_instance, **kwargs)
-        callback = cls.get_success_signature(instance, serialized_instance, **kwargs)
+        callback = cls.get_callback_signature(instance, serialized_instance, **kwargs)
+        link = cls.get_success_signature(instance, serialized_instance, **kwargs)
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
-        return chord(head.set(link_error=[link_error]), callback).delay()
+        return chord(head, callback.set(link=[link], link_error=[link_error])).delay()
 
 
 class ErrorExecutorMixin(object):
