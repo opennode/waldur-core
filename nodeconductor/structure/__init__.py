@@ -423,7 +423,7 @@ def log_backend_action(action=None):
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
                 exc = list(sys.exc_info())
                 exc[0] = ServiceBackendError
-                six.reraise(**exc)
+                six.reraise(*exc)
             else:
                 logger.debug('Action `%s` was executed successfully for `%s` (PK: %s).',
                              action_name, instance, instance.pk)

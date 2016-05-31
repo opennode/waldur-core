@@ -11,7 +11,9 @@ from django.conf import settings as django_settings
 from django.contrib import auth
 from django.db import transaction, IntegrityError
 from django.db.models import Q
+from django.http import Http404
 from django.utils import six, timezone
+from django.views.static import serve
 from django_fsm import TransitionNotAllowed
 
 from rest_framework import filters as rf_filters
@@ -170,11 +172,17 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return self.get_paginated_response(serializer.data)
 
 
-class CustomerImageView(generics.UpdateAPIView, generics.DestroyAPIView):
+class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generics.DestroyAPIView):
 
     queryset = models.Customer.objects.all()
     lookup_field = 'uuid'
     serializer_class = serializers.CustomerImageSerializer
+
+    def retrieve(self, request, uuid=None):
+        image = self.get_object().image
+        if not image:
+            raise Http404
+        return serve(request, image.path, document_root='/')
 
     def perform_destroy(self, instance):
         instance.image = None
@@ -2081,6 +2089,52 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+
+
+class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
+    filter_class = filters.BaseResourceStateFilter
+    runtime_state_executor = NotImplemented
+    acceptable_states = {'unlink': [core_models.StateMixin.States.OK]}
+
+    @detail_route(methods=['post'])
+    def unlink(self, request, uuid=None):
+        # XXX: add special attribute to an instance in order to be tracked by signal handler
+        instance = self.get_object()
+        setattr(instance, 'PERFORM_UNLINK', True)
+        self.perform_destroy(instance)
+
+    @detail_route(methods=['post'])
+    def start(self, request, uuid=None):
+        instance = self.get_object()
+        self.runtime_state_executor.execute(
+            instance,
+            method='start',
+            final_state=instance.RuntimeStates.ONLINE,
+            async=self.async_executor,
+            updated_fields=None)
+        return Response({'detail': 'starting was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def stop(self, request, uuid=None):
+        instance = self.get_object()
+        self.runtime_state_executor.execute(
+            instance,
+            method='stop',
+            final_state=instance.RuntimeStates.OFFLINE,
+            async=self.async_executor,
+            updated_fields=None)
+        return Response({'detail': 'stopping was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def restart(self, request, uuid=None):
+        instance = self.get_object()
+        self.runtime_state_executor.execute(
+            instance,
+            method='restart',
+            final_state=instance.RuntimeStates.ONLINE,
+            async=self.async_executor,
+            updated_fields=None)
+        return Response({'detail': 'restarting was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
 
 class AggregatedStatsView(views.APIView):
