@@ -52,6 +52,8 @@ class UserContextMixin(object):
 class StateMixin(object):
     """ Raise exception if object is not in correct state for action """
 
+    acceptable_states = {}
+
     def initial(self, request, *args, **kwargs):
         States = models.StateMixin.States
         acceptable_states = {
@@ -59,12 +61,35 @@ class StateMixin(object):
             'partial_update': [States.OK],
             'destroy': [States.OK, States.ERRED],
         }
-        if self.action in ('update', 'partial_update', 'destroy'):
+        acceptable_states.update(self.acceptable_states)
+        acceptable_state = self.acceptable_states.get(self.action)
+        if acceptable_state:
             obj = self.get_object()
-            if obj.state not in acceptable_states[self.action]:
+            if obj.state not in acceptable_state:
                 raise IncorrectStateException('Modification allowed in stable states only.')
 
         return super(StateMixin, self).initial(request, *args, **kwargs)
+
+
+class RuntimeStateMixin(object):
+    runtime_acceptable_states = {}
+
+    def initial(self, request, *args, **kwargs):
+        States = models.RuntimeStateMixin.RuntimeStates
+        acceptable_states = {
+            'stop': States.ONLINE,
+            'start': States.OFFLINE,
+            'restart': States.ONLINE,
+        }
+        acceptable_states.update(self.runtime_acceptable_states)
+        acceptable_state = acceptable_states.get(self.action)
+        if acceptable_state:
+            obj = self.get_object()
+            if obj.state != models.StateMixin.States.OK or obj.runtime_state != acceptable_state:
+                raise IncorrectStateException(
+                    'Performing %s operation is not allowed for resource in its current state.' % self.action)
+
+        return super(RuntimeStateMixin, self).initial(request, *args, **kwargs)
 
 
 class AsyncExecutor(object):

@@ -167,6 +167,13 @@ class DeleteExecutorMixin(object):
             return tasks.ErrorStateTransitionTask().s(serialized_instance)
 
 
+class EmptyExecutor(BaseExecutor):
+
+    @classmethod
+    def get_task_signature(cls, *args, **kwargs):
+        return tasks.EmptyTask().si()
+
+
 class CreateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     """ Default states transition for object creation.
 

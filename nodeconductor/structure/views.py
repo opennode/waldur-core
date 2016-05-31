@@ -2091,6 +2091,52 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
 
 
+class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
+    filter_class = filters.BaseResourceStateFilter
+    runtime_state_executor = NotImplemented
+    acceptable_states = {'unlink': [core_models.StateMixin.States.OK]}
+
+    @detail_route(methods=['post'])
+    def unlink(self, request, uuid=None):
+        # XXX: add special attribute to an instance in order to be tracked by signal handler
+        instance = self.get_object()
+        setattr(instance, 'PERFORM_UNLINK', True)
+        self.perform_destroy(instance)
+
+    @detail_route(methods=['post'])
+    def start(self, request, uuid=None):
+        instance = self.get_object()
+        self.runtime_state_executor.execute(
+            instance,
+            method='start',
+            final_state=instance.RuntimeStates.ONLINE,
+            async=self.async_executor,
+            updated_fields=None)
+        return Response({'detail': 'starting was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def stop(self, request, uuid=None):
+        instance = self.get_object()
+        self.runtime_state_executor.execute(
+            instance,
+            method='stop',
+            final_state=instance.RuntimeStates.OFFLINE,
+            async=self.async_executor,
+            updated_fields=None)
+        return Response({'detail': 'stopping was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+    @detail_route(methods=['post'])
+    def restart(self, request, uuid=None):
+        instance = self.get_object()
+        self.runtime_state_executor.execute(
+            instance,
+            method='restart',
+            final_state=instance.RuntimeStates.ONLINE,
+            async=self.async_executor,
+            updated_fields=None)
+        return Response({'detail': 'restarting was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+
 class AggregatedStatsView(views.APIView):
     """
     Quotas and quotas usage aggregated by projects/project_groups/customers.
