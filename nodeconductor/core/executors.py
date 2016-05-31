@@ -70,7 +70,8 @@ class BaseExecutor(object):
         if async:
             shadow_name = '.'.join([cls.__module__, cls.__name__])
             for obj in (signature, link, link_error):
-                obj.kwargs['_shadow_name'] = shadow_name
+                if obj:
+                    obj.kwargs['_shadow_name'] = shadow_name
 
             if isinstance(signature.type, tasks.BackendMethodTask):
                 try:
