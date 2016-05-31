@@ -7,6 +7,7 @@ from collections import defaultdict, OrderedDict
 from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
+from django.core.urlresolvers import NoReverseMatch
 from django.db import models as django_models
 from django.utils import six
 from django.utils.functional import cached_property
@@ -1197,9 +1198,12 @@ class RelatedResourceSerializer(BasicResourceSerializer):
     service_tags = serializers.SerializerMethodField()
 
     def get_url(self, resource):
-        return reverse(resource.get_url_name() + '-detail',
-                       kwargs={'uuid': resource.uuid.hex},
-                       request=self.context['request'])
+        try:
+            return reverse(resource.get_url_name() + '-detail',
+                           kwargs={'uuid': resource.uuid.hex},
+                           request=self.context['request'])
+        except NoReverseMatch:
+            return None
 
     def get_service_tags(self, resource):
         spl = resource.service_project_link
