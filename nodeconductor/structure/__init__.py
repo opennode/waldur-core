@@ -133,6 +133,8 @@ class SupportedServices(object):
 
     @classmethod
     def get_service_backend(cls, key):
+        if not isinstance(key, basestring):
+            key = cls.get_model_key(key)
         try:
             return cls._registry[key]['backend']
         except IndexError:
@@ -421,7 +423,7 @@ def log_backend_action(action=None):
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
                 exc = list(sys.exc_info())
                 exc[0] = ServiceBackendError
-                six.reraise(**exc)
+                six.reraise(*exc)
             else:
                 logger.debug('Action `%s` was executed successfully for `%s` (PK: %s).',
                              action_name, instance, instance.pk)
@@ -436,6 +438,8 @@ class ServiceBackendNotImplemented(NotImplementedError):
 
 class ServiceBackend(object):
     """ Basic service backed with only common methods pre-defined. """
+
+    DEFAULTS = {}
 
     def __init__(self, settings, **kwargs):
         pass

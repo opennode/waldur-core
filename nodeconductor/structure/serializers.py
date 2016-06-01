@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
+import json
+
 from collections import defaultdict, OrderedDict
 
 from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
+from django.core.urlresolvers import NoReverseMatch
 from django.db import models as django_models
 from django.utils import six
 from django.utils.functional import cached_property
@@ -289,14 +292,6 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         return super(ProjectSerializer, self).update(instance, validated_data)
 
 
-class DefaultImageField(serializers.ImageField):
-    def to_representation(self, image):
-        if image:
-            return super(DefaultImageField, self).to_representation(image)
-        else:
-            return settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
-
-
 class CustomerImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField()
 
@@ -311,7 +306,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
     projects = PermissionProjectSerializer(many=True, read_only=True)
     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
-    image = DefaultImageField(required=False, read_only=True)
+    image = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
@@ -331,6 +326,11 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
         }
         # Balance should be modified by nodeconductor_paypal app
         read_only_fields = ('balance', )
+
+    def get_image(self, customer):
+        if not customer.image:
+            return settings.NODECONDUCTOR.get('DEFAULT_CUSTOMER_LOGO')
+        return reverse('customer_image', kwargs={'uuid': customer.uuid}, request=self.context['request'])
 
     @staticmethod
     def eager_load(queryset):
@@ -1002,11 +1002,17 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def build_unknown_field(self, field_name, model_class):
         if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
             if field_name in self.SERVICE_ACCOUNT_EXTRA_FIELDS:
-                return serializers.CharField, {
+                backend = SupportedServices.get_service_backend(self.Meta.model)
+                kwargs = {
                     'write_only': True,
                     'required': False,
                     'allow_blank': True,
-                    'help_text': self.SERVICE_ACCOUNT_EXTRA_FIELDS[field_name]}
+                    'help_text': self.SERVICE_ACCOUNT_EXTRA_FIELDS[field_name],
+                }
+                if hasattr(backend, 'DEFAULTS') and field_name in backend.DEFAULTS:
+                    kwargs['help_text'] += ' (default: %s)' % json.dumps(backend.DEFAULTS[field_name])
+                    kwargs['initial'] = backend.DEFAULTS[field_name]
+                return serializers.CharField, kwargs
 
         return super(BaseServiceSerializer, self).build_unknown_field(field_name, model_class)
 
@@ -1045,6 +1051,12 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 extra_fields += tuple(self.SERVICE_ACCOUNT_EXTRA_FIELDS.keys())
 
             if create_settings:
+                required = getattr(self.Meta, 'required_fields', tuple())
+                for field in settings_fields:
+                    if field in required and field not in attrs:
+                        error = self.fields[field].error_messages['required']
+                        raise serializers.ValidationError({field: unicode(error)})
+
                 args = {f: attrs.get(f) for f in settings_fields if f in attrs}
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
@@ -1183,9 +1195,12 @@ class RelatedResourceSerializer(BasicResourceSerializer):
     service_tags = serializers.SerializerMethodField()
 
     def get_url(self, resource):
-        return reverse(resource.get_url_name() + '-detail',
-                       kwargs={'uuid': resource.uuid.hex},
-                       request=self.context['request'])
+        try:
+            return reverse(resource.get_url_name() + '-detail',
+                           kwargs={'uuid': resource.uuid.hex},
+                           request=self.context['request'])
+        except NoReverseMatch:
+            return None
 
     def get_service_tags(self, resource):
         spl = resource.service_project_link

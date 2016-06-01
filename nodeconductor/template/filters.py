@@ -88,8 +88,10 @@ class TemplateGroupFilter(django_filters.FilterSet):
     project = URLProjectFilter(view_name='project-detail')
     project_uuid = UUIDProjectFilter()
     name = django_filters.CharFilter(lookup_type='icontains')
+    service_settings_name = django_filters.CharFilter(name='templates__service_settings__name')
 
     class Meta(object):
         model = models.TemplateGroup
-        fields = ['tag', 'rtag', 'templates_tag', 'templates_rtag', 'name', 'project', 'project_uuid']
+        fields = ['tag', 'rtag', 'templates_tag', 'templates_rtag', 'name', 'project', 'project_uuid',
+                  'service_settings_name']
         order_by = ['name', '-name']

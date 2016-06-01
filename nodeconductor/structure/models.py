@@ -599,6 +599,11 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     def get_backend(self, **kwargs):
         return SupportedServices.get_service_backend(self.type)(self, **kwargs)
 
+    def get_option(self, name):
+        defaults = self.get_backend().DEFAULTS
+        options = self.options or {}
+        return options.get(name) or defaults.get(name)
+
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
 
@@ -788,6 +793,12 @@ def validate_yaml(value):
 
 
 class PrivateCloudMixin(models.Model):
+
+    class Meta(object):
+        abstract = True
+
+
+class ApplicationMixin(models.Model):
 
     class Meta(object):
         abstract = True
@@ -1087,9 +1098,7 @@ class ResourceMixin(MonitoringModelMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_app_models(cls):
-        return [resource for resource in cls.get_all_models()
-                if not issubclass(resource, VirtualMachineMixin) and
-                not issubclass(resource, PrivateCloudMixin)]
+        return [resource for resource in cls.get_all_models() if issubclass(resource, ApplicationMixin)]
 
     @classmethod
     @lru_cache(maxsize=1)

@@ -1,3 +1,6 @@
+from celery import chord
+from celery.worker.job import Request
+
 from nodeconductor.core import utils, tasks
 
 
@@ -14,17 +17,17 @@ class BaseExecutor(object):
 
     @classmethod
     def get_task_signature(cls, instance, serialized_instance, **kwargs):
-        """ Get Celery signature or primitive that describes executor action.
+        """ Get Celery signature or chain that describes executor action.
 
         Each task should be subclass of LowLevelTask class.
         Celery Signature and Primitives:
          - http://docs.celeryproject.org/en/latest/userguide/canvas.html
         Examples:
          - to execute only one task - return Signature of necessary task: `task.si(serialized_instance)`
-         - to execute several tasks - return Chain or Group of tasks: `chain(t1.s(), t2.s())`
-        Note! Celery Chord is not supported.
+         - to execute several tasks - return Chain of tasks: `chain(t1.s(), t2.s())`
+        Note! Celery chord and group is not supported. Use BaseChordExecutor for parallel tasks execution.
         """
-        raise NotImplementedError('Executor %s should implement method `get_tasks`' % cls.__name__)
+        raise NotImplementedError('Executor %s should implement method `get_task_signature`' % cls.__name__)
 
     @classmethod
     def get_success_signature(cls, instance, serialized_instance, **kwargs):
@@ -65,6 +68,17 @@ class BaseExecutor(object):
         link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
 
         if async:
+            shadow_name = '.'.join([cls.__module__, cls.__name__])
+            for obj in (signature, link, link_error):
+                if obj:
+                    obj.kwargs['_shadow_name'] = shadow_name
+
+            if isinstance(signature.type, tasks.BackendMethodTask):
+                try:
+                    signature.kwargs['_shadow_name'] += ':%s' % signature.args[1]
+                except IndexError:
+                    pass
+
             return signature.apply_async(link=link, link_error=link_error, countdown=countdown)
         else:
             result = signature.apply()
@@ -84,6 +98,42 @@ class BaseExecutor(object):
 
 class ExecutorException(Exception):
     pass
+
+
+class BaseChordExecutor(BaseExecutor):
+    """ Allows to use Celery chord for tasks execution.
+
+        `get_task_signature` - should return chord head,
+        `get_callback_signature` - should return chord callback, by default returns empty task.
+
+        It is possible to use BaseChordExecutor with state transition executors:
+        Example:
+            class CustomExecutor(CreateExecutor, BaseChordExecutor):
+                ...
+        Make sure that BaseChordExecutor class goes after state transition executor,
+        because it need to override `apply_signature` method.
+
+        Note! Synchronous mode is not supported.
+    """
+
+    @classmethod
+    def get_callback_signature(cls, instance, serialized_instance, **kwargs):
+        """ Get Celery signature of task that should be applied as chord callback. """
+        return tasks.EmptyTask().si()
+
+    @classmethod
+    def apply_signature(cls, instance, async=True, countdown=None, **kwargs):
+        """ Serialize input data and apply chord """
+        if not async:
+            raise ExecutorException('Chord executor cannot be executed synchronously')
+        serialized_instance = utils.serialize_instance(instance)
+
+        head = cls.get_task_signature(instance, serialized_instance, **kwargs)
+        callback = cls.get_callback_signature(instance, serialized_instance, **kwargs)
+        link = cls.get_success_signature(instance, serialized_instance, **kwargs)
+        link_error = cls.get_failure_signature(instance, serialized_instance, **kwargs)
+
+        return chord(head, callback.set(link=[link], link_error=[link_error])).delay()
 
 
 class ErrorExecutorMixin(object):
@@ -115,6 +165,13 @@ class DeleteExecutorMixin(object):
             return tasks.DeletionTask().si(serialized_instance)
         else:
             return tasks.ErrorStateTransitionTask().s(serialized_instance)
+
+
+class EmptyExecutor(BaseExecutor):
+
+    @classmethod
+    def get_task_signature(cls, *args, **kwargs):
+        return tasks.EmptyTask().si()
 
 
 class CreateExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
@@ -172,3 +229,16 @@ class ActionExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     def pre_apply(cls, instance, **kwargs):
         instance.schedule_updating()
         instance.save(update_fields=['state'])
+
+
+def log_celery_task(task):
+    shadow_name = task.kwargs.pop('_shadow_name', '')
+    return '{0.name}[{0.id}]{1}{2}{3}'.format(
+        task,
+        ' name:{0}'.format(shadow_name) if shadow_name else '',
+        ' eta:[{0}]'.format(task.eta) if task.eta else '',
+        ' expires:[{0}]'.format(task.expires) if task.expires else '',
+    )
+
+# XXX: drop the hack and use shadow name in celery 4.0
+Request.__str__ = log_celery_task

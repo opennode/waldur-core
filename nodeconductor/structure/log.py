@@ -105,15 +105,6 @@ class ProjectGroupMembershipEventLogger(EventLogger):
         event_groups = {'project_groups': event_types}
 
 
-class LicensesEventLogger(EventLogger):
-    resource = models.Resource
-    license_name = six.text_type
-    license_type = six.text_type
-
-    class Meta:
-        event_types = 'resource_license_added',
-
-
 class UserOrganizationEventLogger(EventLogger):
     affected_user = User
     affected_organization = six.text_type
@@ -168,6 +159,5 @@ event_logger.register('user_organization', UserOrganizationEventLogger)
 event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
 event_logger.register('project_group', ProjectGroupEventLogger)
-event_logger.register('licenses', LicensesEventLogger)
 event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)

@@ -1,9 +1,10 @@
 from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
-from fluent_dashboard.modules import AppIconList, PersonalModule
+from fluent_dashboard.modules import AppIconList
 
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor import __version__
+
 
 class CustomIndexDashboard(FluentIndexDashboard):
     """
