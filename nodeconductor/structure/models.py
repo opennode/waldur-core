@@ -798,6 +798,12 @@ class PrivateCloudMixin(models.Model):
         abstract = True
 
 
+class ApplicationMixin(models.Model):
+
+    class Meta(object):
+        abstract = True
+
+
 class VirtualMachineMixin(CoordinatesMixin):
     def __init__(self, *args, **kwargs):
         AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
@@ -1092,9 +1098,7 @@ class ResourceMixin(MonitoringModelMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_app_models(cls):
-        return [resource for resource in cls.get_all_models()
-                if not issubclass(resource, VirtualMachineMixin) and
-                not issubclass(resource, PrivateCloudMixin)]
+        return [resource for resource in cls.get_all_models() if issubclass(resource, ApplicationMixin)]
 
     @classmethod
     @lru_cache(maxsize=1)
