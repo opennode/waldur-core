@@ -5,6 +5,11 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.99.1
+--------------
+
+- Bugfix.
+
 Release 0.99.0
 --------------
 
