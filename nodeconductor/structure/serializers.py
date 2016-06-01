@@ -1009,7 +1009,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     'allow_blank': True,
                     'help_text': self.SERVICE_ACCOUNT_EXTRA_FIELDS[field_name],
                 }
-                if field_name in backend.DEFAULTS:
+                if hasattr(backend, 'DEFAULTS') and field_name in backend.DEFAULTS:
                     kwargs['help_text'] += ' (default: %s)' % json.dumps(backend.DEFAULTS[field_name])
                     kwargs['initial'] = backend.DEFAULTS[field_name]
                 return serializers.CharField, kwargs

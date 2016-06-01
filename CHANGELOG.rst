@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- <Nothing yet>
+- Introduced ApplicationMixin for tracking Application resources.
 
 
 Release 0.98.0
