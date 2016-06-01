@@ -62,7 +62,7 @@ class StateMixin(object):
             'destroy': [States.OK, States.ERRED],
         }
         acceptable_states.update(self.acceptable_states)
-        acceptable_state = self.acceptable_states.get(self.action)
+        acceptable_state = acceptable_states.get(self.action)
         if acceptable_state:
             obj = self.get_object()
             if obj.state not in acceptable_state:
