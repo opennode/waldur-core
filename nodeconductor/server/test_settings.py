@@ -14,6 +14,13 @@ DATABASES = {
     }
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
 INSTALLED_APPS += (
     'nodeconductor.quotas.tests',
     'nodeconductor.structure.tests',
