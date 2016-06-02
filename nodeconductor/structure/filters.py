@@ -613,8 +613,9 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
     service_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
     # service settings
-    service_settings_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
-    service_settings_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
+    service_settings_uuid = django_filters.CharFilter(name='service_project_link__service__settings__uuid')
+    service_settings_name = django_filters.CharFilter(name='service_project_link__service__settings__name',
+                                                      lookup_type='icontains')
     # resource
     name = django_filters.CharFilter(lookup_type='icontains')
     description = django_filters.CharFilter(lookup_type='icontains')
