@@ -30,11 +30,13 @@ Requires: python-django-fsm = 2.3.0
 Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.2
 Requires: python-django-permission = 0.9.2
+Requires: python-django-redis-cache >= 1.6.5
 Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.17.5
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
+Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0

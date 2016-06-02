@@ -4,6 +4,7 @@ Installation from source
 Additional requirements:
 
 - ``git``
+- ``redis`` and ``hiredis`` library
 - ``virtualenv``
 - C compiler and development libraries needed to build dependencies
 

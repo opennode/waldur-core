@@ -150,6 +150,20 @@ CELERY_QUEUES = {
 CELERY_DEFAULT_QUEUE = 'tasks'
 CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
 
+
+CACHES = {
+    'default': {
+        'BACKEND': 'redis_cache.RedisCache',
+        'LOCATION': 'redis://localhost',
+        'OPTIONS': {
+            'DB': 1,
+            'PARSER_CLASS': 'redis.connection.HiredisParser',
+            'CONNECTION_POOL_CLASS': 'redis.BlockingConnectionPool',
+            'PICKLE_VERSION': -1,
+        },
+    },
+}
+
 # Regular tasks
 CELERYBEAT_SCHEDULE = {
 
