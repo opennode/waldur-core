@@ -55,7 +55,7 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         self.assertTrue(created1 < created2)
 
     def test_account_is_blocked_after_five_failed_attempts(self):
-        for attempt in range(5):
+        for _ in range(5):
             response = self.client.post(self.auth_url, data={'username': self.username, 'password': 'WRONG'})
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
