@@ -285,9 +285,29 @@ class ElasticsearchClient(object):
     def _get_client(self):
         elasticsearch_settings = self._get_elastisearch_settings()
         path = '%(protocol)s://%(username)s:%(password)s@%(host)s:%(port)s' % elasticsearch_settings
-        return Elasticsearch(
+        client = Elasticsearch(
             [path],
             use_ssl=elasticsearch_settings.get('use_ssl', False),
             verify_certs=elasticsearch_settings.get('verify_certs', False),
             ca_certs=elasticsearch_settings.get('ca_certs', ''),
         )
+        # XXX Workaround for Python Elasticsearch client bugs
+	if not elasticsearch_settings.get('verify_certs'):
+            # Some parameters are handled incorrectly if verify_certs is false
+            # Client's connection pool is the closes place we can fix this
+            connection_pool = client.transport.get_connection().pool
+            # If ca_certs is not set to 'None' explicitly it will be set to /etc/ssl/certs/ca-certificates.crt
+            # which is missing on CentOS.
+            # This bug only appears in RPM version of python-urrlib3 (v1.10.2-2 from CentOS Base):
+            # http://mirror.centos.org/centos-7/7/os/x86_64/Packages/python-urllib3-1.10.2-2.el7_1.noarch.rpm
+            # Upstream handles this situation correctly:
+            # https://github.com/shazow/urllib3/blob/1.10.2/urllib3/connectionpool.py#L674L681
+            connection_pool.ca_certs = None
+            # If verify_certs is set to False no cert_reqs parameter is passed to urrlib3.HTTPSConnectionPool:
+            # https://github.com/elastic/elasticsearch-py/blob/1.x/elasticsearch/connection/http_urllib3.py#L46L54
+            # Somehow (I couldn't understand why) if cert_reqs is not set to ssl.CERT_NONE explicitly
+            # certificate validation still happens -- and fails.
+            # To work around the issue, cert_reqs is set to ssl.CERT_NONE explicitly.
+            connection_pool.cert_reqs = 0  # ssl.CERT_NONE
+        # XXX End of workaround
+        return client
