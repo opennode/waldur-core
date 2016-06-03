@@ -33,13 +33,14 @@ config_defaults = {
         'result_backend_url': 'redis://localhost',
     },
     'elasticsearch': {
+        # This location is RHEL7-specific, may be different on other platforms
+        'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # only has effect if veryfy_certs is true
         'host': '',
         'password': '',
         'port': '9200',
         'protocol': 'http',
         'username': '',
-        'verify_certs': 'true',
-        'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # RHEL7-specific, may be different on other platforms
+        'verify_certs': 'true',  # only has effect if protocol is 'https'
     },
     'events': {
         'hook': 'false',
@@ -617,14 +618,17 @@ NODECONDUCTOR.update({
         'port': config.get('elasticsearch', 'port'),
         'protocol': config.get('elasticsearch', 'protocol'),
         'use_ssl': True if config.get('elasticsearch', 'protocol') == 'https' else False,
-        'verify_certs': config.getboolean('elasticsearch', 'verify_certs'),
-        'ca_certs': config.get('elasticsearch', 'ca_certs'),
     },
     'TOKEN_LIFETIME': timedelta(seconds=config.getint('auth', 'token_lifetime')),
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
     'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
 })
 
+if NODECONDUCTOR['ELASTICSEARCH']['use_ssl']:
+    NODECONDUCTOR['ELASTICSEARCH']['verify_certs'] = config.getboolean('elasticsearch', 'verify_certs')
+
+if NODECONDUCTOR['ELASTICSEARCH']['verify_certs']:
+    NODECONDUCTOR['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
 
 # Sentry integration
 # See also: http://raven.readthedocs.org/en/latest/integrations/django.html#setup
