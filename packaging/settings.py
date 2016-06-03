@@ -617,14 +617,13 @@ NODECONDUCTOR.update({
         'host': config.get('elasticsearch', 'host'),
         'port': config.get('elasticsearch', 'port'),
         'protocol': config.get('elasticsearch', 'protocol'),
-        'use_ssl': True if config.get('elasticsearch', 'protocol') == 'https' else False,
     },
     'TOKEN_LIFETIME': timedelta(seconds=config.getint('auth', 'token_lifetime')),
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),
     'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
 })
 
-if NODECONDUCTOR['ELASTICSEARCH']['use_ssl']:
+if NODECONDUCTOR['ELASTICSEARCH']['protocol'] == 'https':
     NODECONDUCTOR['ELASTICSEARCH']['verify_certs'] = config.getboolean('elasticsearch', 'verify_certs')
 
 if NODECONDUCTOR['ELASTICSEARCH']['verify_certs']:

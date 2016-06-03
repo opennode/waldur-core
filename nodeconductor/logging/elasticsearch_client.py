@@ -287,7 +287,6 @@ class ElasticsearchClient(object):
         path = '%(protocol)s://%(username)s:%(password)s@%(host)s:%(port)s' % elasticsearch_settings
         client = Elasticsearch(
             [path],
-            use_ssl=elasticsearch_settings.get('use_ssl', False),
             verify_certs=elasticsearch_settings.get('verify_certs', False),
             ca_certs=elasticsearch_settings.get('ca_certs', ''),
         )
