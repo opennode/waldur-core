@@ -3,22 +3,19 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Fix TLS support for Elasticsearch connections.
 
 Release 0.99.1
 --------------
-
 - Bugfix.
 
 Release 0.99.0
 --------------
-
 - Introduced ApplicationMixin for tracking Application resources.
 - Bugfixes.
 
 Release 0.98.0
 --------------
-
 - Expose groups for event types and alert types.
 - Added group types for alerts and events.
 - Cleaned up OpenStack dependencies from core.
@@ -26,7 +23,6 @@ Release 0.98.0
 
 Release 0.97.0
 --------------
-
 - Added expiration time to authorization tokens.
 - Fix filtering events by scope_type and time range.
 - Implemented custom provider pricing configuration.
@@ -36,20 +32,17 @@ Release 0.97.0
 
 Release 0.96.0
 --------------
-
 - Preserve and restore tags for OpenStack backups.
 - Support for provisioning of Zabbix-based monitoring-as-a-Service solutions.
 
 Release 0.95.0
 --------------
-
 - Enhance collaborators permission logic.
 - Implemented threshold-based alerts for price estimates and quotas.
 - Prevent resource provisioning if total estimated cost of resource and project is over limit.
 
 Release 0.94.0
 --------------
-
 - Extended events filter to support filtering by user and time frame.
 - Enable filtering resource by category (vms, apps, private_clouds).
 - Support permission, filters and metadata for OpenStack tenants.
@@ -69,7 +62,6 @@ Release 0.94.0
 
 Release 0.93.0
 --------------
-
 - Added Resource import signal.
 - Fixed quota update bug on cascade deletion.
 
@@ -482,7 +474,7 @@ Release 0.46.0
 --------------
 - Implemented foreground quotas for customers - support for limiting basic resources.
 - Added dummy client for OpenStack backend. Allows to emulate actions of a backend for demo/development deployments.
-- Added support for displaying, filtering and searching of events stored in ElasticSearch.
+- Added support for displaying, filtering and searching of events stored in Elasticsearch.
 - Initial support of integration with JIRA for customer support.
   Bugfixes.
 
