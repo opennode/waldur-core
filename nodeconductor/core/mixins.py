@@ -102,6 +102,7 @@ class CreateExecutorMixin(AsyncExecutor):
     def perform_create(self, serializer):
         instance = serializer.save()
         self.create_executor.execute(instance, async=self.async_executor)
+        instance.refresh_from_db()
 
 
 class UpdateExecutorMixin(AsyncExecutor):
@@ -117,6 +118,7 @@ class UpdateExecutorMixin(AsyncExecutor):
         instance.refresh_from_db()
         updated_fields = {f.name for f, v in before_update_fields.items() if v != getattr(instance, f.attname)}
         self.update_executor.execute(instance, async=self.async_executor, updated_fields=updated_fields)
+        instance.refresh_from_db()
 
 
 class DeleteExecutorMixin(AsyncExecutor):
