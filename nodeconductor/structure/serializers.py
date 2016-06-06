@@ -886,7 +886,9 @@ class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
     """
     def __new__(cls, name, bases, args):
         SupportedServices.register_service(args['Meta'].model)
-        return super(ServiceSerializerMetaclass, cls).__new__(cls, name, bases, args)
+        serializer = super(ServiceSerializerMetaclass, cls).__new__(cls, name, bases, args)
+        SupportedServices.register_service_serializer(args['Meta'].model, serializer)
+        return serializer
 
 
 class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
@@ -1321,6 +1323,13 @@ class SummaryResourceSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         serializer = SupportedServices.get_resource_serializer(instance.__class__)
+        return serializer(instance, context=self.context).data
+
+
+class SummaryServiceSerializer(serializers.Serializer):
+
+    def to_representation(self, instance):
+        serializer = SupportedServices.get_service_serializer(instance.__class__)
         return serializer(instance, context=self.context).data
 
 

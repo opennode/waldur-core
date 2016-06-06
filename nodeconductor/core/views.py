@@ -198,6 +198,8 @@ def exception_handler(exc, context):
     return rf_exception_handler(exc, context)
 
 
+# XXX: Deprecated. Use SummaryQueryset + regular view instead.
+#      Check ResourceSymmaryVeiw for example.
 class BaseSummaryView(GenericViewSet):
     params = []
 
@@ -224,7 +226,6 @@ class BaseSummaryView(GenericViewSet):
             json = response.json()
             if response.total and response.total > len(json):
                 params['page_size'] = response.total
-                response = fetch_data(url, params)
             data += json
         return data
 

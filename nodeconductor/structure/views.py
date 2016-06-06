@@ -1394,13 +1394,37 @@ class ResourceViewSet(mixins.ListModelMixin,
                          for qs in queryset.querysets})
 
 
-class ServicesViewSet(BaseSummaryView):
+class ServicesViewSet(mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
     """ The summary list of all user services. """
 
-    params = filters.BaseServiceFilter.Meta.fields
+    model = models.Service
+    serializer_class = serializers.SummaryServiceSerializer
+    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    filter_backends = (filters.GenericRoleFilter, filters.ServiceSummaryFilterBackend)
 
-    def get_urls(self, request):
-        return SupportedServices.get_services(request).values()
+    def get_queryset(self):
+        service_models = {k: v['service'] for k, v in SupportedServices.get_service_models().items()}
+        service_models = self._filter_by_types(service_models)
+        # TODO: filter models by service type.
+        return managers.SummaryQuerySet(service_models.values())
+
+    def _filter_by_types(self, service_models):
+        types = self.request.query_params.getlist('service_type', None)
+        if types:
+            service_models = {k: v for k, v in service_models.items() if k in types}
+        return service_models
+
+    def list(self, request, *args, **kwargs):
+        """
+        Filter services by type
+        ^^^^^^^^^^^^^^^^^^^^^^^
+
+        It is possible to filter services by their types. Example:
+
+          /api/services/?service_type=DigitalOcean&service_type=OpenStack
+        """
+        return super(ServicesViewSet, self).list(request, *args, **kwargs)
 
 
 class CounterMixin(object):

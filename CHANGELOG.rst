@@ -3,6 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Rewrite service summary view using SummaryQueryset.
 - Fix TLS support for Elasticsearch connections.
 
 Release 0.99.1

@@ -92,6 +92,20 @@ class SupportedServices(object):
         cls._registry[key]['list_view'] = cls.get_list_view_for_model(model)
 
     @classmethod
+    def register_service_serializer(cls, model, serializer):
+        if model is NotImplemented or not cls._is_active_model(model):
+            return
+        key = cls.get_model_key(model)
+        cls._registry[key]['serializer'] = serializer
+
+    @classmethod
+    def register_service_filter(cls, model, filter):
+        if model is NotImplemented or not cls._is_active_model(model):
+            return
+        key = cls.get_model_key(model)
+        cls._registry[key]['filter'] = filter
+
+    @classmethod
     def register_resource_serializer(cls, model, serializer):
         if model is NotImplemented or not cls._is_active_model(model):
             return
@@ -152,6 +166,16 @@ class SupportedServices(object):
         """
         return {service['name']: reverse(service['list_view'], request=request)
                 for service in cls._registry.values()}
+
+    @classmethod
+    def get_service_serializer(cls, model):
+        key = cls.get_model_key(model)
+        return cls._registry[key]['serializer']
+
+    @classmethod
+    def get_service_filter(cls, model):
+        key = cls.get_model_key(model)
+        return cls._registry[key]['filter']
 
     @classmethod
     def get_resources(cls, request=None):
