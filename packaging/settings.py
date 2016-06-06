@@ -625,9 +625,8 @@ NODECONDUCTOR.update({
 
 if NODECONDUCTOR['ELASTICSEARCH']['protocol'] == 'https':
     NODECONDUCTOR['ELASTICSEARCH']['verify_certs'] = config.getboolean('elasticsearch', 'verify_certs')
-
-if NODECONDUCTOR['ELASTICSEARCH']['verify_certs']:
-    NODECONDUCTOR['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
+    if NODECONDUCTOR['ELASTICSEARCH']['verify_certs']:
+        NODECONDUCTOR['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
 
 # Sentry integration
 # See also: http://raven.readthedocs.org/en/latest/integrations/django.html#setup
