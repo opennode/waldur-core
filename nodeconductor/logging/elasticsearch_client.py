@@ -284,9 +284,7 @@ class ElasticsearchClient(object):
 
     def _get_client(self):
         elasticsearch_settings = self._get_elastisearch_settings()
-        is_username_set = 'username' in elasticsearch_settings and elasticsearch_settings['username']
-        is_password_set = 'password' in elasticsearch_settings and elasticsearch_settings['password']
-        if is_username_set and is_password_set:
+        if elasticsearch_settings.get('username') and elasticsearch_settings.get('password'):
             path = '%(protocol)s://%(username)s:%(password)s@%(host)s:%(port)s' % elasticsearch_settings
         else:
             path = '%(protocol)s://%(host)s:%(port)s' % elasticsearch_settings
