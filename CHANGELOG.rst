@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Rewrite service summary view using SummaryQueryset.
 
 Release 0.99.1
 --------------
