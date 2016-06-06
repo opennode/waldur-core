@@ -289,7 +289,7 @@ class ElasticsearchClient(object):
         else:
             path = '%(protocol)s://%(host)s:%(port)s' % elasticsearch_settings
         client = Elasticsearch(
-            [path],
+            [str(path)],
             verify_certs=elasticsearch_settings.get('verify_certs', False),
             ca_certs=elasticsearch_settings.get('ca_certs', ''),
         )
