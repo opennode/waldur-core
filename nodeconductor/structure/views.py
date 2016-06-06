@@ -1422,7 +1422,7 @@ class ServicesViewSet(mixins.ListModelMixin,
 
         It is possible to filter services by their types. Example:
 
-          /api/<resource_endpoint>/?service_type=DigitalOcean&service_type=OpenStack
+          /api/services/?service_type=DigitalOcean&service_type=OpenStack
         """
         return super(ServicesViewSet, self).list(request, *args, **kwargs)
 
