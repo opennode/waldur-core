@@ -5,6 +5,7 @@ from django.contrib import auth
 from django.db.models import ProtectedError
 from django.utils import timezone
 from django.utils.encoding import force_text
+from django.core.cache import cache
 
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -111,6 +112,19 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
 
         username = serializer.validated_data['username']
 
+        source_ip = request.META.get('REMOTE_ADDR')
+        auth_failure_key = 'LOGIN_FAILURES_OF_%s_AT_%s' % (username, source_ip)
+        auth_failures = cache.get(auth_failure_key) or 0
+        lockout_time_in_mins = 10
+
+        if auth_failures >= 4:
+            logger.debug('Not returning auth token: '
+                         'username %s from %s is locked out' % (username, source_ip))
+            return Response(
+                data={'detail': 'Username is locked out. Try in %s minutes.' % lockout_time_in_mins},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         user = auth.authenticate(
             username=username,
             password=serializer.validated_data['password'],
@@ -119,10 +133,13 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
         if not user:
             logger.debug('Not returning auth token: '
                          'user %s does not exist', username)
+            cache.set(auth_failure_key, auth_failures + 1, lockout_time_in_mins * 60)
             return Response(
                 data={'detail': 'Invalid username/password'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        else:
+            cache.delete(auth_failure_key)
 
         if not user.is_active:
             logger.debug('Not returning auth token: '
