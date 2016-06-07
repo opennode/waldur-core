@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet.
+
+Release 0.100.0
+---------------
 - Enable filtering shared service settings.
 - Implement service-specific statistics endpoint.
 - Rewrite service summary view using SummaryQueryset.
