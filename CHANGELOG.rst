@@ -3,6 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Enable filtering shared service settings.
+- Implement service-specific statistics endpoint.
 - Rewrite service summary view using SummaryQueryset.
 - Fix TLS support for Elasticsearch connections.
 
