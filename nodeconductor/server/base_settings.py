@@ -220,3 +220,5 @@ for ext in NodeConductorExtension.get_extensions():
     for key, val in ext.Settings.__dict__.items():
         if not key.startswith('_'):
             globals()[key] = val
+
+    ext.update_settings(globals())
