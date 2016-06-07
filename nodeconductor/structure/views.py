@@ -2231,10 +2231,19 @@ class QuotaTimelineStatsView(views.APIView):
         serializer = serializers.AggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         scopes = sum([list(qs) for qs in serializer.get_service_project_links(request.user)], [])
-        return scopes
+        # XXX: quick and dirty hack for OpenStack: use tenants instead of SPLs as quotas scope.
+        new_scopes = []
+        for index, scope in enumerate(scopes):
+            if scope.service.settings.type == 'OpenStack':
+                new_scopes += list(scope.tenants.all())
+            else:
+                new_scopes.append(scope)
+        return new_scopes
 
     def get_all_spls_quotas(self):
-        spl_models = [m for m in models.ServiceProjectLink.get_all_models()]
+        # XXX: quick and dirty hack for OpenStack: use tenants instead of SPLs as quotas scope.
+        spl_models = [m if m.__name__ != 'OpenStackServiceProjectLink' else m.tenants.related.related_model
+                      for m in models.ServiceProjectLink.get_all_models()]
         return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
 
     def get_stats_for_scope(self, quota_name, scope, dates):
