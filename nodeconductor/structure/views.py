@@ -1252,7 +1252,7 @@ class ResourceViewSet(mixins.ListModelMixin,
         resource_models = self._filter_by_category(resource_models)
         resource_models = self._filter_by_types(resource_models)
 
-        return managers.SummaryQuerySet(resource_models.values())
+        return managers.ResourceSummaryQuerySet(resource_models.values())
 
     def _filter_by_types(self, resource_models):
         types = self.request.query_params.getlist('resource_type', None)
@@ -1407,7 +1407,7 @@ class ServicesViewSet(mixins.ListModelMixin,
         service_models = {k: v['service'] for k, v in SupportedServices.get_service_models().items()}
         service_models = self._filter_by_types(service_models)
         # TODO: filter models by service type.
-        return managers.SummaryQuerySet(service_models.values())
+        return managers.ServiceSummaryQuerySet(service_models.values())
 
     def _filter_by_types(self, service_models):
         types = self.request.query_params.getlist('service_type', None)
