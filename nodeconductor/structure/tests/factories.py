@@ -148,10 +148,11 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
     type = TestConfig.service_name
 
     @classmethod
-    def get_url(cls, settings=None):
+    def get_url(cls, settings=None, action=None):
         if settings is None:
             settings = ServiceSettingsFactory()
-        return 'http://testserver' + reverse('servicesettings-detail', kwargs={'uuid': settings.uuid})
+        url = 'http://testserver' + reverse('servicesettings-detail', kwargs={'uuid': settings.uuid})
+        return url if action is None else url + action + '/'
 
 
 class TestServiceFactory(factory.DjangoModelFactory):

@@ -534,7 +534,7 @@ class ServiceSettingsFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.ServiceSettings
-        fields = ('name', 'type', 'state')
+        fields = ('name', 'type', 'state', 'shared')
 
 
 class ServiceFilterMetaclass(FilterSetMetaclass):
