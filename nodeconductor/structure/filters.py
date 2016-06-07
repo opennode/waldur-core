@@ -534,10 +534,22 @@ class ServiceSettingsFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.ServiceSettings
-        fields = ('name', 'type', 'state')
+        fields = ('name', 'type', 'state', 'shared')
 
 
-class BaseServiceFilter(django_filters.FilterSet):
+class ServiceFilterMetaclass(FilterSetMetaclass):
+    """ Build a list of supported resource via serializers definition.
+        See SupportedServices for details.
+    """
+    def __new__(cls, name, bases, args):
+        service_filter = super(ServiceFilterMetaclass, cls).__new__(cls, name, bases, args)
+        model = args['Meta'].model
+        if not model._meta.abstract:
+            SupportedServices.register_service_filter(args['Meta'].model, service_filter)
+        return service_filter
+
+
+class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filters.FilterSet)):
     customer = django_filters.CharFilter(name='customer__uuid')
     name = django_filters.CharFilter(lookup_type='icontains')
     project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
@@ -613,8 +625,9 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
     service_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
     # service settings
-    service_settings_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
-    service_settings_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
+    service_settings_uuid = django_filters.CharFilter(name='service_project_link__service__settings__uuid')
+    service_settings_name = django_filters.CharFilter(name='service_project_link__service__settings__name',
+                                                      lookup_type='icontains')
     # resource
     name = django_filters.CharFilter(lookup_type='icontains')
     description = django_filters.CharFilter(lookup_type='icontains')
@@ -816,33 +829,69 @@ class AggregateFilter(BaseExternalFilter):
 ExternalAlertFilterBackend.register(AggregateFilter())
 
 
-class ResourceSummaryFilterBackend(core_filters.DjangoMappingFilterBackend):
-    """ Filter and order SummaryQuerySet of resources """
+class SummaryFilter(core_filters.DjangoMappingFilterBackend):
+    """ Base filter for summary querysets """
 
     def filter_queryset(self, request, queryset, view):
         queryset = self.filter(request, queryset, view)
         queryset = self.order(request, queryset, view)
         return queryset
 
+    def get_queryset_filter(self, queryset):
+        """ Return specific for queryset filter if it exists """
+        raise NotImplementedError()
+
+    def get_base_filter(self):
+        """ Return base filter that could be used for all summary objects """
+        raise NotImplementedError()
+
+    def _get_filter(self, queryset):
+        try:
+            return self.get_queryset_filter(queryset)
+        except NotImplementedError:
+            return self.get_base_filter()
+
     def filter(self, request, queryset, view):
         """ Filter each resource separately using its own filter """
         summary_queryset = queryset
         filtered_querysets = []
-        for resource_queryset in summary_queryset.querysets:
-            try:
-                filter_class = SupportedServices.get_resource_filter(resource_queryset.model)
-            except KeyError:
-                filter_class = BaseResourceFilter
-            resource_queryset = filter_class(request.query_params, queryset=resource_queryset).qs
-            filtered_querysets.append(resource_queryset)
+        for queryset in summary_queryset.querysets:
+            filter_class = self._get_filter(queryset)
+            queryset = filter_class(request.query_params, queryset=queryset).qs
+            filtered_querysets.append(queryset)
 
         summary_queryset.querysets = filtered_querysets
         return summary_queryset
 
     def order(self, request, queryset, view):
         """ Order all resources together using BaseResourceFilter """
-
-        ordering = self.get_valid_ordering(request, BaseResourceFilter)
+        base_filter = self.get_base_filter()
+        ordering = self.get_valid_ordering(request, base_filter)
         if ordering:
             queryset = queryset.order_by(ordering)
         return queryset
+
+
+class ResourceSummaryFilterBackend(SummaryFilter):
+    """ Filter and order SummaryQuerySet of resources """
+
+    def get_queryset_filter(self, queryset):
+        try:
+            return SupportedServices.get_resource_filter(queryset.model)
+        except KeyError:
+            return super(ResourceSummaryFilterBackend, self).get_queryset_filter(queryset)
+
+    def get_base_filter(self):
+        return BaseResourceFilter
+
+
+class ServiceSummaryFilterBackend(SummaryFilter):
+
+    def get_queryset_filter(self, queryset):
+        try:
+            return SupportedServices.get_service_filter(queryset.model)
+        except KeyError:
+            return super(ServiceSummaryFilterBackend, self).get_queryset_filter(queryset)
+
+    def get_base_filter(self):
+        return BaseServiceFilter

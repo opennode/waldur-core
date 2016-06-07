@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
 from django.utils import timezone
+from django.core.cache import cache
 
 from mock import patch
 
@@ -16,6 +17,9 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         self.auth_url = 'http://testserver' + reverse('auth-password')
         self.test_url = 'http://testserver/api/'
         get_user_model().objects.create_user(self.username, 'admin@example.com', self.password)
+
+    def tearDown(self):
+        cache.clear()
 
     def test_user_can_authenticate_with_token(self):
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
@@ -49,6 +53,16 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         self.client.get(self.test_url)
         created2 = Token.objects.values_list('created', flat=True).get(key=token)
         self.assertTrue(created1 < created2)
+
+    def test_account_is_blocked_after_five_failed_attempts(self):
+        for _ in range(5):
+            response = self.client.post(self.auth_url, data={'username': self.username, 'password': 'WRONG'})
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # this one should fail with a different error message
+        self.client.post(self.auth_url, data={'username': self.username, 'password': 'WRONG'})
+        self.assertEqual(response.data['detail'], 'Username is locked out. Try in 10 minutes.')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_expired_token_is_recreated_on_successful_authentication(self):
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
