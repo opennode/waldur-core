@@ -152,12 +152,6 @@ class SummaryQuerySet(object):
         self.querysets = [model.objects.all() for model in summary_models]
         self._order_by = None
 
-    # Hack for permissions
-    @property
-    def model(self):
-        from nodeconductor.structure.models import ResourceMixin
-        return ResourceMixin
-
     def filter(self, *args, **kwargs):
         self.querysets = [qs.filter(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
         return self
@@ -259,6 +253,22 @@ class SummaryQuerySet(object):
             else:
                 # subseq has been exhausted, therefore remove it from the queue
                 heapq.heappop(heap)
+
+
+class ResourceSummaryQuertSet(SummaryQuerySet):
+    # Hack for permissions
+    @property
+    def model(self):
+        from nodeconductor.structure.models import ResourceMixin
+        return ResourceMixin
+
+
+class ServiceSummaryQuerySet(SummaryQuerySet):
+    # Hack for permissions
+    @property
+    def model(self):
+        from nodeconductor.structure.models import Service
+        return Service
 
 
 class ServiceSettingsManager(GenericKeyMixin, models.Manager):

@@ -1202,10 +1202,11 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
         - ?name=<text> - partial matching used for searching
         - ?type=<type> - choices: OpenStack, DigitalOcean, Amazon, JIRA, GitLab, Oracle
         - ?state=<state> - choices: New, Creation Scheduled, Creating, Sync Scheduled, Syncing, In Sync, Erred
+        - ?shared=<bool> - allows to filter shared service settings
         """
         return super(ServiceSettingsViewSet, self).list(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         """
         To update service settings, issue a **PUT** or **PATCH** to */api/service-settings/<uuid>/* as a customer owner.
         You are allowed to change name and credentials only.
@@ -1225,7 +1226,48 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
                 "password": "new_secret"
             }
         """
-        return super(ServiceSettingsViewSet, self).retrieve(request, *args, **kwargs)
+        return super(ServiceSettingsViewSet, self).update(request, *args, **kwargs)
+
+    @detail_route()
+    def stats(self, request, uuid=None):
+        """
+        This endpoint returns allocation of resources for current service setting.
+        Answer is service-specific dictionary. Example output for OpenStack:
+
+        * vcpu - maximum number of vCPUs (from hypervisors)
+        * vcpu_quota - maximum number of vCPUs(from quotas)
+        * vcpu_usage - current number of used vCPUs
+
+        * ram - total size of memory for allocation (from hypervisors)
+        * ram_quota - maximum number of memory (from quotas)
+        * ram_usage - currently used memory size on all physical hosts
+
+        * storage - total available disk space on all physical hosts (from hypervisors)
+        * storage_quota - maximum number of storage (from quotas)
+        * storage_usage - currently used storage on all physical hosts
+
+        {
+            'vcpu': 10,
+            'vcpu_quota': 7,
+            'vcpu_usage': 5,
+            'ram': 1000,
+            'ram_quota': 700,
+            'ram_usage': 500,
+            'storage': 10000,
+            'storage_quota': 7000,
+            'storage_usage': 5000
+        }
+        """
+
+        service_settings = self.get_object()
+        backend = service_settings.get_backend()
+
+        try:
+            stats = backend.get_stats()
+        except ServiceBackendNotImplemented:
+            stats = {}
+
+        return Response(stats, status=status.HTTP_200_OK)
 
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
@@ -1252,7 +1294,7 @@ class ResourceViewSet(mixins.ListModelMixin,
         resource_models = self._filter_by_category(resource_models)
         resource_models = self._filter_by_types(resource_models)
 
-        return managers.SummaryQuerySet(resource_models.values())
+        return managers.ResourceSummaryQuerySet(resource_models.values())
 
     def _filter_by_types(self, resource_models):
         types = self.request.query_params.getlist('resource_type', None)
@@ -1407,7 +1449,7 @@ class ServicesViewSet(mixins.ListModelMixin,
         service_models = {k: v['service'] for k, v in SupportedServices.get_service_models().items()}
         service_models = self._filter_by_types(service_models)
         # TODO: filter models by service type.
-        return managers.SummaryQuerySet(service_models.values())
+        return managers.ServiceSummaryQuerySet(service_models.values())
 
     def _filter_by_types(self, service_models):
         types = self.request.query_params.getlist('service_type', None)
