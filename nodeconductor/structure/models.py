@@ -868,7 +868,7 @@ class PaidResource(models.Model):
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
-        return [model for model in apps.get_all_models() if issubclass(model, cls)]
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
     class Meta(object):
         abstract = True
