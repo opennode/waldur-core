@@ -5,7 +5,7 @@ from dateutil.relativedelta import relativedelta
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister
-from nodeconductor.structure.models import ResourceMixin
+from nodeconductor.structure.models import ResourceMixin, Resource
 from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, ServiceBackendError
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ def update_price_estimate_on_resource_import(sender, instance, **kwargs):
 
 
 def add_resource_price_estimate_on_provision(sender, instance, name=None, source=None, **kwargs):
-    if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
+    if source == Resource.States.PROVISIONING and name == instance.set_online.__name__:
         update_price_estimate_on_resource_import(sender, instance)
 
 
