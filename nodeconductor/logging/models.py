@@ -145,6 +145,11 @@ class BaseHook(EventTypesMixin, UuidMixin, TimeStampedModel):
     def get_active_hooks(cls):
         return [obj for hook in cls.__subclasses__() for obj in hook.objects.filter(is_active=True)]
 
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
 
 class WebHook(BaseHook):
     class ContentTypeChoices(object):

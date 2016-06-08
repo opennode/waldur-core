@@ -77,6 +77,19 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         raise NotImplemented
 
 
+class SummaryHookSerializer(serializers.Serializer):
+
+    def to_representation(self, instance):
+        serializer = self.get_hook_serializer(instance.__class__)
+        return serializer(instance, context=self.context).data
+
+    def get_hook_serializer(self, cls):
+        for serializer in BaseHookSerializer.__subclasses__():
+            if serializer.Meta.model == cls:
+                return serializer
+        raise ValueError('Hook serializer for %s class is not found' % cls)
+
+
 class WebHookSerializer(BaseHookSerializer):
     content_type = NaturalChoiceField(models.WebHook.ContentTypeChoices.CHOICES, required=False)
 
