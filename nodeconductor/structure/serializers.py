@@ -926,7 +926,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
     error_message = serializers.ReadOnlyField(source='settings.error_message')
-    scope = core_serializers.GenericRelatedField(related_models=models.Resource.get_all_models(), required=False)
+    scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     tags = serializers.SerializerMethodField()
 
     class Meta(object):

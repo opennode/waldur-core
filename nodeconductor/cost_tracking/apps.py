@@ -50,7 +50,7 @@ class CostTrackingConfig(AppConfig):
             dispatch_uid='nodeconductor.cost_tracking.handlers.update_price_estimate_ancestors'
         )
 
-        for index, resource in enumerate(structure_models.Resource.get_all_models()):
+        for index, resource in enumerate(structure_models.ResourceMixin.get_all_models()):
             post_transition.connect(
                 handlers.add_resource_price_estimate_on_provision,
                 sender=resource,

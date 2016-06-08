@@ -56,7 +56,7 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "resource_content_type":
-            kwargs["queryset"] = _get_content_type_queryset(structure_models.Resource.get_all_models())
+            kwargs["queryset"] = _get_content_type_queryset(structure_models.ResourceMixin.get_all_models())
         return super(DefaultPriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_urls(self):
