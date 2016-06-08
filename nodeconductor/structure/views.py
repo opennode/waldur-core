@@ -34,7 +34,7 @@ from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import exceptions as core_exceptions
 from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.views import BaseSummaryView, StateExecutorViewSet
+from nodeconductor.core.views import StateExecutorViewSet
 from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
 from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota

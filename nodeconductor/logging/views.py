@@ -6,7 +6,7 @@ from rest_framework import response, viewsets, permissions, status, decorators, 
 from rest_framework import filters as rf_filters
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
-from nodeconductor.core.views import BaseSummaryView
+from nodeconductor.core.managers import SummaryQuerySet
 from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log, utils
 from nodeconductor.logging.loggers import get_event_groups, get_alert_groups
 
@@ -353,7 +353,7 @@ class WebHookViewSet(BaseHookViewSet):
     queryset = models.WebHook.objects.all()
     serializer_class = serializers.WebHookSerializer
 
-    def list(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         """
         To create new web hook issue **POST** against */api/hooks-web/* as an authenticated user.
         When hook is activated, **POST** request is issued against destination URL with the following data:
@@ -380,14 +380,14 @@ class WebHookViewSet(BaseHookViewSet):
 
         Note that context depends on event type.
         """
-        return super(WebHookViewSet, self).list(request, *args, **kwargs)
+        return super(WebHookViewSet, self).create(request, *args, **kwargs)
 
 
 class EmailHookViewSet(BaseHookViewSet):
     queryset = models.EmailHook.objects.all()
     serializer_class = serializers.EmailHookSerializer
 
-    def list(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         """
         To create new email hook issue **POST** against */api/hooks-email/* as an authenticated user.
 
@@ -410,7 +410,7 @@ class EmailHookViewSet(BaseHookViewSet):
                 "is_active": "false"
             }
         """
-        return super(EmailHookViewSet, self).list(request, *args, **kwargs)
+        return super(EmailHookViewSet, self).create(request, *args, **kwargs)
 
 
 class PushHookViewSet(BaseHookViewSet):
@@ -418,7 +418,7 @@ class PushHookViewSet(BaseHookViewSet):
     filter_class = filters.PushHookFilter
     serializer_class = serializers.PushHookSerializer
 
-    def list(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         """
         To create new push hook issue **POST** against */api/hooks-push/* as an authenticated user.
 
@@ -441,9 +441,16 @@ class PushHookViewSet(BaseHookViewSet):
                 "is_active": "false"
             }
         """
-        return super(PushHookViewSet, self).list(request, *args, **kwargs)
+        return super(PushHookViewSet, self).create(request, *args, **kwargs)
 
 
-class HookSummary(BaseSummaryView):
-    def get_urls(self, request):
-        return ('webhook-list', 'emailhook-list', 'pushhook-list')
+class HookSummary(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    Use */api/hooks/* to get a list of all the hooks of any type that a user can see.
+    """
+    serializer_class = serializers.SummaryHookSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    filter_backends = (core_filters.StaffOrUserFilter, rf_filters.DjangoFilterBackend)
+
+    def get_queryset(self):
+        return SummaryQuerySet(models.BaseHook.get_all_models())
