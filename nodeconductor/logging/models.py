@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import uuid
 import logging
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
@@ -104,12 +105,26 @@ class AlertThresholdMixin(models.Model):
         return cls.objects.all()
 
 
-class BaseHook(UuidMixin, TimeStampedModel):
+class EventTypesMixin(models.Model):
+    """
+    Mixin to add a event_types field.
+    """
+    class Meta(object):
+        abstract = True
+
+    event_types = JSONField('List of event types')
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
+
+class BaseHook(EventTypesMixin, UuidMixin, TimeStampedModel):
     class Meta:
         abstract = True
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL)
-    event_types = JSONField('List of event types')
     is_active = models.BooleanField(default=True)
 
     # This timestamp would be updated periodically when event is sent via this hook
@@ -223,8 +238,7 @@ class EmailHook(BaseHook):
         send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [self.email], html_message=html_message)
 
 
-class SystemNotification(models.Model):
-    event_types = JSONField('List of event types')
+class SystemNotification(EventTypesMixin, models.Model):
     hook_content_type = models.OneToOneField(
         ct_models.ContentType, related_name='+',
         limit_choices_to=lambda: {'id__in': [
