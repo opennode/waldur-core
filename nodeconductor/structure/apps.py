@@ -184,7 +184,6 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
-        for index, model in enumerate(ResourceMixin.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
                 fsm_signals.post_transition.connect(
                     handlers.detect_vm_coordinates,

@@ -340,7 +340,7 @@ class SynchronizableMixin(ErrorMessageMixin):
 
 
 class RuntimeStateMixin(models.Model):
-    """ Provide run_time_state field """
+    """ Provide runtime_state field """
     class RuntimeStates(object):
         ONLINE = 'online'
         OFFLINE = 'offline'
