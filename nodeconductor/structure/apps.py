@@ -12,7 +12,7 @@ class StructureConfig(AppConfig):
 
     def ready(self):
         from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
-        from nodeconductor.structure.models import Resource, ServiceProjectLink, Service, set_permissions_for_model
+        from nodeconductor.structure.models import ResourceMixin, ServiceProjectLink, Service, set_permissions_for_model
         from nodeconductor.structure import handlers
         from nodeconductor.structure import signals as structure_signals
 
@@ -148,7 +148,7 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_project_group_role_revoked',
         )
 
-        for index, model in enumerate(Resource.get_all_models()):
+        for index, model in enumerate(ResourceMixin.get_all_models()):
             signals.pre_delete.connect(
                 handlers.log_resource_deleted,
                 sender=model,
@@ -184,7 +184,7 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
-        for index, model in enumerate(Resource.get_vm_models()):
+        for index, model in enumerate(ResourceMixin.get_vm_models()):
             if issubclass(model, CoordinatesMixin):
                 fsm_signals.post_transition.connect(
                     handlers.detect_vm_coordinates,

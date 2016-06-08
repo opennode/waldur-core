@@ -32,7 +32,7 @@ class ScopeTypeFilterBackend(DjangoFilterBackend):
     scope_field = 'scope'
     scope_param = 'scope_type'
     scope_models = (
-        models.Resource,
+        models.ResourceMixin,
         models.Service,
         models.ServiceProjectLink,
         models.Project,
@@ -652,7 +652,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     strict = False
 
     class Meta(object):
-        model = models.Resource
+        model = models.ResourceMixin
         fields = (
             # customer
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
@@ -808,7 +808,7 @@ class AggregateFilter(BaseExternalFilter):
         aggregates_ids = list(aggregates.values_list('id', flat=True))
         query = {serializer.data['aggregate'] + '__in': aggregates_ids}
 
-        all_models = (models.Resource.get_all_models() +
+        all_models = (models.ResourceMixin.get_all_models() +
                       models.ServiceProjectLink.get_all_models())
 
         if serializer.data['aggregate'] == 'customer':
