@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Implement management command for cleaning up stale event types in hooks and system notifications.
 
 Release 0.100.0
 ---------------
