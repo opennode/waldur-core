@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from rest_framework import status
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
 
 
 class QuotaError(Exception):
@@ -20,3 +20,7 @@ class QuotaExceededException(APIException):
 class BackendQuotaUpdateError(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = 'It is impossible to modify backend quota through this endpoint.',
+
+
+class QuotaValidationError(ValidationError):
+    pass
