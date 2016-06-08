@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.core.urlresolvers import NoReverseMatch
-from django.db import models as django_models
+from django.db import models as django_models, transaction
 from django.utils import six
 from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
@@ -1301,6 +1301,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     def get_access_url(self, obj):
         return obj.get_access_url()
 
+    @transaction.atomic
     def create(self, validated_data):
         data = validated_data.copy()
         fields = self.get_resource_fields()
@@ -1309,7 +1310,9 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             if prop not in fields:
                 del data[prop]
 
-        return super(BaseResourceSerializer, self).create(data)
+        resource = super(BaseResourceSerializer, self).create(data)
+        resource.increase_backend_quotas_usage()
+        return resource
 
 
 class PublishableResourceSerializer(BaseResourceSerializer):

@@ -1200,6 +1200,18 @@ class NewResource(ResourceMixin, core_models.StateMixin):
     class Meta(object):
         abstract = True
 
+    def increase_backend_quotas_usage(self, validate=True):
+        """ Increase usage of quotas that were consumed by resource on creation.
+
+            If validate is True - method should raise QuotaValidationError if
+            at least one of increased quotas if over limit.
+        """
+        pass
+
+    def decrease_backend_quotas_usage(self):
+        """ Decrease usage of quotas that were released on resource deletion """
+        pass
+
 
 class PublishableResource(PublishableMixin, Resource):
 
