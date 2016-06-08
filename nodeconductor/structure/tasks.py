@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask, Task, DeletionTask
+from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask, Task
 from nodeconductor.core.models import SshPublicKey
 from nodeconductor.structure import (SupportedServices, ServiceBackendError,
                                      ServiceBackendNotImplemented, models)
