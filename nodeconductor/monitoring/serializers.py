@@ -37,12 +37,12 @@ class MonitoringSerializerMixin(serializers.Serializer):
         return self.sla_map_cache.get(resource.id)
 
     def get_monitoring_items(self, resource):
-        if 'monitoring_items' not in self.context:
+        if not hasattr(self, 'monitoring_items_map'):
+            self.monitoring_items_map = {}
             items = ResourceItem.objects.filter(scope__in=to_list(self.instance))
 
-            monitoring_items = defaultdict(dict)
+            self.monitoring_items_map = defaultdict(dict)
             for item in items:
-                monitoring_items[item.object_id][item.name] = item.value
+                self.monitoring_items_map[item.object_id][item.name] = item.value
 
-            self.context['monitoring_items'] = monitoring_items
-        return self.context['monitoring_items'].get(resource.id)
+        return self.monitoring_items_map.get(resource.id)
