@@ -255,7 +255,7 @@ class SummaryQuerySet(object):
                 heapq.heappop(heap)
 
 
-class ResourceSummaryQuertSet(SummaryQuerySet):
+class ResourceSummaryQuerySet(SummaryQuerySet):
     # Hack for permissions
     @property
     def model(self):
