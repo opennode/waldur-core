@@ -75,22 +75,6 @@ config_defaults = {
     'sqlite3': {
         'path': os.path.join(work_dir, 'db.sqlite3'),
     },
-    'zabbix': {
-        'db_host': '',  # empty to disable Zabbix database access
-        'db_name': 'zabbix',
-        'db_password': 'nodeconductor',
-        'db_port': '3306',
-        'db_user': 'nodeconductor',
-        'host_group_id': '',
-        'host_template_id': '',
-        'openstack_template_id': '',
-        'password': '',
-        'postgresql_template_id': '',
-        'server_url': '',
-        'username': '',
-        'wordpress_template_id': '',
-        'zimbra_template_id': '',
-    },
 }
 
 for section, options in config_defaults.items():
@@ -176,17 +160,6 @@ elif config.has_section('sqlite3'):
 if config.has_section('billing'):
     warnings.warn(
         "[billing] section in settings.ini is no longer supported and will be ignored")
-
-# Zabbix database
-if config.get('zabbix', 'db_host') != '':
-    DATABASES['zabbix'] = {
-        'ENGINE': 'django.db.backends.mysql',
-        'HOST': config.get('zabbix', 'db_host'),
-        'NAME': config.get('zabbix', 'db_name'),
-        'PORT': config.get('zabbix', 'db_port'),
-        'USER': config.get('zabbix', 'db_user'),
-        'PASSWORD': config.get('zabbix', 'db_password'),
-    }
 
 # Logging
 # See also: https://docs.djangoproject.com/en/1.7/ref/settings/#logging
@@ -584,33 +557,6 @@ NODECONDUCTOR.update({
             'cpu_overcommit_ratio': config.getint('openstack', 'cpu_overcommit_ratio'),
         },
     ),
-    'MONITORING': {
-        'ZABBIX': {
-            'server': config.get('zabbix', 'server_url'),
-            'username': config.get('zabbix', 'username'),
-            'password': config.get('zabbix', 'password'),
-            'templateid': config.get('zabbix', 'host_template_id'),
-            'groupid': config.get('zabbix', 'host_group_id'),
-            'interface_parameters': {
-                'ip': '0.0.0.0',
-                'main': 1,
-                'port': '10050',
-                'type': 1,
-                'useip': 1,
-                'dns': '',
-            },
-            'default_service_parameters': {
-                'algorithm': 1,
-                'sortorder': 1,
-                'showsla': 1,
-                'goodsla': 95,
-            },
-            'openstack-templateid': config.get('zabbix', 'openstack_template_id'),
-            'postgresql-templateid': config.get('zabbix', 'postgresql_template_id'),
-            'wordpress-templateid': config.get('zabbix', 'wordpress_template_id'),
-            'zimbra-templateid': config.get('zabbix', 'zimbra_template_id'),
-        }
-    },
     'ELASTICSEARCH': {
         'username': config.get('elasticsearch', 'username'),
         'password': config.get('elasticsearch', 'password'),
