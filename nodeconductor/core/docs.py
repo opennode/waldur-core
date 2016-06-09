@@ -47,7 +47,6 @@ class ApiDocs(object):
     exclude = ['rest_framework']
 
     def __init__(self, apps=None):
-        settings.ROOT_URLCONF = 'nodeconductor.server.urls'
         root_urlconf = importlib.import_module(settings.ROOT_URLCONF)
         endpoints = self.get_all_view_names(root_urlconf.urlpatterns)
         self.build_docs_tree(endpoints)
