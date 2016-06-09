@@ -31,7 +31,7 @@ Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
-Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
+Requires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.17.5
 Requires: python-django-uuidfield = 0.5.0
@@ -58,7 +58,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # systemd package provides _unitdir RPM macro
 BuildRequires: python-django >= 1.8
 BuildRequires: python-django-fluent-dashboard
-BuildRequires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
+BuildRequires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
 BuildRequires: python-setuptools
 BuildRequires: systemd
 
