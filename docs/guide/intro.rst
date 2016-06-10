@@ -12,4 +12,5 @@
 .. include:: permission_management.rst
 .. include:: import-openstack-instance.rst
 .. include:: monitoring-as-a-service.rst
+.. include:: dr-backups.rst
 .. include:: version.rst
