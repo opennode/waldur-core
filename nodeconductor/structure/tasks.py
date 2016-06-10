@@ -5,6 +5,7 @@ import logging
 from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.db import transaction
+import pyvat
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.tasks import retry_if_false, throttle, StateTransitionTask, ErrorMessageTask, Task
