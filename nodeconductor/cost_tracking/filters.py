@@ -64,6 +64,8 @@ class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
                 ids = model.objects.filter(**query).values_list('pk', flat=True)
                 qs |= Q(content_type=content_type, object_id__in=ids)
 
+            qs |= Q(scope_customer__uuid=customer_uuid)
+
             queryset = queryset.filter(qs)
 
         return queryset

@@ -85,7 +85,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
 
     @property
     def is_leaf(self):
-        return self.is_leaf_scope(self.scope)
+        return self.scope and self.is_leaf_scope(self.scope)
 
     @staticmethod
     def is_leaf_scope(scope):
