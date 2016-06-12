@@ -192,3 +192,27 @@ class PriceEstimateDeleteTest(BaseCostTrackingTest):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         reread_auto_link_price_estimate = models.PriceEstimate.objects.get(id=self.auto_link_price_estimate.id)
         self.assertTrue(reread_auto_link_price_estimate.is_visible)
+
+
+class HistoricResourceTest(BaseCostTrackingTest):
+    def setUp(self):
+        super(HistoricResourceTest, self).setUp()
+        resource1 = structure_factories.TestInstanceFactory(service_project_link=self.service_project_link)
+        factories.PriceEstimateFactory(scope=resource1)
+        resource1.delete()
+
+        resource2 = structure_factories.TestInstanceFactory(service_project_link=self.service_project_link)
+        factories.PriceEstimateFactory(scope=resource2)
+
+    def test_owner_can_filter_price_estimates_for_historic_resources(self):
+        self.client.force_authenticate(self.users['owner'])
+        response = self.client.get(factories.PriceEstimateFactory.get_list_url(),
+                                   {'customer': self.customer.uuid.hex})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_user_can_not_see_historic_resources_for_other_customer(self):
+        self.client.force_authenticate(structure_factories.UserFactory())
+        response = self.client.get(factories.PriceEstimateFactory.get_list_url(),
+                                   {'customer': self.customer.uuid.hex})
+        self.assertEqual(len(response.data), 0)

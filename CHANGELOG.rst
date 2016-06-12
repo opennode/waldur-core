@@ -7,7 +7,8 @@ Release NEXT
 - Rewrite hook summary view using SummaryQuerySet.
 - Allow quotas to raise errors if their usage is over limit.
 - Fix monitoring_items serializer.
-- Verfify VAT number using VIES checker and store it database.
+- Verify VAT number using VIES checker and store it database.
+- Fix filtering historic resources by customer.
 
 Release 0.100.0
 ---------------

@@ -237,7 +237,10 @@ class ApiEndpoint(object):
     VIEWS = {}
 
     def __init__(self, pattern, parent_pattern=None):
-        conf = apps.get_app_config(pattern.callback.cls.__module__.split('.')[-2])
+        # XXX: Hotfix for openstack app docs.
+        app_name = pattern.callback.cls.__module__.split('.')[-2]
+        app_name = app_name.replace('nodeconductor_openstack', 'openstack')
+        conf = apps.get_app_config(app_name)
         self.pattern = pattern
         self.callback = pattern.callback
         self.docstring = getdoc(self.callback.cls)

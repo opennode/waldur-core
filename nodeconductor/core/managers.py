@@ -43,7 +43,9 @@ class GenericKeyMixin(object):
         return kwargs
 
     def _get_generic_key_related_kwargs(self, initial_kwargs):
-        return {key: value for key, value in initial_kwargs.items() if key.startswith(self.generic_key_field)}
+        # Skip fields like scope_customer
+        return {key: value for key, value in initial_kwargs.items()
+                if key.startswith(self.generic_key_field + '__') or key == self.generic_key_field}
 
     def _get_filter_object_id_and_content_type_filter_kwargs(self, generic_key_value, suffix=None):
         kwargs = {}
