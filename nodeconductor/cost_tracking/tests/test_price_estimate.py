@@ -194,6 +194,7 @@ class PriceEstimateDeleteTest(BaseCostTrackingTest):
         self.assertTrue(reread_auto_link_price_estimate.is_visible)
 
 
+@ddt
 class HistoricResourceTest(BaseCostTrackingTest):
     def setUp(self):
         super(HistoricResourceTest, self).setUp()
@@ -204,8 +205,9 @@ class HistoricResourceTest(BaseCostTrackingTest):
         resource2 = structure_factories.TestInstanceFactory(service_project_link=self.service_project_link)
         factories.PriceEstimateFactory(scope=resource2)
 
-    def test_owner_can_filter_price_estimates_for_historic_resources(self):
-        self.client.force_authenticate(self.users['owner'])
+    @data('owner', 'staff')
+    def test_user_can_filter_price_estimates_for_historic_resources(self, user):
+        self.client.force_authenticate(self.users[user])
         response = self.client.get(factories.PriceEstimateFactory.get_list_url(),
                                    {'customer': self.customer.uuid.hex})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
