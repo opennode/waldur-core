@@ -29,44 +29,40 @@ class ScopeTypeFilterBackend(DjangoFilterBackend):
         * ?scope_type = ``string`` (can be list)
     """
 
-    scope_field = 'scope'
+    content_type_field = 'content_type'
     scope_param = 'scope_type'
-    scope_models = (
-        models.ResourceMixin,
-        models.Service,
-        models.ServiceProjectLink,
-        models.Project,
-        models.Customer)
+    scope_models = {
+        'customer': models.Customer,
+        'service': models.Service,
+        'project': models.Project,
+        'service_project_link': models.ServiceProjectLink,
+        'resource': models.ResourceMixin
+    }
 
     @classmethod
-    def get_scope_type(cls, obj):
-        field = getattr(obj, cls.scope_field)
-        for model in cls.scope_models:
-            if isinstance(field, model):
-                return model._meta.model_name
+    def get_scope_type(cls, model):
+        for scope_type, scope_model in cls.scope_models.items():
+            if issubclass(model, scope_model):
+                return scope_type
 
     @classmethod
-    def get_scope_models(cls, types):
-        for model in cls.scope_models:
-            if model._meta.model_name in types:
+    def _get_scope_models(cls, types):
+        for scope_type, scope_model in cls.scope_models.items():
+            if scope_type in types:
                 try:
-                    for submodel in model.get_all_models():
+                    for submodel in scope_model.get_all_models():
                         yield submodel
                 except AttributeError:
-                    yield model
+                    yield scope_model
 
     @classmethod
-    def get_scope_content_types(cls, types):
-        return ContentType.objects.get_for_models(*cls.get_scope_models(types)).values()
-
-    @classmethod
-    def get_ct_field(cls, obj_or_cls):
-        return next(field.ct_field for field in obj_or_cls._meta.virtual_fields if field.name == cls.scope_field)
+    def _get_scope_content_types(cls, types):
+        return ContentType.objects.get_for_models(*cls._get_scope_models(types)).values()
 
     def filter_queryset(self, request, queryset, view):
         if self.scope_param in request.query_params:
-            content_types = self.get_scope_content_types(request.query_params.getlist(self.scope_param))
-            return queryset.filter(**{'%s__in' % self.get_ct_field(queryset.model): content_types})
+            content_types = self._get_scope_content_types(request.query_params.getlist(self.scope_param))
+            return queryset.filter(**{'%s__in' % self.content_type_field: content_types})
         return queryset
 
 
