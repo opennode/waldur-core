@@ -1,4 +1,10 @@
+import copy
+import functools
+import heapq
+import itertools
+
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 
 class GenericKeyMixin(object):
@@ -37,7 +43,9 @@ class GenericKeyMixin(object):
         return kwargs
 
     def _get_generic_key_related_kwargs(self, initial_kwargs):
-        return {key: value for key, value in initial_kwargs.items() if key.startswith(self.generic_key_field)}
+        # Skip fields like scope_customer
+        return {key: value for key, value in initial_kwargs.items()
+                if key.startswith(self.generic_key_field + '__') or key == self.generic_key_field}
 
     def _get_filter_object_id_and_content_type_filter_kwargs(self, generic_key_value, suffix=None):
         kwargs = {}
@@ -64,3 +72,113 @@ class GenericKeyMixin(object):
     def get_or_create(self, **kwargs):
         kwargs = self._preprocess_kwargs(kwargs)
         return super(GenericKeyMixin, self).get_or_create(**kwargs)
+
+
+class SummaryQuerySet(object):
+    """ Fake queryset that emulates union of different models querysets """
+
+    def __init__(self, summary_models):
+        self.querysets = [model.objects.all() for model in summary_models]
+        self._order_by = None
+
+    def filter(self, *args, **kwargs):
+        self.querysets = [qs.filter(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
+        return self
+
+    def distinct(self, *args, **kwargs):
+        self.querysets = [qs.distinct(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
+        return self
+
+    def order_by(self, order_by):
+        self._order_by = order_by
+        self.querysets = [qs.order_by(copy.deepcopy(order_by)) for qs in self.querysets]
+        return self
+
+    def all(self):
+        return self
+
+    def none(self):
+        try:
+            return self.querysets[0].none()
+        except IndexError:
+            return
+
+    def __getitem__(self, val):
+        chained_querysets = self._get_chained_querysets()
+        if isinstance(val, slice):
+            return list(itertools.islice(chained_querysets, val.start, val.stop))
+        else:
+            try:
+                return itertools.islice(chained_querysets, val, val + 1).next()
+            except StopIteration:
+                raise IndexError
+
+    def __len__(self):
+        return sum([q.count() for q in self.querysets])
+
+    def _get_chained_querysets(self):
+        if self._order_by:
+            return self._merge([qs.iterator() for qs in self.querysets], compared_attr=self._order_by)
+        else:
+            return itertools.chain(*[qs.iterator() for qs in self.querysets])
+
+    def _merge(self, subsequences, compared_attr='pk'):
+
+        @functools.total_ordering
+        class Compared(object):
+            """ Order objects by their attributes, reverse ordering if <reverse> is True """
+            def __init__(self, obj, attr, reverse=False):
+                self.attr = reduce(Compared.get_obj_attr, attr.split("__"), obj)
+                if isinstance(self.attr, basestring):
+                    self.attr = self.attr.lower()
+                self.reverse = reverse
+
+            @staticmethod
+            def get_obj_attr(obj, attr):
+                # for m2m relationship support - get first instance of manager.
+                # for example: get first project group if resource has to be ordered by project groups.
+                if isinstance(obj, models.Manager):
+                    obj = obj.first()
+                return getattr(obj, attr) if obj else None
+
+            def __eq__(self, other):
+                return self.attr == other.attr
+
+            def __le__(self, other):
+                # In MySQL NULL values come *first* with ascending sort order.
+                # We use the same behaviour.
+                if self.attr is None:
+                    return not self.reverse
+                elif other.attr is None:
+                    return self.reverse
+                else:
+                    return self.attr < other.attr if not self.reverse else self.attr >= other.attr
+
+        reverse = compared_attr.startswith('-')
+        if reverse:
+            compared_attr = compared_attr[1:]
+
+        # prepare a heap whose items are
+        # (compared, current-value, iterator), one each per (non-empty) subsequence
+        # <compared> is used for model instances comparison based on given attribute
+        heap = []
+        for subseq in subsequences:
+            iterator = iter(subseq)
+            for current_value in iterator:
+                # subseq is not empty, therefore add this subseq's item to the list
+                heapq.heappush(
+                    heap, (Compared(current_value, compared_attr, reverse=reverse), current_value, iterator))
+                break
+
+        while heap:
+            # get and yield lowest current value (and corresponding iterator)
+            _, current_value, iterator = heap[0]
+            yield current_value
+            for current_value in iterator:
+                # subseq is not finished, therefore add this subseq's item back into the priority queue
+                heapq.heapreplace(
+                    heap, (Compared(current_value, compared_attr, reverse=reverse), current_value, iterator))
+                break
+            else:
+                # subseq has been exhausted, therefore remove it from the queue
+                heapq.heappop(heap)

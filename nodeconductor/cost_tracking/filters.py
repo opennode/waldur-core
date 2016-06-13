@@ -8,7 +8,6 @@ from rest_framework import filters
 from nodeconductor.core import filters as core_filters
 from nodeconductor.cost_tracking import models, serializers
 from nodeconductor.structure import models as structure_models, SupportedServices
-from nodeconductor.structure.models import Resource
 
 
 class PriceEstimateFilter(django_filters.FilterSet):
@@ -64,6 +63,8 @@ class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
                     query = {model.Permissions.customer_path + '__uuid': customer_uuid}
                 ids = model.objects.filter(**query).values_list('pk', flat=True)
                 qs |= Q(content_type=content_type, object_id__in=ids)
+
+            qs |= Q(scope_customer__uuid=customer_uuid)
 
             queryset = queryset.filter(qs)
 

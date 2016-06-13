@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import sys
 from setuptools import setup, find_packages
 
 
@@ -31,14 +30,15 @@ install_requires = [
     'django-reversion>=1.8.7,<=1.9.3',
     'django-taggit>=0.17.5',
     'django-uuidfield==0.5.0',
-    'djangorestframework>=3.1.0,<3.2.0',
+    'djangorestframework>=3.1.3,<3.2.0',
     'elasticsearch>=1.0.0,<2.0.0',
     'hiredis>=0.2.0',
     'iptools>=0.6.1',
     'jsonfield==1.0.0',
     'Pillow>=2.0.0,<3.0.0',
     'PyYAML>=3.10',
-    'pyzabbix>=0.7.2',
+    'pycountry>=1.20,<2.0',
+    'pyvat>=1.3.1,<2.0',
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
@@ -46,7 +46,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.100.0',
+    version='0.101.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

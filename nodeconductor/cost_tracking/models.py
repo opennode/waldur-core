@@ -69,7 +69,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @lru_cache(maxsize=1)
     def get_estimated_models(cls):
         return (
-            structure_models.Resource.get_all_models() +
+            structure_models.ResourceMixin.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models() +
             structure_models.Service.get_all_models() +
             [structure_models.Project, structure_models.Customer]
@@ -79,17 +79,17 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @lru_cache(maxsize=1)
     def get_editable_estimated_models(cls):
         return (
-            structure_models.Resource.get_all_models() +
+            structure_models.ResourceMixin.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models()
         )
 
     @property
     def is_leaf(self):
-        return self.is_leaf_scope(self.scope)
+        return self.scope and self.is_leaf_scope(self.scope)
 
     @staticmethod
     def is_leaf_scope(scope):
-        return scope._meta.model in structure_models.Resource.get_all_models()
+        return scope._meta.model in structure_models.ResourceMixin.get_all_models()
 
     def update_from_leaf(self):
         if self.is_leaf:

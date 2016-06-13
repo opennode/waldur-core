@@ -5,6 +5,7 @@ import json
 
 from django.db import models
 from django.core import validators
+import pycountry
 from rest_framework import serializers
 import six
 
@@ -160,3 +161,14 @@ class TimestampField(serializers.Field):
             return utils.timestamp_to_datetime(value)
         except ValueError:
             raise serializers.ValidationError('Value "{}" should be valid UNIX timestamp.'.format(value))
+
+
+class CountryField(models.CharField):
+
+    COUNTRIES = [(country.alpha2, country.name) for country in pycountry.countries]
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('max_length', 2)
+        kwargs.setdefault('choices', CountryField.COUNTRIES)
+
+        super(CountryField, self).__init__(*args, **kwargs)

@@ -46,12 +46,11 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
         return six.text_type(obj.scope or obj.details.get('scope_name'))  # respect to unicode
 
     def get_scope_type(self, obj):
-        return ScopeTypeFilterBackend.get_scope_type(obj) or obj.details.get('scope_type')
+        return ScopeTypeFilterBackend.get_scope_type(obj.content_type.model_class())
 
     def get_resource_type(self, obj):
-        if not obj.is_leaf:
-            return None
-        return SupportedServices.get_name_for_model(obj.content_type.model_class())
+        if self.get_scope_type(obj) == 'resource':
+            return SupportedServices.get_name_for_model(obj.content_type.model_class())
 
 
 class YearMonthField(serializers.CharField):

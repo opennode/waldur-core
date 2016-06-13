@@ -2,11 +2,10 @@ import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
-from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister
-from nodeconductor.structure.models import Resource
+from nodeconductor.structure.models import ResourceMixin, Resource
 from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, ServiceBackendError
 
 logger = logging.getLogger(__name__)
@@ -65,7 +64,7 @@ def update_price_estimate_on_resource_import(sender, instance, **kwargs):
 
 
 def add_resource_price_estimate_on_provision(sender, instance, name=None, source=None, **kwargs):
-    if source == instance.States.PROVISIONING and name == instance.set_online.__name__:
+    if source == Resource.States.PROVISIONING and name == instance.set_online.__name__:
         update_price_estimate_on_resource_import(sender, instance)
 
 
@@ -132,7 +131,7 @@ def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
     # if scope is Resource:
     #    delete -- add metadata about deleted resource, set object_id to NULL
     #    unlink -- delete all related estimates
-    if isinstance(instance, tuple(Resource.get_all_models())):
+    if isinstance(instance, tuple(ResourceMixin.get_all_models())):
         if getattr(instance, 'PERFORM_UNLINK', False):
             models.PriceEstimate.delete_estimates_for_resource(instance)
         else:

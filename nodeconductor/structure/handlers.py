@@ -502,7 +502,7 @@ def delete_service_settings_on_service_delete(sender, instance, **kwargs):
 
 
 def init_resource_start_time(sender, instance, name, source, target, **kwargs):
-    if target == sender.States.ONLINE:
+    if target == Resource.States.ONLINE:
         instance.start_time = timezone.now()
         instance.save(update_fields=['start_time'])
 

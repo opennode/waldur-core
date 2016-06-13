@@ -12,7 +12,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.100.0
+Version: 0.101.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -31,7 +31,7 @@ Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
-Requires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
+Requires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.17.5
 Requires: python-django-uuidfield = 0.5.0
@@ -40,12 +40,13 @@ Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
+Requires: python-country >= 1.20, python-country < 2.0
+Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: python-redis = 2.10.3
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1
-Requires: python-zabbix >= 0.7.2
 Requires: PyYAML
 
 Source0: %{name}-%{version}.tar.gz
@@ -58,7 +59,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # systemd package provides _unitdir RPM macro
 BuildRequires: python-django >= 1.8
 BuildRequires: python-django-fluent-dashboard
-BuildRequires: python-django-rest-framework >= 3.1.0, python-django-rest-framework < 3.2.0
+BuildRequires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
 BuildRequires: python-setuptools
 BuildRequires: systemd
 
@@ -203,6 +204,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Mon Jun 13 2016 Jenkins <jenkins@opennodecloud.com> - 0.101.0-1.el7
+- New upstream release
+
 * Tue Jun 7 2016 Jenkins <jenkins@opennodecloud.com> - 0.100.0-1.el7
 - New upstream release
 

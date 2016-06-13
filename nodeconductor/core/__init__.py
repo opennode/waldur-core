@@ -12,6 +12,10 @@ class NodeConductorExtension(object):
         pass
 
     @staticmethod
+    def update_settings(settings):
+        pass
+
+    @staticmethod
     def django_app():
         """ Returns a django application name which will be added to INSTALLED_APPS """
         raise NotImplementedError

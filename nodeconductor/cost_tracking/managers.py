@@ -16,13 +16,16 @@ class UserFilterMixin(object):
         if queryset is None:
             queryset = self.get_queryset()
 
+        if user.is_staff:
+            return queryset
+
         # include orphan estimates with presaved owner
         try:
             queryset.model._meta.get_field_by_name('scope_customer')
         except django_models.FieldDoesNotExist:
             query = Q()
         else:
-            query = Q(scope_customer__roles__permission_group__user=user)
+            query = Q(scope_customer__roles__permission_group__user=user, object_id=None)
 
         for model in self.get_available_models():
             user_object_ids = filter_queryset_for_user(model.objects.all(), user).values_list('id', flat=True)

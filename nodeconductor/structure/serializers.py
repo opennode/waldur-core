@@ -1,14 +1,16 @@
 from __future__ import unicode_literals
 
 import json
+import logging
 
 from collections import defaultdict, OrderedDict
 
+import pyvat
 from django.conf import settings
 from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.core.urlresolvers import NoReverseMatch
-from django.db import models as django_models
+from django.db import models as django_models, transaction
 from django.utils import six
 from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
@@ -26,6 +28,7 @@ from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import ServiceProjectLink
 
 User = auth.get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class IpCountValidator(MaxLengthValidator):
@@ -319,7 +322,8 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'owners', 'balance',
             'registration_code',
             'quotas',
-            'image'
+            'image',
+            'country', 'vat_code', 'is_company'
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -335,6 +339,36 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
     @staticmethod
     def eager_load(queryset):
         return queryset.prefetch_related('quotas', 'projects', 'project_groups')
+
+    def validate(self, attrs):
+        country = attrs.get('country')
+        vat_code = attrs.get('vat_code')
+        is_company = attrs.get('is_company')
+
+        if vat_code:
+            if not is_company:
+                raise serializers.ValidationError({
+                    'vat_code': 'VAT number is not supported for private persons.'})
+
+            # Check VAT format
+            if not pyvat.is_vat_number_format_valid(vat_code, country):
+                raise serializers.ValidationError({'vat_code': 'VAT number has invalid format.'})
+
+            # Check VAT number in EU VAT Information Exchange System
+            # if customer is new or either VAT number or country of the customer has changed
+            if not self.instance or self.instance.vat_code != vat_code or self.instance.country != country:
+                check_result = pyvat.check_vat_number(vat_code, country)
+                if check_result.is_valid:
+                    self.instance.vat_name = check_result.business_name
+                    self.instance.vat_address = check_result.business_address
+                    self.instance.save(update_fields=['vat_name', 'vat_address'])
+                elif check_result.is_valid == False:
+                    raise serializers.ValidationError({'vat_code': 'VAT number is invalid.'})
+                else:
+                    logger.debug('Unable to check VAT number %s for country %s. Error message: %s',
+                                 vat_code, country, check_result.log_lines)
+                    raise serializers.ValidationError({'vat_code': 'Unable to check VAT number.'})
+        return attrs
 
 
 class CustomerUserSerializer(serializers.ModelSerializer):
@@ -926,7 +960,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
     error_message = serializers.ReadOnlyField(source='settings.error_message')
-    scope = core_serializers.GenericRelatedField(related_models=models.Resource.get_all_models(), required=False)
+    scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     tags = serializers.SerializerMethodField()
 
     class Meta(object):
@@ -1301,6 +1335,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     def get_access_url(self, obj):
         return obj.get_access_url()
 
+    @transaction.atomic
     def create(self, validated_data):
         data = validated_data.copy()
         fields = self.get_resource_fields()
@@ -1309,7 +1344,9 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             if prop not in fields:
                 del data[prop]
 
-        return super(BaseResourceSerializer, self).create(data)
+        resource = super(BaseResourceSerializer, self).create(data)
+        resource.increase_backend_quotas_usage()
+        return resource
 
 
 class PublishableResourceSerializer(BaseResourceSerializer):
