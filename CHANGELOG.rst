@@ -5,6 +5,10 @@ Release NEXT
 ------------
 Nothing yet.
 
+Release 0.101.1
+---------------
+- Bugfix.
+
 Release 0.101.0
 ---------------
 - Implement management command for cleaning up stale event types in hooks and system notifications.
