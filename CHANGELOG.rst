@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+Nothing yet.
+
+Release 0.101.0
+---------------
 - Implement management command for cleaning up stale event types in hooks and system notifications.
 - Rewrite hook summary view using SummaryQuerySet.
 - Allow quotas to raise errors if their usage is over limit.
