@@ -1335,6 +1335,20 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     def get_access_url(self, obj):
         return obj.get_access_url()
 
+    @staticmethod
+    def eager_load(queryset):
+        return (
+            queryset
+            .select_related(
+                'service_project_link',
+                'service_project_link__service',
+                'service_project_link__project',
+                'service_project_link__project__customer')
+            .prefetch_related(
+                'project__project_groups',
+                'tags')
+        )
+
     @transaction.atomic
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1361,6 +1375,15 @@ class SummaryResourceSerializer(serializers.Serializer):
     def to_representation(self, instance):
         serializer = SupportedServices.get_resource_serializer(instance.__class__)
         return serializer(instance, context=self.context).data
+
+    @staticmethod
+    def eager_load(summary_queryset):
+        optimized_querysets = []
+        for queryset in summary_queryset.querysets:
+            serializer = SupportedServices.get_resource_serializer(queryset.model)
+            optimized_querysets.append(serializer.eager_load(queryset))
+        summary_queryset.querysets = optimized_querysets
+        return summary_queryset
 
 
 class SummaryServiceSerializer(serializers.Serializer):

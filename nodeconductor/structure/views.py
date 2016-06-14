@@ -1285,7 +1285,8 @@ class ResourceViewSet(mixins.ListModelMixin,
         resource_models = self._filter_by_category(resource_models)
         resource_models = self._filter_by_types(resource_models)
 
-        return managers.ResourceSummaryQuerySet(resource_models.values())
+        queryset = managers.ResourceSummaryQuerySet(resource_models.values())
+        return serializers.SummaryResourceSerializer.eager_load(queryset)
 
     def _filter_by_types(self, resource_models):
         types = self.request.query_params.getlist('resource_type', None)
