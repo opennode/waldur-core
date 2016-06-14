@@ -3,7 +3,7 @@ import json
 from django import forms
 from django.contrib import admin
 
-from nodeconductor.logging.models import Alert, SystemNotification
+from nodeconductor.logging import models
 from nodeconductor.logging.loggers import get_valid_events
 
 
@@ -21,7 +21,7 @@ class SystemNotificationForm(forms.ModelForm):
         widget=forms.SelectMultiple(attrs={'size': '30'}))
 
     class Meta:
-        model = SystemNotification
+        model = models.SystemNotification
         exclude = 'uuid',
 
 
@@ -34,8 +34,27 @@ class AlertAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'alert_type', 'created', 'closed', 'scope', 'severity')
     list_filter = ('alert_type', 'created', 'closed', 'severity')
     ordering = ('alert_type',)
-    base_model = Alert
+    base_model = models.Alert
 
 
-admin.site.register(Alert, AlertAdmin)
-admin.site.register(SystemNotification, SystemNotificationAdmin)
+class BaseHookAdmin(admin.ModelAdmin):
+    list_display = ('uuid', 'user', 'is_active', 'event_types', 'event_groups')
+
+
+class WebHookAdmin(BaseHookAdmin):
+    list_display = BaseHookAdmin.list_display + ('destination_url',)
+
+
+class EmailHookAdmin(BaseHookAdmin):
+    list_display = BaseHookAdmin.list_display + ('email',)
+
+
+class PushHookAdmin(BaseHookAdmin):
+    list_display = BaseHookAdmin.list_display + ('type', 'device_id')
+
+
+admin.site.register(models.Alert, AlertAdmin)
+admin.site.register(models.SystemNotification, SystemNotificationAdmin)
+admin.site.register(models.WebHook, WebHookAdmin)
+admin.site.register(models.EmailHook, EmailHookAdmin)
+admin.site.register(models.PushHook, PushHookAdmin)

@@ -48,7 +48,8 @@ class EventSerializer(serializers.Serializer):
 
 
 class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
-    event_types = serializers.MultipleChoiceField(choices=loggers.get_valid_events(), allow_blank=False)
+    event_types = serializers.MultipleChoiceField(choices=loggers.get_valid_events(), required=False)
+    event_groups = serializers.MultipleChoiceField(choices=loggers.get_event_groups_keys(), required=False)
     author_uuid = serializers.ReadOnlyField(source='user.uuid')
     hook_type = serializers.SerializerMethodField()
 
@@ -56,7 +57,8 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         model = models.BaseHook
 
         fields = (
-            'url', 'uuid', 'is_active', 'author_uuid', 'event_types', 'created', 'modified',
+            'url', 'uuid', 'is_active', 'author_uuid',
+            'event_types', 'event_groups', 'created', 'modified',
             'hook_type'
         )
 
@@ -68,10 +70,17 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         validated_data['user'] = self.context['request'].user
         return super(BaseHookSerializer, self).create(validated_data)
 
-    def validate(self, validated_data):
-        if 'event_types' in validated_data:
-            validated_data['event_types'] = list(validated_data['event_types'])
-        return validated_data
+    def validate(self, attrs):
+        if 'event_types' not in attrs and 'event_groups' not in attrs:
+            raise serializers.ValidationError('Please specify list of event_types or event_groups.')
+
+        events = list(attrs.get('event_types', []))
+        groups = list(attrs.get('event_groups', []))
+
+        attrs['event_types'] = sorted(set(loggers.expand_event_groups(groups)) | set(events))
+        attrs['event_groups'] = groups
+
+        return attrs
 
     def get_hook_type(self, hook):
         raise NotImplemented

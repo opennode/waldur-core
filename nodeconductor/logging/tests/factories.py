@@ -5,6 +5,7 @@ import factory
 
 from nodeconductor.logging import models
 # Dependency from `structure` application exists only in tests
+from nodeconductor.logging.loggers import get_valid_events
 from nodeconductor.structure.tests import factories as structure_factories
 
 
@@ -80,3 +81,21 @@ class AlertFactory(factory.DjangoModelFactory):
             alert = AlertFactory()
         url = 'http://testserver' + reverse('alert-detail', kwargs={'uuid': alert.uuid})
         return url if action is None else url + action + '/'
+
+
+class WebHookFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = models.WebHook
+
+    event_types = get_valid_events()[:3]
+    destination_url = 'http://example.com/'
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('webhook-list')
+
+    @classmethod
+    def get_url(self, hook=None):
+        if hook is None:
+            hook = WebHookFactory()
+        return 'http://testserver' + reverse('webhook-detail', kwargs={'uuid': hook.uuid})
