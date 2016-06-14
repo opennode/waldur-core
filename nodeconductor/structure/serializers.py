@@ -59,6 +59,8 @@ class PermissionFieldFilteringMixin(object):
             return fields
 
         for field_name in self.get_filtered_field_names():
+            if field_name not in fields:  # field could be not required by user
+                continue
             field = fields[field_name]
             field.queryset = filter_queryset_for_user(field.queryset, user)
 
@@ -927,6 +929,7 @@ class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
 
 class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                             PermissionFieldFilteringMixin,
+                            core_serializers.RestrictedSerializerMixin,
                             core_serializers.AugmentedSerializerMixin,
                             serializers.HyperlinkedModelSerializer)):
 
@@ -1020,7 +1023,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def get_fields(self):
         fields = super(BaseServiceSerializer, self).get_fields()
 
-        if self.Meta.model is not NotImplemented:
+        if self.Meta.model is not NotImplemented and 'settings' in fields:
             key = SupportedServices.get_model_key(self.Meta.model)
             fields['settings'].queryset = fields['settings'].queryset.filter(type=key)
 
@@ -1028,6 +1031,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             # each service settings could be connected to scope
             self.SERVICE_ACCOUNT_FIELDS['scope'] = 'VM that contains service'
             for field in self.Meta.settings_fields:
+                if field not in fields:
+                    continue
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
                 else:
@@ -1343,7 +1348,8 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                 'service_project_link',
                 'service_project_link__service',
                 'service_project_link__project',
-                'service_project_link__project__customer')
+                'service_project_link__project__customer',
+            )
             .prefetch_related(
                 'project__project_groups',
                 'tags')
