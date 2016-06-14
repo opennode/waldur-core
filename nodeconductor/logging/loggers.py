@@ -390,7 +390,7 @@ class BaseLoggerRegistry(object):
         mapping = self.get_all_groups()
         for group in groups:
             items.update(mapping.get(group, []))
-        return list(sorted(items))
+        return sorted(items)
 
 
 class EventLoggerRegistry(BaseLoggerRegistry):
@@ -423,6 +423,10 @@ def get_valid_alerts():
 
 def get_event_groups():
     return event_logger.get_all_groups()
+
+
+def get_event_groups_keys():
+    return sorted(get_event_groups().keys())
 
 
 def get_alert_groups():

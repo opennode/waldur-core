@@ -2,18 +2,22 @@ from django.core.urlresolvers import reverse
 from rest_framework import status, test
 
 from nodeconductor.logging import loggers
+from nodeconductor.logging.tests.factories import WebHookFactory
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-class HookCreationViewTest(test.APITransactionTestCase):
+class BaseHookApiTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.author = structure_factories.UserFactory()
         self.other_user = structure_factories.UserFactory()
 
+
+class HookCreationViewTest(BaseHookApiTest):
+
     def test_user_can_create_webhook(self):
         self.client.force_authenticate(user=self.author)
-        response = self.client.post(reverse('webhook-list'), data={
+        response = self.client.post(WebHookFactory.get_list_url(), data={
             'event_types': loggers.get_valid_events()[:3],
             'destination_url': 'http://example.com/'
         })
@@ -27,19 +31,25 @@ class HookCreationViewTest(test.APITransactionTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
 
-
-class HookPermisssionsViewTest(test.APITransactionTestCase):
-    def setUp(self):
-        self.staff = structure_factories.UserFactory(is_staff=True)
-        self.author = structure_factories.UserFactory()
-        self.other_user = structure_factories.UserFactory()
+    def test_user_can_subscribe_to_event_groups(self):
+        event_groups = loggers.get_event_groups_keys()[:3]
+        event_types = loggers.expand_event_groups(event_groups)
 
         self.client.force_authenticate(user=self.author)
-        response = self.client.post(reverse('webhook-list'), data={
-            'event_types': loggers.get_valid_events()[:3],
+        response = self.client.post(WebHookFactory.get_list_url(), data={
+            'event_groups': event_groups,
             'destination_url': 'http://example.com/'
         })
-        self.url = response.data['url']
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['event_groups'], set(event_groups))
+        self.assertEqual(response.data['event_types'], set(event_types))
+
+
+class HookPermisssionsViewTest(BaseHookApiTest):
+
+    def setUp(self):
+        super(HookPermisssionsViewTest, self).setUp()
+        self.url = WebHookFactory.get_url(WebHookFactory(user=self.author))
 
     def test_hook_visible_to_author(self):
         self.client.force_authenticate(user=self.author)
