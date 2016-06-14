@@ -99,7 +99,7 @@ class CustomerAdminForm(ModelForm):
 class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
-              'billing_backend_id', 'balance', 'owners')
+              'billing_backend_id', 'country', 'vat_code', 'is_company', 'balance', 'owners')
     readonly_fields = ['balance']
     actions = ['update_projected_estimate']
     list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']

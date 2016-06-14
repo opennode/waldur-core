@@ -3,10 +3,23 @@ CHANGELOG
 
 Release NEXT
 ------------
+Nothing yet.
+
+Release 0.101.2
+---------------
+- Fix documentation generation.
+
+Release 0.101.1
+---------------
+- Bugfix.
+
+Release 0.101.0
+---------------
 - Implement management command for cleaning up stale event types in hooks and system notifications.
 - Rewrite hook summary view using SummaryQuerySet.
 - Allow quotas to raise errors if their usage is over limit.
 - Fix monitoring_items serializer.
+- Verify VAT number using VIES checker and store it database.
 - Fix filtering historic resources by customer.
 
 Release 0.100.0

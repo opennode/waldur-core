@@ -37,6 +37,8 @@ install_requires = [
     'jsonfield==1.0.0',
     'Pillow>=2.0.0,<3.0.0',
     'PyYAML>=3.10',
+    'pycountry>=1.20,<2.0',
+    'pyvat>=1.3.1,<2.0',
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
@@ -44,7 +46,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.100.0',
+    version='0.101.2',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

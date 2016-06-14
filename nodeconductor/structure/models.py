@@ -24,6 +24,7 @@ from model_utils.fields import AutoCreatedField
 from taggit.managers import TaggableManager
 
 
+from nodeconductor.core import fields as core_fields
 from nodeconductor.core import models as core_models
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
@@ -79,11 +80,26 @@ class StructureModel(models.Model):
             "'%s' object has no attribute '%s'" % (self._meta.object_name, name))
 
 
+class VATMixin(models.Model):
+    """
+    Add VAT number field and check results from EU VAT Information Exchange System.
+    """
+    class Meta(object):
+        abstract = True
+
+    vat_code = models.CharField(max_length=20, blank=True, help_text='VAT number')
+    vat_name = models.CharField(max_length=255, blank=True,
+                                help_text='Optional business name retrieved for the VAT number.')
+    vat_address = models.CharField(max_length=255, blank=True,
+                                   help_text='Optional business address retrieved for the VAT number.')
+
+
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                core_models.DescendantMixin,
                quotas_models.QuotaModelMixin,
+               VATMixin,
                LoggableMixin,
                ImageModelMixin,
                TimeStampedModel,
@@ -101,6 +117,9 @@ class Customer(core_models.UuidMixin,
 
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
+
+    is_company = models.BooleanField(default=False, help_text="Is company or private person")
+    country = core_fields.CountryField(blank=True)
 
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 
