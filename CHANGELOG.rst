@@ -5,6 +5,10 @@ Release NEXT
 ------------
 Nothing yet.
 
+Release 0.101.2
+---------------
+- Fix documentation generation.
+
 Release 0.101.1
 ---------------
 - Bugfix.
