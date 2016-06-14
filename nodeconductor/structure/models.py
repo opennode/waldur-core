@@ -1127,9 +1127,10 @@ class ResourceMixin(MonitoringModelMixin,
     def get_related_resources(self):
         return itertools.chain(
             self._get_generic_related_resources(),
-            self._get_concrete_related_resources(),
-            self._get_concrete_linked_resources(),
-            self._get_generic_linked_resources()
+            # XXX: Temporary hack to speed up queries. Related resources should be removed.
+            # self._get_concrete_related_resources(),
+            # self._get_concrete_linked_resources(),
+            # self._get_generic_linked_resources()
         )
 
     def _get_generic_related_resources(self):
