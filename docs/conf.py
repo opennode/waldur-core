@@ -267,7 +267,7 @@ texinfo_documents = [
 intersphinx_mapping = {'http://docs.python.org/': None}
 
 import django
-os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.test_settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.doc_settings'
 django.setup()
 
 # Generate API documentation
