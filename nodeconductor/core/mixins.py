@@ -130,3 +130,18 @@ class DeleteExecutorMixin(AsyncExecutor):
             instance, async=self.async_executor, force=instance.state == models.StateMixin.States.ERRED)
         return response.Response(
             {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
+
+
+class EagerLoadMixin(object):
+    """ Reduce number of requests to DB.
+
+        Serializer should implement static method "eager_load", that selects
+        objects that are necessary for serialization.
+    """
+
+    def get_queryset(self):
+        queryset = super(EagerLoadMixin, self).get_queryset()
+        serializer_class = self.get_serializer_class()
+        if self.action in ('list', 'retrieve') and hasattr(serializer_class, 'eager_load'):
+            queryset = serializer_class.eager_load(queryset)
+        return queryset
