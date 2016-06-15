@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import collections
 import functools
 import importlib
 import logging
@@ -48,21 +47,18 @@ class SupportedServices(object):
 
     """
 
-    class Types(object):
+    @classmethod
+    def get_filter_mapping(cls):
+        return {name: code for code, name in cls.get_choices()}
 
-        @classmethod
-        def get_direct_filter_mapping(cls):
-            return tuple((name, name) for _, name in SupportedServices.get_choices())
+    _registry = {}
 
-        @classmethod
-        def get_reverse_filter_mapping(cls):
-            return {name: code for code, name in SupportedServices.get_choices()}
-
-    _registry = collections.defaultdict(lambda: {
-        'backend': None,
-        'resources': {},
-        'properties': {}
-    })
+    @classmethod
+    def _setdefault(cls, service_key):
+        cls._registry.setdefault(service_key, {
+            'resources': {},
+            'properties': {}
+        })
 
     @classmethod
     def register_backend(cls, backend_class, nested=False):
@@ -72,6 +68,7 @@ class SupportedServices(object):
         # For nested backends just discover resources/properties
         if not nested:
             key = cls.get_model_key(backend_class)
+            cls._setdefault(key)
             cls._registry[key]['backend'] = backend_class
 
         # Forcely import service serialize to run services autodiscovery
@@ -86,6 +83,7 @@ class SupportedServices(object):
         if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
+        cls._setdefault(key)
         cls._registry[key]['name'] = key
         cls._registry[key]['model_name'] = cls._get_model_str(model)
         cls._registry[key]['detail_view'] = cls.get_detail_view_for_model(model)
@@ -96,6 +94,7 @@ class SupportedServices(object):
         if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
+        cls._setdefault(key)
         cls._registry[key]['serializer'] = serializer
 
     @classmethod
@@ -103,6 +102,7 @@ class SupportedServices(object):
         if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
+        cls._setdefault(key)
         cls._registry[key]['filter'] = filter
 
     @classmethod
@@ -110,6 +110,7 @@ class SupportedServices(object):
         if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
+        cls._setdefault(key)
         model_str = cls._get_model_str(model)
         cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
         cls._registry[key]['resources'][model_str]['detail_view'] = cls.get_detail_view_for_model(model)
@@ -121,6 +122,7 @@ class SupportedServices(object):
         if model is NotImplemented or not cls._is_active_model(model) or model._meta.abstract:
             return
         key = cls.get_model_key(model)
+        cls._setdefault(key)
         model_str = cls._get_model_str(model)
         cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
         cls._registry[key]['resources'][model_str]['filter'] = filter
@@ -130,6 +132,7 @@ class SupportedServices(object):
         if model is NotImplemented or not cls._is_active_model(model) or model._meta.abstract:
             return
         key = cls.get_model_key(model)
+        cls._setdefault(key)
         model_str = cls._get_model_str(model)
         cls._registry[key]['resources'].setdefault(model_str, {'name': model.__name__})
         cls._registry[key]['resources'][model_str]['view'] = view
@@ -139,6 +142,7 @@ class SupportedServices(object):
         if model is NotImplemented or not cls._is_active_model(model):
             return
         key = cls.get_model_key(model)
+        cls._setdefault(key)
         model_str = cls._get_model_str(model)
         cls._registry[key]['properties'][model_str] = {
             'name': model.__name__,
@@ -151,7 +155,7 @@ class SupportedServices(object):
             key = cls.get_model_key(key)
         try:
             return cls._registry[key]['backend']
-        except IndexError:
+        except KeyError:
             raise ServiceBackendNotImplemented
 
     @classmethod
