@@ -432,7 +432,7 @@ class TimelineSerializer(serializers.Serializer):
 
 
 class BaseSummarySerializer(serializers.Serializer):
-    """ Serializer that renders each instance with its own specific serailaizer """
+    """ Serializer that renders each instance with its own specific serialaizer """
 
     @classmethod
     def get_serializer(cls, model):
@@ -440,7 +440,6 @@ class BaseSummarySerializer(serializers.Serializer):
 
     @classmethod
     def eager_load(cls, summary_queryset):
-        print 'summary eager load was called'
         optimized_querysets = []
         for queryset in summary_queryset.querysets:
             serializer = cls.get_serializer(queryset.model)
