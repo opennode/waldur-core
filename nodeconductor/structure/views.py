@@ -1175,6 +1175,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
                              mixins.UpdateModelMixin,
                              mixins.ListModelMixin,
+                             core_mixins.EagerLoadMixin,
                              viewsets.GenericViewSet):
     queryset = models.ServiceSettings.objects.filter()
     serializer_class = serializers.ServiceSettingsSerializer
@@ -1441,7 +1442,8 @@ class ServicesViewSet(mixins.ListModelMixin,
         service_models = {k: v['service'] for k, v in SupportedServices.get_service_models().items()}
         service_models = self._filter_by_types(service_models)
         # TODO: filter models by service type.
-        return managers.ServiceSummaryQuerySet(service_models.values())
+        queryset = managers.ServiceSummaryQuerySet(service_models.values())
+        return serializers.SummaryServiceSerializer.eager_load(queryset)
 
     def _filter_by_types(self, service_models):
         types = self.request.query_params.getlist('service_type', None)

@@ -111,7 +111,6 @@ class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
 class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.Project
-        fields = ('url', 'uuid', 'name')
 
 
 class PermissionProjectSerializer(BasicProjectSerializer):
@@ -122,8 +121,6 @@ class PermissionProjectSerializer(BasicProjectSerializer):
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
-        fields = ('url', 'name', 'uuid')
-        read_only_fields = ('name', 'uuid')
 
 
 class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
@@ -364,7 +361,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
                     self.instance.vat_name = check_result.business_name
                     self.instance.vat_address = check_result.business_address
                     self.instance.save(update_fields=['vat_name', 'vat_address'])
-                elif check_result.is_valid == False:
+                elif check_result.is_valid is False:
                     raise serializers.ValidationError({'vat_code': 'VAT number is invalid.'})
                 else:
                     logger.debug('Unable to check VAT number %s for country %s. Error message: %s',
@@ -873,6 +870,10 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
     def get_filtered_field_names(self):
         return 'customer',
 
+    @staticmethod
+    def eager_load(queryset):
+        return queryset.select_related('customer').prefetch_related('quotas')
+
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
         request = self.context['request']
@@ -1376,27 +1377,18 @@ class PublishableResourceSerializer(BaseResourceSerializer):
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
-class SummaryResourceSerializer(serializers.Serializer):
+class SummaryResourceSerializer(core_serializers.BaseSummarySerializer):
 
-    def to_representation(self, instance):
-        serializer = SupportedServices.get_resource_serializer(instance.__class__)
-        return serializer(instance, context=self.context).data
-
-    @staticmethod
-    def eager_load(summary_queryset):
-        optimized_querysets = []
-        for queryset in summary_queryset.querysets:
-            serializer = SupportedServices.get_resource_serializer(queryset.model)
-            optimized_querysets.append(serializer.eager_load(queryset))
-        summary_queryset.querysets = optimized_querysets
-        return summary_queryset
+    @classmethod
+    def get_serializer(cls, model):
+        return SupportedServices.get_resource_serializer(model)
 
 
-class SummaryServiceSerializer(serializers.Serializer):
+class SummaryServiceSerializer(core_serializers.BaseSummarySerializer):
 
-    def to_representation(self, instance):
-        serializer = SupportedServices.get_service_serializer(instance.__class__)
-        return serializer(instance, context=self.context).data
+    @classmethod
+    def get_serializer(cls, model):
+        return SupportedServices.get_service_serializer(model)
 
 
 class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
