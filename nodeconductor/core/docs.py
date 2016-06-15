@@ -4,10 +4,8 @@ import logging
 
 from django.apps import apps
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.admindocs.views import simplify_regex
 from django.core.urlresolvers import RegexURLResolver, RegexURLPattern
-from django.http import QueryDict
 from django_filters import ModelMultipleChoiceFilter
 
 from rest_framework.fields import ChoiceField, ReadOnlyField, ModelField
@@ -18,6 +16,7 @@ from rest_framework.views import APIView
 
 from nodeconductor.core.filters import ContentTypeFilter, MappedMultipleChoiceFilter
 from nodeconductor.core.serializers import GenericRelatedField
+from nodeconductor.core.utils import get_fake_context
 
 logger = logging.getLogger(__name__)
 
@@ -274,10 +273,7 @@ class ApiEndpoint(object):
                 return []
 
         if isinstance(cls, type):
-            user = get_user_model()()
-            serializer = cls(context={
-                'request': self.fake_request(user),
-                'user': user})
+            serializer = cls(context=get_fake_context())
         else:
             serializer = cls
         if cls:
@@ -296,9 +292,6 @@ class ApiEndpoint(object):
             } for key, field in serializer.get_fields().items()]
 
         return []
-
-    def fake_request(self, user):
-        return type('R', (object,), {'method': 'GET', 'user': user, 'query_params': QueryDict()})
 
     def get_filter_fields(self):
         try:
