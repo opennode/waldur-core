@@ -58,7 +58,7 @@ class IPAddressField(serializers.CharField):
 
 class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
-        fields = ('url', 'name')
+        fields = ('url', 'uuid', 'name')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -429,3 +429,24 @@ class TimelineSerializer(serializers.Serializer):
             points.append(end_time)
 
         return [p for p in points if start_time <= p <= end_time]
+
+
+class BaseSummarySerializer(serializers.Serializer):
+    """ Serializer that renders each instance with its own specific serialaizer """
+
+    @classmethod
+    def get_serializer(cls, model):
+        raise NotImplementedError('Method `get_serializer` should be implemented for SummarySerializer.')
+
+    @classmethod
+    def eager_load(cls, summary_queryset):
+        optimized_querysets = []
+        for queryset in summary_queryset.querysets:
+            serializer = cls.get_serializer(queryset.model)
+            optimized_querysets.append(serializer.eager_load(queryset))
+        summary_queryset.querysets = optimized_querysets
+        return summary_queryset
+
+    def to_representation(self, instance):
+        serializer = self.get_serializer(instance.__class__)
+        return serializer(instance, context=self.context).data
