@@ -9,7 +9,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.models import SshPublicKey, SynchronizationStates
+from nodeconductor.core.models import SshPublicKey, SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -380,6 +380,15 @@ def log_resource_imported(sender, instance, **kwargs):
         'Resource {resource_full_name} has been imported.',
         event_type='resource_import_succeeded',
         event_context={'resource': instance})
+
+
+def check_resource_provisioned(sender, instance, name, source, target, **kwargs):
+    if isinstance(instance, Resource):
+        if source == Resource.States.PROVISIONING and target == Resource.States.ONLINE:
+            signals.resource_provisioned.send(sender=instance.__class__, instance=instance)
+    elif isinstance(instance, StateMixin):
+        if source == StateMixin.States.CREATING and target == StateMixin.States.OK:
+            signals.resource_provisioned.send(sender=instance.__class__, instance=instance)
 
 
 def log_resource_action(sender, instance, name, source, target, **kwargs):

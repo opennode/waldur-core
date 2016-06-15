@@ -13,7 +13,7 @@ class CostTrackingConfig(AppConfig):
         from nodeconductor.core.handlers import preserve_fields_before_update
         from nodeconductor.cost_tracking import handlers
         from nodeconductor.structure import models as structure_models
-        from nodeconductor.structure.signals import resource_imported
+        from nodeconductor.structure.signals import resource_imported, resource_provisioned
 
         PriceEstimate = self.get_model('PriceEstimate')
 
@@ -51,14 +51,6 @@ class CostTrackingConfig(AppConfig):
         )
 
         for index, resource in enumerate(structure_models.ResourceMixin.get_all_models()):
-            # post_transition.connect(
-            #     handlers.add_resource_price_estimate_on_provision,
-            #     sender=resource,
-            #     dispatch_uid=(
-            #         'nodeconductor.cost_tracking.handlers.add_resource_price_estimate_on_provision_{}_{}'
-            #         .format(resource.__name__, index))
-            # )
-
             signals.pre_save.connect(
                 preserve_fields_before_update,
                 sender=resource,
@@ -84,10 +76,18 @@ class CostTrackingConfig(AppConfig):
             )
 
             resource_imported.connect(
-                handlers.update_price_estimate_on_resource_import,
+                handlers.update_projected_estimate,
                 sender=resource,
                 dispatch_uid=(
                     'nodeconductor.cost_tracking.handlers.update_price_estimate_on_resource_import_{}_{}'
+                    .format(resource.__name__, index))
+            )
+
+            resource_provisioned.connect(
+                handlers.update_projected_estimate,
+                sender=resource,
+                dispatch_uid=(
+                    'nodeconductor.cost_tracking.handlers.add_resource_price_estimate_on_provision_{}_{}'
                     .format(resource.__name__, index))
             )
 
