@@ -432,7 +432,7 @@ class TimelineSerializer(serializers.Serializer):
 
 
 class BaseSummarySerializer(serializers.Serializer):
-    """ Serializer that renders each instance with its own specific serialaizer """
+    """ Serializer that renders each instance with its own specific serializer """
 
     @classmethod
     def get_serializer(cls, model):
