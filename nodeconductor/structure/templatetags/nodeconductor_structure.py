@@ -2,6 +2,7 @@ from collections import OrderedDict
 from django import template
 from django.utils.lru_cache import lru_cache
 
+from nodeconductor.core.utils import get_fake_context
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.serializers import BaseServiceSerializer
 
@@ -39,7 +40,8 @@ def get_fields(serializer_class):
     if extra_field_names is NotImplemented:
         extra_field_names = []
 
-    for name, field in serializer_class().get_fields().items():
+    serializer = serializer_class(context=get_fake_context())
+    for name, field in serializer.get_fields().items():
         data = {
             'label': field.label,
             'help_text': field.help_text,
