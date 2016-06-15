@@ -520,12 +520,15 @@ class SshKeyFilter(django_filters.FilterSet):
         ]
 
 
+class ServiceTypeFilter(django_filters.Filter):
+    def filter(self, qs, value):
+        value = SupportedServices.get_filter_mapping().get(value)
+        return super(ServiceTypeFilter, self).filter(qs, value)
+
+
 class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
-    type = core_filters.MappedChoiceFilter(
-        choices=SupportedServices.Types.get_direct_filter_mapping(),
-        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping()
-    )
+    type = ServiceTypeFilter()
     state = core_filters.SynchronizationStateFilter()
 
     class Meta(object):
@@ -552,11 +555,7 @@ class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filter
     project_uuid = django_filters.CharFilter(name='projects__uuid', distinct=True)
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
     shared = django_filters.BooleanFilter(name='settings__shared', distinct=True)
-    type = core_filters.MappedChoiceFilter(
-        name='settings__type',
-        choices=SupportedServices.Types.get_direct_filter_mapping(),
-        choice_mappings=SupportedServices.Types.get_reverse_filter_mapping()
-    )
+    type = ServiceTypeFilter(name='settings__type')
     tag = django_filters.ModelMultipleChoiceFilter(
         name='settings__tags__name',
         to_field_name='name',

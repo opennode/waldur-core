@@ -47,15 +47,9 @@ class SupportedServices(object):
 
     """
 
-    class Types(object):
-
-        @classmethod
-        def get_direct_filter_mapping(cls):
-            return tuple((name, name) for _, name in SupportedServices.get_choices())
-
-        @classmethod
-        def get_reverse_filter_mapping(cls):
-            return {name: code for code, name in SupportedServices.get_choices()}
+    @classmethod
+    def get_filter_mapping(cls):
+        return {name: code for code, name in cls.get_choices()}
 
     _registry = {}
 
