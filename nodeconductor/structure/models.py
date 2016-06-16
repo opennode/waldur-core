@@ -8,8 +8,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.core.validators import MaxLengthValidator
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxLengthValidator
 from django.db import models, transaction
 from django.db.models import Q, F
 from django.utils.encoding import python_2_unicode_compatible
@@ -1127,9 +1127,10 @@ class ResourceMixin(MonitoringModelMixin,
     def get_related_resources(self):
         return itertools.chain(
             self._get_generic_related_resources(),
-            self._get_concrete_related_resources(),
-            self._get_concrete_linked_resources(),
-            self._get_generic_linked_resources()
+            # XXX: Temporary hack to speed up queries. Related resources should be removed.
+            # self._get_concrete_related_resources(),
+            # self._get_concrete_linked_resources(),
+            # self._get_generic_linked_resources()
         )
 
     def _get_generic_related_resources(self):
@@ -1206,6 +1207,18 @@ class ResourceMixin(MonitoringModelMixin,
     def __str__(self):
         return self.name
 
+    def increase_backend_quotas_usage(self, validate=True):
+        """ Increase usage of quotas that were consumed by resource on creation.
+
+            If validate is True - method should raise QuotaValidationError if
+            at least one of increased quotas if over limit.
+        """
+        pass
+
+    def decrease_backend_quotas_usage(self):
+        """ Decrease usage of quotas that were released on resource deletion """
+        pass
+
 
 # deprecated, use NewResource instead.
 class Resource(OldStateResourceMixin, ResourceMixin):
@@ -1218,18 +1231,6 @@ class NewResource(ResourceMixin, core_models.StateMixin):
 
     class Meta(object):
         abstract = True
-
-    def increase_backend_quotas_usage(self, validate=True):
-        """ Increase usage of quotas that were consumed by resource on creation.
-
-            If validate is True - method should raise QuotaValidationError if
-            at least one of increased quotas if over limit.
-        """
-        pass
-
-    def decrease_backend_quotas_usage(self):
-        """ Decrease usage of quotas that were released on resource deletion """
-        pass
 
 
 class PublishableResource(PublishableMixin, Resource):

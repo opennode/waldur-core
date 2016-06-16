@@ -107,12 +107,13 @@ class AlertThresholdMixin(models.Model):
 
 class EventTypesMixin(models.Model):
     """
-    Mixin to add a event_types field.
+    Mixin to add a event_types and event_groups fields.
     """
     class Meta(object):
         abstract = True
 
     event_types = JSONField('List of event types')
+    event_groups = JSONField('List of event groups', default=[])
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -164,6 +165,8 @@ class WebHook(BaseHook):
     )
 
     def process(self, event):
+        logger.debug('Submitting web hook to URL %s, payload: %s', self.destination_url, event)
+
         # encode event as JSON
         if self.content_type == WebHook.ContentTypeChoices.JSON:
             requests.post(self.destination_url, json=event, verify=False)
@@ -240,6 +243,7 @@ class EmailHook(BaseHook):
         event['timestamp'] = timestamp_to_datetime(event['timestamp'])
         text_message = event['message']
         html_message = render_to_string('logging/email.html', {'events': [event]})
+        logger.debug('Submitting email hook to %s, payload: %s', self.email, event)
         send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [self.email], html_message=html_message)
 
 

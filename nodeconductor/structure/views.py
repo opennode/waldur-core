@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 User = auth.get_user_model()
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
@@ -135,12 +135,6 @@ class CustomerViewSet(viewsets.ModelViewSet):
             context['customer'] = self.get_object()
         return context
 
-    def get_queryset(self):
-        queryset = super(CustomerViewSet, self).get_queryset()
-        if self.action in ('list', 'retrieve'):
-            queryset = self.get_serializer_class().eager_load(queryset)
-        return queryset
-
     def perform_create(self, serializer):
         customer = serializer.save()
         if not self.request.user.is_staff:
@@ -196,7 +190,7 @@ class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generi
         raise PermissionDenied()
 
 
-class ProjectViewSet(viewsets.ModelViewSet):
+class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
@@ -299,8 +293,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if can_manage is not None:
             queryset = queryset.filter(
                 Q(customer__roles__permission_group__user=user,
-                  customer__roles__role_type=models.CustomerRole.OWNER)
-                |
+                  customer__roles__role_type=models.CustomerRole.OWNER) |
                 Q(roles__permission_group__user=user,
                   roles__role_type=models.ProjectRole.MANAGER)
             ).distinct()
@@ -313,8 +306,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 roles__role_type=models.ProjectRole.ADMINISTRATOR,
             )
 
-        if self.action in ('list', 'retrieve'):
-            queryset = self.get_serializer_class().eager_load(queryset)
         return queryset
 
     def perform_create(self, serializer):
@@ -1184,6 +1175,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
                              mixins.UpdateModelMixin,
                              mixins.ListModelMixin,
+                             core_mixins.EagerLoadMixin,
                              viewsets.GenericViewSet):
     queryset = models.ServiceSettings.objects.filter()
     serializer_class = serializers.ServiceSettingsSerializer
@@ -1294,7 +1286,8 @@ class ResourceViewSet(mixins.ListModelMixin,
         resource_models = self._filter_by_category(resource_models)
         resource_models = self._filter_by_types(resource_models)
 
-        return managers.ResourceSummaryQuerySet(resource_models.values())
+        queryset = managers.ResourceSummaryQuerySet(resource_models.values())
+        return serializers.SummaryResourceSerializer.eager_load(queryset)
 
     def _filter_by_types(self, resource_models):
         types = self.request.query_params.getlist('resource_type', None)
@@ -1449,7 +1442,8 @@ class ServicesViewSet(mixins.ListModelMixin,
         service_models = {k: v['service'] for k, v in SupportedServices.get_service_models().items()}
         service_models = self._filter_by_types(service_models)
         # TODO: filter models by service type.
-        return managers.ServiceSummaryQuerySet(service_models.values())
+        queryset = managers.ServiceSummaryQuerySet(service_models.values())
+        return serializers.SummaryServiceSerializer.eager_load(queryset)
 
     def _filter_by_types(self, service_models):
         types = self.request.query_params.getlist('service_type', None)
@@ -1692,6 +1686,7 @@ class UpdateOnlyByPaidCustomerMixin(object):
 
 
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
+                         core_mixins.EagerLoadMixin,
                          core_mixins.UserContextMixin,
                          viewsets.ModelViewSet):
     class PaidControl:
@@ -1751,14 +1746,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             }
         """
         return super(BaseServiceViewSet, self).list(request, *args, **kwargs)
-
-    def get_queryset(self, *args, **kwargs):
-        queryset = super(BaseServiceViewSet, self).get_queryset(*args, **kwargs)
-        if self.action in ('list', 'retrieve'):
-            serializer_class = self.get_serializer_class()
-            if hasattr(serializer_class, 'eager_load'):
-                return serializer_class.eager_load(queryset)
-        return queryset
 
     def _can_import(self):
         return self.import_serializer_class is not NotImplemented
@@ -1950,7 +1937,7 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
-class ResourceViewMixin(UpdateOnlyByPaidCustomerMixin):
+class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixin):
     class PaidControl:
         customer_path = 'service_project_link__service__customer'
         settings_path = 'service_project_link__service__settings'
