@@ -358,9 +358,10 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             if not self.instance or self.instance.vat_code != vat_code or self.instance.country != country:
                 check_result = pyvat.check_vat_number(vat_code, country)
                 if check_result.is_valid:
-                    self.instance.vat_name = check_result.business_name
-                    self.instance.vat_address = check_result.business_address
-                    self.instance.save(update_fields=['vat_name', 'vat_address'])
+                    attrs['vat_name'] = check_result.business_name
+                    attrs['vat_address'] = check_result.business_address
+                    if not attrs.get('contact_details'):
+                        attrs['contact_details'] = attrs['vat_address']
                 elif check_result.is_valid is False:
                     raise serializers.ValidationError({'vat_code': 'VAT number is invalid.'})
                 else:
