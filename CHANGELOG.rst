@@ -5,6 +5,14 @@ Release NEXT
 ------------
 Nothing yet.
 
+Release 0.101.3
+---------------
+- Speedup services and resources load time.
+- Provide view mixin for eager load.
+- Add support for subscription to event groups.
+- Fix service settings change view.
+- Fix Travis build and documentation generation for plugin.
+
 Release 0.101.2
 ---------------
 - Fix documentation generation.
