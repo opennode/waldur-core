@@ -73,27 +73,18 @@ contains 2 templates:
 Setup
 *****
 
-1. Add settings for SMS sending to NodeConductor settings:
-
-.. code-block:: python
-
-    NODECONDUCTOR_ZABBIX_SMS_SETTINGS = {
-      'SMS_EMAIL_FROM': 'email',
-      'SMS_EMAIL_RCPT': 'recipient',
-    }
-
-2. Add Zabbix security group to all existing tenants:
+1. Add Zabbix security group to all existing tenants:
 
 .. code-block:: bash
 
   nodeconductor initsecuritygroups zabbix
 
-3. Create template group:
+2. Create template group:
 
   - name, description, icon_url - support parameters for the application store 
   - tags - SaaS
 
-4. Add OpenStack instance provision template:
+3. Add OpenStack instance provision template:
 
   - tags - SaaS, license-application:zabbix:Zabbix-3.0, license-os:centos7:CentOS-7-x86_64, support:advanced
   - service settings - OpenStack settings where a VM needs to be provisioned
@@ -111,7 +102,7 @@ Setup
 
   {{ 8|random_password }} will generate a random password with a length of 8
 
-5. Add Zabbix service provision template:
+4. Add Zabbix service provision template:
 
   - order_number - 2 (should be provisioned after OpenStack VM)
   - name - {{ response.name }} (use VM name for service)
