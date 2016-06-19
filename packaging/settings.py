@@ -51,6 +51,7 @@ config_defaults = {
         'syslog': 'false',
     },
     'logging': {
+        'admin_email': '',  # empty to disable sending errors to admin by email
         'log_file': '',  # empty to disable logging to file
         'log_level': 'INFO',
         'syslog': 'false',
@@ -106,7 +107,7 @@ ALLOWED_HOSTS = ['*']
 #
 
 # Database
-# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
+# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#databases
 
 DATABASES = {
     # Requirements for MySQL ('HOST', 'NAME', 'USER' and 'PASSWORD' are configured below):
@@ -162,14 +163,14 @@ if config.has_section('billing'):
         "[billing] section in settings.ini is no longer supported and will be ignored")
 
 # Logging
-# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#logging
+# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,  # fixes Celery beat logging
 
     # Filters
     # Filter provides additional control over which log records are passed from logger to handler.
-    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#filters
+    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#filters
     'filters': {
         # Filter out only events (user-facing messages)
         'is-event': {
@@ -183,7 +184,7 @@ LOGGING = {
 
     # Formatters
     # Formatter describes the exact format of the log entry.
-    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#formatters
+    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#formatters
     'formatters': {
         'message-only': {
             'format': '%(message)s',
@@ -195,8 +196,14 @@ LOGGING = {
 
     # Handlers
     # Handler determines what happens to each message in a logger.
-    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#handlers
+    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#handlers
     'handlers': {
+        # Send logs to admins by email
+        # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#django.utils.log.AdminEmailHandler
+        'email-admins': {
+            'class': 'django.utils.log.AdminEmailHandler',
+            'level': 'ERROR',
+        },
         # Write logs to file
         # See also: https://docs.python.org/2/library/logging.handlers.html#watchedfilehandler
         'file': {
@@ -249,7 +256,7 @@ LOGGING = {
     # Loggers
     # A logger is the entry point into the logging system.
     # Each logger is a named bucket to which messages can be written for processing.
-    # See also: https://docs.djangoproject.com/en/1.7/topics/logging/#loggers
+    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#loggers
     #
     # Default logger configuration
     'root': {
@@ -270,6 +277,10 @@ LOGGING = {
         },
     },
 }
+
+if config.get('logging', 'admin_email') != '':
+    ADMINS += (('Admin', config.get('logging', 'admin_email')),)
+    LOGGING['loggers']['nodeconductor']['handlers'].append('email-admins')
 
 if config.get('logging', 'log_file') != '':
     LOGGING['handlers']['file']['filename'] = config.get('logging', 'log_file')
@@ -298,7 +309,7 @@ if config.getboolean('events', 'hook'):
     LOGGING['loggers']['nodeconductor']['handlers'].append('hook')
 
 # Static files
-# See also: https://docs.djangoproject.com/en/1.7/ref/settings/#static-files
+# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#static-files
 
 STATIC_ROOT = config.get('global', 'static_root')
 
