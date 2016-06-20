@@ -133,11 +133,6 @@ for prop in ('password', 'username', 'tenant_name'):
     if config.has_option('openstack', prop):
         warnings.warn("openstack.%s property in settings.ini is no longer supported and will be ignored" % prop)
 
-if config.has_option('celery', 'recover_erred_cloud_memberships_period'):
-    warnings.warn(
-        "celery.recover_erred_cloud_memberships_period property in settings.ini is "
-        "no longer supported and will be ignored in favor of celery.recover_erred_services_period")
-
 if config.has_option('global', 'enable_order_processing'):
     warnings.warn(
         "global.enable_order_processing property in settings.ini is "
