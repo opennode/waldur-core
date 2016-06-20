@@ -16,6 +16,9 @@ class UserFilterMixin(object):
         if queryset is None:
             queryset = self.get_queryset()
 
+        if user.is_staff:
+            return queryset
+
         # include orphan estimates with presaved owner
         try:
             queryset.model._meta.get_field_by_name('scope_customer')

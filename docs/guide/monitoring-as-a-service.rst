@@ -77,10 +77,15 @@ Setup
 
 .. code-block:: python
 
-    NODECONDUCTOR_ZABBIX_SMS_SETTINGS = {
-      'SMS_EMAIL_FROM': 'email',
-      'SMS_EMAIL_RCPT': 'recipient',
+
+    NODECONDUCTOR_ZABBIX = {
+        'SMS_SETTINGS': {
+            'SMS_EMAIL_FROM': 'zabbix@example.com',
+            'SMS_EMAIL_RCPT': '{phone}@example.com',
+        },
     }
+
+See also: `NodeConductor Zabbix plugin configuration <http://nodeconductor-zabbix.readthedocs.io/en/latest/installation.html#configuration>`_.
 
 2. Add Zabbix security group to all existing tenants:
 

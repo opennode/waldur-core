@@ -59,6 +59,8 @@ class PermissionFieldFilteringMixin(object):
             return fields
 
         for field_name in self.get_filtered_field_names():
+            if field_name not in fields:  # field could be not required by user
+                continue
             field = fields[field_name]
             field.queryset = filter_queryset_for_user(field.queryset, user)
 
@@ -109,7 +111,6 @@ class BasicUserSerializer(serializers.HyperlinkedModelSerializer):
 class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.Project
-        fields = ('url', 'uuid', 'name')
 
 
 class PermissionProjectSerializer(BasicProjectSerializer):
@@ -120,8 +121,6 @@ class PermissionProjectSerializer(BasicProjectSerializer):
 class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
     class Meta(core_serializers.BasicInfoSerializer.Meta):
         model = models.ProjectGroup
-        fields = ('url', 'name', 'uuid')
-        read_only_fields = ('name', 'uuid')
 
 
 class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
@@ -359,10 +358,11 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             if not self.instance or self.instance.vat_code != vat_code or self.instance.country != country:
                 check_result = pyvat.check_vat_number(vat_code, country)
                 if check_result.is_valid:
-                    self.instance.vat_name = check_result.business_name
-                    self.instance.vat_address = check_result.business_address
-                    self.instance.save(update_fields=['vat_name', 'vat_address'])
-                elif check_result.is_valid == False:
+                    attrs['vat_name'] = check_result.business_name
+                    attrs['vat_address'] = check_result.business_address
+                    if not attrs.get('contact_details'):
+                        attrs['contact_details'] = attrs['vat_address']
+                elif check_result.is_valid is False:
                     raise serializers.ValidationError({'vat_code': 'VAT number is invalid.'})
                 else:
                     logger.debug('Unable to check VAT number %s for country %s. Error message: %s',
@@ -871,6 +871,10 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
     def get_filtered_field_names(self):
         return 'customer',
 
+    @staticmethod
+    def eager_load(queryset):
+        return queryset.select_related('customer').prefetch_related('quotas')
+
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
         request = self.context['request']
@@ -927,6 +931,7 @@ class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
 
 class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                             PermissionFieldFilteringMixin,
+                            core_serializers.RestrictedSerializerMixin,
                             core_serializers.AugmentedSerializerMixin,
                             serializers.HyperlinkedModelSerializer)):
 
@@ -1020,7 +1025,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def get_fields(self):
         fields = super(BaseServiceSerializer, self).get_fields()
 
-        if self.Meta.model is not NotImplemented:
+        if self.Meta.model is not NotImplemented and 'settings' in fields:
             key = SupportedServices.get_model_key(self.Meta.model)
             fields['settings'].queryset = fields['settings'].queryset.filter(type=key)
 
@@ -1028,6 +1033,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             # each service settings could be connected to scope
             self.SERVICE_ACCOUNT_FIELDS['scope'] = 'VM that contains service'
             for field in self.Meta.settings_fields:
+                if field not in fields:
+                    continue
                 if field in self.SERVICE_ACCOUNT_FIELDS:
                     fields[field].help_text = self.SERVICE_ACCOUNT_FIELDS[field]
                 else:
@@ -1335,6 +1342,21 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     def get_access_url(self, obj):
         return obj.get_access_url()
 
+    @staticmethod
+    def eager_load(queryset):
+        return (
+            queryset
+            .select_related(
+                'service_project_link',
+                'service_project_link__service',
+                'service_project_link__project',
+                'service_project_link__project__customer',
+            )
+            .prefetch_related(
+                'project__project_groups',
+                'tags')
+        )
+
     @transaction.atomic
     def create(self, validated_data):
         data = validated_data.copy()
@@ -1356,18 +1378,18 @@ class PublishableResourceSerializer(BaseResourceSerializer):
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
-class SummaryResourceSerializer(serializers.Serializer):
+class SummaryResourceSerializer(core_serializers.BaseSummarySerializer):
 
-    def to_representation(self, instance):
-        serializer = SupportedServices.get_resource_serializer(instance.__class__)
-        return serializer(instance, context=self.context).data
+    @classmethod
+    def get_serializer(cls, model):
+        return SupportedServices.get_resource_serializer(model)
 
 
-class SummaryServiceSerializer(serializers.Serializer):
+class SummaryServiceSerializer(core_serializers.BaseSummarySerializer):
 
-    def to_representation(self, instance):
-        serializer = SupportedServices.get_service_serializer(instance.__class__)
-        return serializer(instance, context=self.context).data
+    @classmethod
+    def get_serializer(cls, model):
+        return SupportedServices.get_service_serializer(model)
 
 
 class BaseResourceImportSerializer(PermissionFieldFilteringMixin,

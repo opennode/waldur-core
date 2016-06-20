@@ -9,7 +9,9 @@ from datetime import timedelta
 from operator import itemgetter
 
 from django.apps import apps
+from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse, resolve
+from django.http import QueryDict
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.encoding import force_text
@@ -172,3 +174,9 @@ def instance_from_url(url, user=None):
     if user is not None:
         queryset = filter_queryset_for_user(model.objects.all(), user)
     return queryset.get(**match.kwargs)
+
+
+def get_fake_context():
+    user = get_user_model()()
+    request = type('R', (object,), {'method': 'GET', 'user': user, 'query_params': QueryDict()})
+    return {'request': request, 'user': user}

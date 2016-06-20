@@ -12,7 +12,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.100.0
+Version: 0.101.3
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -40,8 +40,8 @@ Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
-Requires: python-pycountry >= 1.20, python-pycountry < 2.0
-Requires: python-pyvat >= 1.3.1, python-pyvat < 2.0
+Requires: python-country >= 1.20, python-country < 2.0
+Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: python-redis = 2.10.3
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
@@ -204,6 +204,18 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Thu Jun 16 2016 Jenkins <jenkins@opennodecloud.com> - 0.101.3-1.el7
+- New upstream release
+
+* Tue Jun 14 2016 Jenkins <jenkins@opennodecloud.com> - 0.101.2-1.el7
+- New upstream release
+
+* Mon Jun 13 2016 Jenkins <jenkins@opennodecloud.com> - 0.101.1-1.el7
+- New upstream release
+
+* Mon Jun 13 2016 Jenkins <jenkins@opennodecloud.com> - 0.101.0-1.el7
+- New upstream release
+
 * Tue Jun 7 2016 Jenkins <jenkins@opennodecloud.com> - 0.100.0-1.el7
 - New upstream release
 

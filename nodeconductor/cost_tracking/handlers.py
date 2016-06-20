@@ -58,14 +58,9 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
             pass
 
 
-def update_price_estimate_on_resource_import(sender, instance, **kwargs):
+def update_projected_estimate(sender, instance, **kwargs):
     send_task('cost_tracking', 'update_projected_estimate')(
         resource_str=instance.to_string())
-
-
-def add_resource_price_estimate_on_provision(sender, instance, name=None, source=None, **kwargs):
-    if source == Resource.States.PROVISIONING and name == instance.set_online.__name__:
-        update_price_estimate_on_resource_import(sender, instance)
 
 
 def update_price_estimate_ancestors(sender, instance, created=False, **kwargs):
@@ -89,7 +84,7 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
                 parent_estimate.leaf_estimates.remove(estimate)
                 parent_estimate.update_from_leaf()
 
-        models.PriceEstimate.update_ancestors_for_resource(instance, force=True)
+        models.PriceEstimate.update_ancestors_for_resource(instance)
 
 
 def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):

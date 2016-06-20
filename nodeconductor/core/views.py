@@ -10,18 +10,16 @@ from django.core.cache import cache
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.exceptions import APIException
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
-from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from rest_framework.viewsets import ModelViewSet
 
 from nodeconductor import __version__
 from nodeconductor.core import mixins
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.serializers import AuthTokenSerializer
-from nodeconductor.core.utils import request_api
 from nodeconductor.logging.loggers import event_logger
 
 
