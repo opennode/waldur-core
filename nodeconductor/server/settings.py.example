@@ -172,4 +172,7 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
 # Set to False in order to disable this feature
 NODECONDUCTOR['ENABLE_GEOIP'] = True
 
+# Seller country code is used for computing VAT charge rate
+NODECONDUCTOR['SELLER_COUNTRY_CODE'] = 'EE'
+
 DEFAULT_FROM_EMAIL='noreply@example.com'
