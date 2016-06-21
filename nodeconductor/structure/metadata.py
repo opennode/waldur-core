@@ -61,7 +61,7 @@ class ActionSerializer(object):
         return method == 'DELETE' and base_url or base_url + self.name + '/'
 
 
-class ResourceActionsMetadata(SimpleMetadata):
+class ActionsMetadata(SimpleMetadata):
     """
     Difference from SimpleMetadata class:
     1) Skip read-only fields, because options are used only for provisioning new resource.
