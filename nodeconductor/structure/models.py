@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
-import yaml
+import datetime
 import itertools
+import yaml
 
 from django.apps import apps
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -22,7 +24,7 @@ from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
 from model_utils.fields import AutoCreatedField
 from taggit.managers import TaggableManager
-
+import pyvat
 
 from nodeconductor.core import fields as core_fields
 from nodeconductor.core import models as core_models
@@ -80,9 +82,14 @@ class StructureModel(models.Model):
             "'%s' object has no attribute '%s'" % (self._meta.object_name, name))
 
 
+class VATException(Exception):
+    pass
+
+
 class VATMixin(models.Model):
     """
-    Add VAT number field and check results from EU VAT Information Exchange System.
+    Add country, VAT number fields and check results from EU VAT Information Exchange System.
+    Allows to compute VAT charge rate.
     """
     class Meta(object):
         abstract = True
@@ -92,6 +99,30 @@ class VATMixin(models.Model):
                                 help_text='Optional business name retrieved for the VAT number.')
     vat_address = models.CharField(max_length=255, blank=True,
                                    help_text='Optional business address retrieved for the VAT number.')
+
+    is_company = models.BooleanField(default=False, help_text="Is company or private person")
+    country = core_fields.CountryField(blank=True)
+
+    def get_vat_rate(self):
+        charge = self.get_vat_charge()
+        if charge.action == pyvat.VatChargeAction.charge:
+            return charge.rate
+        # Return None, if reverse_charge or no_charge action is applied
+
+    def get_vat_charge(self):
+        if not self.country:
+            raise VATException('Unable to get VAT charge because buyer country code is not specified.')
+
+        seller_country = settings.NODECONDUCTOR.get('SELLER_COUNTRY_CODE')
+        if not seller_country:
+            raise VATException('Unable to get VAT charge because seller country code is not specified.')
+
+        return pyvat.get_sale_vat_charge(
+            datetime.date.today(),
+            pyvat.ItemType.generic_electronic_service,
+            pyvat.Party(self.country, self.is_company and self.vat_code),
+            pyvat.Party(seller_country, True)
+        )
 
 
 @python_2_unicode_compatible
@@ -117,9 +148,6 @@ class Customer(core_models.UuidMixin,
 
     billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
-
-    is_company = models.BooleanField(default=False, help_text="Is company or private person")
-    country = core_fields.CountryField(blank=True)
 
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 

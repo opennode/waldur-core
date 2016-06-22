@@ -5,6 +5,10 @@ Release NEXT
 ------------
 Nothing yet.
 
+Release 0.102.0
+---------------
+- Introduce VAT persistence and handling for customers.
+
 Release 0.101.3
 ---------------
 - Speedup services and resources load time.

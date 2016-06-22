@@ -47,7 +47,7 @@ from nodeconductor.structure import managers
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.signals import resource_imported
 from nodeconductor.structure.managers import filter_queryset_for_user
-from nodeconductor.structure.metadata import check_operation, ResourceActionsMetadata
+from nodeconductor.structure.metadata import check_operation, ActionsMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -1700,6 +1700,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
+    metadata_class = ActionsMetadata
 
     def list(self, request, *args, **kwargs):
         """
@@ -1954,7 +1955,7 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
         filters.TagsFilter,
         filters.StartTimeFilter
     )
-    metadata_class = ResourceActionsMetadata
+    metadata_class = ActionsMetadata
 
 
 class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
@@ -2123,7 +2124,7 @@ class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
         filters.TagsFilter,
     )
     filter_class = filters.BaseResourceStateFilter
-    metadata_class = ResourceActionsMetadata
+    metadata_class = ActionsMetadata
     create_executor = NotImplemented
     update_executor = NotImplemented
     delete_executor = NotImplemented
