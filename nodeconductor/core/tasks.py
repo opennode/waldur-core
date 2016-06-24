@@ -507,6 +507,10 @@ class RuntimeStateChangeTask(Task):
             self.update_runtime_state(instance, self.success_runtime_state)
         super(RuntimeStateChangeTask, self).post_execute(instance)
 
+    # Empty execute method allows to use RuntimeStateChangeTask as standalone task
+    def execute(self, instance, *args, **kwargs):
+        return instance
+
 
 class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
