@@ -566,6 +566,15 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
         self.save_error_message(instance)
 
 
+class RecoverTask(StateTransitionTask):
+    """ Change instance state from ERRED to OK and clear error_message """
+
+    def execute(self, instance):
+        self.state_transition(instance, 'recover')
+        instance.error_message = ''
+        instance.save(update_fields=['error_message'])
+
+
 class ExecutorTask(Task):
     """ Run executor as a task """
 
