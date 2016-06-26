@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import re
-
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 import django_filters
@@ -10,15 +8,10 @@ from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
 from nodeconductor.core.filters import ExternalFilterBackend
+from nodeconductor.core.utils import camel_case_to_underscore
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.elasticsearch_client import EmptyQueryset
 from nodeconductor.logging.loggers import event_logger, expand_event_groups, expand_alert_groups
-
-
-def _convert(name):
-    """ Converts CamelCase to underscore """
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 class EventFilterBackend(filters.BaseFilterBackend):
@@ -67,9 +60,10 @@ class EventFilterBackend(filters.BaseFilterBackend):
             for key, val in obj.filter_by_logged_object().items():
                 # Use "{field_name}.raw" to get the non-analyzed version of the value
                 # https://github.com/elastic/kibana/issues/364
-                must_terms[_convert(key) + '.raw'] = [val]
+                must_terms[camel_case_to_underscore(key) + '.raw'] = [val]
+
         elif 'scope_type' in request.query_params:
-            choices = {str(m._meta): m for m in utils.get_loggable_models()}
+            choices = utils.get_scope_types_mapping()
             try:
                 scope_type = choices[request.query_params['scope_type']]
             except KeyError:
@@ -183,7 +177,7 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
 
         # XXX: this filter is wrong and deprecated, need to be removed after replacement in Portal
         if 'scope_type' in request.query_params:
-            choices = {_convert(m.__name__): m for m in utils.get_loggable_models()}
+            choices = {camel_case_to_underscore(m.__name__): m for m in utils.get_loggable_models()}
             try:
                 scope_type = choices[request.query_params['scope_type']]
             except KeyError:
