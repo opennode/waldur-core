@@ -62,7 +62,7 @@ def register_instance(instance):
     """ Create Zabbix host and IT Service for instance """
     if not instance.backend_id:
         raise ZabbixIntegrationError(
-            'Cannot register OpenStack instance %s (PK: %s) - it does not have sabackend_id' % (instance, instance.pk))
+            'Cannot register OpenStack instance %s (PK: %s) - it does not have backend_id' % (instance, instance.pk))
 
     zabbix_settings = _get_settings()
     # get SPL that links instance project and defined Zabbix settings
@@ -72,7 +72,7 @@ def register_instance(instance):
     host = models.Host.objects.create(
         scope=instance,
         service_project_link=spl,
-        visible_name=instance.name,
+        visible_name=models.Host.get_visible_name_from_scope(instance),
         name=instance.backend_id,
         host_group_name=settings.HOST_GROUP_NAME,
     )
