@@ -1,5 +1,6 @@
 import calendar
 import importlib
+import re
 import requests
 import time
 
@@ -180,3 +181,8 @@ def get_fake_context():
     user = get_user_model()()
     request = type('R', (object,), {'method': 'GET', 'user': user, 'query_params': QueryDict()})
     return {'request': request, 'user': user}
+
+
+def camel_case_to_underscore(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()

@@ -28,6 +28,7 @@ import pyvat
 
 from nodeconductor.core import fields as core_fields
 from nodeconductor.core import models as core_models
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
 from nodeconductor.monitoring.models import MonitoringModelMixin
@@ -80,6 +81,18 @@ class StructureModel(models.Model):
 
         raise AttributeError(
             "'%s' object has no attribute '%s'" % (self._meta.object_name, name))
+
+
+class StructureLoggableMixin(LoggableMixin):
+
+    @classmethod
+    def get_permitted_objects_uuids(cls, user):
+        """
+        Return query dictionary to search objects available to user.
+        """
+        uuids = filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)
+        key = core_utils.camel_case_to_underscore(cls.__name__) + '_uuid'
+        return {key: uuids}
 
 
 class VATException(Exception):
@@ -356,7 +369,7 @@ class Project(core_models.DescribableMixin,
               core_models.NameMixin,
               core_models.DescendantMixin,
               quotas_models.QuotaModelMixin,
-              LoggableMixin,
+              StructureLoggableMixin,
               TimeStampedModel,
               StructureModel):
     class Permissions(object):
@@ -480,10 +493,6 @@ class Project(core_models.DescribableMixin,
     def get_log_fields(self):
         return ('uuid', 'customer', 'name', 'project_group')
 
-    @classmethod
-    def get_permitted_objects_uuids(cls, user):
-        return {'project_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
-
     def get_parents(self):
         return [self.customer]
 
@@ -524,7 +533,7 @@ class ProjectGroup(core_models.UuidMixin,
                    core_models.NameMixin,
                    core_models.DescendantMixin,
                    quotas_models.QuotaModelMixin,
-                   LoggableMixin,
+                   StructureLoggableMixin,
                    TimeStampedModel):
     """
     Project groups are means to organize customer's projects into arbitrary sets.
@@ -602,10 +611,6 @@ class ProjectGroup(core_models.UuidMixin,
 
     def get_parents(self):
         return [self.customer]
-
-    @classmethod
-    def get_permitted_objects_uuids(cls, user):
-        return {'project_group_uuid': filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)}
 
 
 @python_2_unicode_compatible
