@@ -7,8 +7,8 @@ from rest_framework import filters as rf_filters
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.managers import SummaryQuerySet
-from nodeconductor.logging import elasticsearch_client, models, serializers, filters, log, utils
-from nodeconductor.logging.loggers import get_event_groups, get_alert_groups
+from nodeconductor.logging import elasticsearch_client, models, serializers, filters, utils
+from nodeconductor.logging.loggers import get_event_groups, get_alert_groups, event_logger
 
 
 class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -65,7 +65,7 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
         scope = serializer.validated_data.get('scope')
         context = {'scope': scope} if scope is not None else {}
 
-        log.event_logger.custom.process(
+        event_logger.custom.process(
             level=serializer.validated_data.get('level'),
             message_template=serializer.validated_data.get('message'),
             event_type='custom_notification',
@@ -130,7 +130,7 @@ class EventViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     @decorators.list_route()
     def scope_types(self, request, *args, **kwargs):
         """ Returns a list of scope types acceptable by events filter. """
-        return response.Response([str(m._meta) for m in utils.get_loggable_models()])
+        return response.Response(utils.get_scope_types_mapping().keys())
 
     @decorators.list_route()
     def event_groups(self, request, *args, **kwargs):

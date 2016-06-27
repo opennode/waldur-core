@@ -358,7 +358,7 @@ class LoggableMixin(object):
         return context
 
     @classmethod
-    def get_permitted_objects_uuids(self, user):
+    def get_permitted_objects_uuids(cls, user):
         return {}
 
 

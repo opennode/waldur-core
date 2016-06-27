@@ -3,7 +3,12 @@ CHANGELOG
 
 Release NEXT
 ------------
-Nothing yet.
+- Nothing yet.
+
+
+Release 0.102.1
+---------------
+- Introduce StructureLoggableMixin for filtering permitted object UUIDs.
 
 Release 0.102.0
 ---------------

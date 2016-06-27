@@ -507,6 +507,10 @@ class RuntimeStateChangeTask(Task):
             self.update_runtime_state(instance, self.success_runtime_state)
         super(RuntimeStateChangeTask, self).post_execute(instance)
 
+    # Empty execute method allows to use RuntimeStateChangeTask as standalone task
+    def execute(self, instance, *args, **kwargs):
+        return instance
+
 
 class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
@@ -564,6 +568,15 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
     def execute(self, instance):
         self.state_transition(instance, 'set_erred')
         self.save_error_message(instance)
+
+
+class RecoverTask(StateTransitionTask):
+    """ Change instance state from ERRED to OK and clear error_message """
+
+    def execute(self, instance):
+        self.state_transition(instance, 'recover')
+        instance.error_message = ''
+        instance.save(update_fields=['error_message'])
 
 
 class ExecutorTask(Task):
