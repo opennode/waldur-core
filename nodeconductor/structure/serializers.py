@@ -948,7 +948,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     # if project is defined service will be automatically connected to projects customer
     # and SPL between service and project will be created
     project = serializers.HyperlinkedRelatedField(
-        queryset=models.Project.objects.all(),
+        queryset=models.Project.objects.all().select_related('customer'),
         view_name='project-detail',
         lookup_field='uuid',
         allow_null=True,
@@ -1017,7 +1017,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
 
     def get_tags(self, service):
-        return [t.name for t in service.settings.tags.all()]
+        return service.settings.get_tags()
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -1246,8 +1246,7 @@ class RelatedResourceSerializer(BasicResourceSerializer):
             return None
 
     def get_service_tags(self, resource):
-        spl = resource.service_project_link
-        return [t.name for t in spl.service.settings.tags.all()]
+        return resource.service_project_link.service.settings.get_tags()
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
@@ -1325,7 +1324,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return SupportedServices.get_name_for_model(obj)
 
     def get_tags(self, obj):
-        return [t.name for t in obj.tags.all()]
+        return obj.get_tags()
 
     def to_representation(self, instance):
         # We need this hook, because ips have to be represented as list

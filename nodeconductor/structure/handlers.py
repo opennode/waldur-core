@@ -525,3 +525,11 @@ def delete_service_settings_on_scope_delete(sender, instance, **kwargs):
         for resource_model in resource_models:
             resource_model.objects.all().delete()
         service_settings.delete()
+
+
+def clean_tags_cache_after_tagged_item_saved(sender, instance, **kwargs):
+    instance.content_object.clean_tag_cache()
+
+
+def clean_tags_cache_before_tagged_item_deleted(sender, instance, **kwargs):
+    instance.content_object.clean_tag_cache()
