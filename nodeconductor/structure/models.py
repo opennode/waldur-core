@@ -5,6 +5,7 @@ import itertools
 import yaml
 
 from django.apps import apps
+from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -93,6 +94,31 @@ class StructureLoggableMixin(LoggableMixin):
         uuids = filter_queryset_for_user(cls.objects.all(), user).values_list('uuid', flat=True)
         key = core_utils.camel_case_to_underscore(cls.__name__) + '_uuid'
         return {key: uuids}
+
+
+class TagMixin(models.Model):
+    """
+    Add tags field and manage cache for tags.
+    """
+    class Meta:
+        abstract = True
+
+    tags = TaggableManager(related_name='+', blank=True)
+
+    def get_tags(self):
+        key = self._get_tag_cache_key()
+        tags = cache.get(key)
+        if tags is None:
+            tags = list(self.tags.all().values_list('name', flat=True))
+            cache.set(key, tags)
+        return tags
+
+    def clean_tag_cache(self):
+        key = self._get_tag_cache_key()
+        cache.delete(key)
+
+    def _get_tag_cache_key(self):
+        return 'tags:%s' % core_utils.serialize_instance(self)
 
 
 class VATException(Exception):
@@ -618,6 +644,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                       core_models.UuidMixin,
                       core_models.NameMixin,
                       core_models.StateMixin,
+                      TagMixin,
                       LoggableMixin):
 
     class Meta:
@@ -638,7 +665,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     options = JSONField(default={}, help_text='Extra options', blank=True)
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
 
-    tags = TaggableManager(related_name='+', blank=True)
     tracker = FieldTracker()
 
     # service settings scope - VM that contains service
@@ -1101,6 +1127,7 @@ class ResourceMixin(MonitoringModelMixin,
                     core_models.SerializableAbstractMixin,
                     core_models.DescendantMixin,
                     LoggableMixin,
+                    TagMixin,
                     TimeStampedModel,
                     StructureModel):
 
@@ -1119,8 +1146,6 @@ class ResourceMixin(MonitoringModelMixin,
 
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
-    tags = TaggableManager(related_name='+', blank=True)
-
     start_time = models.DateTimeField(blank=True, null=True)
 
     def get_backend(self, **kwargs):
