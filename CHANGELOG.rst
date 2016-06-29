@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+Nothing yet.
+
+Release 0.102.2
+---------------
 - Cache resources and services tags.
 - Allow to inject extra actions into model admin.
 
