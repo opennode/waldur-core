@@ -1,4 +1,3 @@
-from django.conf.urls import patterns, url
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.contenttypes.models import ContentType
