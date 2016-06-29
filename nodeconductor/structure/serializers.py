@@ -948,7 +948,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     # if project is defined service will be automatically connected to projects customer
     # and SPL between service and project will be created
     project = serializers.HyperlinkedRelatedField(
-        queryset=models.Project.objects.all(),
+        queryset=models.Project.objects.all().select_related('customer'),
         view_name='project-detail',
         lookup_field='uuid',
         allow_null=True,
@@ -1010,14 +1010,13 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings__type',
             'settings__shared',
             'settings__error_message',
-            'settings__tags',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
         return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
 
     def get_tags(self, service):
-        return [t.name for t in service.settings.tags.all()]
+        return service.settings.get_tags()
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -1246,8 +1245,7 @@ class RelatedResourceSerializer(BasicResourceSerializer):
             return None
 
     def get_service_tags(self, resource):
-        spl = resource.service_project_link
-        return [t.name for t in spl.service.settings.tags.all()]
+        return resource.service_project_link.service.settings.get_tags()
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
@@ -1296,7 +1294,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     created = serializers.DateTimeField(read_only=True)
     resource_type = serializers.SerializerMethodField()
 
-    tags = serializers.SerializerMethodField()
+    tags = serializers.ReadOnlyField(source='get_tags')
     access_url = serializers.SerializerMethodField()
     related_resources = RelatedResourceSerializer(source='get_related_resources', many=True, read_only=True)
 
@@ -1323,9 +1321,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def get_resource_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
-
-    def get_tags(self, obj):
-        return [t.name for t in obj.tags.all()]
 
     def to_representation(self, instance):
         # We need this hook, because ips have to be represented as list
@@ -1354,7 +1349,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             )
             .prefetch_related(
                 'project__project_groups',
-                'tags')
+            )
         )
 
     @transaction.atomic

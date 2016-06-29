@@ -12,7 +12,8 @@ class StructureConfig(AppConfig):
 
     def ready(self):
         from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
-        from nodeconductor.structure.models import ResourceMixin, ServiceProjectLink, Service, set_permissions_for_model
+        from nodeconductor.structure.models import ResourceMixin, \
+            ServiceProjectLink, Service, set_permissions_for_model, TagMixin
         from nodeconductor.structure import handlers
         from nodeconductor.structure import signals as structure_signals
 
@@ -282,3 +283,15 @@ class StructureConfig(AppConfig):
                 dispatch_uid='nodeconductor.structure.handlers.delete_service_settings_on_service_delete_{}_{}'.format(
                     service_model.__name__, index),
             )
+
+        signals.post_save.connect(
+            handlers.clean_tags_cache_after_tagged_item_saved,
+            sender=TagMixin.tags.through,
+            dispatch_uid='nodeconductor.structure.handlers.clean_tags_cache_after_tagged_item_created'
+        )
+
+        signals.pre_delete.connect(
+            handlers.clean_tags_cache_before_tagged_item_deleted,
+            sender=TagMixin.tags.through,
+            dispatch_uid='nodeconductor.structure.handlers.clean_tags_cache_after_tagged_item_created'
+        )
