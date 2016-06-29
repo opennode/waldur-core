@@ -257,7 +257,9 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
 
     @property
     def resource_type(self):
-        return SupportedServices.get_name_for_model(self.resource_content_type.model_class())
+        cls = self.resource_content_type.model_class()
+        if cls:
+            return SupportedServices.get_name_for_model(cls)
 
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):

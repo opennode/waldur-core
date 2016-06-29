@@ -1,14 +1,13 @@
 from django.conf.urls import patterns, url
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.shortcuts import redirect
-from django.utils.translation import ungettext, gettext
+from django.utils.translation import ungettext
 
-from nodeconductor.core import NodeConductorExtension
-from nodeconductor.core.tasks import send_task
+from nodeconductor.core.admin import DynamicModelAdmin
 from nodeconductor.cost_tracking import models, CostTrackingRegister
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models, admin as structure_admin
@@ -44,12 +43,15 @@ class ResourceTypeFilter(SimpleListFilter):
         return queryset
 
 
-class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
+class DefaultPriceListItemAdmin(DynamicModelAdmin,
+                                structure_admin.ChangeReadonlyMixin,
+                                admin.ModelAdmin):
     list_display = ('full_name', 'item_type', 'key', 'value', 'monthly_rate', 'resource_type')
     list_filter = ('item_type', ResourceTypeFilter)
     fields = ('name', ('value', 'monthly_rate'), 'resource_content_type', ('item_type', 'key'))
     readonly_fields = ('monthly_rate',)
     change_readonly_fields = ('resource_content_type', 'item_type', 'key')
+    change_list_template = 'admin/core/change_list.html'
 
     def full_name(self, obj):
         return obj.name or obj.units or obj.uuid
@@ -59,68 +61,11 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
             kwargs["queryset"] = _get_content_type_queryset(structure_models.ResourceMixin.get_all_models())
         return super(DefaultPriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
-    def get_urls(self):
-        my_urls = patterns(
-            '',
-            url(r'^sync/$', self.admin_site.admin_view(self.sync)),
-            url(r'^subscribe_resources/$', self.admin_site.admin_view(self.subscribe_resources)),
-            url(r'^init_from_registered_applications/$',
-                self.admin_site.admin_view(self.init_from_registered_applications)),
+    def get_extra_actions(self):
+        return (
+            super(DefaultPriceListItemAdmin, self).get_extra_actions() +
+            [self.init_from_registered_applications]
         )
-        return my_urls + super(DefaultPriceListItemAdmin, self).get_urls()
-
-    def sync(self, request):
-        # XXX: This code provides circular dependency between nodeconductor and nodeconductor-killbill
-        if NodeConductorExtension.is_installed('nodeconductor_killbill'):
-            send_task('killbill', 'sync_pricelist')()
-            self.message_user(request, "Price lists scheduled for sync")
-        else:
-            self.message_user(request, "Unknown billing backend. Can't sync", level=messages.ERROR)
-
-        return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
-
-    def subscribe_resources(self, request):
-        if NodeConductorExtension.is_installed('nodeconductor_killbill'):
-            from nodeconductor_killbill.backend import KillBillBackend, KillBillError
-
-            erred_resources = {}
-            subscribed_resources = []
-            existing_resources = []
-            for model in structure_models.PaidResource.get_all_models():
-                for resource in model.objects.exclude(state=model.States.ERRED):
-                    try:
-                        backend = KillBillBackend(resource.customer)
-                        is_newly_subscribed = backend.subscribe(resource)
-                    except KillBillError as e:
-                        erred_resources[resource] = str(e)
-                    else:
-                        resource.last_usage_update_time = None
-                        resource.save(update_fields=['last_usage_update_time'])
-                        if is_newly_subscribed:
-                            subscribed_resources.append(resource)
-                        else:
-                            existing_resources.append(resource)
-
-            if subscribed_resources:
-                message = gettext('Successfully subscribed %s resources: %s')
-                message = message % (len(subscribed_resources), ', '.join(r.name for r in subscribed_resources))
-                self.message_user(request, message)
-
-            if existing_resources:
-                message = gettext('%s resources were already subscribed: %s')
-                message = message % (len(existing_resources), ', '.join(r.name for r in existing_resources))
-                self.message_user(request, message)
-
-            if erred_resources:
-                message = gettext('Failed to subscribe resources: %(erred_resources)s')
-                erred_resources_message = ', '.join(['%s (error: %s)' % (r.name, e) for r, e in erred_resources.items()])
-                message = message % {'erred_resources': erred_resources_message}
-                self.message_user(request, message, level=messages.ERROR)
-
-        else:
-            self.message_user(request, "Unknown billing backend. Can't sync", level=messages.ERROR)
-
-        return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
     def init_from_registered_applications(self, request):
         created_items = []
@@ -156,6 +101,8 @@ class DefaultPriceListItemAdmin(structure_admin.ChangeReadonlyMixin, admin.Model
             self.message_user(request, "Price items for all registered applications have been updated")
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
+
+    init_from_registered_applications.name = 'Init from registered applications'
 
 
 class PriceEstimateAdmin(admin.ModelAdmin):
