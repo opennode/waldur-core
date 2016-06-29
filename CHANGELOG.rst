@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-Nothing yet.
+ - Allow executing custom actions via templates after provision.
 
 Release 0.102.2
 ---------------
