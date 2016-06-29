@@ -12,8 +12,10 @@ from datetime import timedelta
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor.server.admin.settings import *
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 
+ADMINS = ()
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 
 DEBUG = False
 
@@ -109,7 +111,6 @@ TEMPLATES = [
             ) + ADMIN_TEMPLATE_LOADERS,
         },
     },
-
 ]
 
 ROOT_URLCONF = 'nodeconductor.server.urls'
@@ -120,7 +121,6 @@ WSGI_APPLICATION = 'nodeconductor.server.wsgi.application'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -133,7 +133,6 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
-
 STATIC_URL = '/static/'
 
 BROKER_URL = 'redis://localhost'
@@ -150,7 +149,6 @@ CELERY_QUEUES = {
 CELERY_DEFAULT_QUEUE = 'tasks'
 CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
 
-
 CACHES = {
     'default': {
         'BACKEND': 'redis_cache.RedisCache',
@@ -166,19 +164,16 @@ CACHES = {
 
 # Regular tasks
 CELERYBEAT_SCHEDULE = {
-
     'pull-service-settings': {
         'task': 'nodeconductor.structure.pull_service_settings',
         'schedule': timedelta(minutes=30),
         'args': (),
     },
-
     'update-current-month-cost-projections': {
         'task': 'nodeconductor.cost_tracking.update_projected_estimate',
         'schedule': timedelta(hours=24),
         'args': (),
     },
-
     'close-alerts-without-scope': {
         'task': 'nodeconductor.logging.close_alerts_without_scope',
         'schedule': timedelta(minutes=30),
