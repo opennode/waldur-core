@@ -19,6 +19,8 @@ from taggit.managers import TaggableManager
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models, SupportedServices
 
+from . import TemplateRegistry
+
 
 @python_2_unicode_compatible
 class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, models.Model):
@@ -220,10 +222,13 @@ class Template(core_models.UuidMixin, models.Model):
             raise TemplateActionException(message, details)
         if response.ok:
             tags = [tag.name for tag in self.tags.all()]
+            instance = ct.model_class().objects.get(uuid=response.json()['uuid'])
             if tags:
-                instance = ct.model_class().objects.get(uuid=response.json()['uuid'])
                 if hasattr(instance, 'tags'):
                     instance.tags.add(*tags)
+            # execute custom action for instance:
+            form = TemplateRegistry.get_form(ct.model_class())
+            form.post_create(self, instance)
 
         return response
 
