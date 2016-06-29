@@ -1,6 +1,8 @@
+import collections
 from collections import defaultdict
 
 from django import forms
+from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
@@ -127,3 +129,69 @@ class ExecutorAdminAction(object):
     def validate(self, instance):
         """ Raise validation error if action cannot be performed for given instance """
         pass
+
+
+class AdminActionsRegister(object):
+    """
+    Allows to register model admin actions from other
+    applications in order to break circular dependency.
+    """
+    _register = collections.defaultdict(list)
+
+    @classmethod
+    def register(cls, admin_class, action, name=None):
+        if name:
+            action.name = name
+        cls._register[admin_class].append(action)
+
+    @classmethod
+    def get_actions(cls, admin_class):
+        return cls._register[admin_class]
+
+
+class DynamicModelAdmin(admin.ModelAdmin):
+    """
+    Allows to inject extra actions into urls and template context using AdminActionsRegister.
+    Inherited model admin should use or extend admin/core/change_list.html template.
+    """
+
+    def get_urls(self):
+        """
+        Inject extra action URLs.
+        """
+        urls = []
+
+        for action in self.get_extra_actions():
+            regex = r'^{}/$'.format(self._get_action_href(action))
+            view = self.admin_site.admin_view(action)
+            urls.append(url(regex, view))
+
+        return urls + super(DynamicModelAdmin, self).get_urls()
+
+    def changelist_view(self, request, extra_context=None):
+        """
+        Inject extra links into template context.
+        """
+        links = []
+
+        for action in self.get_extra_actions():
+            links.append({
+                'label': self._get_action_label(action),
+                'href': self._get_action_href(action)
+            })
+
+        extra_context = extra_context or {}
+        extra_context['extra_links'] = links
+
+        return super(DynamicModelAdmin, self).changelist_view(
+            request, extra_context=extra_context,
+        )
+
+    def _get_action_href(self, action):
+        return action.__name__
+
+    def _get_action_label(self, action):
+        return getattr(action, 'name', action.__name__.replace('_', ' '))
+
+    def get_extra_actions(self):
+        return AdminActionsRegister.get_actions(self.__class__)

@@ -156,6 +156,10 @@ Therefore configuration might look like this:
         NOTIFICATION_TITLE
            String to be displayed in the notification pop-up title.
 
+    SELLER_COUNTRY_CODE
+      Seller legal or effective country of registration or residence as an ISO 3166-1 alpha-2 country code.
+      It is used for computing VAT charge rate.
+
     SHOW_ALL_USERS
       Indicates whether user can see all other users in `api/users/` endpoint (boolean).
 

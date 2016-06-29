@@ -157,26 +157,6 @@ NODECONDUCTOR = {
             ),
         },
     ),
-    'MONITORING': {
-        'ZABBIX': {
-            'server': 'http://zabbix.example.com/zabbix',
-            'username': 'admin',
-            'password': 'zabbix',
-            'interface_parameters': {'ip': '0.0.0.0', 'main': 1, 'port': '10050', 'type': 1, 'useip': 1, 'dns': ''},
-            'templateid': '10106',
-            'groupid': '8',
-            'default_service_parameters': {'algorithm': 1, 'showsla': 1, 'sortorder': 1, 'goodsla': 95},
-            'FAIL_SILENTLY': True,
-            'HISTORY_RECORDS_INTERVAL': 60,  # time for max interval between history usage records in zabbix (in minutes)
-            'TRENDS_RECORDS_INTERVAL': 60,  # time for max interval between trends usage records in zabbix (in minutes)
-            'HISTORY_DATE_RANGE': 48,  # time interval on which zabbix will use records from history table (in hours)
-            # application-specific templates
-            'wordpress-templateid': '10107',
-            'zimbra-templateid': '10108',
-            'postgresql-templateid': '10109',
-            'application-status-item': 'application.status',
-        }
-    }
 }
 
 # Example of settings for elasticsearch
@@ -191,5 +171,8 @@ NODECONDUCTOR['ELASTICSEARCH'] = {
 # Enable detection of coordinates of virtual machines
 # Set to False in order to disable this feature
 NODECONDUCTOR['ENABLE_GEOIP'] = True
+
+# Seller country code is used for computing VAT charge rate
+NODECONDUCTOR['SELLER_COUNTRY_CODE'] = 'EE'
 
 DEFAULT_FROM_EMAIL='noreply@example.com'

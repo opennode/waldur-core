@@ -294,7 +294,7 @@ class ElasticsearchClient(object):
             ca_certs=elasticsearch_settings.get('ca_certs', ''),
         )
         # XXX Workaround for Python Elasticsearch client bugs
-	if not elasticsearch_settings.get('verify_certs'):
+        if not elasticsearch_settings.get('verify_certs'):
             # Some parameters are handled incorrectly if verify_certs is false
             # Client's connection pool is the closes place we can fix this
             connection_pool = client.transport.get_connection().pool

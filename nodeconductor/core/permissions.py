@@ -169,6 +169,9 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             if user and user == user_obj:
                 return True
 
+        if not self.collaborators_queries or not self.collaborators_filters:
+            return False
+
         for query, filt in zip(self.collaborators_queries, self.collaborators_filters):
             kwargs = {query: user_obj, 'pk': obj.pk}
             kwargs.update(filt)

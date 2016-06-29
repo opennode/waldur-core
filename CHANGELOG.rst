@@ -5,6 +5,19 @@ Release NEXT
 ------------
 Nothing yet.
 
+Release 0.102.2
+---------------
+- Cache resources and services tags.
+- Allow to inject extra actions into model admin.
+
+Release 0.102.1
+---------------
+- Introduce StructureLoggableMixin for filtering permitted object UUIDs.
+
+Release 0.102.0
+---------------
+- Introduce VAT persistence and handling for customers.
+
 Release 0.101.3
 ---------------
 - Speedup services and resources load time.
