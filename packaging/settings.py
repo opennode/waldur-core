@@ -34,7 +34,7 @@ config_defaults = {
     },
     'elasticsearch': {
         # This location is RHEL7-specific, may be different on other platforms
-        'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # only has effect if veryfy_certs is true
+        'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # only has effect if verify_certs is true
         'host': '',
         'password': '',
         'port': '9200',
@@ -62,10 +62,6 @@ config_defaults = {
         'password': 'nodeconductor',
         'port': '3306',
         'user': 'nodeconductor',
-    },
-    'openstack': {
-        'auth_url': '',
-        'cpu_overcommit_ratio': 1,
     },
     'rest_api': {
         'cors_allowed_domains': 'localhost,127.0.0.1',
@@ -555,12 +551,6 @@ NODECONDUCTOR.update({
                     'to_port': 3306,
                 },
             ),
-        },
-    ),
-    'OPENSTACK_OVERCOMMIT': (
-        {
-            'auth_url': config.get('openstack', 'auth_url'),
-            'cpu_overcommit_ratio': config.getint('openstack', 'cpu_overcommit_ratio'),
         },
     ),
     'ELASTICSEARCH': {
