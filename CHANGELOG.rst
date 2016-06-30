@@ -3,7 +3,12 @@ CHANGELOG
 
 Release NEXT
 ------------
- - Allow executing custom actions via templates after provision.
+Nothing yet.
+
+Release 0.102.3
+---------------
+- Move PaidResource to PayableMixin in cost tracking.
+- Allow executing custom actions via templates after provision.
 
 Release 0.102.2
 ---------------
