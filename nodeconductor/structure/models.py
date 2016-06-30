@@ -937,21 +937,6 @@ class PublishableMixin(models.Model):
         max_length=30, choices=PublishingState.CHOICES, default=PublishingState.NOT_PUBLISHED)
 
 
-class PaidResource(models.Model):
-    """ Extend Resource model with methods to track usage cost and handle orders """
-
-    billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
-    last_usage_update_time = models.DateTimeField(blank=True, null=True)
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_all_models(cls):
-        return [model for model in apps.get_models() if issubclass(model, cls)]
-
-    class Meta(object):
-        abstract = True
-
-
 # XXX: This class should be deleted after NC-1237 implementation
 class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
     """ Provides old-style states for resources """

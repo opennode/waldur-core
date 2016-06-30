@@ -78,6 +78,11 @@ class TemplateForm(forms.ModelForm):
             self.instance.tags.add(tag)
         return self.instance
 
+    @classmethod
+    def post_create(cls, template, instance):
+        # Execute custom action after instance creation.
+        pass
+
 
 class ServiceTemplateForm(TemplateForm):
     customer = forms.ModelChoiceField(

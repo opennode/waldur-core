@@ -472,12 +472,6 @@ class SerializableAbstractMixin(object):
         """ Dump an instance into a string preserving model name and object id """
         return utils.serialize_instance(self)
 
-    @staticmethod
-    def parse_model_string(string):
-        """ Recover model class and object id from a string"""
-        model_name, pk = string.split(':')
-        return apps.get_model(model_name), int(pk)
-
     @classmethod
     def from_string(cls, objects):
         """ Recover objects from s string """

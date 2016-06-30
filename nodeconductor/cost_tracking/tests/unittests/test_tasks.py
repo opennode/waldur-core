@@ -3,6 +3,7 @@ from dateutil.relativedelta import relativedelta
 from django.test import TransactionTestCase
 from django.utils import timezone
 
+from nodeconductor.core.utils import serialize_instance
 from nodeconductor.cost_tracking.models import PriceEstimate
 from nodeconductor.cost_tracking.tasks import update_projected_estimate
 from nodeconductor.structure import models as structure_models
@@ -61,7 +62,7 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
         estimate = PriceEstimate.objects.create(
             scope=self.instance1, month=now.month, year=now.year, total=instance_total)
 
-        update_projected_estimate(resource_str=self.instance1.to_string())
+        update_projected_estimate(serialized_resource=serialize_instance(self.instance1))
 
         reread_estimate = PriceEstimate.objects.get(id=estimate.id)
         self.assertEqual(reread_estimate.total, self.INSTANCE_MONTHLY_COST)

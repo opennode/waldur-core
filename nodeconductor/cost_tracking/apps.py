@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 from django.apps import AppConfig
 from django.db.models import signals
-from django_fsm.signals import post_transition
 
 
 class CostTrackingConfig(AppConfig):
@@ -12,7 +11,7 @@ class CostTrackingConfig(AppConfig):
     def ready(self):
         from nodeconductor.core.handlers import preserve_fields_before_update
         from nodeconductor.cost_tracking import handlers
-        from nodeconductor.structure import models as structure_models
+        from nodeconductor.cost_tracking.models import PayableMixin
         from nodeconductor.structure.signals import resource_imported, resource_provisioned
 
         PriceEstimate = self.get_model('PriceEstimate')
@@ -50,7 +49,7 @@ class CostTrackingConfig(AppConfig):
             dispatch_uid='nodeconductor.cost_tracking.handlers.update_price_estimate_ancestors'
         )
 
-        for index, resource in enumerate(structure_models.ResourceMixin.get_all_models()):
+        for index, resource in enumerate(PayableMixin.get_all_models()):
             signals.pre_save.connect(
                 preserve_fields_before_update,
                 sender=resource,
