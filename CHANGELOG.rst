@@ -3,7 +3,11 @@ CHANGELOG
 
 Release NEXT
 ------------
- - Allow executing custom actions via templates after provision.
+- Nothing yet.
+
+Release 0.102.3
+---------------
+- Rename PaidResource to PayableMixin. Track PriceEstimate for PayableMixin.
 
 Release 0.102.2
 ---------------
