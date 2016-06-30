@@ -1,5 +1,6 @@
 from django.db import models
 
+from nodeconductor.cost_tracking.models import PaidResource
 from nodeconductor.quotas.fields import QuotaField
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
@@ -31,7 +32,7 @@ class TestServiceProjectLink(structure_models.ServiceProjectLink):
 
 
 class TestInstance(structure_models.VirtualMachineMixin,
-                   structure_models.PaidResource,
+                   PaidResource,
                    structure_models.Resource):
 
     service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)

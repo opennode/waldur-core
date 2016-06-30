@@ -4,6 +4,7 @@ import calendar
 import logging
 
 from dateutil.relativedelta import relativedelta
+from django.apps import apps
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -69,7 +70,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @lru_cache(maxsize=1)
     def get_estimated_models(cls):
         return (
-            structure_models.ResourceMixin.get_all_models() +
+            PaidResource.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models() +
             structure_models.Service.get_all_models() +
             [structure_models.Project, structure_models.Customer]
@@ -79,7 +80,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @lru_cache(maxsize=1)
     def get_editable_estimated_models(cls):
         return (
-            structure_models.ResourceMixin.get_all_models() +
+            PaidResource.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models()
         )
 
@@ -89,7 +90,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
 
     @staticmethod
     def is_leaf_scope(scope):
-        return scope._meta.model in structure_models.ResourceMixin.get_all_models()
+        return scope._meta.model in PaidResource.get_all_models()
 
     def update_from_leaf(self):
         if self.is_leaf:
@@ -286,3 +287,18 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
 
         if resource not in valid_resources:
             raise ValidationError('Service does not support required content type')
+
+
+class PaidResource(models.Model):
+    """ Extend Resource model with methods to track usage cost and handle orders """
+
+    billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
+    last_usage_update_time = models.DateTimeField(blank=True, null=True)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    class Meta(object):
+        abstract = True
