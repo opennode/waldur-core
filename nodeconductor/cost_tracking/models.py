@@ -70,7 +70,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @lru_cache(maxsize=1)
     def get_estimated_models(cls):
         return (
-            PaidResource.get_all_models() +
+            PayableMixin.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models() +
             structure_models.Service.get_all_models() +
             [structure_models.Project, structure_models.Customer]
@@ -80,7 +80,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @lru_cache(maxsize=1)
     def get_editable_estimated_models(cls):
         return (
-            PaidResource.get_all_models() +
+            PayableMixin.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models()
         )
 
@@ -90,7 +90,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
 
     @staticmethod
     def is_leaf_scope(scope):
-        return scope._meta.model in PaidResource.get_all_models()
+        return scope._meta.model in PayableMixin.get_all_models()
 
     def update_from_leaf(self):
         if self.is_leaf:
@@ -289,7 +289,7 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
             raise ValidationError('Service does not support required content type')
 
 
-class PaidResource(models.Model):
+class PayableMixin(models.Model):
     """ Extend Resource model with methods to track usage cost and handle orders """
 
     billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')

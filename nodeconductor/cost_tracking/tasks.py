@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from nodeconductor.core.utils import deserialize_instance
-from nodeconductor.cost_tracking.models import PriceEstimate, PaidResource
+from nodeconductor.cost_tracking.models import PriceEstimate, PayableMixin
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_projected_estimate')
@@ -16,7 +16,7 @@ def update_projected_estimate(customer_uuid=None, serialized_resource=None):
 
     else:
         # XXX: it's quite inefficient -- will update ancestors many times
-        for model in PaidResource.get_all_models():
+        for model in PayableMixin.get_all_models():
             queryset = model.objects.exclude(state=model.States.ERRED)
             if customer_uuid:
                 queryset = queryset.filter(customer__uuid=customer_uuid)

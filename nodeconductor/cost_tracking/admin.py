@@ -57,7 +57,7 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "resource_content_type":
-            kwargs["queryset"] = _get_content_type_queryset(models.PaidResource.get_all_models())
+            kwargs["queryset"] = _get_content_type_queryset(models.PayableMixin.get_all_models())
         return super(DefaultPriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_extra_actions(self):

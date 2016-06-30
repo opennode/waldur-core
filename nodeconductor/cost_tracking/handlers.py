@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import serialize_instance
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister
-from nodeconductor.cost_tracking.models import PaidResource
+from nodeconductor.cost_tracking.models import PayableMixin
 from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, ServiceBackendError
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
     # if scope is Resource:
     #    delete -- add metadata about deleted resource, set object_id to NULL
     #    unlink -- delete all related estimates
-    if isinstance(instance, tuple(PaidResource.get_all_models())):
+    if isinstance(instance, tuple(PayableMixin.get_all_models())):
         if getattr(instance, 'PERFORM_UNLINK', False):
             models.PriceEstimate.delete_estimates_for_resource(instance)
         else:

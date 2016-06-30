@@ -11,7 +11,7 @@ class CostTrackingConfig(AppConfig):
     def ready(self):
         from nodeconductor.core.handlers import preserve_fields_before_update
         from nodeconductor.cost_tracking import handlers
-        from nodeconductor.cost_tracking.models import PaidResource
+        from nodeconductor.cost_tracking.models import PayableMixin
         from nodeconductor.structure.signals import resource_imported, resource_provisioned
 
         PriceEstimate = self.get_model('PriceEstimate')
@@ -49,7 +49,7 @@ class CostTrackingConfig(AppConfig):
             dispatch_uid='nodeconductor.cost_tracking.handlers.update_price_estimate_ancestors'
         )
 
-        for index, resource in enumerate(PaidResource.get_all_models()):
+        for index, resource in enumerate(PayableMixin.get_all_models()):
             signals.pre_save.connect(
                 preserve_fields_before_update,
                 sender=resource,
