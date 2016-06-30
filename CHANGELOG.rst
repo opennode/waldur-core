@@ -3,11 +3,11 @@ CHANGELOG
 
 Release NEXT
 ------------
-Nothing yet.
+- Nothing yet.
 
 Release 0.102.3
 ---------------
-- Move PaidResource to PayableMixin in cost tracking.
+- Rename PaidResource to PayableMixin. Track PriceEstimate for PayableMixin.
 - Allow executing custom actions via templates after provision.
 
 Release 0.102.2
