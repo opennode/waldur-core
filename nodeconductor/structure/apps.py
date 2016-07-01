@@ -149,6 +149,12 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_project_group_role_revoked',
         )
 
+        signals.pre_delete.connect(
+            handlers.revoke_roles_on_project_deletion,
+            sender=Project,
+            dispatch_uid='nodeconductor.structure.handlers.revoke_roles_on_project_deletion',
+        )
+
         for index, model in enumerate(ResourceMixin.get_all_models()):
             signals.pre_delete.connect(
                 handlers.log_resource_deleted,
