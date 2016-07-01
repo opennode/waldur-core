@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Remove to specific signals that handles user/ssh key management.
 
 Release 0.102.3
 ---------------
