@@ -12,7 +12,7 @@ from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceSettings, Service, Resource)
+                                            Customer, ProjectGroup, ServiceSettings, Service, Resource, NewResource)
 
 
 logger = logging.getLogger(__name__)
@@ -410,7 +410,8 @@ def delete_service_settings_on_service_delete(sender, instance, **kwargs):
 
 
 def init_resource_start_time(sender, instance, name, source, target, **kwargs):
-    if target == Resource.States.ONLINE:
+    if (isinstance(instance, Resource) and target == Resource.States.ONLINE) or\
+            (isinstance(instance, NewResource) and target == NewResource.States.OK):
         instance.start_time = timezone.now()
         instance.save(update_fields=['start_time'])
 
