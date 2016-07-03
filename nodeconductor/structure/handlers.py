@@ -15,7 +15,7 @@ from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
                                             Customer, ProjectGroup, ServiceProjectLink,
-                                            ServiceSettings, Service, Resource)
+                                            ServiceSettings, Service, Resource, TagMixin)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
@@ -528,8 +528,10 @@ def delete_service_settings_on_scope_delete(sender, instance, **kwargs):
 
 
 def clean_tags_cache_after_tagged_item_saved(sender, instance, **kwargs):
-    instance.content_object.clean_tag_cache()
+    if isinstance(instance, TagMixin):
+        instance.content_object.clean_tag_cache()
 
 
 def clean_tags_cache_before_tagged_item_deleted(sender, instance, **kwargs):
-    instance.content_object.clean_tag_cache()
+    if isinstance(instance, TagMixin):
+        instance.content_object.clean_tag_cache()
