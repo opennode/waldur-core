@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Remove to specific signals that handles user/ssh key management.
+- Removed user/SSH key management from the structure.
 
 Release 0.102.3
 ---------------
