@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Fix OpenStack client exception serialization in log_backend_action.
 
 Release 0.102.3
 ---------------
