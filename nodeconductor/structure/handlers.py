@@ -15,7 +15,7 @@ from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
                                             Customer, ProjectGroup, ServiceProjectLink,
-                                            ServiceSettings, Service, Resource, TagMixin)
+                                            ServiceSettings, Service, Resource)
 from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
 
 
