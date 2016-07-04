@@ -23,12 +23,11 @@ from . import TemplateRegistry
 
 
 @python_2_unicode_compatible
-class TemplateGroup(core_models.UuidMixin, core_models.UiDescribableMixin, models.Model):
+class TemplateGroup(core_models.UuidMixin, structure_models.TagMixin, core_models.UiDescribableMixin, models.Model):
     """ Group of resource templates that will be provisioned one by one """
     # Model doesn't inherit NameMixin, because name field must be unique.
     name = models.CharField(max_length=150, unique=True)
     is_active = models.BooleanField(default=True)
-    tags = TaggableManager()
 
     def __str__(self):
         return self.name
@@ -126,7 +125,7 @@ class TemplateActionException(Exception):
 
 
 @python_2_unicode_compatible
-class Template(core_models.UuidMixin, models.Model):
+class Template(core_models.UuidMixin, structure_models.TagMixin, models.Model):
     """ Template for application action.
 
         Currently templates application supports only provision actions.
@@ -134,7 +133,6 @@ class Template(core_models.UuidMixin, models.Model):
     """
     group = models.ForeignKey(TemplateGroup, related_name='templates')
     options = JSONField(default={}, help_text='Default options for resource provision request.')
-    tags = TaggableManager()
     service_settings = models.ForeignKey(structure_models.ServiceSettings, related_name='templates', null=True)
     object_content_type = models.ForeignKey(
         ContentType, help_text='Content type of resource which provision process is described in template.')

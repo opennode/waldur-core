@@ -27,7 +27,7 @@ class TemplateSerializer(serializers.ModelSerializer):
         return reverse.reverse(url_name, request=request)
 
     def get_tags(self, template):
-        return [t.name for t in template.tags.all()]
+        return template.get_tags()
 
 
 class TemplateGroupSerializer(serializers.HyperlinkedModelSerializer):
@@ -52,7 +52,7 @@ class TemplateGroupSerializer(serializers.HyperlinkedModelSerializer):
         }
 
     def get_tags(self, template_group):
-        return [t.name for t in template_group.tags.all()]
+        return template_group.get_tags()
 
     def get_sla(self, template_group):
         from nodeconductor.template import settings
