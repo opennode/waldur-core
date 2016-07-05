@@ -220,9 +220,12 @@ class SupportedServices(object):
         view = cls.get_resource_view(model)
         actions = {}
         for key in dir(view):
-            attr = getattr(view, key)
-            if hasattr(attr, 'bind_to_methods') and 'post' in attr.bind_to_methods:
-                actions[key] = attr
+            callback = getattr(view, key)
+            if getattr(callback, 'deprecated', False):
+                continue
+            if 'post' not in getattr(callback, 'bind_to_methods', []):
+                continue
+            actions[key] = callback
         actions['destroy'] = view.destroy
         return sort_dict(actions)
 
