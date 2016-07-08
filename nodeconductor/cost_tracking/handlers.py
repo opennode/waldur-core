@@ -8,6 +8,8 @@ from nodeconductor.core.utils import serialize_instance
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister
 from nodeconductor.cost_tracking.models import PayableMixin
 from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, ServiceBackendError
+from nodeconductor.structure import models as structure_models
+
 
 logger = logging.getLogger(__name__)
 
@@ -124,18 +126,25 @@ def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):
 
 
 def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
-    # if scope is Resource:
+    # If scope is resource:
     #    delete -- add metadata about deleted resource, set object_id to NULL
     #    unlink -- delete all related estimates
-    if isinstance(instance, tuple(PayableMixin.get_all_models())):
+    if isinstance(instance, PayableMixin):
         if getattr(instance, 'PERFORM_UNLINK', False):
             models.PriceEstimate.delete_estimates_for_resource(instance)
         else:
-            models.PriceEstimate.update_metadata_for_scope(instance)
+            models.PriceEstimate.update_metadata_for_resource(instance)
             # deal with re-usage of primary keys in InnoDB
             models.PriceEstimate.objects.filter(scope=instance).update(object_id=None)
 
-    # otherwise delete everything in hope of django carrying out DB consistency
-    # i.e. higher level scope can only be deleted if there's no any resource in it
-    else:
+    # If scope is customer or service project link then delete all related estimates
+    elif isinstance(instance, (structure_models.Customer,
+                               structure_models.ServiceProjectLink)):
         models.PriceEstimate.objects.filter(scope=instance).delete()
+
+    # Else add metadata about deleted object, set object_id to NULL
+    elif isinstance(instance, (structure_models.Service,
+                               structure_models.ServiceSettings,
+                               structure_models.Project)):
+        models.PriceEstimate.update_metadata_for_scope(instance)
+        models.PriceEstimate.objects.filter(scope=instance).update(object_id=None)
