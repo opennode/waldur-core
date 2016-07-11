@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Allow to update push hook token.
 
 Release 0.102.5
 ---------------
