@@ -19,7 +19,7 @@ License: Copyright 2014 OpenNode LLC.  All rights reserved.
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 Requires: logrotate
 Requires: MySQL-python
-Requires: python-celery >= 3.1.15, python-celery < 3.2
+Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.8, python-django < 1.9
 Requires: python-django-admin-tools = 0.7.0
