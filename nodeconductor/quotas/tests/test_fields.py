@@ -1,7 +1,7 @@
-from django.core.management import call_command
 from django.test import TransactionTestCase
 import reversion
 
+from nodeconductor.core.utils import silent_call
 from . import models as test_models
 
 
@@ -60,7 +60,7 @@ class TestCounterQuotaField(TransactionTestCase):
         quota.usage = 3
         quota.save()
 
-        call_command('recalculatequotas')
+        silent_call('recalculatequotas')
 
         quota = self.parent.quotas.get(name=self.quota_field)
         self.assertEqual(quota.usage, 1)
@@ -137,7 +137,7 @@ class TestUsageAggregatorField(TransactionTestCase):
             parent.set_quota_usage(self.parent_quota_field, 666)
         self.grandparent.set_quota_usage(self.grandparent_quota_field, 1232)
 
-        call_command('recalculatequotas')
+        silent_call('recalculatequotas')
 
         for parent in self.parents:
             quota = parent.quotas.get(name=self.parent_quota_field)
@@ -224,7 +224,7 @@ class TestLimitAggregatorField(TransactionTestCase):
             parent.set_quota_limit(self.parent_quota_field, 666)
         self.grandparent.set_quota_limit(self.grandparent_quota_field, 1232)
 
-        call_command('recalculatequotas')
+        silent_call('recalculatequotas')
 
         for parent in self.parents:
             quota = parent.quotas.get(name=self.parent_quota_field)
