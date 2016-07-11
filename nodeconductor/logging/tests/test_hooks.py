@@ -1,3 +1,4 @@
+from ddt import ddt, data
 from django.core.urlresolvers import reverse
 from rest_framework import status, test
 
@@ -57,76 +58,58 @@ class HookCreationViewTest(BaseHookApiTest):
         self.assertEqual(response.data['event_types'], set(event_types))
 
 
-class BaseHookUpdateTest(BaseHookApiTest):
-    def update_hook(self, data):
-        self.client.force_authenticate(user=self.author)
-        response = self.client.patch(self.url, data=data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        return response
-
-
-class WebHookUpdateTest(BaseHookUpdateTest):
-
+@ddt
+class HookUpdateTest(BaseHookApiTest):
     def setUp(self):
-        super(WebHookUpdateTest, self).setUp()
-        self.webhook = WebHookFactory(user=self.author)
-        self.url = WebHookFactory.get_url(self.webhook)
+        super(HookUpdateTest, self).setUp()
+        self.hooks = {
+            'web': WebHookFactory.get_url(WebHookFactory(user=self.author)),
+            'push': PushHookFactory.get_url(PushHookFactory(user=self.author))
+        }
 
     def test_author_can_update_webhook_destination_url(self):
-        data = {
+        new_data = {
             'destination_url': 'http://another-host.com'
         }
-        response = self.update_hook(data)
-        self.assertEqual(data['destination_url'], response.data['destination_url'])
+        response = self.update_hook('web', new_data)
+        self.assertEqual(new_data['destination_url'], response.data['destination_url'])
 
-    def test_author_can_update_webhook_event_types(self):
-        data = {
-            'event_types': set(self.valid_event_types[:1]),
+    def test_author_can_update_push_hook_token(self):
+        new_data = {
+            'token': 'NEW_VALID_TOKEN'
         }
-        response = self.update_hook(data)
-        self.assertEqual(data['event_types'], response.data['event_types'])
+        response = self.update_hook('push', new_data)
+        self.assertEqual(new_data['token'], response.data['token'])
 
-    def test_author_can_update_event_groups(self):
+    @data('web', 'push')
+    def test_author_can_update_hook_event_types(self, hook):
+        new_event_types = set(self.valid_event_types[:1])
+        response = self.update_hook(hook, {'event_types': new_event_types})
+        self.assertEqual(new_event_types, response.data['event_types'])
+
+    @data('web', 'push')
+    def test_author_can_update_event_groups(self, hook):
         event_groups = self.valid_event_groups
         event_types = loggers.expand_event_groups(event_groups)
 
         self.client.force_authenticate(user=self.author)
-        response = self.update_hook({
+        response = self.update_hook(hook, {
             'event_groups': event_groups
         })
         self.assertEqual(response.data['event_groups'], set(event_groups))
         self.assertEqual(response.data['event_types'], set(event_types))
 
-    def test_author_can_disable_webhook(self):
-        response = self.update_hook({'is_active': False})
+    @data('web', 'push')
+    def test_author_can_disable_hook(self, hook):
+        response = self.update_hook(hook, {'is_active': False})
         self.assertFalse(response.data['is_active'])
 
-
-class PushHookUpdateTest(BaseHookUpdateTest):
-
-    def setUp(self):
-        super(PushHookUpdateTest, self).setUp()
-        self.hook = PushHookFactory(user=self.author)
-        self.url = PushHookFactory.get_url(self.hook)
-
-    def test_author_can_update_push_hook_token(self):
-        data = {
-            'token': 'NEW_VALID_TOKEN'
-        }
-        response = self.update_hook(data)
-        self.assertEqual(data['token'], response.data['token'])
-
-    def test_author_can_update_push_hook_event_types(self):
-        new_events = set(self.valid_event_types[:1])
-        data = {
-            'event_types': new_events,
-        }
-        response = self.update_hook(data)
-        self.assertEqual(data['event_types'], response.data['event_types'])
-
-    def test_author_can_disable_push_hook(self):
-        response = self.update_hook({'is_active': False})
-        self.assertFalse(response.data['is_active'])
+    def update_hook(self, hook, data):
+        self.client.force_authenticate(user=self.author)
+        url = self.hooks[hook]
+        response = self.client.patch(url, data=data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        return response
 
 
 class HookPermisssionsViewTest(BaseHookApiTest):
