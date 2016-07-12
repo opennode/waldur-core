@@ -968,9 +968,6 @@ class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
         RESTARTING_SCHEDULED = 15
         RESTARTING = 16
 
-        UPDATE_SCHEDULED = 17
-        UPDATING = 18
-
         CHOICES = (
             (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
             (PROVISIONING, 'Provisioning'),
@@ -994,9 +991,6 @@ class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
 
             (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
             (RESTARTING, 'Restarting'),
-
-            (UPDATE_SCHEDULED, 'Update Scheduled'),
-            (UPDATING, 'Updating'),
         )
 
         # Stable instances are the ones for which
@@ -1107,18 +1101,6 @@ class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
                 source='*',
                 target=States.ERRED)
     def set_erred(self):
-        pass
-
-    @transition(field=state,
-                source=[States.ONLINE, States.ERRED],
-                target=States.UPDATE_SCHEDULED)
-    def schedule_updating(self):
-        pass
-
-    @transition(field=state,
-                source=States.UPDATE_SCHEDULED,
-                target=States.UPDATING)
-    def begin_updating(self):
         pass
 
 

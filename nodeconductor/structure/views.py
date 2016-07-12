@@ -1938,21 +1938,20 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
-class ResourceRecoveryMixin(object):
+class PullMixin(object):
     """
-    This mixin should be used for resource recovery from the ERRED state.
-    The "recovery_executor" must be specified in the viewset.
+    This mixin should be used to pull instance's data from the backend.
+    The "pull_executor" must be specified in the viewset.
     """
-    recovery_executor = NotImplemented
+    pull_executor = NotImplemented
 
-    # XXX: OldStateResourceMixin should be removed after NC-1237
     @detail_route(methods=['post'])
-    @safe_operation(valid_state=(models.NewResource.States.ERRED, models.OldStateResourceMixin.States.ERRED))
-    def recover(self, request, resource, uuid=None):
-        self.recovery_executor().execute(resource)
+    @safe_operation(valid_state=(models.NewResource.States.ERRED, models.NewResource.States.OK))
+    def pull(self, request, instance, uuid=None):
+        self.pull_executor.execute(instance)
 
 
-class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixin, ResourceRecoveryMixin):
+class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixin):
     class PaidControl:
         customer_path = 'service_project_link__service__customer'
         settings_path = 'service_project_link__service__settings'
