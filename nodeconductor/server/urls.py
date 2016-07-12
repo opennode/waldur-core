@@ -50,12 +50,12 @@ urlpatterns += patterns(
     url(r'^api/', include('nodeconductor.structure.urls')),
     url(r'^api/version/', 'nodeconductor.core.views.version_detail'),
     url(r'^api-auth/password/', 'nodeconductor.core.views.obtain_auth_token', name='auth-password'),
-    url(r'^api-auth/', include('rest_framework.urls',
-                               namespace='rest_framework')),
     url(r'^$', TemplateView.as_view(template_name='landing/index.html')),
 )
-
 
 if settings.DEBUG:
     from django.conf.urls.static import static
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+    # enable login/logout for web UI in debug mode
+    urlpatterns += url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
