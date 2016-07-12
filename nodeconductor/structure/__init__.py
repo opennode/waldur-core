@@ -459,7 +459,6 @@ def log_backend_action(action=None):
                 # it uses empty invalid *args. It leads to unrecoverable error and worker dies.
                 # When all workers are dead, all tasks are stuck in pending state forever.
                 # In order to fix this issue we serialize exception to text type explicitly.
-                logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
                 six.reraise(ServiceBackendError, six.text_type(e), sys.exc_info()[2])
             else:
                 logger.debug('Action `%s` was executed successfully for `%s` (PK: %s).',

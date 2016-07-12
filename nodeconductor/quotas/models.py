@@ -138,14 +138,16 @@ class QuotaModelMixin(models.Model):
     @_fail_silently
     def set_quota_limit(self, quota_name, limit, fail_silently=False):
         quota = self.quotas.get(name=quota_name)
-        quota.limit = limit
-        quota.save()
+        if quota.limit != limit:
+            quota.limit = limit
+            quota.save(update_fields=['limit'])
 
     @_fail_silently
     def set_quota_usage(self, quota_name, usage, fail_silently=False):
         quota = self.quotas.get(name=quota_name)
-        quota.usage = usage
-        quota.save()
+        if quota.usage != usage:
+            quota.usage = usage
+            quota.save(update_fields=['usage'])
 
     @_fail_silently
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False, validate=False):
