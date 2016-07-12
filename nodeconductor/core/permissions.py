@@ -56,7 +56,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         Constructor
 
         Parameters
-        ----------
+        ^^^^^^^^^^
         collaborators_query : string
             Django queryset filter-like expression or list of expressions
             to fetch collaborators based on current object.
@@ -138,7 +138,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
         attributes of this instance).
 
         Parameters
-        ----------
+        ^^^^^^^^^^
         user_obj : django user model instance
             A django user model instance which be checked
         perm : string
@@ -147,7 +147,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
             None or django model instance for object permission
 
         Returns
-        -------
+        ^^^^^^^
         boolean
             Whether the user specified has specified permission (of specified
             object).
@@ -194,7 +194,7 @@ class StaffPermissionLogic(PermissionLogic):
         Constructor
 
         Parameters
-        ----------
+        ^^^^^^^^^^
         any_permission : boolean
             True for give any permission of the specified object to the staff
             user. Default value will be taken from
@@ -258,7 +258,7 @@ class StaffPermissionLogic(PermissionLogic):
         instance).
 
         Parameters
-        ----------
+        ^^^^^^^^^^
         user_obj : django user model instance
             A django user model instance which be checked
         perm : string
@@ -267,7 +267,7 @@ class StaffPermissionLogic(PermissionLogic):
             None or django model instance for object permission
 
         Returns
-        -------
+        ^^^^^^^
         boolean
             Weather the specified user have specified permission (of specified
             object).

@@ -39,14 +39,14 @@ def format_time_and_value_to_segment_list(time_and_value_list, segments_count, s
     Format time_and_value_list to time segments
 
     Parameters
-    ----------
+    ^^^^^^^^^^
     time_and_value_list: list of tuples
         Have to be sorted by time
         Example: [(time, value), (time, value) ...]
     segments_count: integer
         How many segments will be in result
     Returns
-    -------
+    ^^^^^^^
     List of dictionaries
         Example:
         [{'from': time1, 'to': time2, 'value': sum_of_values_from_time1_to_time2}, ...]
