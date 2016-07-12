@@ -250,3 +250,34 @@ class HistoricResourceTest(BaseCostTrackingTest):
             self.assertEqual(response.data['scope_name'], estimate.scope.name)
             self.assertEqual(response.data['scope_type'], 'resource')
             self.assertEqual(response.data['resource_type'], 'Test.TestInstance')
+
+
+class DeletePriceEstimateForStructureModelsTest(BaseCostTrackingTest):
+    def test_if_service_deleted_its_price_estimate_remains(self):
+        estimate = factories.PriceEstimateFactory(scope=self.service)
+        self.service.delete()
+        estimate.refresh_from_db()
+        self.assertEqual(estimate.details['scope_name'], self.service.name)
+        self.assertEqual(estimate.object_id, None)
+
+    def test_if_settings_deleted_its_price_estimate_remains(self):
+        service_settings = self.service.settings
+        estimate = factories.PriceEstimateFactory(scope=service_settings)
+        service_settings.delete()
+        estimate.refresh_from_db()
+        self.assertEqual(estimate.details['scope_name'], service_settings.name)
+        self.assertEqual(estimate.object_id, None)
+
+    def test_if_project_deleted_its_price_estimate_remains(self):
+        estimate = factories.PriceEstimateFactory(scope=self.project)
+        self.project.delete()
+        estimate.refresh_from_db()
+        self.assertEqual(estimate.details['scope_name'], self.project.name)
+        self.assertEqual(estimate.object_id, None)
+
+    def test_if_customer_deleted_its_price_estimate_deleted(self):
+        estimate = factories.PriceEstimateFactory(scope=self.customer)
+        self.customer.projects.all().delete()
+        self.customer.project_groups.all().delete()
+        self.customer.delete()
+        self.assertFalse(models.PriceEstimate.objects.filter(id=estimate.id).exists())

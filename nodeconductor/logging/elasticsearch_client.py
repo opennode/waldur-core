@@ -227,7 +227,7 @@ class ElasticsearchClient(object):
         Prepare body for elasticsearch query
 
         Search parameters
-        ----------
+        ^^^^^^^^^^^^^^^^^
         These parameters are dictionaries and have format:  <term>: [<value 1>, <value 2> ...]
         should_terms: it resembles logical OR
         must_terms: it resembles logical AND

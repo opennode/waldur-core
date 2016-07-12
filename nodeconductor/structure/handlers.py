@@ -291,7 +291,9 @@ def check_resource_provisioned(sender, instance, name, source, target, **kwargs)
 
 
 def log_resource_action(sender, instance, name, source, target, **kwargs):
-    if source == Resource.States.PROVISIONING:
+    if isinstance(instance, StateMixin):
+        return
+    elif source == Resource.States.PROVISIONING:
         if target == Resource.States.ONLINE:
             event_logger.resource.info(
                 'Resource {resource_name} has been created.',

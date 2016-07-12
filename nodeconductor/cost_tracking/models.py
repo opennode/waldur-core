@@ -73,6 +73,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
             PayableMixin.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models() +
             structure_models.Service.get_all_models() +
+            [structure_models.ServiceSettings] +
             [structure_models.Project, structure_models.Customer]
         )
 
@@ -130,14 +131,20 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
                     parent_estimate.update_from_leaf()
 
     @classmethod
-    def update_metadata_for_scope(cls, scope):
+    def update_metadata_for_resource(cls, scope):
         cls.objects.filter(scope=scope).update(
             scope_customer=scope.customer,
             details=dict(
                 scope_name=scope.name,
-                scope_type=SupportedServices.get_name_for_model(scope),
-                scope_backend_id=scope.backend_id,
+                scope_backend_id=scope.backend_id
             ))
+
+    @classmethod
+    def update_metadata_for_scope(cls, scope):
+        cls.objects.filter(scope=scope).update(
+            scope_customer=scope.customer,
+            details=dict(scope_name=scope.name)
+        )
 
     @classmethod
     def update_price_for_scope(cls, scope):

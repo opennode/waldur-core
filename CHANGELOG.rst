@@ -4,6 +4,18 @@ CHANGELOG
 Release NEXT
 ------------
 - Remove to specific signals that handles user/ssh key management.
+- Implement management command to cleanup invalid price estimates.
+- Update metadata for price estimates of service, settings and project on scope deletion.
+- Allow to update push hook token.
+
+Release 0.102.5
+---------------
+- Removed incorrect wrapper.
+
+Release 0.102.4
+---------------
+- Fix OpenStack client exception serialization in log_backend_action.
+>>>>>>> 16f8b6b941e83c7403bf96276e390a7673ea2849
 
 Release 0.102.3
 ---------------

@@ -23,4 +23,5 @@ class TestConfig(AppConfig):
 
     def ready(self):
         SupportedServices.register_backend(TestBackend)
+        SupportedServices.register_service(self.get_model('TestService'))
         CostTrackingRegister.register(self.label, TestTrackingBackend)

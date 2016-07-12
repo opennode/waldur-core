@@ -1,7 +1,7 @@
 include *.md *.rst
+recursive-include nodeconductor/core/templates *.html
 recursive-include nodeconductor/templates *.html
 recursive-include nodeconductor/landing/templates *.html
 recursive-include nodeconductor/logging/templates *.html
-recursive-include nodeconductor/cost_tracking/templates *.html
 recursive-include nodeconductor/structure/templates *.html
 recursive-include nodeconductor/template/templates *.html

@@ -220,9 +220,12 @@ class SupportedServices(object):
         view = cls.get_resource_view(model)
         actions = {}
         for key in dir(view):
-            attr = getattr(view, key)
-            if hasattr(attr, 'bind_to_methods') and 'post' in attr.bind_to_methods:
-                actions[key] = attr
+            callback = getattr(view, key)
+            if getattr(callback, 'deprecated', False):
+                continue
+            if 'post' not in getattr(callback, 'bind_to_methods', []):
+                continue
+            actions[key] = callback
         actions['destroy'] = view.destroy
         return sort_dict(actions)
 
@@ -447,11 +450,17 @@ def log_backend_action(action=None):
             logger.debug('About to %s `%s` (PK: %s).', action_name, instance, instance.pk)
             try:
                 result = func(self, instance, *args, **kwargs)
-            except ServiceBackendError:
+            except ServiceBackendError as e:
+                # OpenStack client exceptions, such as cinder_exceptions.ClientException
+                # are not serializable by Celery, because they use custom arguments *args
+                # and define __init__ method, but don't call Exception.__init__ method
+                # http://docs.celeryproject.org/en/latest/userguide/tasks.html#creating-pickleable-exceptions
+                # That's why when Celery worker tries to deserialize OpenStack client exception,
+                # it uses empty invalid *args. It leads to unrecoverable error and worker dies.
+                # When all workers are dead, all tasks are stuck in pending state forever.
+                # In order to fix this issue we serialize exception to text type explicitly.
                 logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
-                exc = list(sys.exc_info())
-                exc[0] = ServiceBackendError
-                six.reraise(*exc)
+                six.reraise(ServiceBackendError, six.text_type(e), sys.exc_info()[2])
             else:
                 logger.debug('Action `%s` was executed successfully for `%s` (PK: %s).',
                              action_name, instance, instance.pk)

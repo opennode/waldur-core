@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from datetime import datetime
 
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
@@ -36,7 +37,7 @@ Arguments:
             return
 
         self.stdout.write('Creating a user %s...' % username)
-        user = self.UserModel.objects.create(username=username)
+        user = self.UserModel.objects.create(username=username, last_login=datetime.now())
         user.set_password(password)
         user.is_staff = True
         user.save()

@@ -12,14 +12,14 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.102.3
+Version: 0.102.5
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 Requires: logrotate
 Requires: MySQL-python
-Requires: python-celery >= 3.1.15, python-celery < 3.2
+Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.8, python-django < 1.9
 Requires: python-django-admin-tools = 0.7.0
@@ -204,6 +204,12 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Wed Jul 6 2016 Jenkins <jenkins@opennodecloud.com> - 0.102.5-1.el7
+- New upstream release
+
+* Mon Jul 4 2016 Jenkins <jenkins@opennodecloud.com> - 0.102.4-1.el7
+- New upstream release
+
 * Thu Jun 30 2016 Jenkins <jenkins@opennodecloud.com> - 0.102.3-1.el7
 - New upstream release
 
