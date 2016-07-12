@@ -132,6 +132,11 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
             logger.debug('Not returning auth token: '
                          'user %s does not exist', username)
             cache.set(auth_failure_key, auth_failures + 1, lockout_time_in_mins * 60)
+            event_logger.auth.info(
+                'User {username} failed to authenticate with username and password.',
+                event_type='auth_login_failed_with_username',
+                event_context={'username': username})
+
             return Response(
                 data={'detail': 'Invalid username/password'},
                 status=status.HTTP_401_UNAUTHORIZED,
