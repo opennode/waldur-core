@@ -507,18 +507,6 @@ class ServiceBackend(object):
     def restart(self, resource):
         raise ServiceBackendNotImplemented
 
-    def add_ssh_key(self, ssh_key, service_project_link):
-        raise ServiceBackendNotImplemented
-
-    def remove_ssh_key(self, ssh_key, service_project_link):
-        raise ServiceBackendNotImplemented
-
-    def add_user(self, user, service_project_link):
-        raise ServiceBackendNotImplemented
-
-    def remove_user(self, user, service_project_link):
-        raise ServiceBackendNotImplemented
-
     def get_resources_for_import(self):
         raise ServiceBackendNotImplemented
 

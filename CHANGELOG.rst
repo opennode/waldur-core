@@ -3,6 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Remove specific signals that handles user/ssh key management.
 - Implement management command to cleanup invalid price estimates.
 - Update metadata for price estimates of service, settings and project on scope deletion.
 - Allow to update push hook token.
