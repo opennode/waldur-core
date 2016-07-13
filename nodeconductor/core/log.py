@@ -1,14 +1,19 @@
+import six
+
 from nodeconductor.logging.loggers import EventLogger, event_logger
 from nodeconductor.core.models import User, SshPublicKey
 
 
 class AuthEventLogger(EventLogger):
     user = User
+    username = six.text_type
 
     class Meta:
         event_types = ('auth_logged_in_with_username',
+                       'auth_login_failed_with_username',
                        'auth_logged_out')
         event_groups = {'users': event_types}
+        nullable_fields = ['user', 'username']
 
 
 class UserEventLogger(EventLogger):

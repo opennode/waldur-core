@@ -6,6 +6,9 @@ User events
     **auth_logged_in_with_username**
         User authenticated successfully with username and password.
 
+    **auth_login_failed_with_username**
+        User failed to authenticate with username and password.
+
     **auth_logged_in_with_pki**
         User authenticated successfully with Omani PKI.
 
