@@ -7,3 +7,7 @@ INSTALLED_APPS += (
 )
 
 ROOT_URLCONF = 'nodeconductor.structure.tests.urls'
+
+
+# XXX: This option should be removed after itacloud assembly creation.
+NODECONDUCTOR['IS_ITACLOUD'] = True
