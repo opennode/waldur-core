@@ -1,6 +1,7 @@
 import base64
 from collections import OrderedDict
 from datetime import timedelta
+import logging
 
 from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
@@ -11,6 +12,9 @@ from rest_framework.fields import Field, ReadOnlyField
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import TimestampField
 from nodeconductor.core.signals import pre_serializer_fields
+
+
+logger = logging.getLogger(__name__)
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -310,6 +314,8 @@ class RequiredFieldsMixin(object):
             field = fields.get(name)
             if field:
                 field.required = True
+            else:
+                logger.warning('Unable to make field `%s` read-only, because it does not exist.', name)
         return fields
 
 
@@ -326,6 +332,8 @@ class ExtraFieldOptionsMixin(object):
             if field:
                 for key, val in options.items():
                     setattr(field, key, val)
+            else:
+                logger.warning('Unable to set metadata for field `%s`, because it does not exist.', name)
         return fields
 
 
