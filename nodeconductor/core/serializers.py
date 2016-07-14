@@ -298,6 +298,37 @@ class RestrictedSerializerMixin(object):
         return OrderedDict(((key, value) for key, value in fields.items() if key in keys))
 
 
+class RequiredFieldsMixin(object):
+    """
+    This mixin allows to specify list of required fields.
+    It expects list of field names as Meta.required_fields attribute.
+    """
+    def get_fields(self):
+        fields = super(RequiredFieldsMixin, self).get_fields()
+        required_fields = getattr(self.Meta, 'required_fields') or []
+        for name in required_fields:
+            field = fields.get(name)
+            if field:
+                field.required = True
+        return fields
+
+
+class ExtraFieldOptionsMixin(object):
+    """
+    This mixin allows to specify extra fields metadata.
+    It expects dictionary of field name and options as Meta.extra_field_options attribute.
+    """
+    def get_fields(self):
+        fields = super(ExtraFieldOptionsMixin, self).get_fields()
+        extra_field_options = getattr(self.Meta, 'extra_field_options') or {}
+        for name, options in extra_field_options.items():
+            field = fields.get(name)
+            if field:
+                for key, val in options.items():
+                    setattr(field, key, val)
+        return fields
+
+
 class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
     def __init__(self, **kwargs):
         self.queryset = kwargs.pop('queryset', None)
