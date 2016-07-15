@@ -78,21 +78,17 @@ cp packaging/settings.py nodeconductor/server/settings.py
 
 %install
 rm -rf %{buildroot}
-python setup.py install --single-version-externally-managed -O1 --root=%{buildroot} --record=INSTALLED_FILES
+%{__python} setup.py install -O1 --root=%{buildroot}
 
 mkdir -p %{buildroot}%{_unitdir}
 cp packaging%{__celery_systemd_unit_file} %{buildroot}%{__celery_systemd_unit_file}
-echo "%{__celery_systemd_unit_file}" >> INSTALLED_FILES
 cp packaging%{__celerybeat_systemd_unit_file} %{buildroot}%{__celerybeat_systemd_unit_file}
-echo "%{__celerybeat_systemd_unit_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__conf_dir}
-echo "%{__conf_dir}" >> INSTALLED_FILES
 cp packaging%{__celery_conf_file} %{buildroot}%{__celery_conf_file}
 cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
-echo "%{__data_dir}" >> INSTALLED_FILES
 cat > tmp_settings.py << EOF
 # Minimal settings required for 'collectstatic' command
 INSTALLED_APPS = (
@@ -100,9 +96,9 @@ INSTALLED_APPS = (
     'admin_tools.dashboard',
     'admin_tools.menu',
     'admin_tools.theming',
+    'fluent_dashboard',  # should go before 'django.contrib.admin'
     'django.contrib.admin',
     'django.contrib.staticfiles',
-    'fluent_dashboard',
     'nodeconductor.landing',
     'rest_framework',
 )
@@ -121,22 +117,24 @@ EOF
 %{__python} manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
-echo "%{__log_dir}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__logrotate_dir}
 cp packaging%{__logrotate_conf_file} %{buildroot}%{__logrotate_conf_file}
-echo "%{__logrotate_conf_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__work_dir}/media
-echo "%{__work_dir}" >> INSTALLED_FILES
-
-cat INSTALLED_FILES | sort | uniq > INSTALLED_FILES_CLEAN
 
 %clean
 rm -rf %{buildroot}
 
-%files -f INSTALLED_FILES_CLEAN
+%files
 %defattr(-,root,root,-)
+%{python_sitelib}/*
+%{_unitdir}/*
+%{_bindir}/*
+%{__data_dir}
+%{__log_dir}
+%{__logrotate_dir}/*
+%{__work_dir}
 %config(noreplace) %{__celery_conf_file}
 %config(noreplace) %{__conf_file}
 
