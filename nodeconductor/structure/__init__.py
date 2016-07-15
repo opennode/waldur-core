@@ -459,7 +459,6 @@ def log_backend_action(action=None):
                 # it uses empty invalid *args. It leads to unrecoverable error and worker dies.
                 # When all workers are dead, all tasks are stuck in pending state forever.
                 # In order to fix this issue we serialize exception to text type explicitly.
-                logger.error('Failed to %s `%s` (PK: %s).', action_name, instance, instance.pk)
                 six.reraise(ServiceBackendError, six.text_type(e), sys.exc_info()[2])
             else:
                 logger.debug('Action `%s` was executed successfully for `%s` (PK: %s).',
@@ -506,18 +505,6 @@ class ServiceBackend(object):
         raise ServiceBackendNotImplemented
 
     def restart(self, resource):
-        raise ServiceBackendNotImplemented
-
-    def add_ssh_key(self, ssh_key, service_project_link):
-        raise ServiceBackendNotImplemented
-
-    def remove_ssh_key(self, ssh_key, service_project_link):
-        raise ServiceBackendNotImplemented
-
-    def add_user(self, user, service_project_link):
-        raise ServiceBackendNotImplemented
-
-    def remove_user(self, user, service_project_link):
         raise ServiceBackendNotImplemented
 
     def get_resources_for_import(self):

@@ -26,7 +26,7 @@ class ResourceStateFilter(django_filters.FilterSet):
 class SlaFilter(BaseFilterBackend):
     """
     SLA filter
-    ----------
+    ^^^^^^^^^^
 
     Allows to filter or sort resources by actual_sla
     Default period is current year and month.
@@ -60,7 +60,7 @@ class SlaFilter(BaseFilterBackend):
 class MonitoringItemFilter(BaseFilterBackend):
     """
     Monitoring filter
-    -----------------
+    ^^^^^^^^^^^^^^^^^
 
     Filter and order resources by monitoring item.
     For example, given query dictionary

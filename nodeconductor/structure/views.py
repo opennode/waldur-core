@@ -1938,6 +1938,19 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
+class PullMixin(object):
+    """
+    This mixin should be used to pull instance's data from the backend.
+    The "pull_executor" must be specified in the viewset.
+    """
+    pull_executor = NotImplemented
+
+    @detail_route(methods=['post'])
+    @safe_operation(valid_state=(models.NewResource.States.ERRED, models.NewResource.States.OK))
+    def pull(self, request, instance, uuid=None):
+        self.pull_executor.execute(instance)
+
+
 class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixin):
     class PaidControl:
         customer_path = 'service_project_link__service__customer'

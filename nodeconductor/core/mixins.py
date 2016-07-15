@@ -1,22 +1,9 @@
 from __future__ import unicode_literals
 
-from rest_framework import mixins, status, response
+from rest_framework import status, response
 
 from nodeconductor.core import models
 from nodeconductor.core.exceptions import IncorrectStateException
-
-
-class ListModelMixin(mixins.ListModelMixin):
-    def __init__(self, *args, **kwargs):
-        import warnings
-
-        warnings.warn(
-            "nodeconductor.core.mixins.ListModelMixin is deprecated. "
-            "Use stock rest_framework.mixins.ListModelMixin instead.",
-            DeprecationWarning,
-        )
-
-        super(ListModelMixin, self).__init__(*args, **kwargs)
 
 
 class UpdateOnlyStableMixin(object):

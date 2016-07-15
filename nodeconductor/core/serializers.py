@@ -1,6 +1,7 @@
 import base64
 from collections import OrderedDict
 from datetime import timedelta
+import logging
 
 from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
@@ -11,6 +12,9 @@ from rest_framework.fields import Field, ReadOnlyField
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.fields import TimestampField
 from nodeconductor.core.signals import pre_serializer_fields
+
+
+logger = logging.getLogger(__name__)
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -296,6 +300,41 @@ class RestrictedSerializerMixin(object):
         if not keys:
             return fields
         return OrderedDict(((key, value) for key, value in fields.items() if key in keys))
+
+
+class RequiredFieldsMixin(object):
+    """
+    This mixin allows to specify list of required fields.
+    It expects list of field names as Meta.required_fields attribute.
+    """
+    def get_fields(self):
+        fields = super(RequiredFieldsMixin, self).get_fields()
+        required_fields = getattr(self.Meta, 'required_fields') or []
+        for name in required_fields:
+            field = fields.get(name)
+            if field:
+                field.required = True
+            else:
+                logger.warning('Unable to make field `%s` read-only, because it does not exist.', name)
+        return fields
+
+
+class ExtraFieldOptionsMixin(object):
+    """
+    This mixin allows to specify extra fields metadata.
+    It expects dictionary of field name and options as Meta.extra_field_options attribute.
+    """
+    def get_fields(self):
+        fields = super(ExtraFieldOptionsMixin, self).get_fields()
+        extra_field_options = getattr(self.Meta, 'extra_field_options') or {}
+        for name, options in extra_field_options.items():
+            field = fields.get(name)
+            if field:
+                for key, val in options.items():
+                    setattr(field, key, val)
+            else:
+                logger.warning('Unable to set metadata for field `%s`, because it does not exist.', name)
+        return fields
 
 
 class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):

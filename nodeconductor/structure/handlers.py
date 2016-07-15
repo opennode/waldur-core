@@ -4,123 +4,22 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth.models import Group
-from django.contrib.auth import get_user_model
 from django.db import models, transaction
 from django.utils import timezone
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.models import SshPublicKey, SynchronizationStates, StateMixin
+from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
-from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceProjectLink,
-                                            ServiceSettings, Service, Resource)
-from nodeconductor.structure.utils import serialize_ssh_key, serialize_user
+                                            Customer, ProjectGroup, ServiceSettings, Service, Resource, NewResource)
 
 
 logger = logging.getLogger(__name__)
 
 
-def get_links(user=None, project=None):
-    if user:
-        return [Link(spl)
-                for model in ServiceProjectLink.get_all_models()
-                for spl in filter_queryset_for_user(model.objects.all(), user)]
-    if project:
-        return [Link(spl)
-                for model in ServiceProjectLink.get_all_models()
-                for spl in model.objects.filter(project=project)]
-    return []
-
-
-def get_keys(user=None, project=None):
-    if user:
-        return SshPublicKey.objects.filter(user=user)
-    if project:
-        return SshPublicKey.objects.filter(user__groups__projectrole__project=project)
-    return []
-
-
-class Link(object):
-    def __init__(self, link):
-        self.link = link.to_string()
-
-    def add_user(self, user):
-        if not isinstance(user, basestring):
-            user = user.uuid.hex
-        send_task('structure', 'add_user')(user, self.link)
-
-    def remove_user(self, user):
-        send_task('structure', 'remove_user')(serialize_user(user), self.link)
-
-    def add_key(self, key):
-        if not isinstance(key, basestring):
-            key = key.uuid.hex
-        send_task('structure', 'push_ssh_public_key')(key, self.link)
-
-    def remove_key(self, key):
-        send_task('structure', 'remove_ssh_public_key')(serialize_ssh_key(key), self.link)
-
-
-def propagate_new_users_key_to_his_projects_services(sender, instance=None, created=False, **kwargs):
-    """ Propagate new ssh public key to all services it belongs via user projects """
-    if created:
-        for link in get_links(user=instance.user):
-            link.add_key(instance)
-
-
-def remove_stale_users_key_from_his_projects_services(sender, instance=None, **kwargs):
-    """ Remove ssh public key from all services it belongs via user projects """
-    for link in get_links(user=instance.user):
-        link.remove_key(instance)
-
-
-def propagate_user_to_his_projects_services(sender, instance=None, created=False, **kwargs):
-    """ Propagate users involved in the project and their ssh public keys """
-    if created:
-        link = Link(instance)
-
-        users = get_user_model().objects.filter(groups__projectrole__project=instance.project)
-        users = [uuid.hex for uuid in users.values_list('uuid', flat=True)]
-
-        for user in users:
-            link.add_user(user)
-
-        for key in get_keys(project=instance.project):
-            link.add_key(key)
-
-
-def remove_stale_user_from_his_projects_services(sender, instance=None, **kwargs):
-    """ Remove user from all services it belongs via projects """
-    for link in get_links(user=instance):
-        link.remove_user(instance)
-
-
-def propagate_user_to_services_of_newly_granted_project(sender, structure, user, role, **kwargs):
-    """ Propagate user and ssh public key to a service of new project """
-    keys = get_keys(user=user)
-
-    for link in get_links(project=structure):
-        link.add_user(user)
-
-        for key in keys:
-            link.add_key(key)
-
-
 def revoke_roles_on_project_deletion(sender, instance=None, **kwargs):
     instance.remove_all_users()
-
-
-def remove_stale_user_from_services_of_revoked_project(sender, structure, user, role, **kwargs):
-    """ Remove user and ssh public key from a service of old project """
-    keys = get_keys(user=user)
-
-    for link in get_links(project=structure):
-        link.remove_user(user)
-
-        for key in keys:
-            link.remove_key(key)
 
 
 def prevent_non_empty_project_group_deletion(sender, instance, **kwargs):
@@ -392,7 +291,9 @@ def check_resource_provisioned(sender, instance, name, source, target, **kwargs)
 
 
 def log_resource_action(sender, instance, name, source, target, **kwargs):
-    if source == Resource.States.PROVISIONING:
+    if isinstance(instance, StateMixin):
+        return
+    elif source == Resource.States.PROVISIONING:
         if target == Resource.States.ONLINE:
             event_logger.resource.info(
                 'Resource {resource_name} has been created.',
@@ -511,7 +412,8 @@ def delete_service_settings_on_service_delete(sender, instance, **kwargs):
 
 
 def init_resource_start_time(sender, instance, name, source, target, **kwargs):
-    if target == Resource.States.ONLINE:
+    if (isinstance(instance, Resource) and target == Resource.States.ONLINE) or\
+            (isinstance(instance, NewResource) and target == NewResource.States.OK):
         instance.start_time = timezone.now()
         instance.save(update_fields=['start_time'])
 

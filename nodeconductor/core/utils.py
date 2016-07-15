@@ -1,6 +1,8 @@
 import calendar
 import importlib
 import re
+
+import os
 import requests
 import time
 
@@ -11,6 +13,7 @@ from operator import itemgetter
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.urlresolvers import reverse, resolve
 from django.http import QueryDict
 from django.utils import timezone
@@ -36,14 +39,14 @@ def format_time_and_value_to_segment_list(time_and_value_list, segments_count, s
     Format time_and_value_list to time segments
 
     Parameters
-    ----------
+    ^^^^^^^^^^
     time_and_value_list: list of tuples
         Have to be sorted by time
         Example: [(time, value), (time, value) ...]
     segments_count: integer
         How many segments will be in result
     Returns
-    -------
+    ^^^^^^^
     List of dictionaries
         Example:
         [{'from': time1, 'to': time2, 'value': sum_of_values_from_time1_to_time2}, ...]
@@ -186,3 +189,7 @@ def get_fake_context():
 def camel_case_to_underscore(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def silent_call(name, *args, **options):
+    call_command(name, stdout=open(os.devnull, 'w'), *args, **options)

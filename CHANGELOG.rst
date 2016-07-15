@@ -5,6 +5,14 @@ Release NEXT
 ------------
 - Nothing yet
 
+Release 0.103.0
+---------------
+- Remove specific signals that handles user/ssh key management.
+- Implement management command to cleanup invalid price estimates.
+- Update metadata for price estimates of service, settings and project on scope deletion.
+- Allow to update push hook token.
+- Implement mixins to specify extra field metadata.
+
 Release 0.102.5
 ---------------
 - Removed incorrect wrapper.
