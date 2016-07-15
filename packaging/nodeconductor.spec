@@ -17,6 +17,8 @@ Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
+# MySQL-python is needed to use MySQL as database backend
+# python-psycopg2 is needed to use PostgreSQL as database backend
 Requires: logrotate
 Requires: MySQL-python
 Requires: python-celery >= 3.1.23, python-celery < 3.2
@@ -40,6 +42,7 @@ Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
+Requires: python-psycopg2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: python-redis = 2.10.3
@@ -92,20 +95,20 @@ mkdir -p %{buildroot}%{__data_dir}/static
 echo "%{__data_dir}" >> INSTALLED_FILES
 cat > tmp_settings.py << EOF
 # Minimal settings required for 'collectstatic' command
-INSTALLED_APPS=(
+INSTALLED_APPS = (
     'admin_tools',
     'admin_tools.dashboard',
     'admin_tools.menu',
     'admin_tools.theming',
-    'fluent_dashboard',
     'django.contrib.admin',
     'django.contrib.staticfiles',
-    'rest_framework',
+    'fluent_dashboard',
     'nodeconductor.landing',
+    'rest_framework',
 )
-SECRET_KEY='tmp'
-STATIC_ROOT='%{buildroot}%{__data_dir}/static'
-STATIC_URL='/static/'
+SECRET_KEY = 'tmp'
+STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
+STATIC_URL = '/static/'
 TEMPLATE_CONTEXT_PROCESSORS = (
     'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
 )
@@ -147,7 +150,11 @@ if [ "$1" = 1 ]; then
     sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
 
     echo "[%{name}] Adding new system user %{name}..."
-    useradd --home %{__work_dir} --shell /sbin/nologin --system --user-group %{name}
+    useradd --home %{__work_dir} --shell /bin/sh --system --user-group %{name}
+elif [ "$1" = 2 ]; then
+    # This package is being upgraded
+    # Applicable to nodeconductor-0.103.0 and before
+    [ "$(getent passwd nodeconductor | cut -d: -f7)" = "/sbin/nologin" ] && usermod -s /bin/sh nodeconductor
 fi
 
 echo "[%{name}] Setting directory permissions..."
@@ -171,14 +178,18 @@ Next steps:
 
 4. Create database (if not yet done):
 
+    -- MySQL
     CREATE DATABASE nodeconductor CHARACTER SET = utf8;
     CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
 
+    -- PostgreSQL
+    --CREATE DATABASE nodeconductor ENCODING 'UTF8';
+    --CREATE USER nodeconductor WITH PASSWORD 'nodeconductor';
+
 5. Migrate the database:
 
-    nodeconductor migrate --noinput
-    chown -R nodeconductor:nodeconductor /var/log/nodeconductor
+    su - nodeconductor -c "nodeconductor migrate --noinput"
 
 Note: you will need to run this again on next NodeConductor update.
 

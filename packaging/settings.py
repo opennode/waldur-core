@@ -63,6 +63,13 @@ config_defaults = {
         'port': '3306',
         'user': 'nodeconductor',
     },
+    'postgresql': {
+        'host': '',  # empty to connect via local UNIX socket
+        'name': 'nodeconductor',
+        'password': 'nodeconductor',
+        'port': '5432',
+        'user': 'nodeconductor',
+    },
     'rest_api': {
         'cors_allowed_domains': 'localhost,127.0.0.1',
     },
@@ -106,11 +113,14 @@ ALLOWED_HOSTS = ['*']
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#databases
 
 DATABASES = {
-    # Requirements for MySQL ('HOST', 'NAME', 'USER' and 'PASSWORD' are configured below):
-    #  - MySQL server running and accessible on 'HOST':'PORT'
-    #  - User 'USER' created and can login to MySQL server using password 'PASSWORD'
-    #  - Database 'NAME' created with all privileges granted to user 'USER'
-    #  - MySQL-python installed: https://pypi.python.org/pypi/MySQL-python
+    # MySQL
+    # -----
+    #
+    # Requirements:
+    #  - MySQL server is running and accessible on 'HOST':'PORT'
+    #  - MySQL user 'USER' is created and can login to MySQL server using password 'PASSWORD'
+    #  - MySQL database 'NAME' is created with all privileges granted to user 'USER'
+    #  - MySQL-python package is installed: https://pypi.python.org/pypi/MySQL-python
     #
     # Example: create database, user and grant privileges:
     #
@@ -121,6 +131,29 @@ DATABASES = {
     # Example: install MySQL-python in CentOS:
     #
     #   yum install MySQL-python
+    #
+    #
+    # PostgreSQL
+    # ----------
+    #
+    # Requirements:
+    #  - PostgreSQL server is running and accessible on 'HOST':'PORT'
+    #  - PostgreSQL user 'USER' created and can access PostgreSQL server using password 'PASSWORD'
+    #  - PostgreSQL database 'NAME' created with all privileges granted to user 'USER'
+    #  - psycopg2 package is installed: https://pypi.python.org/pypi/psycopg2
+    #
+    # Note: if PostgreSQL server is running on local host and is accessible via UNIX socket,
+    # leave 'HOST' and 'PORT' empty. For password usage details in this setup see
+    # https://www.postgresql.org/docs/9.2/static/auth-methods.html
+    #
+    # Example: create database, user and grant privileges:
+    #
+    #   CREATE DATABASE nodeconductor ENCODING 'UTF8'
+    #   CREATE USER nodeconductor WITH PASSWORD 'nodeconductor'
+    #
+    # Example: install psycopg2 in CentOS:
+    #
+    #   yum install python-psycopg2
     #
     'default': {}
 }
@@ -142,6 +175,15 @@ if config.get('global', 'db_backend') == 'mysql':
         'PORT': config.get('mysql', 'port'),
         'USER': config.get('mysql', 'user'),
         'PASSWORD': config.get('mysql', 'password'),
+    }
+elif config.get('global', 'db_backend') == 'postgresql':
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': config.get('postgresql', 'name'),
+        'HOST': config.get('postgresql', 'host'),
+        'PORT': config.get('postgresql', 'port'),
+        'USER': config.get('postgresql', 'user'),
+        'PASSWORD': config.get('postgresql', 'password'),
     }
 elif config.has_section('sqlite3'):
     DATABASES['default'] = {
