@@ -96,9 +96,9 @@ INSTALLED_APPS = (
     'admin_tools.dashboard',
     'admin_tools.menu',
     'admin_tools.theming',
+    'fluent_dashboard',  # should go before 'django.contrib.admin'
     'django.contrib.admin',
     'django.contrib.staticfiles',
-    'fluent_dashboard',
     'nodeconductor.landing',
     'rest_framework',
 )
