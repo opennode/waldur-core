@@ -184,8 +184,8 @@ Next steps:
     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
 
     -- PostgreSQL
-    --CREATE DATABASE nodeconductor ENCODING 'UTF8'
-    --CREATE USER nodeconductor WITH PASSWORD 'nodeconductor'
+    --CREATE DATABASE nodeconductor ENCODING 'UTF8';
+    --CREATE USER nodeconductor WITH PASSWORD 'nodeconductor';
 
 5. Migrate the database:
 
