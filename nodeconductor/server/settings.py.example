@@ -118,6 +118,15 @@ LOGGING = {
     },
     # Default configuration can be overridden on per-module basis
     'loggers': {
+        # Celery loggers
+        'celery.worker': {
+            #'handlers': [],
+            #'level': 'INFO',
+        },
+        'celery.task': {
+            #'handlers': [],
+            #'level': 'INFO'
+        },
         'django': {
             #'handlers': ['file'],
             #'level': 'WARNING',
@@ -130,15 +139,6 @@ LOGGING = {
         'djangosaml2': {
             #'handlers': ['console'],
             #'level': 'DEBUG',
-        },
-        # Celery loggers
-        'celery.worker': {
-            #'handlers': [],
-            #'level': 'INFO',
-        },
-        'celery.task': {
-            #'handlers': [],
-            #'level': 'INFO'
         }
     },
 }

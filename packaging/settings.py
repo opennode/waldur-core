@@ -31,7 +31,7 @@ config_defaults = {
     'celery': {
         'broker_url': 'redis://localhost',
         'result_backend_url': 'redis://localhost',
-        'loglevel': 'INFO'
+        'log_level': 'INFO'
     },
     'elasticsearch': {
         # This location is RHEL7-specific, may be different on other platforms
@@ -298,6 +298,15 @@ LOGGING = {
     },
     # Default configuration can be overridden on per-module basis
     'loggers': {
+        # Celery loggers
+        'celery.worker': {
+            'handlers': [],
+            'level': config.get('celery', 'log_level'),
+        },
+        'celery.task': {
+            'handlers': [],
+            'level': config.get('celery', 'log_level')
+        },
         'django': {
             'handlers': [],
         },
@@ -308,15 +317,6 @@ LOGGING = {
         'requests': {
             'handlers': [],
             'level': 'WARNING',
-        },
-        # Celery loggers
-        'celery.worker': {
-            'handlers': [],
-            'level': config.get('celery', 'loglevel'),
-        },
-        'celery.task': {
-            'handlers': [],
-            'level': config.get('celery', 'loglevel')
         }
     },
 }
