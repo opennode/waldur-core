@@ -59,15 +59,15 @@ class StateMixin(object):
 
 
 class RuntimeStateMixin(object):
-    acceptable_states = {}
+    runtime_acceptable_states = {}
 
     def initial(self, request, *args, **kwargs):
-        if self.action in self.acceptable_states:
+        if self.action in self.runtime_acceptable_states:
             self.check_operation(request, self.get_object(), self.action)
         return super(RuntimeStateMixin, self).initial(request, *args, **kwargs)
 
     def check_operation(self, request, obj, action):
-        acceptable_state = self.acceptable_states.get(action)
+        acceptable_state = self.runtime_acceptable_states.get(action)
         if acceptable_state:
             if obj.state != models.StateMixin.States.OK or obj.runtime_state != acceptable_state:
                 raise IncorrectStateException(

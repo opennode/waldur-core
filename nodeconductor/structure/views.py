@@ -2171,7 +2171,7 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
 class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
     filter_class = filters.BaseResourceStateFilter
     runtime_state_executor = NotImplemented
-    acceptable_states = {
+    runtime_acceptable_states = {
         'stop': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
         'start': core_models.RuntimeStateMixin.RuntimeStates.OFFLINE,
         'restart': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
