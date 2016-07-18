@@ -13,9 +13,11 @@ from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
 from django.utils import six, timezone
+from django.utils.encoding import force_text
 from django.views.static import serve
 from django_fsm import TransitionNotAllowed
 
+from rest_framework import exceptions as rf_exceptions
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
@@ -1959,7 +1961,10 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
     queryset = NotImplemented
     serializer_class = NotImplemented
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    permission_classes = (
+        rf_permissions.IsAuthenticated,
+        rf_permissions.DjangoObjectPermissions
+    )
     filter_backends = (
         filters.GenericRoleFilter,
         core_filters.DjangoMappingFilterBackend,
@@ -1969,6 +1974,11 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
         filters.StartTimeFilter
     )
     metadata_class = ActionsMetadata
+
+    def check_operation(self, request, resource, action):
+        func = getattr(self, action)
+        valid_state = getattr(func, 'valid_state')
+        return check_operation(request.user, resource, action, valid_state)
 
 
 class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
@@ -2161,7 +2171,11 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
 class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
     filter_class = filters.BaseResourceStateFilter
     runtime_state_executor = NotImplemented
-    acceptable_states = {'unlink': [core_models.StateMixin.States.OK]}
+    acceptable_states = {
+        'stop': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
+        'start': core_models.RuntimeStateMixin.RuntimeStates.OFFLINE,
+        'restart': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
+    }
 
     @detail_route(methods=['post'])
     def unlink(self, request, uuid=None):

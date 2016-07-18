@@ -59,24 +59,19 @@ class StateMixin(object):
 
 
 class RuntimeStateMixin(object):
-    runtime_acceptable_states = {}
+    acceptable_states = {}
 
     def initial(self, request, *args, **kwargs):
-        States = models.RuntimeStateMixin.RuntimeStates
-        acceptable_states = {
-            'stop': States.ONLINE,
-            'start': States.OFFLINE,
-            'restart': States.ONLINE,
-        }
-        acceptable_states.update(self.runtime_acceptable_states)
-        acceptable_state = acceptable_states.get(self.action)
+        if self.action in self.acceptable_states:
+            self.check_operation(request, self.get_object(), self.action)
+        return super(RuntimeStateMixin, self).initial(request, *args, **kwargs)
+
+    def check_operation(self, request, obj, action):
+        acceptable_state = self.acceptable_states.get(action)
         if acceptable_state:
-            obj = self.get_object()
             if obj.state != models.StateMixin.States.OK or obj.runtime_state != acceptable_state:
                 raise IncorrectStateException(
-                    'Performing %s operation is not allowed for resource in its current state.' % self.action)
-
-        return super(RuntimeStateMixin, self).initial(request, *args, **kwargs)
+                    'Performing %s operation is not allowed for resource in its current state.' % action)
 
 
 class AsyncExecutor(object):

@@ -11,11 +11,12 @@ from nodeconductor.structure import SupportedServices
 
 
 class ActionSerializer(object):
-    def __init__(self, func, name, request, resource):
+    def __init__(self, func, name, request, view, resource):
         self.func = func
         self.name = name
         self.request = request
         self.resource = resource
+        self.view = view
 
     def serialize(self):
         reason = self.get_reason()
@@ -41,12 +42,8 @@ class ActionSerializer(object):
             return self.name.replace('_', ' ').title()
 
     def get_reason(self):
-        valid_state = None
-        if hasattr(self.func, 'valid_state'):
-            valid_state = getattr(self.func, 'valid_state')
-
         try:
-            check_operation(self.request.user, self.resource, self.name, valid_state)
+            self.view.check_operation(self.request, self.resource, self.name)
         except exceptions.APIException as e:
             return force_text(e)
 
@@ -87,7 +84,7 @@ class ActionsMetadata(SimpleMetadata):
         actions = SupportedServices.get_resource_actions(model)
         resource = view.get_object()
         for action_name, action in actions.items():
-            data = ActionSerializer(action, action_name, request, resource)
+            data = ActionSerializer(action, action_name, request, view, resource)
             metadata[action_name] = data.serialize()
             if not metadata[action_name]['enabled']:
                 continue

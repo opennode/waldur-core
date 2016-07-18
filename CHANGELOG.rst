@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Render actions metadata for new resources.
 
 Release 0.103.0
 ---------------
