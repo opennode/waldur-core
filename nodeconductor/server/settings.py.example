@@ -131,6 +131,15 @@ LOGGING = {
             #'handlers': ['console'],
             #'level': 'DEBUG',
         },
+        # Celery loggers
+        'celery.worker': {
+            #'handlers': [],
+            #'level': 'INFO',
+        },
+        'celery.task': {
+            #'handlers': [],
+            #'level': 'INFO'
+        }
     },
 }
 

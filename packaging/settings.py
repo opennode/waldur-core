@@ -31,6 +31,7 @@ config_defaults = {
     'celery': {
         'broker_url': 'redis://localhost',
         'result_backend_url': 'redis://localhost',
+        'loglevel': 'INFO'
     },
     'elasticsearch': {
         # This location is RHEL7-specific, may be different on other platforms
@@ -308,12 +309,23 @@ LOGGING = {
             'handlers': [],
             'level': 'WARNING',
         },
+        # Celery loggers
+        'celery.worker': {
+            'handlers': [],
+            'level': config.get('celery', 'loglevel'),
+        },
+        'celery.task': {
+            'handlers': [],
+            'level': config.get('celery', 'loglevel')
+        }
     },
 }
 
 if config.get('logging', 'admin_email') != '':
     ADMINS += (('Admin', config.get('logging', 'admin_email')),)
     LOGGING['loggers']['nodeconductor']['handlers'].append('email-admins')
+    LOGGING['loggers']['celery.worker']['handlers'].append('email-admins')
+    LOGGING['loggers']['celery.task']['handlers'].append('email-admins')
 
 if config.get('logging', 'log_file') != '':
     LOGGING['handlers']['file']['filename'] = config.get('logging', 'log_file')
