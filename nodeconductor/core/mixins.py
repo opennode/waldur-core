@@ -62,7 +62,7 @@ class RuntimeStateMixin(object):
     acceptable_states = {}
 
     def initial(self, request, *args, **kwargs):
-        if self.action:
+        if self.action in self.acceptable_states:
             self.check_operation(request, self.get_object(), self.action)
         return super(RuntimeStateMixin, self).initial(request, *args, **kwargs)
 
