@@ -44,6 +44,11 @@ class ScopeTypeTest(BaseEventsApiTest):
         scope_type = utils.get_reverse_scope_types_mapping()[structure_models.Customer]
         return self.client.get(url, {'scope_type': scope_type})
 
+    def get_project_events(self):
+        url = factories.EventFactory.get_list_url()
+        scope_type = utils.get_reverse_scope_types_mapping()[structure_models.Project]
+        return self.client.get(url, {'scope_type': scope_type})
+
     def test_staff_can_see_any_customers_events(self):
         staff = structure_factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff)
@@ -62,3 +67,30 @@ class ScopeTypeTest(BaseEventsApiTest):
         self.client.force_authenticate(user=owner)
         self.get_customer_events()
         self.assertEqual(self.must_terms, {'customer_uuid': [customer.uuid.hex]})
+
+    def test_project_administrator_can_see_his_project_events(self):
+        project = structure_factories.ProjectFactory()
+        admin = structure_factories.UserFactory()
+        project.add_user(admin, structure_models.ProjectRole.ADMINISTRATOR)
+
+        self.client.force_authenticate(user=admin)
+        self.get_project_events()
+        self.assertEqual(self.must_terms, {'project_uuid': [project.uuid.hex]})
+
+    def test_project_administrator_cannot_see_other_projects_events(self):
+        user = structure_factories.UserFactory()
+
+        structure_factories.ProjectFactory()
+
+        self.client.force_authenticate(user=user)
+        self.get_project_events()
+        self.assertEqual(self.must_terms, {'project_uuid': []})
+
+    def test_project_administrator_cannot_see_related_customer_events(self):
+        project = structure_factories.ProjectFactory()
+        admin = structure_factories.UserFactory()
+        project.add_user(admin, structure_models.ProjectRole.ADMINISTRATOR)
+
+        self.client.force_authenticate(user=admin)
+        self.get_customer_events()
+        self.assertEqual(self.must_terms, {'customer_uuid': []})
