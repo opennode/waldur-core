@@ -123,10 +123,6 @@ LOGGING = {
             #'handlers': [],
             #'level': 'INFO',
         },
-        'celery.task': {
-            #'handlers': [],
-            #'level': 'INFO'
-        },
         'django': {
             #'handlers': ['file'],
             #'level': 'WARNING',

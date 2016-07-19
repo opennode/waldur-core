@@ -303,10 +303,6 @@ LOGGING = {
             'handlers': [],
             'level': config.get('celery', 'log_level'),
         },
-        'celery.task': {
-            'handlers': [],
-            'level': config.get('celery', 'log_level')
-        },
         'django': {
             'handlers': [],
         },
@@ -325,7 +321,6 @@ if config.get('logging', 'admin_email') != '':
     ADMINS += (('Admin', config.get('logging', 'admin_email')),)
     LOGGING['loggers']['nodeconductor']['handlers'].append('email-admins')
     LOGGING['loggers']['celery.worker']['handlers'].append('email-admins')
-    LOGGING['loggers']['celery.task']['handlers'].append('email-admins')
 
 if config.get('logging', 'log_file') != '':
     LOGGING['handlers']['file']['filename'] = config.get('logging', 'log_file')
