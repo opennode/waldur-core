@@ -1977,7 +1977,7 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
 
     def check_operation(self, request, resource, action):
         func = getattr(self, action)
-        valid_state = getattr(func, 'valid_state')
+        valid_state = getattr(func, 'valid_state', None)
         return check_operation(request.user, resource, action, valid_state)
 
 
