@@ -2183,6 +2183,7 @@ class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorV
         instance = self.get_object()
         setattr(instance, 'PERFORM_UNLINK', True)
         self.perform_destroy(instance)
+    unlink.destructive = True
 
     @detail_route(methods=['post'])
     def start(self, request, uuid=None):
