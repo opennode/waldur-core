@@ -311,7 +311,7 @@ LOGGING = {
         'requests': {
             'handlers': [],
             'level': 'WARNING',
-        }
+        },
     },
 }
 

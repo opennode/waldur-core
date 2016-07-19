@@ -121,7 +121,6 @@ LOGGING = {
         # Celery loggers
         'celery.worker': {
             #'handlers': [],
-            #'level': 'INFO',
         },
         'django': {
             #'handlers': ['file'],
@@ -135,7 +134,7 @@ LOGGING = {
         'djangosaml2': {
             #'handlers': ['console'],
             #'level': 'DEBUG',
-        }
+        },
     },
 }
 
