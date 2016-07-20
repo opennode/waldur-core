@@ -1281,6 +1281,13 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
     service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
 
+    service_settings = serializers.HyperlinkedRelatedField(
+        source='service_project_link.service.settings',
+        view_name='servicesettings-detail',
+        read_only=True,
+        lookup_field='uuid')
+    service_settings_uuid = serializers.ReadOnlyField(source='service_project_link.service.settings.uuid')
+
     customer = serializers.HyperlinkedRelatedField(
         source='service_project_link.project.customer',
         view_name='customer-detail',
@@ -1304,6 +1311,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         fields = MonitoringSerializerMixin.Meta.fields + (
             'url', 'uuid', 'name', 'description', 'start_time',
             'service', 'service_name', 'service_uuid',
+            'service_settings', 'service_settings_uuid',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
