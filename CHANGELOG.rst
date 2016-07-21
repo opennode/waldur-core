@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Render actions metadata for new resources.
+- Historical resource usage should be optional.
 
 Release 0.103.0
 ---------------
