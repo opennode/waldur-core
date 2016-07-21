@@ -14,7 +14,6 @@ from model_utils.models import TimeStampedModel
 import requests
 from rest_framework import reverse
 from rest_framework.authtoken.models import Token
-from taggit.managers import TaggableManager
 
 from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models, SupportedServices
@@ -80,7 +79,8 @@ class TemplateGroup(core_models.UuidMixin, structure_models.TagMixin, core_model
                 template_uuid=template.uuid.hex,
                 token_key=token_key,
                 additional_options=additional_options,
-                template_group_result_uuid=template_group_result.uuid.hex)
+                template_group_result_uuid=template_group_result.uuid.hex
+            ).set(countdown=120)  # countdown to make sure that PaaS is initialized.
             wait_task = tasks.wait_for_provision.s(
                 template_uuid=template.uuid.hex,
                 token_key=token_key,
@@ -218,12 +218,13 @@ class Template(core_models.UuidMixin, structure_models.TagMixin, models.Model):
                 'POST request to URL %s failed. Request body - %s. Response code - %s, content - %s' %
                 (response.request.url, response.request.body, response.status_code, response.content))
             raise TemplateActionException(message, details)
-        if response.ok:
-            tags = [tag.name for tag in self.tags.all()]
+        tags = [tag.name for tag in self.tags.all()]
+        if response.ok and tags:
             instance = ct.model_class().objects.get(uuid=response.json()['uuid'])
-            if tags:
-                if hasattr(instance, 'tags'):
-                    instance.tags.add(*tags)
+            if self.is_service_template():
+                instance.settings.tags.add(*tags)
+            elif hasattr(instance, 'tags'):
+                instance.tags.add(*tags)
             # execute custom action for instance:
             form = TemplateRegistry.get_form(ct.model_class())
             form.post_create(self, instance)
