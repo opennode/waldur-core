@@ -101,10 +101,10 @@ class ScopeTest(BaseEventsApiTest):
 
         self.client.force_authenticate(user=admin)
         response = self._get_events_by_scope(structure_factories.CustomerFactory.get_url(project.customer))
-        self.assertIsNone(self.mocked_es().search.call_args, 'Filter query has been called.')
+        self.assertFalse(self.mocked_es().search.called)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_custmer_owner_can_see_his_customer_events(self):
+    def test_customer_owner_can_see_his_customer_events(self):
         customer = structure_factories.CustomerFactory()
         owner = structure_factories.UserFactory()
         customer.add_user(owner, structure_models.CustomerRole.OWNER)
