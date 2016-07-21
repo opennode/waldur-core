@@ -1407,13 +1407,14 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     state = serializers.ReadOnlyField(source='get_state_display')
     created = serializers.DateTimeField(read_only=True)
+    back_propagate_price = serializers.BooleanField(default=True, write_only=True)
 
     class Meta(object):
         model = NotImplemented
         view_name = NotImplemented
         fields = (
             'url', 'uuid', 'name', 'state', 'created',
-            'backend_id', 'project'
+            'backend_id', 'project', 'back_propagate_price'
         )
         read_only_fields = ('name',)
         extra_kwargs = {
