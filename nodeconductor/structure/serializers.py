@@ -1407,7 +1407,8 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     state = serializers.ReadOnlyField(source='get_state_display')
     created = serializers.DateTimeField(read_only=True)
-    back_propagate_price = serializers.BooleanField(default=True, write_only=True)
+    back_propagate_price = serializers.BooleanField(
+        default=True, write_only=True, help_text='Import historical resource usage')
 
     class Meta(object):
         model = NotImplemented
