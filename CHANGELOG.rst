@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Render actions metadata for new resources.
+- Fix Sentry integration.
 
 Release 0.103.0
 ---------------
