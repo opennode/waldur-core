@@ -401,7 +401,8 @@ class RuntimeStateChangeTask(Task):
 class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
     @classmethod
-    def get_description(cls, instance, backend_method, *args, **kwargs):
+    def get_description(cls, *args, **kwargs):
+        instance, backend_method = args[:2]
         actions = ['Run backend method "%s" for instance "%s".' % (backend_method, instance)]
         if 'state_transition' in kwargs:
             actions.append(StateTransitionTask.get_description(*args, **kwargs))
