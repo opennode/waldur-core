@@ -413,7 +413,6 @@ class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
         return instance.get_backend()
 
     def execute(self, instance, backend_method, *args, **kwargs):
-        raise Exception('TEST')
         backend = self.get_backend(instance)
         return getattr(backend, backend_method)(instance, *args, **kwargs)
 
