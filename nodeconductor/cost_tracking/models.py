@@ -158,9 +158,8 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
             estimate.update_from_leaf()
 
     @classmethod
-    def update_price_for_resource(cls, resource):
+    def update_price_for_resource(cls, resource, back_propagate_price=False):
 
-        @transaction.atomic
         def update_estimate(month, year, total, consumed=None, update_if_exists=True):
             estimate, created = cls.objects.get_or_create(
                 object_id=resource.id,
@@ -208,17 +207,18 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
                     total=monthly_cost,
                     consumed=prorata_cost(now - now.replace(day=1, hour=0, minute=0, second=0)))
 
-                # update first month
-                update_estimate(
-                    created.month, created.year,
-                    total=prorata_cost(month_end - created),
-                    update_if_exists=False)
+                if back_propagate_price:
+                    # update first month
+                    update_estimate(
+                        created.month, created.year,
+                        total=prorata_cost(month_end - created),
+                        update_if_exists=False)
 
-                # update price for previous months if it does not exist:
-                date = now - relativedelta(months=+1)
-                while not (date.month == created.month and date.year == created.year):
-                    update_estimate(date.month, date.year, monthly_cost, update_if_exists=False)
-                    date -= relativedelta(months=+1)
+                    # update price for previous months if it does not exist:
+                    date = now - relativedelta(months=+1)
+                    while not (date.month == created.month and date.year == created.year):
+                        update_estimate(date.month, date.year, monthly_cost, update_if_exists=False)
+                        date -= relativedelta(months=+1)
 
     def get_log_fields(self):
         return 'uuid', 'scope', 'threshold', 'total', 'consumed'

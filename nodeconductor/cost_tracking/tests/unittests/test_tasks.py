@@ -78,7 +78,7 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
         customer_estimate = PriceEstimate.objects.create(
             scope=self.customer, month=month_ago.month, year=month_ago.year, total=customer_total)
 
-        update_projected_estimate(customer_uuid=self.customer.uuid.hex)
+        self.update_projected_estimate()
 
         reread_instance1_estimate = PriceEstimate.objects.get(id=instance1_estimate.id)
         self.assertEqual(reread_instance1_estimate.total, instance_total)
@@ -88,8 +88,7 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
         self.assertEqual(reread_customer_estimate.total, customer_total)
 
     def test_estimate_calculation_creates_estimates_for_previous_monthes_if_it_does_not_exist(self):
-        update_projected_estimate(customer_uuid=self.customer.uuid.hex)
-
+        self.update_projected_estimate()
         month_ago = timezone.now() - relativedelta(months=+1)
         kwargs = {'month': month_ago.month, 'year': month_ago.year}
         self.assertEqual(PriceEstimate.objects.get(scope=self.instance1, **kwargs).total, self.INSTANCE_MONTHLY_COST)
@@ -98,3 +97,10 @@ class UpdateProjectedEstimateTest(TransactionTestCase):
         self.assertEqual(PriceEstimate.objects.get(scope=self.spl2, **kwargs).total, self.INSTANCE_MONTHLY_COST)
         self.assertEqual(PriceEstimate.objects.get(scope=self.project, **kwargs).total, self.INSTANCE_MONTHLY_COST * 2)
         self.assertEqual(PriceEstimate.objects.get(scope=self.customer, **kwargs).total, self.INSTANCE_MONTHLY_COST * 2)
+
+    def update_projected_estimate(self):
+        update_projected_estimate(customer_uuid=self.customer.uuid.hex)
+        update_projected_estimate(
+            serialized_resource=serialize_instance(self.instance1), back_propagate_price=True)
+        update_projected_estimate(
+            serialized_resource=serialize_instance(self.instance2), back_propagate_price=True)
