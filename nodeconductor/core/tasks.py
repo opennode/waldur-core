@@ -284,7 +284,10 @@ class Task(CeleryTask):
 
     @classmethod
     def get_description(cls, *args, **kwargs):
-        """ Add additional information about task to celery logs """
+        """ Add additional information about task to celery logs.
+
+            Receives same parameters as method "run".
+        """
         raise NotImplementedError()
 
     def run(self, serialized_instance, *args, **kwargs):
