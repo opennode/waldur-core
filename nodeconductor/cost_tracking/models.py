@@ -160,7 +160,6 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @classmethod
     def update_price_for_resource(cls, resource, back_propagate_price=False):
 
-        @transaction.atomic
         def update_estimate(month, year, total, consumed=None, update_if_exists=True):
             estimate, created = cls.objects.get_or_create(
                 object_id=resource.id,
