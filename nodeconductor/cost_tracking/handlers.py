@@ -61,9 +61,11 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
             pass
 
 
-def update_projected_estimate(sender, instance, **kwargs):
+def update_projected_estimate(sender, instance, back_propagate_price=False, **kwargs):
     send_task('cost_tracking', 'update_projected_estimate')(
-        serialized_resource=serialize_instance(instance))
+        serialized_resource=serialize_instance(instance),
+        back_propagate_price=back_propagate_price
+    )
 
 
 def update_price_estimate_ancestors(sender, instance, created=False, **kwargs):

@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Render actions metadata for new resources.
+- Historical resource calculation is made optional.
 - Fix Sentry integration.
 
 Release 0.103.0
