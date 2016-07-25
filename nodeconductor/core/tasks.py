@@ -327,8 +327,7 @@ class StateTransitionTask(Task):
     """ Execute only instance state transition """
 
     @classmethod
-    def get_description(cls, *args, **kwargs):
-        instance = args[0]
+    def get_description(cls, instance, *args, **kwargs):
         transition_method = kwargs.get('state_transition')
         return 'Change state of object "%s" using method "%s".' % (instance, transition_method)
 
@@ -371,8 +370,7 @@ class RuntimeStateChangeTask(Task):
      - success_runtime_state - to change instance runtime state after success tasks execution.
     """
     @classmethod
-    def get_description(cls, *args, **kwargs):
-        instance = args[0]
+    def get_description(cls, instance, *args, **kwargs):
         runtime_state = kwargs.get('runtime_state')
         return 'Change runtime state of object "%s" to "%s".' % (instance, runtime_state)
 
@@ -401,13 +399,12 @@ class RuntimeStateChangeTask(Task):
 class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
     @classmethod
-    def get_description(cls, *args, **kwargs):
-        instance, backend_method = args[:2]
+    def get_description(cls, instance, backend_method, *args, **kwargs):
         actions = ['Run backend method "%s" for instance "%s".' % (backend_method, instance)]
         if 'state_transition' in kwargs:
-            actions.append(StateTransitionTask.get_description(*args, **kwargs))
+            actions.append(StateTransitionTask.get_description(instance, backend_method, *args, **kwargs))
         if 'runtime_state' in kwargs:
-            actions.append(RuntimeStateChangeTask.get_description(*args, **kwargs))
+            actions.append(RuntimeStateChangeTask.get_description(instance, backend_method, *args, **kwargs))
         return ' '.join(actions)
 
     def get_backend(self, instance):
@@ -446,8 +443,7 @@ class ErrorMessageTask(Task):
     as input argument.
     """
     @classmethod
-    def get_description(cls, *args, **kwargs):
-        instance = args[1]
+    def get_description(cls, result_id, instance, *args, **kwargs):
         return 'Add error message to instance "%s".' % instance
 
     def run(self, result_id, serialized_instance, *args, **kwargs):
@@ -470,8 +466,7 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
     as input argument.
     """
     @classmethod
-    def get_description(cls, *args, **kwargs):
-        instance = args[1]
+    def get_description(cls, result_id, instance, *args, **kwargs):
         return 'Add error message and set erred instance "%s".' % instance
 
     def execute(self, instance):
@@ -482,8 +477,7 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
 class RecoverTask(StateTransitionTask):
     """ Change instance state from ERRED to OK and clear error_message """
     @classmethod
-    def get_description(cls, *args, **kwargs):
-        instance = args[0]
+    def get_description(cls, instance, *args, **kwargs):
         return 'Recover instance "%s".' % instance
 
     def execute(self, instance):
@@ -495,8 +489,7 @@ class RecoverTask(StateTransitionTask):
 class ExecutorTask(Task):
     """ Run executor as a task """
     @classmethod
-    def get_description(cls, *args, **kwargs):
-        executor, instance = args[:2]
+    def get_description(cls, executor, instance, *args, **kwargs):
         return 'Run executor "%s" for instance "%s".' % (executor, instance)
 
     def run(self, serialized_executor, serialized_instance, *args, **kwargs):
