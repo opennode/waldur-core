@@ -7,6 +7,7 @@ import sys
 from celery import current_app, current_task, Task as CeleryTask
 from celery.execute import send_task as send_celery_task
 from celery.exceptions import MaxRetriesExceededError
+from celery.worker.job import Request
 from django.conf import settings
 from django.db import transaction, IntegrityError, models as django_models
 from django.db.models import ObjectDoesNotExist
@@ -281,6 +282,11 @@ class Task(CeleryTask):
     Provides standard way for input data deserialization.
     """
 
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        """ Add additional information about task to celery logs """
+        raise NotImplementedError()
+
     def run(self, serialized_instance, *args, **kwargs):
         """ Deserialize input data and start backend operation execution """
         try:
@@ -320,6 +326,12 @@ class EmptyTask(CeleryTask):
 class StateTransitionTask(Task):
     """ Execute only instance state transition """
 
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        instance = args[0]
+        transition_method = kwargs.get('state_transition')
+        return 'Change state of object "%s" using method "%s".' % (instance, transition_method)
+
     def state_transition(self, instance, transition_method):
         instance_description = '%s instance `%s` (PK: %s)' % (instance.__class__.__name__, instance, instance.pk)
         old_state = instance.human_readable_state
@@ -358,6 +370,11 @@ class RuntimeStateChangeTask(Task):
      - runtime_state - to change instance runtime state during execution.
      - success_runtime_state - to change instance runtime state after success tasks execution.
     """
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        instance = args[0]
+        runtime_state = kwargs.get('runtime_state')
+        return 'Change runtime state of object "%s" to "%s".' % (instance, runtime_state)
 
     def update_runtime_state(self, instance, runtime_state):
         instance.runtime_state = runtime_state
@@ -383,11 +400,20 @@ class RuntimeStateChangeTask(Task):
 
 class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
+    @classmethod
+    def get_description(cls, instance, backend_method, *args, **kwargs):
+        actions = ['Run backend method "%s" for instance "%s".' % (backend_method, instance)]
+        if 'state_transition' in kwargs:
+            actions.append(StateTransitionTask.get_description(*args, **kwargs))
+        if 'runtime_state' in kwargs:
+            actions.append(RuntimeStateChangeTask.get_description(*args, **kwargs))
+        return ' '.join(actions)
 
     def get_backend(self, instance):
         return instance.get_backend()
 
     def execute(self, instance, backend_method, *args, **kwargs):
+        raise Exception('TEST')
         backend = self.get_backend(instance)
         return getattr(backend, backend_method)(instance, *args, **kwargs)
 
@@ -402,6 +428,10 @@ class IndependentBackendMethodTask(BackendMethodTask):
 
 class DeletionTask(Task):
     """ Delete instance """
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        instance = args[0]
+        return 'Delete instance "%s".' % instance
 
     def execute(self, instance):
         instance_description = '%s instance `%s` (PK: %s)' % (instance.__class__.__name__, instance, instance.pk)
@@ -415,6 +445,11 @@ class ErrorMessageTask(Task):
     This task should not be called as immutable, because it expects result_uuid
     as input argument.
     """
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        instance = args[1]
+        return 'Add error message to instance "%s".' % instance
+
     def run(self, result_id, serialized_instance, *args, **kwargs):
         self.result = self.AsyncResult(result_id)
         return super(ErrorMessageTask, self).run(serialized_instance, *args, **kwargs)
@@ -434,6 +469,11 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
     This task should not be called as immutable, because it expects result_uuid
     as input argument.
     """
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        instance = args[1]
+        return 'Add error message and set erred instance "%s".' % instance
+
     def execute(self, instance):
         self.state_transition(instance, 'set_erred')
         self.save_error_message(instance)
@@ -441,6 +481,10 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
 
 class RecoverTask(StateTransitionTask):
     """ Change instance state from ERRED to OK and clear error_message """
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        instance = args[0]
+        return 'Recover instance "%s".' % instance
 
     def execute(self, instance):
         self.state_transition(instance, 'recover')
@@ -450,6 +494,10 @@ class RecoverTask(StateTransitionTask):
 
 class ExecutorTask(Task):
     """ Run executor as a task """
+    @classmethod
+    def get_description(cls, *args, **kwargs):
+        executor, instance = args[:2]
+        return 'Run executor "%s" for instance "%s".' % (executor, instance)
 
     def run(self, serialized_executor, serialized_instance, *args, **kwargs):
         self.executor = utils.deserialize_class(serialized_executor)
@@ -457,3 +505,27 @@ class ExecutorTask(Task):
 
     def execute(self, instance, **kwargs):
         self.executor.execute(instance, async=False, **kwargs)
+
+
+def log_celery_task(request):
+    """ Add description to celery log output """
+    task = request.task
+    description = None
+    if isinstance(task, Task):
+        try:
+            description = task.get_description(*request.args, **request.kwargs)
+        except NotImplementedError:
+            pass
+        except Exception as e:
+            # Logging should never break workflow.
+            logger.exception('Cannot get description for task %s. Error: %s' % (task.__class__.__name__, e))
+
+    return '{0.name}[{0.id}]{1}{2}{3}'.format(
+        request,
+        ' {0}'.format(description) if description else '',
+        ' eta:[{0}]'.format(request.eta) if request.eta else '',
+        ' expires:[{0}]'.format(request.expires) if request.expires else '',
+    )
+
+# XXX: drop the hack and use shadow name in celery 4.0
+Request.__str__ = log_celery_task
