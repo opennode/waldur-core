@@ -265,25 +265,32 @@ LOGGING = {
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['is-event'],
             'formatter': 'message-only',
-            'level': config.get('logging', 'log_level').upper(),
+            'level': config.get('events', 'log_level').upper(),
         },
         # Send logs to log server
         # Note that nodeconductor.logging.log.TCPEventHandler does not support exernal formatters
         'tcp': {
             'class': 'nodeconductor.logging.log.TCPEventHandler',
             'filters': ['is-not-event'],
-            'level': config.get('events', 'log_level').upper(),
+            'level': config.get('logging', 'log_level').upper(),
         },
         'tcp-event': {
             'class': 'nodeconductor.logging.log.TCPEventHandler',
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper(),
         },
-        'hook': {
+        # Send logs to Sentry
+        # See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/#integration-with-logging
+        'sentry': {
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+            'level': 'ERROR',
+        },
+        # Send logs to web hook
+        'hook-event': {
             'class': 'nodeconductor.logging.log.HookHandler',
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper()
-        }
+        },
     },
 
     # Loggers
@@ -317,8 +324,8 @@ LOGGING = {
 
 if config.get('logging', 'admin_email') != '':
     ADMINS += (('Admin', config.get('logging', 'admin_email')),)
-    LOGGING['loggers']['nodeconductor']['handlers'].append('email-admins')
     LOGGING['loggers']['celery.worker']['handlers'].append('email-admins')
+    LOGGING['loggers']['nodeconductor']['handlers'].append('email-admins')
 
 if config.get('logging', 'log_file') != '':
     LOGGING['handlers']['file']['filename'] = config.get('logging', 'log_file')
@@ -344,7 +351,7 @@ if config.getboolean('events', 'syslog'):
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
 
 if config.getboolean('events', 'hook'):
-    LOGGING['loggers']['nodeconductor']['handlers'].append('hook')
+    LOGGING['loggers']['nodeconductor']['handlers'].append('hook-event')
 
 # Static files
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#static-files
@@ -406,9 +413,11 @@ if NODECONDUCTOR['ELASTICSEARCH']['protocol'] == 'https':
         NODECONDUCTOR['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
 
 # Sentry integration
-# See also: http://raven.readthedocs.org/en/latest/integrations/django.html#setup
+# See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/
 if config.get('sentry', 'dsn') != '':
     INSTALLED_APPS = INSTALLED_APPS + ('raven.contrib.django.raven_compat',)
+    for logger in ['celery.worker', 'django', 'nodeconductor', 'requests']:
+        LOGGING['loggers'][logger]['handlers'].append('sentry')
     RAVEN_CONFIG = {
         'dsn': config.get('sentry', 'dsn'),
     }
