@@ -164,10 +164,11 @@ class TestServiceFactory(factory.DjangoModelFactory):
     customer = factory.SubFactory(CustomerFactory)
 
     @classmethod
-    def get_url(cls, service=None):
+    def get_url(cls, service=None, action=None):
         if service is None:
             service = TestServiceFactory()
-        return 'http://testserver' + reverse('test-detail', kwargs={'uuid': service.uuid})
+        url = 'http://testserver' + reverse('test-detail', kwargs={'uuid': service.uuid})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_list_url(cls):

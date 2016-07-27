@@ -766,8 +766,7 @@ class Service(core_models.SerializableAbstractMixin,
         return [self.settings]
 
     def get_children(self):
-        return itertools.chain.from_iterable(
-            m.objects.filter(service=self) for m in ServiceProjectLink.get_all_models())
+        return self.get_service_project_links()
 
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
@@ -1261,6 +1260,10 @@ class ResourceMixin(MonitoringModelMixin,
     def decrease_backend_quotas_usage(self):
         """ Decrease usage of quotas that were released on resource deletion """
         pass
+
+    def unlink(self):
+        # XXX: add special attribute to an instance in order to be tracked by signal handler
+        setattr(self, 'PERFORM_UNLINK', True)
 
 
 # deprecated, use NewResource instead.

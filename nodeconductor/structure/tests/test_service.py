@@ -1,6 +1,7 @@
 from mock_django import mock_signal_receiver
 from django.core.urlresolvers import reverse
-from rest_framework import test
+from django.db import models
+from rest_framework import status, test
 
 from nodeconductor.structure import signals
 from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole
@@ -72,3 +73,16 @@ class ServiceResourcesCounterTest(test.APITransactionTestCase):
         self.client.force_authenticate(factories.UserFactory(is_staff=True))
         response = self.client.get(self.service_url)
         self.assertEqual(2, response.data['resources_count'])
+
+
+class UnlinkServiceTest(test.APITransactionTestCase):
+    def test_when_service_is_unlinked_all_related_resources_are_unlinked_too(self):
+        resource = factories.TestInstanceFactory()
+        service = resource.service_project_link.service
+        unlink_url = factories.TestServiceFactory.get_url(service, 'unlink')
+
+        self.client.force_authenticate(factories.UserFactory(is_staff=True))
+        response = self.client.post(unlink_url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertRaises(models.ObjectDoesNotExist, service.refresh_from_db)

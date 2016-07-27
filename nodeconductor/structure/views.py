@@ -1862,6 +1862,29 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         else:
             return service.get_backend()
 
+    @detail_route(methods=['post'])
+    def unlink(self, request, uuid=None):
+        """
+        Unlink all related resources, service project link and service itself.
+        """
+        service = self.get_object()
+        if not request.user.is_staff and not service.customer.has_user(request.user):
+            raise PermissionDenied(
+                "Only customer owner or staff are allowed to perform this action.")
+
+        descendants = service.get_descendants()
+        # Traverse in reverse order in order to handle dependencies
+        # for example: Service -> ServiceProjectLink -> Instance -> Backup
+        # in this case Backup is unlinked first, because it is linked to parent Instance
+        for descendant in descendants[::-1]:
+            if isinstance(descendant, models.ResourceMixin):
+                descendant.unlink()
+            descendant.delete()
+        self.perform_destroy(service)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    unlink.destructive = True
+
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     core_mixins.UpdateOnlyStableMixin,
@@ -2069,8 +2092,7 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
     @detail_route(methods=['post'])
     @safe_operation()
     def unlink(self, request, resource, uuid=None):
-        # XXX: add special attribute to an instance in order to be tracked by signal handler
-        setattr(resource, 'PERFORM_UNLINK', True)
+        resource.unlink()
         self.perform_destroy(resource)
     unlink.destructive = True
 
@@ -2185,9 +2207,8 @@ class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorV
 
     @detail_route(methods=['post'])
     def unlink(self, request, uuid=None):
-        # XXX: add special attribute to an instance in order to be tracked by signal handler
         instance = self.get_object()
-        setattr(instance, 'PERFORM_UNLINK', True)
+        instance.unlink()
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
     unlink.destructive = True
