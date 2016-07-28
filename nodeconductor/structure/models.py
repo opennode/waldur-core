@@ -40,7 +40,7 @@ from nodeconductor.structure.signals import structure_role_granted, structure_ro
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
-from nodeconductor.structure.utils import get_coordinates_by_ip
+from nodeconductor.structure.utils import get_coordinates_by_ip, sort_dependencies
 
 
 def validate_service_type(service_type):
@@ -767,6 +767,13 @@ class Service(core_models.SerializableAbstractMixin,
 
     def get_children(self):
         return self.get_service_project_links()
+
+    def unlink_descendants(self):
+        descendants = sort_dependencies(self._meta.model, self.get_descendants())
+        for descendant in descendants:
+            if isinstance(descendant, ResourceMixin):
+                descendant.unlink()
+            descendant.delete()
 
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
