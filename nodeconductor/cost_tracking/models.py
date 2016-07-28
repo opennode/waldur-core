@@ -108,11 +108,8 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
                 object_id=parent.id,
                 content_type=ContentType.objects.get_for_model(parent),
                 month=self.month, year=self.year)
-            if self.is_leaf:
-                try:
-                    parent_estimate.leaf_estimates.add(self)
-                except IntegrityError:  # ignore duplicates
-                    pass
+            if self.is_leaf and not parent_estimate.leaf_estimates.filter(pk=self.pk).exists():
+                parent_estimate.leaf_estimates.add(self)
             parent_estimate.update_from_leaf()
 
     @classmethod
