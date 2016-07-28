@@ -32,6 +32,10 @@ def get_coordinates_by_ip(ip_address):
 
 @lru_cache(maxsize=1)
 def get_sorted_dependencies(service_model):
+    """
+    Returns list of application models in topological order.
+    It is used in order to correctly delete dependent resources.
+    """
     app_models = list(service_model._meta.app_config.get_models())
     dependencies = {model: set() for model in app_models}
     relations = (
