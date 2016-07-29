@@ -1872,14 +1872,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             raise PermissionDenied(
                 "Only customer owner or staff are allowed to perform this action.")
 
-        descendants = service.get_descendants()
-        # Traverse in reverse order in order to handle dependencies
-        # for example: Service -> ServiceProjectLink -> Instance -> Backup
-        # in this case Backup is unlinked first, because it is linked to parent Instance
-        for descendant in descendants[::-1]:
-            if isinstance(descendant, models.ResourceMixin):
-                descendant.unlink()
-            descendant.delete()
+        service.unlink_descendants()
         self.perform_destroy(service)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
