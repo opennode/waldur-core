@@ -108,11 +108,8 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
                 object_id=parent.id,
                 content_type=ContentType.objects.get_for_model(parent),
                 month=self.month, year=self.year)
-            if self.is_leaf:
-                try:
-                    parent_estimate.leaf_estimates.add(self)
-                except IntegrityError:  # ignore duplicates
-                    pass
+            if self.is_leaf and self not in parent_estimate.leaf_estimates.all():
+                parent_estimate.leaf_estimates.add(self)
             parent_estimate.update_from_leaf()
 
     @classmethod
@@ -160,6 +157,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @classmethod
     def update_price_for_resource(cls, resource, back_propagate_price=False):
 
+        @transaction.atomic
         def update_estimate(month, year, total, consumed=None, update_if_exists=True):
             estimate, created = cls.objects.get_or_create(
                 object_id=resource.id,
