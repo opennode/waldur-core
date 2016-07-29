@@ -3,7 +3,7 @@ import requests
 
 from django.db import models
 from django.db.migrations.topological_sort import stable_topological_sort
-from functools32 import lru_cache
+from django.utils.lru_cache import lru_cache
 
 
 Coordinates = collections.namedtuple('Coordinates', ('latitude', 'longitude'))
