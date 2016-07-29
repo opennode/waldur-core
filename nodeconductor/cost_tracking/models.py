@@ -9,7 +9,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction, IntegrityError
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
@@ -157,6 +157,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @classmethod
     def update_price_for_resource(cls, resource, back_propagate_price=False):
 
+        @transaction.atomic
         def update_estimate(month, year, total, consumed=None, update_if_exists=True):
             estimate, created = cls.objects.get_or_create(
                 object_id=resource.id,
