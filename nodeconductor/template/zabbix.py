@@ -30,10 +30,11 @@ def _get_tag_prefix(tag):
 def _get_instance_templates(instance):
     """ Get Zabbix templates based on instance tags """
     zabbix_settings = _get_settings()
-    names = settings.DEFAULT_HOST_TEMPLATES
+    names = list(settings.DEFAULT_HOST_TEMPLATES)
     for tag in instance.tags.all():
         tag_prefix = _get_tag_prefix(tag)
-        if tag_prefix in settings.ADDITIONAL_HOST_TEMPLATES:
+        if tag_prefix in settings.ADDITIONAL_HOST_TEMPLATES \
+                and settings.ADDITIONAL_HOST_TEMPLATES[tag_prefix] not in names:
             names += settings.ADDITIONAL_HOST_TEMPLATES[tag_prefix]
     templates = models.Template.objects.filter(name__in=names, settings=zabbix_settings)
     # make sure that all templates from settings really exist in Zabbix
