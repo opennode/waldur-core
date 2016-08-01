@@ -40,7 +40,6 @@ INSTALLED_APPS = (
     'nodeconductor.monitoring',
     'nodeconductor.quotas',
     'nodeconductor.structure',
-    'nodeconductor.template',
     'nodeconductor.cost_tracking',
 
     'rest_framework',
