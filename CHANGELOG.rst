@@ -7,6 +7,8 @@ Release NEXT
 - Historical resource calculation is made optional.
 - Fix Sentry integration.
 - Implemented unlinking provider with all resources.
+- Expose creation time of resources in /admin.
+- Make service models quota-aware.
 
 Release 0.103.0
 ---------------
