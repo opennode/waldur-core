@@ -967,6 +967,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     error_message = serializers.ReadOnlyField(source='settings.error_message')
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     tags = serializers.SerializerMethodField()
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -979,7 +980,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
-            'available_for_all', 'scope', 'tags',
+            'available_for_all', 'scope', 'tags', 'quotas',
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
@@ -1013,7 +1014,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
-        return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
+        return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects), 'quotas')
 
     def get_tags(self, service):
         return service.settings.get_tags()
