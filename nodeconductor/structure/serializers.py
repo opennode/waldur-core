@@ -148,6 +148,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
+    is_quota_exceeded = serializers.SerializerMethodField()
 
     def get_settings(self, link):
         """
@@ -188,6 +189,10 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
 
     def get_shared(self, link):
         return link.service.settings.shared
+
+    def get_is_quota_exceeded(self, link):
+        return any(quota.limit != -1 and quota.limit >= quota.usage
+                   for quota in link.service.quotas.all())
 
 
 class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
@@ -272,12 +277,11 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'service__settings__uuid',
             'service__settings__shared'
         )
-        for service in SupportedServices.get_service_models().values():
-            link_model = service['service_project_link']
-            links = link_model.objects.all()
-            if not hasattr(link_model, 'cloud'):
-                links = links.select_related('service', 'service__settings') \
-                             .only(*related_fields)
+        for link_model in ServiceProjectLink.get_all_models():
+            links = (link_model.objects.all()
+                     .select_related('service', 'service__settings')
+                     .only(*related_fields)
+                     .prefetch_related('service__quotas'))
             if isinstance(self.instance, list):
                 links = links.filter(project__in=self.instance)
             else:

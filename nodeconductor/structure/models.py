@@ -523,15 +523,11 @@ class Project(core_models.DescribableMixin,
         return [self.customer]
 
     def get_children(self):
-        return itertools.chain.from_iterable(
-            m.objects.filter(project=self) for m in ServiceProjectLink.get_all_models())
-
-    def get_links(self):
         """
         Get all service project links connected to current project
         """
-        return [link for model in SupportedServices.get_service_models().values()
-                     for link in model['service_project_link'].objects.filter(project=self)]
+        return itertools.chain.from_iterable(
+            m.objects.filter(project=self) for m in ServiceProjectLink.get_all_models())
 
 
 @python_2_unicode_compatible
