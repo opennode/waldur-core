@@ -702,6 +702,7 @@ class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
               core_models.DescendantMixin,
+              quotas_models.QuotaModelMixin,
               LoggableMixin,
               StructureModel):
     """ Base service class. """
