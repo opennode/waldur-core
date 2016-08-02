@@ -148,7 +148,6 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
-    is_quota_exceeded = serializers.SerializerMethodField()
 
     def get_settings(self, link):
         """
@@ -189,10 +188,6 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
 
     def get_shared(self, link):
         return link.service.settings.shared
-
-    def get_is_quota_exceeded(self, link):
-        return any(quota.limit != -1 and quota.limit >= quota.usage
-                   for quota in link.service.quotas.all())
 
 
 class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
