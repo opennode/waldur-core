@@ -275,8 +275,7 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         for link_model in ServiceProjectLink.get_all_models():
             links = (link_model.objects.all()
                      .select_related('service', 'service__settings')
-                     .only(*related_fields)
-                     .prefetch_related('service__quotas'))
+                     .only(*related_fields))
             if isinstance(self.instance, list):
                 links = links.filter(project__in=self.instance)
             else:
