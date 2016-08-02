@@ -11,9 +11,9 @@ class StructureConfig(AppConfig):
     verbose_name = 'Structure'
 
     def ready(self):
-        from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
+        from nodeconductor.core.models import CoordinatesMixin
         from nodeconductor.structure.models import ResourceMixin, \
-            ServiceProjectLink, Service, set_permissions_for_model, TagMixin
+            Service, set_permissions_for_model, TagMixin
         from nodeconductor.structure import handlers
         from nodeconductor.structure import signals as structure_signals
 
