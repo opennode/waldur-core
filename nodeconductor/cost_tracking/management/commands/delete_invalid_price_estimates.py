@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
-from nodeconductor.structure.models import Customer, Project, Service
+from nodeconductor.structure import models as structure_models
 from nodeconductor.cost_tracking.models import PriceEstimate, PayableMixin
 
 
@@ -56,50 +56,63 @@ class Command(BaseCommand):
 
     def get_all_estimates_wihout_scope_in_month(self):
         invalid_estimates = []
-        for customer in Customer.objects.all().only('pk'):
+        for customer in structure_models.Customer.objects.all().only('pk'):
             customer_estimates = self.get_estimates_without_scope_in_month(customer.pk)
             invalid_estimates.extend(customer_estimates)
         ids = [estimate.pk for estimate in invalid_estimates]
         return PriceEstimate.objects.filter(pk__in=ids)
 
+    def get_estimated_models(self):
+        return (
+            structure_models.Customer,
+            structure_models.ServiceSettings,
+            structure_models.Service,
+            structure_models.ServiceProjectLink,
+            structure_models.Project,
+            PayableMixin
+        )
+
     def get_estimates_without_scope_in_month(self, customer_pk):
+        """
+        It is expected that valid row for each month contains at least one
+        price estimate for customer, service setting, service,
+        service project link, project and resource.
+        Otherwise all price estimates in the row should be deleted.
+        """
         qs = self.get_price_estimates_for_customer(customer_pk).only('year', 'month')
         estimates = list(qs)
         if not estimates:
             return []
 
-        project_estimates = collections.defaultdict(list)
-        service_estimates = collections.defaultdict(list)
-        resource_estimates = collections.defaultdict(list)
-        tables = (project_estimates, service_estimates, resource_estimates)
+        tables = {model: collections.defaultdict(list)
+                  for model in self.get_estimated_models()}
 
         dates = set()
         for estimate in estimates:
-            cls = estimate.content_type.model_class()
-            target = None
-            if issubclass(cls, Project):
-                target = project_estimates
-            elif issubclass(cls, Service):
-                target = service_estimates
-            elif issubclass(cls, PayableMixin):
-                target = resource_estimates
             date = (estimate.year, estimate.month)
             dates.add(date)
-            if target in tables:
-                target[date].append(estimate)
+
+            cls = estimate.content_type.model_class()
+            for model, table in tables.items():
+                if issubclass(cls, model):
+                    table[date].append(estimate)
+                    break
 
         invalid_estimates = []
         for date in dates:
-            if any(map(lambda table: len(table[date]) == 0, tables)):
-                for table in tables:
+            if any(map(lambda table: len(table[date]) == 0, tables.values())):
+                for table in tables.values():
                     invalid_estimates.extend(table[date])
         return invalid_estimates
 
     def get_price_estimates_for_customer(self, customer_pk):
         qs = Q(scope_customer__pk=customer_pk)
         for model in PriceEstimate.get_estimated_models():
+            if model == structure_models.Customer:
+                ids = [customer_pk]
+            else:
+                ids = model.objects.filter(customer__pk=customer_pk).distinct().values_list('pk', flat=True)
             content_type = ContentType.objects.get_for_model(model)
-            ids = set(model.objects.filter(customer__pk=customer_pk).values_list('pk', flat=True))
             if ids:
                 qs |= Q(content_type=content_type, object_id__in=ids)
         return PriceEstimate.objects.all().filter(qs)
