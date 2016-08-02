@@ -1,3 +1,5 @@
+import unittest
+
 import mock
 from rest_framework import test
 from rest_framework import status
@@ -94,6 +96,7 @@ class ScopeTest(BaseEventsApiTest):
         url = factories.EventFactory.get_list_url()
         return self.client.get(url, {'scope': scope})
 
+    @unittest.skip('NC-1485')
     def test_project_administrator_cannot_see_related_customer_events(self):
         project = structure_factories.ProjectFactory()
         admin = structure_factories.UserFactory()
