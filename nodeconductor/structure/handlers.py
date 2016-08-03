@@ -8,7 +8,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.models import SynchronizationStates, StateMixin, RuntimeStateMixin
+from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
