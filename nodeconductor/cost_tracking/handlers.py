@@ -86,7 +86,7 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
             qs = models.PriceEstimate.objects.filter(
                 scope__in=old_family_scope, month=estimate.month, year=estimate.year)
             for parent_estimate in qs:
-                parent_estimate.leaf_estimates.remove(estimate)
+                parent_estimate.leafs.remove(estimate)
                 parent_estimate.update_from_leaf()
 
         models.PriceEstimate.update_ancestors_for_resource(instance)

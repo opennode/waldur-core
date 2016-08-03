@@ -9,7 +9,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models, transaction, IntegrityError
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
@@ -48,7 +48,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     scope = GenericForeignKey('content_type', 'object_id')
 
     scope_customer = models.ForeignKey(structure_models.Customer, null=True, related_name='+')
-    leaf_estimates = GM2MField('PriceEstimate')
+    leafs = models.ManyToManyField('PriceEstimate', related_name='+')
 
     total = models.FloatField(default=0)
     consumed = models.FloatField(default=0)
@@ -97,7 +97,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
         if self.is_leaf:
             return
 
-        leaf_estimates = list(self.leaf_estimates.all())
+        leaf_estimates = list(self.leafs.all())
         self.total = sum(e.total for e in leaf_estimates)
         self.consumed = sum(e.consumed for e in leaf_estimates)
         self.save(update_fields=['total', 'consumed'])
@@ -108,8 +108,8 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
                 object_id=parent.id,
                 content_type=ContentType.objects.get_for_model(parent),
                 month=self.month, year=self.year)
-            if self.is_leaf and self not in parent_estimate.leaf_estimates.all():
-                parent_estimate.leaf_estimates.add(self)
+            if self.is_leaf and self not in parent_estimate.leafs.all():
+                parent_estimate.leafs.add(self)
             parent_estimate.update_from_leaf()
 
     @classmethod
@@ -124,7 +124,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
             for parent in resource.get_ancestors():
                 qs = cls.objects.filter(scope=parent, month=estimate.month, year=estimate.year)
                 for parent_estimate in qs:
-                    parent_estimate.leaf_estimates.remove(estimate)
+                    parent_estimate.leafs.remove(estimate)
                     parent_estimate.update_from_leaf()
 
     @classmethod
