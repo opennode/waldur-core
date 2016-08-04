@@ -63,7 +63,7 @@ def template_group_execution_failed(self, task_uuid, template_group_result_uuid)
     error = models.TemplateActionException.deserialize(str(task_result.result))
     template_group_result = models.TemplateGroupResult.objects.get(uuid=template_group_result_uuid)
     template_group_result.state_message = 'Execution of a template group has failed.'
-    template_group_result.error_message = error['message']
+    template_group_result.error_message = error['message'][:255]
     template_group_result.error_details = error.get('details', '')
     template_group_result.is_finished = True
     template_group_result.is_erred = True
