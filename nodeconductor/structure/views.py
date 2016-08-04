@@ -13,11 +13,9 @@ from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
 from django.utils import six, timezone
-from django.utils.encoding import force_text
 from django.views.static import serve
 from django_fsm import TransitionNotAllowed
 
-from rest_framework import exceptions as rf_exceptions
 from rest_framework import filters as rf_filters
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
@@ -2002,6 +2000,12 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
         valid_state = getattr(func, 'valid_state', None)
         return check_operation(request.user, resource, action, valid_state)
 
+    def log_resource_creation_scheduled(self, resource):
+        event_logger.resource.info(
+            '{resource_full_name} creation has been scheduled.',
+            event_type='resource_creation_scheduled',
+            event_context={'resource': resource})
+
 
 class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
                                               ResourceViewMixin,
@@ -2050,10 +2054,7 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         except ServiceBackendError as e:
             raise APIException(e)
 
-        event_logger.resource.info(
-            '{resource_full_name} creation has been scheduled.',
-            event_type='resource_creation_scheduled',
-            event_context={'resource': serializer.instance})
+        self.log_resource_creation_scheduled(serializer.instance)
 
     def perform_update(self, serializer):
         old_name = serializer.instance.name
@@ -2153,25 +2154,15 @@ class BaseOnlineResourceViewSet(_BaseResourceViewSet):
 
 class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
                                                      StateExecutorViewSet,
+                                                     ResourceViewMixin,
                                                      core_mixins.UserContextMixin,
                                                      viewsets.ModelViewSet)):
 
-    queryset = NotImplemented
-    serializer_class = NotImplemented
-    lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (
-        filters.GenericRoleFilter,
-        core_filters.DjangoMappingFilterBackend,
-        SlaFilter,
-        MonitoringItemFilter,
-        filters.TagsFilter,
-    )
     filter_class = filters.BaseResourceStateFilter
-    metadata_class = ActionsMetadata
-    create_executor = NotImplemented
-    update_executor = NotImplemented
-    delete_executor = NotImplemented
+
+    def perform_create(self, serializer):
+        super(BaseResourceExecutorViewSet, self).perform_create(serializer)
+        self.log_resource_creation_scheduled(serializer.instance)
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
