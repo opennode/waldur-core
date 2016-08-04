@@ -1174,7 +1174,7 @@ class ResourceMixin(MonitoringModelMixin,
         return itertools.chain(
             self._get_generic_related_resources(),
             # XXX: Temporary hack to speed up queries. Related resources should be removed.
-            # self._get_concrete_related_resources(),
+            self._get_concrete_related_resources(),
             # self._get_concrete_linked_resources(),
             # self._get_generic_linked_resources()
         )
@@ -1189,7 +1189,7 @@ class ResourceMixin(MonitoringModelMixin,
             if isinstance(field, GenericForeignKey))
 
     def _get_concrete_related_resources(self):
-        # For example, returns GitLab projects for group
+        # For example, returns Zabbix IT Service for Zabbix Host
 
         return itertools.chain.from_iterable(
             rel.related_model.objects.filter(**{rel.field.name: self})
