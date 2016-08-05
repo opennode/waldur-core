@@ -9,7 +9,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for estimate in cost_tracking_models.PriceEstimate.objects.all():
-            print estimate.app
             if estimate.content_type.model_class() is None:
                 estimate.delete()
 
