@@ -165,9 +165,7 @@ class FilteredCollaboratorsPermissionLogic(PermissionLogic):
                 return True
 
         if self.user_field:
-            user = getattr(obj, self.user_field)
-            if user and user == user_obj:
-                return True
+            return getattr(obj, self.user_field) == user_obj
 
         if not self.collaborators_queries or not self.collaborators_filters:
             return False
