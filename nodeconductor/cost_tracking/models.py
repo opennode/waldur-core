@@ -108,7 +108,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
                 object_id=parent.id,
                 content_type=ContentType.objects.get_for_model(parent),
                 month=self.month, year=self.year)
-            if self.is_leaf and self not in parent_estimate.leafs.all():
+            if self.is_leaf and not parent_estimate.leafs.filter(id=self.id):
                 parent_estimate.leafs.add(self)
             parent_estimate.update_from_leaf()
 
