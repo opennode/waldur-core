@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import calendar
+import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
@@ -16,7 +17,7 @@ from django.utils.lru_cache import lru_cache
 
 from jsonfield import JSONField
 from model_utils import FieldTracker
-from gm2m import GM2MField
+from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
@@ -231,6 +232,49 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
 
     def __str__(self):
         return '%s for %s-%s %.2f' % (self.scope, self.year, self.month, self.total)
+
+
+class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
+    """ Resource consumption details per month.
+
+        Warning! Use method "update_configuration" to update configurations,
+        do not update them manually.
+    """
+    price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
+    month = models.PositiveSmallIntegerField(validators=[MaxValueValidator(12), MinValueValidator(1)])
+    year = models.PositiveSmallIntegerField()
+    configuration = JSONField(default={}, help_text='Current resource configuration.')
+    consumed_before_modification = JSONField(
+        default={}, help_text='How many consumables were used by resource before last modification date.')
+
+    def update_configuration(self, new_configuration):
+        """ Save how much consumables were used and update current configuration. """
+        last_modification_time = self._get_minutes_from_last_modification()
+        for consumable, usage in self.configuration.items():
+            consumed_after_modification = usage * last_modification_time
+            self.consumed_before_modification[consumable] = (
+                self.consumed_before_modification.get(consumable, 0) + consumed_after_modification)
+        self.configuration = new_configuration
+        self.save()
+
+    @property
+    def consumed(self):
+        """ How many consumables were used by resource in month """
+        _consumed = {}
+        last_modification_time = self._get_minutes_from_last_modification()
+        for consumable in set(self.configuration.keys() + self.consumed_before_modification.keys()):
+            consumed_after_modification = self.configuration.get(consumable, 0) * last_modification_time
+            _consumed[consumable] = consumed_after_modification + self.consumed_before_modification[consumable]
+        return _consumed
+
+    def _get_minutes_from_last_modification(self):
+        """ How much minutes passed from last modification. """
+        last_day_of_month = calendar.monthrange(self.year, self.month)[1]
+        last_second_of_month = datetime.datetime.combine(
+            datetime.date(month=self.month, year=self.year, day=last_day_of_month), datetime.time.max)
+        last_second_of_month = timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
+        time_from_last_modification = min(timezone.now(), last_second_of_month) - self.modified
+        return time_from_last_modification.total_seconds() / 60
 
 
 class AbstractPriceListItem(models.Model):
