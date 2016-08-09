@@ -94,6 +94,11 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     def is_leaf_scope(scope):
         return scope._meta.model in PayableMixin.get_all_models()
 
+    def get_previous(self):
+        """ Get estimate for the same scope for previous month """
+        month, year = (self.month - 1, self.year) if self.month != 1 else (12, self.year - 1)
+        return PriceEstimate.objects.get(scope=self.scope, month=month, year=year)
+
     def update_from_leaf(self):
         if self.is_leaf:
             return
@@ -242,39 +247,44 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
     """
     price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
     configuration = JSONField(default={}, help_text='Current resource configuration.')
-    consumed_before_modification = JSONField(
+    last_update_time = models.DateTimeField()
+    consumed_before_update = JSONField(
         default={}, help_text='How many consumables were used by resource before last modification date.')
+
+    objects = managers.ConsumptionDetailsManager()
 
     def update_configuration(self, new_configuration):
         """ Save how much consumables were used and update current configuration. """
         if new_configuration == self.configuration:
             return
-        last_modification_time = self._get_minutes_from_last_modification()
+        minutes_from_last_update = self._get_minutes_from_last_update()
         for consumable, usage in self.configuration.items():
-            consumed_after_modification = usage * last_modification_time
-            self.consumed_before_modification[consumable] = (
-                self.consumed_before_modification.get(consumable, 0) + consumed_after_modification)
+            consumed_after_modification = usage * minutes_from_last_update
+            self.consumed_before_update[consumable] = (
+                self.consumed_before_update.get(consumable, 0) + consumed_after_modification)
         self.configuration = new_configuration
+        self.last_update_time = timezone.now()
         self.save()
 
     @property
     def consumed(self):
         """ How many consumables were used or will be used by resource in month """
         _consumed = {}
-        last_modification_time = self._get_minutes_from_last_modification()
-        for consumable in set(self.configuration.keys() + self.consumed_before_modification.keys()):
-            consumed_after_modification = self.configuration.get(consumable, 0) * last_modification_time
-            _consumed[consumable] = consumed_after_modification + self.consumed_before_modification[consumable]
+        minutes_from_last_update = self._get_minutes_from_last_update()
+        for consumable in set(self.configuration.keys() + self.consumed_before_update.keys()):
+            consumed_after_modification = self.configuration.get(consumable, 0) * minutes_from_last_update
+            _consumed[consumable] = consumed_after_modification + self.consumed_before_update[consumable]
         return _consumed
 
-    def _get_minutes_from_last_modification(self):
+    def _get_minutes_from_last_update(self):
         """ How much minutes passed from last modification. """
-        last_day_of_month = calendar.monthrange(self.year, self.month)[1]
-        last_second_of_month = datetime.datetime.combine(
-            datetime.date(month=self.month, year=self.year, day=last_day_of_month), datetime.time.max)
+        year, month = self.price_estimate.year, self.price_estimate.month
+        days_in_month = calendar.monthrange(year, month)[1]
+        last_day_of_month = datetime.date(month=month, year=year, day=days_in_month)
+        last_second_of_month = datetime.datetime.combine(last_day_of_month, datetime.time.max)
         last_second_of_month = timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
-        time_from_last_modification = min(timezone.now(), last_second_of_month) - self.modified
-        return time_from_last_modification.total_seconds() / 60
+        time_from_last_update = min(timezone.now(), last_second_of_month) - self.modified
+        return time_from_last_update.total_seconds() / 60
 
 
 class AbstractPriceListItem(models.Model):

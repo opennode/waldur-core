@@ -5,7 +5,8 @@ Cost tracking - add-on for NC plugins.
 Add-on adds next functional to plugin:
 
  - calculate and store price estimate for each resource, service, project, customer.
- - register resource used items (ex: CPU, storage for VMs) prices and show their prices for resource cost calculation.
+ - register resource consumables (ex: CPU, storage for VMs) prices and show
+   their prices for resource cost calculation.
  - get resource used items for current moment.
 
 
@@ -33,19 +34,47 @@ default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
 logger = logging.getLogger(__name__)
 
 
+class CostTrackingStrategy(object):
+    """ Describes all methods that should be implemented to enable cost
+        tracking for particular resource.
+    """
+    resource_class = NotImplemented
+
+    @classmethod
+    def get_consumables(cls, resource):
+        """ Return dictionary of consumables that are used by resource.
+
+            Example: {'storage': 10240, 'ram': 1024, ...}
+        """
+        return {}
+
+
 class CostTrackingRegister(object):
     """ Register of all connected NC plugins """
 
     _register = {}
+    registered_resources = {}
 
+    @classmethod
+    def register_strategy(cls, strategy):
+        cls.registered_resources[strategy.resource_class] = strategy
+
+    @classmethod
+    def get_consumables(cls, resource):
+        strategy = cls.registered_resources[resource.__class__]
+        return strategy.get_consumables(resource)
+
+    # XXX: deprecated. Should be removed.
     @classmethod
     def register(cls, app_label, backend):
         cls._register[app_label] = backend
 
+    # XXX: deprecated. Should be removed.
     @classmethod
     def get_registered_backends(cls):
         return cls._register.values()
 
+    # XXX: deprecated. Should be removed.
     @classmethod
     def get_resource_backend(cls, resource):
         try:
@@ -54,6 +83,7 @@ class CostTrackingRegister(object):
             raise ServiceBackendNotImplemented
 
 
+# XXX: This backend should be removed
 class CostTrackingBackend(object):
     """ Cost tracking interface for NC plugin """
 
@@ -61,7 +91,7 @@ class CostTrackingBackend(object):
     NUMERICAL = []
 
     # Should be used as consistent name for different VM types
-    VM_SIZE_ITEM_TYPE = 'flavor'
+    VM_SIZE_ITEM_TYPE = 'flavor'  # WTF?
 
     @classmethod
     def get_used_items(cls, resource):
