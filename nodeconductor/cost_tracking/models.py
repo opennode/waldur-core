@@ -95,7 +95,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
         return scope._meta.model in PayableMixin.get_all_models()
 
     def get_previous(self):
-        """ Get estimate for the same scope for previous month """
+        """ Get estimate for the same scope for previous month. """
         month, year = (self.month - 1, self.year) if self.month != 1 else (12, self.year - 1)
         return PriceEstimate.objects.get(scope=self.scope, month=month, year=year)
 
@@ -247,9 +247,9 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
     """
     price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
     configuration = JSONField(default={}, help_text='Current resource configuration.')
-    last_update_time = models.DateTimeField()
+    last_update_time = models.DateTimeField(help_text='Last configuration change time.')
     consumed_before_update = JSONField(
-        default={}, help_text='How many consumables were used by resource before last modification date.')
+        default={}, help_text='How many consumables were used by resource before last update.')
 
     objects = managers.ConsumptionDetailsManager()
 
@@ -268,7 +268,7 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
 
     @property
     def consumed(self):
-        """ How many consumables were used or will be used by resource in month """
+        """ How many consumables were used or will be used by resource in month. """
         _consumed = {}
         minutes_from_last_update = self._get_minutes_from_last_update()
         for consumable in set(self.configuration.keys() + self.consumed_before_update.keys()):
