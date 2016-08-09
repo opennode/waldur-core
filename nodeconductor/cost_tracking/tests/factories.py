@@ -29,6 +29,15 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
 
+class ConsumptionDetailsFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = models.ConsumptionDetails
+
+    price_estimate = factory.SubFactory(PriceEstimateFactory)
+    month = factory.Iterator(range(1, 13))
+    year = factory.Iterator(range(2012, 2016))
+
+
 class AbstractPriceListItemFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.AbstractPriceListItem

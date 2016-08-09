@@ -241,14 +241,14 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         do not update them manually.
     """
     price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
-    month = models.PositiveSmallIntegerField(validators=[MaxValueValidator(12), MinValueValidator(1)])
-    year = models.PositiveSmallIntegerField()
     configuration = JSONField(default={}, help_text='Current resource configuration.')
     consumed_before_modification = JSONField(
         default={}, help_text='How many consumables were used by resource before last modification date.')
 
     def update_configuration(self, new_configuration):
         """ Save how much consumables were used and update current configuration. """
+        if new_configuration == self.configuration:
+            return
         last_modification_time = self._get_minutes_from_last_modification()
         for consumable, usage in self.configuration.items():
             consumed_after_modification = usage * last_modification_time
@@ -259,7 +259,7 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
 
     @property
     def consumed(self):
-        """ How many consumables were used by resource in month """
+        """ How many consumables were used or will be used by resource in month """
         _consumed = {}
         last_modification_time = self._get_minutes_from_last_modification()
         for consumable in set(self.configuration.keys() + self.consumed_before_modification.keys()):
