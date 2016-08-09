@@ -160,16 +160,16 @@ def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
 
 def update_consumption_details_on_resource_update(sender, instance, **kwargs):
     resource = instance
-    _update_resource_consumprion_details(resource)
+    _update_resource_consumption_details(resource)
 
 
 def update_consumtion_details_on_resource_quota_update(sender, instance, **kwargs):
     quota = instance
     resource = quota.scope
-    _update_resource_consumprion_details(resource)
+    _update_resource_consumption_details(resource)
 
 
-def _update_resource_consumprion_details(resource):
+def _update_resource_consumption_details(resource):
     if resource.__class__ not in CostTrackingRegister.registered_resources:
         return
     # TODO: Move this to manager after price estimate refactoring. (NC-1523)
