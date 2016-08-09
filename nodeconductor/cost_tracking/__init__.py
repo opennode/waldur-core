@@ -61,7 +61,11 @@ class CostTrackingRegister(object):
 
     @classmethod
     def get_consumables(cls, resource):
-        strategy = cls.registered_resources[resource.__class__]
+        try:
+            strategy = cls.registered_resources[resource.__class__]
+        except KeyError:
+            raise TypeError('Resource %s is not registered for cost tracking. Make sure that its strategy '
+                            'is added to CostTrackingRegister' % resource.__class__.__name__)
         return strategy.get_consumables(resource)
 
     # XXX: deprecated. Should be removed.
