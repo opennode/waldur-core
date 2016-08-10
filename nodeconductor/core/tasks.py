@@ -457,6 +457,11 @@ class ErrorMessageTask(Task):
         if isinstance(instance, models.ErrorMessageMixin):
             instance.error_message = self.result.result
             instance.save(update_fields=['error_message'])
+            # log exception if instance is not already ERRED.
+            if instance.state != models.StateMixin.States.ERRED:
+                message = 'Error: %s.\n' % self.result.result
+                message += self.result.traceback
+                logger.exception(message)
 
     def execute(self, instance):
         self.save_error_message(instance)
@@ -473,8 +478,8 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
         return 'Add error message and set erred instance "%s".' % instance
 
     def execute(self, instance):
-        self.state_transition(instance, 'set_erred')
         self.save_error_message(instance)
+        self.state_transition(instance, 'set_erred')
 
 
 class RecoverTask(StateTransitionTask):
