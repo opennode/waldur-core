@@ -12,6 +12,7 @@ class CostTrackingConfig(AppConfig):
         from nodeconductor.core.handlers import preserve_fields_before_update
         from nodeconductor.cost_tracking import handlers
         from nodeconductor.cost_tracking.models import PayableMixin
+        from nodeconductor.quotas import models as quotas_models
         from nodeconductor.structure import models as structure_models
         from nodeconductor.structure.signals import resource_imported, resource_provisioned
 
@@ -105,3 +106,9 @@ class CostTrackingConfig(AppConfig):
                 sender=model,
                 dispatch_uid='update_consumption_details_on_resource_update_%s_%s' % (model.__name__, index),
             )
+
+        signals.post_save.connect(
+            handlers.update_consumtion_details_on_resource_quota_update,
+            sender=quotas_models.Quota,
+            dispatch_uid='update_consumtion_details_on_resource_quota_update',
+        )
