@@ -277,14 +277,14 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
     def consumed(self):
         """ How many consumables were be used by resource for whole month. """
         _consumed = {}
-        last_second_of_month = self._get_last_second_of_month()
-        minutes_from_last_update = self._get_minutes_from_last_update(last_second_of_month)
+        month_end = self._get_month_end()
+        minutes_from_last_update = self._get_minutes_from_last_update(month_end)
         for consumable in set(self.configuration.keys() + self.consumed_before_update.keys()):
             consumed_after_modification = self.configuration.get(consumable, 0) * minutes_from_last_update
             _consumed[consumable] = consumed_after_modification + self.consumed_before_update[consumable]
         return _consumed
 
-    def _get_last_second_of_month(self):
+    def _get_month_end(self):
         year, month = self.price_estimate.year, self.price_estimate.month
         days_in_month = calendar.monthrange(year, month)[1]
         last_day_of_month = datetime.date(month=month, year=year, day=days_in_month)

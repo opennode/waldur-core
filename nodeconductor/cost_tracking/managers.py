@@ -71,7 +71,7 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
 
 class ConsumptionDetailsQuerySet(django_models.QuerySet):
 
-    def _get_first_second_of_month(self, month, year):
+    def _get_month_start(self, month, year):
         return timezone.make_aware(datetime.datetime(day=1, month=month, year=year))
 
     def create(self, price_estimate):
@@ -86,7 +86,7 @@ class ConsumptionDetailsQuerySet(django_models.QuerySet):
         else:
             configuration = previous_price_estimate.consumption_details.configuration
             kwargs['configuration'] = configuration
-        kwargs['last_update_time'] = self._get_first_second_of_month(price_estimate.month, price_estimate.year)
+        kwargs['last_update_time'] = self._get_month_start(price_estimate.month, price_estimate.year)
         return super(ConsumptionDetailsQuerySet, self).create(price_estimate=price_estimate, **kwargs)
 
 
