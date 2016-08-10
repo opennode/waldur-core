@@ -59,7 +59,6 @@ class BaseExecutor(object):
     def apply_signature(cls, instance, async=True, countdown=None, is_heavy_task=False, **kwargs):
         """ Serialize input data and apply signature """
         serialized_instance = utils.serialize_instance(instance)
-        # TODO: Add ability to serialize kwargs here and deserialize them in task.
 
         signature = cls.get_task_signature(instance, serialized_instance, **kwargs)
         link = cls.get_success_signature(instance, serialized_instance, **kwargs)
