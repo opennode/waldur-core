@@ -72,9 +72,7 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
 class ConsumptionDetailsQuerySet(django_models.QuerySet):
 
     def _get_first_second_of_month(self, month, year):
-        last_day_of_month = datetime.date(month=month, year=year, day=1)
-        last_second_of_month = datetime.datetime.combine(last_day_of_month, datetime.time.min)
-        return timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
+        return timezone.make_aware(datetime.datetime(day=1, month=month, year=year))
 
     def create(self, price_estimate):
         """ Take configuration from previous month, it it exists.
@@ -86,8 +84,8 @@ class ConsumptionDetailsQuerySet(django_models.QuerySet):
         except ObjectDoesNotExist:
             pass
         else:
-            configurations = previous_price_estimate.consumption_details.configurations
-            kwargs['configurations'] = configurations
+            configuration = previous_price_estimate.consumption_details.configuration
+            kwargs['configuration'] = configuration
         kwargs['last_update_time'] = self._get_first_second_of_month(price_estimate.month, price_estimate.year)
         return super(ConsumptionDetailsQuerySet, self).create(price_estimate=price_estimate, **kwargs)
 
