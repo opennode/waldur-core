@@ -14,7 +14,7 @@ class UpdateConsumptionDetailsOnResourceUpdateTest(TestCase):
         CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
 
     @freeze_time('2016-08-08 11:00:00', tick=True)  # freeze time to avoid bugs in the end of a month.
-    def test_consumtion_details_of_resource_is_keeped_up_to_date(self):
+    def test_consumption_details_of_resource_is_keeped_up_to_date(self):
         today = timezone.now()
         configuration = dict(ram=2048, disk=20 * 1024, cores=2)
         resource = structure_factories.TestNewInstanceFactory(
@@ -45,7 +45,7 @@ class UpdateConsumptionDetailsOnQuotaUpdateTest(TestCase):
         CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
 
     @freeze_time('2016-08-08 11:00:00', tick=True)  # freeze time to avoid bugs in the end of a month.
-    def test_consumtion_details_of_resource_is_keeped_up_to_date_on_quota_change(self):
+    def test_consumption_details_of_resource_is_keeped_up_to_date_on_quota_change(self):
         today = timezone.now()
         resource = structure_factories.TestNewInstanceFactory()
 
