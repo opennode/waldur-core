@@ -75,7 +75,8 @@ class RequireNotEvent(logging.Filter):
         return not getattr(record, 'event', False)
 
 
-class PullTaskFilter(logging.Filter):
+class BackgroundTaskFilter(logging.Filter):
+    """ Do not allow messages from background tasks """
 
     def filter(self, record):
         try:
