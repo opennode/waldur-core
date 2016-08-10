@@ -213,6 +213,10 @@ LOGGING = {
         'is-not-event': {
             '()': 'nodeconductor.logging.log.RequireNotEvent',
         },
+        # Filter out messages from background tasks
+        'is-not-background-task': {
+            '()': 'nodeconductor.logging.log.RequireNotBackgroundTask',
+        },
     },
 
     # Formatters
@@ -234,6 +238,7 @@ LOGGING = {
         # Send logs to admins by email
         # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#django.utils.log.AdminEmailHandler
         'email-admins': {
+            'filters': ['is-not-background-task'],
             'class': 'django.utils.log.AdminEmailHandler',
             'level': 'ERROR',
         },
