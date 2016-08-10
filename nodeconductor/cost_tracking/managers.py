@@ -1,5 +1,7 @@
+import datetime
+
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import MultipleObjectsReturned
+from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
 from django.db import models as django_models, IntegrityError
 from django.db.models import Q
 from django.utils import timezone
@@ -65,6 +67,30 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
             self.create(scope=scope, year=today.year, month=today.month, is_manually_input=False, **defaults)
         except IntegrityError:
             self.filter(scope=scope, year=today.year, month=today.month).update(**defaults)
+
+
+class ConsumptionDetailsQuerySet(django_models.QuerySet):
+
+    def _get_month_start(self, month, year):
+        return timezone.make_aware(datetime.datetime(day=1, month=month, year=year))
+
+    def create(self, price_estimate):
+        """ Take configuration from previous month, it it exists.
+            Set last_update_time equals to the beginning of the month.
+        """
+        kwargs = {}
+        try:
+            previous_price_estimate = price_estimate.get_previous()
+        except ObjectDoesNotExist:
+            pass
+        else:
+            configuration = previous_price_estimate.consumption_details.configuration
+            kwargs['configuration'] = configuration
+        kwargs['last_update_time'] = self._get_month_start(price_estimate.month, price_estimate.year)
+        return super(ConsumptionDetailsQuerySet, self).create(price_estimate=price_estimate, **kwargs)
+
+
+ConsumptionDetailsManager = django_models.Manager.from_queryset(ConsumptionDetailsQuerySet)
 
 
 class PriceListItemManager(GenericKeyMixin, UserFilterMixin, django_models.Manager):

@@ -2,6 +2,8 @@ import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.utils import serialize_instance
@@ -92,6 +94,10 @@ def update_price_estimate_on_resource_spl_change(sender, instance, created=False
         models.PriceEstimate.update_ancestors_for_resource(instance)
 
 
+# XXX: Why is this only for project, but not for customer?
+#      Looks strange that we are checking project separately.
+#      I think this error should be raised for each price estimate independently
+#      from object. NC-1537
 def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):
     resource = instance
 
@@ -150,3 +156,30 @@ def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
                                structure_models.Project)):
         models.PriceEstimate.update_metadata_for_scope(instance)
         models.PriceEstimate.objects.filter(scope=instance).update(object_id=None)
+
+
+def update_consumption_details_on_resource_update(sender, instance, **kwargs):
+    resource = instance
+    _update_resource_consumption_details(resource)
+
+
+def update_consumption_details_on_resource_quota_update(sender, instance, **kwargs):
+    quota = instance
+    resource = quota.scope
+    _update_resource_consumption_details(resource)
+
+
+def _update_resource_consumption_details(resource):
+    if resource.__class__ not in CostTrackingRegister.registered_resources:
+        return
+    # TODO: Move this to manager after price estimate refactoring. (NC-1523)
+    today = timezone.now()
+    price_estimate, _ = models.PriceEstimate.objects.get_or_create(
+        object_id=resource.id,
+        content_type=ContentType.objects.get_for_model(resource),
+        month=today.month, year=today.year, is_manually_input=False)
+
+    # TODO: rewrite get_or_create: it should take configurations from previous month details if they exists.
+    consumption_details, _ = models.ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
+    new_configuration = CostTrackingRegister.get_consumables(resource)
+    consumption_details.update_configuration(new_configuration)

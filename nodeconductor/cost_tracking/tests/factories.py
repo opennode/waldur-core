@@ -2,8 +2,9 @@ import factory
 
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
-from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking import models, CostTrackingStrategy
 from nodeconductor.structure.tests import models as test_models
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -27,6 +28,13 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
             price_estimate = PriceEstimateFactory()
         url = 'http://testserver' + reverse('priceestimate-detail', kwargs={'uuid': price_estimate.uuid})
         return url if action is None else url + action + '/'
+
+
+class ConsumptionDetailsFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = models.ConsumptionDetails
+
+    price_estimate = factory.SubFactory(PriceEstimateFactory)
 
 
 class AbstractPriceListItemFactory(factory.DjangoModelFactory):
@@ -78,3 +86,16 @@ class PriceListItemFactory(AbstractPriceListItemFactory):
             price_list_item = PriceListItemFactory()
         url = 'http://testserver' + reverse('pricelistitem-detail', kwargs={'uuid': price_list_item.uuid})
         return url if action is None else url + action + '/'
+
+
+class TestNewInstanceCostTrackingStrategy(CostTrackingStrategy):
+    resource_class = test_models.TestNewInstance
+
+    @classmethod
+    def get_consumables(cls, resource):
+        return {
+            'disk': resource.disk if resource.state != test_models.TestNewInstance.States.ERRED else 0,
+            'ram': resource.ram if resource.runtime_state == 'online' else 0,
+            'cores': resource.cores if resource.runtime_state == 'online' else 0,
+            'test_quota': resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage,
+        }
