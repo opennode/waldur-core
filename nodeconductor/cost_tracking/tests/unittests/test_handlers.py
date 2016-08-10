@@ -22,7 +22,8 @@ class UpdateConsumptionDetailsOnResourceUpdateTest(TestCase):
 
         price_estimate = models.PriceEstimate.objects.get(scope=resource, month=today.month, year=today.year)
         consumption_details = price_estimate.consumption_details
-        self.assertDictEqual(consumption_details.configuration, configuration)
+        expected = dict(test_quota=0, **configuration)
+        self.assertDictEqual(consumption_details.configuration, expected)
 
         resource.ram = 1024
         resource.save()
@@ -33,6 +34,26 @@ class UpdateConsumptionDetailsOnResourceUpdateTest(TestCase):
         resource.runtime_state = 'offline'
         resource.save()
 
-        expected = dict(ram=0, disk=20 * 1024, cores=0)
+        expected = dict(ram=0, disk=20 * 1024, cores=0, test_quota=0)
         consumption_details.refresh_from_db()
         self.assertDictEqual(consumption_details.configuration, expected)
+
+
+class UpdateConsumptionDetailsOnQuotaUpdateTest(TestCase):
+
+    def setUp(self):
+        CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
+
+    @freeze_time('2016-08-08 11:00:00', tick=True)  # freeze time to avoid bugs in the end of a month.
+    def test_consumtion_details_of_resource_is_keeped_up_to_date_on_quota_change(self):
+        today = timezone.now()
+        resource = structure_factories.TestNewInstanceFactory()
+
+        price_estimate = models.PriceEstimate.objects.get(scope=resource, month=today.month, year=today.year)
+        consumption_details = price_estimate.consumption_details
+        self.assertEqual(consumption_details.configuration['test_quota'], 0)
+
+        resource.set_quota_usage(TestNewInstance.Quotas.test_quota, 5)
+
+        consumption_details.refresh_from_db()
+        self.assertEqual(consumption_details.configuration['test_quota'], 5)

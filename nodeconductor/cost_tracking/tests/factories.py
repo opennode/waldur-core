@@ -97,4 +97,5 @@ class TestNewInstanceCostTrackingStrategy(CostTrackingStrategy):
             'disk': resource.disk if resource.state != test_models.TestNewInstance.States.ERRED else 0,
             'ram': resource.ram if resource.runtime_state == 'online' else 0,
             'cores': resource.cores if resource.runtime_state == 'online' else 0,
+            'test_quota': resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage,
         }
