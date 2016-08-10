@@ -108,7 +108,7 @@ class CostTrackingConfig(AppConfig):
             )
 
         signals.post_save.connect(
-            handlers.update_consumtion_details_on_resource_quota_update,
+            handlers.update_consumption_details_on_resource_quota_update,
             sender=quotas_models.Quota,
-            dispatch_uid='update_consumtion_details_on_resource_quota_update',
+            dispatch_uid='update_consumption_details_on_resource_quota_update',
         )

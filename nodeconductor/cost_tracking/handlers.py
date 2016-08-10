@@ -163,7 +163,7 @@ def update_consumption_details_on_resource_update(sender, instance, **kwargs):
     _update_resource_consumption_details(resource)
 
 
-def update_consumtion_details_on_resource_quota_update(sender, instance, **kwargs):
+def update_consumption_details_on_resource_quota_update(sender, instance, **kwargs):
     quota = instance
     resource = quota.scope
     _update_resource_consumption_details(resource)
