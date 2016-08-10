@@ -1,6 +1,9 @@
+import datetime
+
 from django.test import TestCase
 from freezegun import freeze_time
 
+from nodeconductor.cost_tracking import models
 from nodeconductor.cost_tracking.tests import factories
 
 
@@ -25,19 +28,28 @@ class ConsumptionDetailsTest(TestCase):
             self.assertEqual(self.consumption_details.consumed_before_update[consumable],
                              old_configuration[consumable] * HOURS_BEFORE_UPDATE * 60)
 
+    def test_cannot_update_configuration_for_previous_month(self):
+        with freeze_time("2016-09-01"):
+            self.assertRaises(
+                models.ConsumptionDetailUpdateError,
+                lambda: self.consumption_details.update_configuration({'storage': 2048}))
+
     def test_consumed(self):
-        """ Property "consumed" should return how much consumables resource used this month """
+        """ Property "consumed" should return how much consumables resource will use for whole month """
         # Resource used some consumables
-        with freeze_time("2016-08-08 11:00:00"):
+        start_time = datetime.datetime(2016, 8, 8, 11, 0)
+        with freeze_time(start_time):
             old_configuration = {'storage': 1024}
             self.consumption_details.update_configuration(old_configuration)
         # After 2 hours resource configuration was updated
-        with freeze_time("2016-08-08 13:00:00"):
+        change_time = datetime.datetime(2016, 8, 8, 13, 0)
+        with freeze_time(change_time):
             new_configuration = {'storage': 2048}
             self.consumption_details.update_configuration(new_configuration)
 
-        with freeze_time("2016-08-08 14:00:00"):
-            # resource was using old configuration for 2 hours and new - for 1 hour
-            expected = (2 * 60 * old_configuration['storage'] +
-                        1 * 60 * new_configuration['storage'])
-            self.assertEqual(self.consumption_details.consumed['storage'], expected)
+        # Expected consumption should assume that resource will use current
+        # configuration to the end of month and add 2 hours of old configuration
+        month_end = datetime.datetime(2016, 8, 31, 23, 59, 59)
+        expected = (int((change_time - start_time).total_seconds() / 60) * old_configuration['storage'] +
+                    int((month_end - change_time).total_seconds() / 60) * new_configuration['storage'])
+        self.assertEqual(self.consumption_details.consumed['storage'], expected)
