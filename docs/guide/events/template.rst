@@ -1,5 +1,9 @@
+.. Must be moved to the ITACLOUD assembly documentation!
+
 Template events
 +++++++++++++++
+
+**These events are only related to the ITACLOUD assembly.**
 
 .. glossary::
 
