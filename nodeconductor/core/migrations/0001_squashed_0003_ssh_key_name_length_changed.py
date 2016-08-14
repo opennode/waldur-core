@@ -64,6 +64,8 @@ class Migration(migrations.Migration):
             ],
             options={
                 'unique_together': set([('user', 'name')]),
+                'verbose_name': 'SSH public key',
+                'verbose_name_plural': 'SSH public keys'
             },
             bases=(models.Model,),
         ),

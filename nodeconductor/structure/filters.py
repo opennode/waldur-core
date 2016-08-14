@@ -779,9 +779,10 @@ class BaseServicePropertyFilter(django_filters.FilterSet):
 
 class ServicePropertySettingsFilter(BaseServicePropertyFilter):
     settings_uuid = django_filters.CharFilter(name='settings__uuid')
+    settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
 
     class Meta(BaseServicePropertyFilter.Meta):
-        fields = BaseServicePropertyFilter.Meta.fields + ('settings_uuid', )
+        fields = BaseServicePropertyFilter.Meta.fields + ('settings_uuid', 'settings')
 
 
 class AggregateFilter(BaseExternalFilter):

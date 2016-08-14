@@ -34,6 +34,10 @@ INSTALLED_APPS = (
     'django.contrib.humanize',
     'django.contrib.staticfiles',
 
+    # 'material',
+    # 'material.frontend',
+    # 'material.admin',
+
     'nodeconductor.landing',
     'nodeconductor.logging',
     'nodeconductor.core',
@@ -99,12 +103,12 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'nodeconductor', 'templates')],
         'OPTIONS': {
-            'context_processors': (
+            'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-            ) + ADMIN_TEMPLATE_CONTEXT_PROCESSORS,
+            ] + ADMIN_TEMPLATE_CONTEXT_PROCESSORS,
             'loaders': (
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader',
@@ -120,7 +124,7 @@ AUTH_USER_MODEL = 'core.User'
 WSGI_APPLICATION = 'nodeconductor.server.wsgi.application'
 
 # Internationalization
-# https://docs.djangoproject.com/en/1.6/topics/i18n/
+# https://docs.djangoproject.com/en/1.8/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -132,7 +136,7 @@ USE_L10N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.6/howto/static-files/
+# https://docs.djangoproject.com/en/1.8/howto/static-files/
 STATIC_URL = '/static/'
 
 BROKER_URL = 'redis://localhost'

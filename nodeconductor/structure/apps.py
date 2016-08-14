@@ -11,9 +11,9 @@ class StructureConfig(AppConfig):
     verbose_name = 'Structure'
 
     def ready(self):
-        from nodeconductor.core.models import SshPublicKey, CoordinatesMixin
+        from nodeconductor.core.models import CoordinatesMixin
         from nodeconductor.structure.models import ResourceMixin, \
-            ServiceProjectLink, Service, set_permissions_for_model, TagMixin
+            Service, set_permissions_for_model, TagMixin
         from nodeconductor.structure import handlers
         from nodeconductor.structure import signals as structure_signals
 
@@ -167,13 +167,6 @@ class StructureConfig(AppConfig):
                 handlers.log_resource_imported,
                 sender=model,
                 dispatch_uid='nodeconductor.structure.handlers.log_resource_imported_{}_{}'.format(
-                    model.__name__, index),
-            )
-
-            fsm_signals.post_transition.connect(
-                handlers.check_resource_provisioned,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.check_resource_provisioned_{}_{}'.format(
                     model.__name__, index),
             )
 

@@ -1825,6 +1825,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
+            back_propagate_price = serializer.validated_data.pop('back_propagate_price')
+
             customer = serializer.validated_data['project'].customer
             if not request.user.is_staff and not customer.has_user(request.user):
                 raise PermissionDenied(
@@ -1835,7 +1837,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             except ServiceBackendError as e:
                 raise APIException(e)
 
-            resource_imported.send(sender=resource.__class__, instance=resource)
+            resource_imported.send(
+                sender=resource.__class__,
+                instance=resource,
+                back_propagate_price=back_propagate_price
+            )
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -1853,6 +1859,22 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 return spl.get_backend()
         else:
             return service.get_backend()
+
+    @detail_route(methods=['post'])
+    def unlink(self, request, uuid=None):
+        """
+        Unlink all related resources, service project link and service itself.
+        """
+        service = self.get_object()
+        if not request.user.is_staff and not service.customer.has_user(request.user):
+            raise PermissionDenied(
+                "Only customer owner or staff are allowed to perform this action.")
+
+        service.unlink_descendants()
+        self.perform_destroy(service)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    unlink.destructive = True
 
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
@@ -1959,7 +1981,10 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
     queryset = NotImplemented
     serializer_class = NotImplemented
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
+    permission_classes = (
+        rf_permissions.IsAuthenticated,
+        rf_permissions.DjangoObjectPermissions
+    )
     filter_backends = (
         filters.GenericRoleFilter,
         core_filters.DjangoMappingFilterBackend,
@@ -1969,6 +1994,17 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
         filters.StartTimeFilter
     )
     metadata_class = ActionsMetadata
+
+    def check_operation(self, request, resource, action):
+        func = getattr(self, action)
+        valid_state = getattr(func, 'valid_state', None)
+        return check_operation(request.user, resource, action, valid_state)
+
+    def log_resource_creation_scheduled(self, resource):
+        event_logger.resource.info(
+            '{resource_full_name} creation has been scheduled.',
+            event_type='resource_creation_scheduled',
+            event_context={'resource': resource})
 
 
 class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
@@ -2018,10 +2054,7 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         except ServiceBackendError as e:
             raise APIException(e)
 
-        event_logger.resource.info(
-            '{resource_full_name} creation has been scheduled.',
-            event_type='resource_creation_scheduled',
-            event_context={'resource': serializer.instance})
+        self.log_resource_creation_scheduled(serializer.instance)
 
     def perform_update(self, serializer):
         old_name = serializer.instance.name
@@ -2053,8 +2086,7 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
     @detail_route(methods=['post'])
     @safe_operation()
     def unlink(self, request, resource, uuid=None):
-        # XXX: add special attribute to an instance in order to be tracked by signal handler
-        setattr(resource, 'PERFORM_UNLINK', True)
+        resource.unlink()
         self.perform_destroy(resource)
     unlink.destructive = True
 
@@ -2122,25 +2154,15 @@ class BaseOnlineResourceViewSet(_BaseResourceViewSet):
 
 class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
                                                      StateExecutorViewSet,
+                                                     ResourceViewMixin,
                                                      core_mixins.UserContextMixin,
                                                      viewsets.ModelViewSet)):
 
-    queryset = NotImplemented
-    serializer_class = NotImplemented
-    lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (
-        filters.GenericRoleFilter,
-        core_filters.DjangoMappingFilterBackend,
-        SlaFilter,
-        MonitoringItemFilter,
-        filters.TagsFilter,
-    )
     filter_class = filters.BaseResourceStateFilter
-    metadata_class = ActionsMetadata
-    create_executor = NotImplemented
-    update_executor = NotImplemented
-    delete_executor = NotImplemented
+
+    def perform_create(self, serializer):
+        super(BaseResourceExecutorViewSet, self).perform_create(serializer)
+        self.log_resource_creation_scheduled(serializer.instance)
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
@@ -2161,14 +2183,19 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
 class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
     filter_class = filters.BaseResourceStateFilter
     runtime_state_executor = NotImplemented
-    acceptable_states = {'unlink': [core_models.StateMixin.States.OK]}
+    runtime_acceptable_states = {
+        'stop': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
+        'start': core_models.RuntimeStateMixin.RuntimeStates.OFFLINE,
+        'restart': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
+    }
 
     @detail_route(methods=['post'])
     def unlink(self, request, uuid=None):
-        # XXX: add special attribute to an instance in order to be tracked by signal handler
         instance = self.get_object()
-        setattr(instance, 'PERFORM_UNLINK', True)
+        instance.unlink()
         self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    unlink.destructive = True
 
     @detail_route(methods=['post'])
     def start(self, request, uuid=None):

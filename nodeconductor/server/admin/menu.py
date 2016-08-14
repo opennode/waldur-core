@@ -50,7 +50,7 @@ class CustomMenu(Menu):
         'nodeconductor_saltstack.*',
         'nodeconductor_zabbix.*',
         'nodeconductor_jira.*',
-        'nodeconductor_plus.gitlab.*',
+        'nodeconductor_gitlab.*',
         'nodeconductor_oracle_dbaas.*',
         'nodeconductor_paas_oracle.*',
     )

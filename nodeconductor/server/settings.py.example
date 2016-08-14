@@ -118,6 +118,10 @@ LOGGING = {
     },
     # Default configuration can be overridden on per-module basis
     'loggers': {
+        # Celery loggers
+        'celery.worker': {
+            #'handlers': [],
+        },
         'django': {
             #'handlers': ['file'],
             #'level': 'WARNING',

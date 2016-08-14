@@ -60,8 +60,8 @@ class PriceEstimateListTest(BaseCostTrackingTest):
         self.client.force_authenticate(self.users['manager'])
         response = self.client.get(
             factories.PriceEstimateFactory.get_list_url(),
-            data={'start': '{}.{}'.format(self.link_price_estimate.year, self.link_price_estimate.month+1),
-                  'end': '{}.{}'.format(self.project_price_estimate.year, self.project_price_estimate.month+1)})
+            data={'start': '{}.{}'.format(self.link_price_estimate.year, self.link_price_estimate.month + 1),
+                  'end': '{}.{}'.format(self.project_price_estimate.year, self.project_price_estimate.month + 1)})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)

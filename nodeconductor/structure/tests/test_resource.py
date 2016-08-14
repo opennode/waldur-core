@@ -1,6 +1,6 @@
 from rest_framework import test, status
 
-from nodeconductor.structure.models import Resource
+from nodeconductor.structure.models import Resource, NewResource
 from nodeconductor.structure.tests import factories
 
 
@@ -12,6 +12,12 @@ class ResourceRemovalTest(test.APITransactionTestCase):
     def test_vm_unlinked_immediately_anyway(self):
         vm = factories.TestInstanceFactory(state=Resource.States.PROVISIONING_SCHEDULED)
         url = factories.TestInstanceFactory.get_url(vm, 'unlink')
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, response.data)
+
+    def test_new_resource_unlinked_immediately(self):
+        vm = factories.TestNewInstanceFactory(state=NewResource.States.OK)
+        url = factories.TestNewInstanceFactory.get_url(vm, 'unlink')
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, response.data)
 

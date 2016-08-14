@@ -254,6 +254,8 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
 
     class Meta(object):
         unique_together = ('user', 'name')
+        verbose_name = 'SSH public key'
+        verbose_name_plural = 'SSH public keys'
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         # Fingerprint is always set based on public_key

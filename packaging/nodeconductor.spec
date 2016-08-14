@@ -12,11 +12,13 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.103.0
+Version: 0.104.0
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
+# MySQL-python is needed to use MySQL as database backend
+# python-psycopg2 is needed to use PostgreSQL as database backend
 Requires: logrotate
 Requires: MySQL-python
 Requires: python-celery >= 3.1.23, python-celery < 3.2
@@ -40,6 +42,7 @@ Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
+Requires: python-psycopg2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: python-redis = 2.10.3
@@ -75,37 +78,33 @@ cp packaging/settings.py nodeconductor/server/settings.py
 
 %install
 rm -rf %{buildroot}
-python setup.py install --single-version-externally-managed -O1 --root=%{buildroot} --record=INSTALLED_FILES
+%{__python} setup.py install -O1 --root=%{buildroot}
 
 mkdir -p %{buildroot}%{_unitdir}
 cp packaging%{__celery_systemd_unit_file} %{buildroot}%{__celery_systemd_unit_file}
-echo "%{__celery_systemd_unit_file}" >> INSTALLED_FILES
 cp packaging%{__celerybeat_systemd_unit_file} %{buildroot}%{__celerybeat_systemd_unit_file}
-echo "%{__celerybeat_systemd_unit_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__conf_dir}
-echo "%{__conf_dir}" >> INSTALLED_FILES
 cp packaging%{__celery_conf_file} %{buildroot}%{__celery_conf_file}
 cp packaging%{__conf_file} %{buildroot}%{__conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
-echo "%{__data_dir}" >> INSTALLED_FILES
 cat > tmp_settings.py << EOF
 # Minimal settings required for 'collectstatic' command
-INSTALLED_APPS=(
+INSTALLED_APPS = (
     'admin_tools',
     'admin_tools.dashboard',
     'admin_tools.menu',
     'admin_tools.theming',
-    'fluent_dashboard',
+    'fluent_dashboard',  # should go before 'django.contrib.admin'
     'django.contrib.admin',
     'django.contrib.staticfiles',
-    'rest_framework',
     'nodeconductor.landing',
+    'rest_framework',
 )
-SECRET_KEY='tmp'
-STATIC_ROOT='%{buildroot}%{__data_dir}/static'
-STATIC_URL='/static/'
+SECRET_KEY = 'tmp'
+STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
+STATIC_URL = '/static/'
 TEMPLATE_CONTEXT_PROCESSORS = (
     'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
 )
@@ -118,22 +117,24 @@ EOF
 %{__python} manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
-echo "%{__log_dir}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__logrotate_dir}
 cp packaging%{__logrotate_conf_file} %{buildroot}%{__logrotate_conf_file}
-echo "%{__logrotate_conf_file}" >> INSTALLED_FILES
 
 mkdir -p %{buildroot}%{__work_dir}/media
-echo "%{__work_dir}" >> INSTALLED_FILES
-
-cat INSTALLED_FILES | sort | uniq > INSTALLED_FILES_CLEAN
 
 %clean
 rm -rf %{buildroot}
 
-%files -f INSTALLED_FILES_CLEAN
+%files
 %defattr(-,root,root,-)
+%{python_sitelib}/*
+%{_unitdir}/*
+%{_bindir}/*
+%{__data_dir}
+%{__log_dir}
+%{__logrotate_dir}/*
+%{__work_dir}
 %config(noreplace) %{__celery_conf_file}
 %config(noreplace) %{__conf_file}
 
@@ -147,7 +148,11 @@ if [ "$1" = 1 ]; then
     sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
 
     echo "[%{name}] Adding new system user %{name}..."
-    useradd --home %{__work_dir} --shell /sbin/nologin --system --user-group %{name}
+    useradd --home %{__work_dir} --shell /bin/sh --system --user-group %{name}
+elif [ "$1" = 2 ]; then
+    # This package is being upgraded
+    # Applicable to nodeconductor-0.103.0 and before
+    [ "$(getent passwd nodeconductor | cut -d: -f7)" = "/sbin/nologin" ] && usermod -s /bin/sh nodeconductor
 fi
 
 echo "[%{name}] Setting directory permissions..."
@@ -171,14 +176,18 @@ Next steps:
 
 4. Create database (if not yet done):
 
+    -- MySQL
     CREATE DATABASE nodeconductor CHARACTER SET = utf8;
     CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
 
+    -- PostgreSQL
+    --CREATE DATABASE nodeconductor ENCODING 'UTF8';
+    --CREATE USER nodeconductor WITH PASSWORD 'nodeconductor';
+
 5. Migrate the database:
 
-    nodeconductor migrate --noinput
-    chown -R nodeconductor:nodeconductor /var/log/nodeconductor
+    su - nodeconductor -c "nodeconductor migrate --noinput"
 
 Note: you will need to run this again on next NodeConductor update.
 
@@ -204,6 +213,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Sun Aug 14 2016 Jenkins <jenkins@opennodecloud.com> - 0.104.0-1.el7
+- New upstream release
+
 * Fri Jul 15 2016 Jenkins <jenkins@opennodecloud.com> - 0.103.0-1.el7
 - New upstream release
 

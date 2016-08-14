@@ -26,7 +26,7 @@ class SupportedServices(object):
             'gitlab': {
                 'name': 'GitLab',
                 'model_name': 'gitlab.gitlabservice',
-                'backend': nodeconductor_plus.gitlab.backend.GitLabBackend,
+                'backend': nodeconductor_gitlab.backend.GitLabBackend,
                 'detail_view': 'gitlab-detail',
                 'list_view': 'gitlab-list',
                 'properties': {},
@@ -271,11 +271,11 @@ class SupportedServices(object):
             {
                 ...
                 'gitlab': {
-                    "service": nodeconductor_plus.gitlab.models.GitLabService,
-                    "service_project_link": nodeconductor_plus.gitlab.models.GitLabServiceProjectLink,
+                    "service": nodeconductor_gitlab.models.GitLabService,
+                    "service_project_link": nodeconductor_gitlab.models.GitLabServiceProjectLink,
                     "resources": [
-                        nodeconductor_plus.gitlab.models.Group,
-                        nodeconductor_plus.gitlab.models.Project
+                        nodeconductor_gitlab.models.Group,
+                        nodeconductor_gitlab.models.Project
                     ],
                 },
                 ...
@@ -308,8 +308,8 @@ class SupportedServices(object):
         """ Get a list of resource models.
             {
                 'DigitalOcean.Droplet': nodeconductor_plus.digitalocean.models.Droplet,
-                'GitLab.Group': nodeconductor_plus.gitlab.models.Group,
-                'GitLab.Project': nodeconductor_plus.gitlab.models.Project,
+                'GitLab.Group': nodeconductor_gitlab.models.Group,
+                'GitLab.Project': nodeconductor_gitlab.models.Project,
                 'Oracle.Database': nodeconductor_oracle_dbaas.models.Database
             }
 
@@ -356,11 +356,11 @@ class SupportedServices(object):
 
             >> SupportedServices.get_related_models(gitlab_models.Project)
             {
-                'service': nodeconductor_plus.gitlab.models.GitLabService,
-                'service_project_link': nodeconductor_plus.gitlab.models.GitLabServiceProjectLink,
+                'service': nodeconductor_gitlab.models.GitLabService,
+                'service_project_link': nodeconductor_gitlab.models.GitLabServiceProjectLink,
                 'resources': [
-                    nodeconductor_plus.gitlab.models.Group,
-                    nodeconductor_plus.gitlab.models.Project,
+                    nodeconductor_gitlab.models.Group,
+                    nodeconductor_gitlab.models.Project,
                 ]
             }
         """

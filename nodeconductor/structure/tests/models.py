@@ -1,6 +1,7 @@
 from django.db import models
 
-from nodeconductor.cost_tracking.models import PayableMixin
+from nodeconductor.core import models as core_models
+from nodeconductor.cost_tracking import models as cost_models
 from nodeconductor.quotas.fields import QuotaField
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
@@ -32,7 +33,7 @@ class TestServiceProjectLink(structure_models.ServiceProjectLink):
 
 
 class TestInstance(structure_models.VirtualMachineMixin,
-                   PayableMixin,
+                   cost_models.PayableMixin,
                    structure_models.Resource):
 
     service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
@@ -40,3 +41,20 @@ class TestInstance(structure_models.VirtualMachineMixin,
     @classmethod
     def get_url_name(cls):
         return 'test-instances'
+
+
+class TestNewInstance(core_models.RuntimeStateMixin,
+                      core_models.StateMixin,
+                      cost_models.PayableMixin,
+                      QuotaModelMixin,
+                      structure_models.VirtualMachineMixin,
+                      structure_models.ResourceMixin):
+
+    service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
+
+    class Quotas(QuotaModelMixin.Quotas):
+        test_quota = QuotaField(default_limit=1)
+
+    @classmethod
+    def get_url_name(cls):
+        return 'test-new-instances'

@@ -221,16 +221,17 @@ class PushHook(BaseHook):
         }
         payload = {
             'to': self.token,
-            "notification": {
-                "body": event.get('message', 'New event'),
-                "title": conf.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
-                "image": "icon",
+            'notification': {
+                'body': event.get('message', 'New event'),
+                'title': conf.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
+                'image': 'icon',
             },
             'data': {
                 'event': event
             },
         }
-
+        if self.type == self.Type.IOS:
+            payload['content-available'] = '1'
         logger.debug('Submitting GCM push notification with headers %s, payload: %s' % (headers, payload))
         requests.post(endpoint, json=payload, headers=headers)
 

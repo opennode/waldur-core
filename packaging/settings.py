@@ -63,6 +63,13 @@ config_defaults = {
         'port': '3306',
         'user': 'nodeconductor',
     },
+    'postgresql': {
+        'host': '',  # empty to connect via local UNIX socket
+        'name': 'nodeconductor',
+        'password': 'nodeconductor',
+        'port': '5432',
+        'user': 'nodeconductor',
+    },
     'rest_api': {
         'cors_allowed_domains': 'localhost,127.0.0.1',
     },
@@ -106,11 +113,14 @@ ALLOWED_HOSTS = ['*']
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#databases
 
 DATABASES = {
-    # Requirements for MySQL ('HOST', 'NAME', 'USER' and 'PASSWORD' are configured below):
-    #  - MySQL server running and accessible on 'HOST':'PORT'
-    #  - User 'USER' created and can login to MySQL server using password 'PASSWORD'
-    #  - Database 'NAME' created with all privileges granted to user 'USER'
-    #  - MySQL-python installed: https://pypi.python.org/pypi/MySQL-python
+    # MySQL
+    # -----
+    #
+    # Requirements:
+    #  - MySQL server is running and accessible on 'HOST':'PORT'
+    #  - MySQL user 'USER' is created and can login to MySQL server using password 'PASSWORD'
+    #  - MySQL database 'NAME' is created with all privileges granted to user 'USER'
+    #  - MySQL-python package is installed: https://pypi.python.org/pypi/MySQL-python
     #
     # Example: create database, user and grant privileges:
     #
@@ -121,6 +131,29 @@ DATABASES = {
     # Example: install MySQL-python in CentOS:
     #
     #   yum install MySQL-python
+    #
+    #
+    # PostgreSQL
+    # ----------
+    #
+    # Requirements:
+    #  - PostgreSQL server is running and accessible on 'HOST':'PORT'
+    #  - PostgreSQL user 'USER' created and can access PostgreSQL server using password 'PASSWORD'
+    #  - PostgreSQL database 'NAME' created with all privileges granted to user 'USER'
+    #  - psycopg2 package is installed: https://pypi.python.org/pypi/psycopg2
+    #
+    # Note: if PostgreSQL server is running on local host and is accessible via UNIX socket,
+    # leave 'HOST' and 'PORT' empty. For password usage details in this setup see
+    # https://www.postgresql.org/docs/9.2/static/auth-methods.html
+    #
+    # Example: create database, user and grant privileges:
+    #
+    #   CREATE DATABASE nodeconductor ENCODING 'UTF8'
+    #   CREATE USER nodeconductor WITH PASSWORD 'nodeconductor'
+    #
+    # Example: install psycopg2 in CentOS:
+    #
+    #   yum install python-psycopg2
     #
     'default': {}
 }
@@ -142,6 +175,15 @@ if config.get('global', 'db_backend') == 'mysql':
         'PORT': config.get('mysql', 'port'),
         'USER': config.get('mysql', 'user'),
         'PASSWORD': config.get('mysql', 'password'),
+    }
+elif config.get('global', 'db_backend') == 'postgresql':
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': config.get('postgresql', 'name'),
+        'HOST': config.get('postgresql', 'host'),
+        'PORT': config.get('postgresql', 'port'),
+        'USER': config.get('postgresql', 'user'),
+        'PASSWORD': config.get('postgresql', 'password'),
     }
 elif config.has_section('sqlite3'):
     DATABASES['default'] = {
@@ -171,6 +213,10 @@ LOGGING = {
         'is-not-event': {
             '()': 'nodeconductor.logging.log.RequireNotEvent',
         },
+        # Filter out messages from background tasks
+        'is-not-background-task': {
+            '()': 'nodeconductor.logging.log.RequireNotBackgroundTask',
+        },
     },
 
     # Formatters
@@ -192,6 +238,7 @@ LOGGING = {
         # Send logs to admins by email
         # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#django.utils.log.AdminEmailHandler
         'email-admins': {
+            'filters': ['is-not-background-task'],
             'class': 'django.utils.log.AdminEmailHandler',
             'level': 'ERROR',
         },
@@ -223,25 +270,32 @@ LOGGING = {
             'class': 'logging.handlers.SysLogHandler',
             'filters': ['is-event'],
             'formatter': 'message-only',
-            'level': config.get('logging', 'log_level').upper(),
+            'level': config.get('events', 'log_level').upper(),
         },
         # Send logs to log server
         # Note that nodeconductor.logging.log.TCPEventHandler does not support exernal formatters
         'tcp': {
             'class': 'nodeconductor.logging.log.TCPEventHandler',
             'filters': ['is-not-event'],
-            'level': config.get('events', 'log_level').upper(),
+            'level': config.get('logging', 'log_level').upper(),
         },
         'tcp-event': {
             'class': 'nodeconductor.logging.log.TCPEventHandler',
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper(),
         },
-        'hook': {
+        # Send logs to Sentry
+        # See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/#integration-with-logging
+        'sentry': {
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+            'level': 'ERROR',
+        },
+        # Send logs to web hook
+        'hook-event': {
             'class': 'nodeconductor.logging.log.HookHandler',
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper()
-        }
+        },
     },
 
     # Loggers
@@ -255,6 +309,10 @@ LOGGING = {
     },
     # Default configuration can be overridden on per-module basis
     'loggers': {
+        # Celery loggers
+        'celery.worker': {
+            'handlers': [],
+        },
         'django': {
             'handlers': [],
         },
@@ -271,6 +329,7 @@ LOGGING = {
 
 if config.get('logging', 'admin_email') != '':
     ADMINS += (('Admin', config.get('logging', 'admin_email')),)
+    LOGGING['loggers']['celery.worker']['handlers'].append('email-admins')
     LOGGING['loggers']['nodeconductor']['handlers'].append('email-admins')
 
 if config.get('logging', 'log_file') != '':
@@ -297,7 +356,7 @@ if config.getboolean('events', 'syslog'):
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
 
 if config.getboolean('events', 'hook'):
-    LOGGING['loggers']['nodeconductor']['handlers'].append('hook')
+    LOGGING['loggers']['nodeconductor']['handlers'].append('hook-event')
 
 # Static files
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#static-files
@@ -341,218 +400,6 @@ for app in INSTALLED_APPS:
 # NodeConductor internal configuration
 # See also: http://nodeconductor.readthedocs.org/en/stable/guide/intro.html#id1
 NODECONDUCTOR.update({
-    'DEFAULT_SECURITY_GROUPS': (
-        {
-            'name': 'icmp',
-            'description': 'Security group for ICMP',
-            'rules': (
-                {
-                    'protocol': 'icmp',
-                    'cidr': '0.0.0.0/0',
-                    'icmp_type': -1,
-                    'icmp_code': -1,
-                },
-            ),
-        },
-        {
-            'name': 'ssh',
-            'description': 'Security group for SSH',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 22,
-                    'to_port': 22,
-                },
-            ),
-        },
-        {
-            'name': 'http',
-            'description': 'Security group for HTTP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 80,
-                    'to_port': 80,
-                },
-            ),
-        },
-        {
-            'name': 'https',
-            'description': 'Security group for HTTPS',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 443,
-                    'to_port': 443,
-                },
-            ),
-        },
-        {
-            'name': 'rdp',
-            'description': 'Security group for RDP',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 3389,
-                    'to_port': 3389,
-                },
-            ),
-        },
-        {
-            'name': 'postgresql',
-            'description': 'Security group for PostgreSQL PaaS service',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 22,
-                    'to_port': 22,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 5432,
-                    'to_port': 5432,
-                },
-                {
-                    'protocol': 'icmp',
-                    'cidr': '0.0.0.0/0',
-                    'icmp_type': -1,
-                    'icmp_code': -1,
-                },
-            ),
-        },
-        {
-            'name': 'wordpress',
-            'description': 'Security group for WordPress PaaS service',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 22,
-                    'to_port': 22,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 80,
-                    'to_port': 80,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 443,
-                    'to_port': 443,
-                },
-            ),
-        },
-        {
-            'name': 'zimbra',
-            'description': 'Security group for Zimbra PaaS service',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 22,
-                    'to_port': 22,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 25,
-                    'to_port': 25,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 465,
-                    'to_port': 465,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 110,
-                    'to_port': 110,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 995,
-                    'to_port': 995,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 143,
-                    'to_port': 143,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 993,
-                    'to_port': 993,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 80,
-                    'to_port': 80,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 443,
-                    'to_port': 443,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 7071,
-                    'to_port': 7071,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 7025,
-                    'to_port': 7025,
-                },
-            ),
-        },
-        {
-            'name': 'zabbix',
-            'description': 'Security group for Zabbix advanced monitoring',
-            'rules': (
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 22,
-                    'to_port': 22,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 80,
-                    'to_port': 80,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 443,
-                    'to_port': 443,
-                },
-                {
-                    'protocol': 'tcp',
-                    'cidr': '0.0.0.0/0',
-                    'from_port': 3306,
-                    'to_port': 3306,
-                },
-            ),
-        },
-    ),
     'ELASTICSEARCH': {
         'username': config.get('elasticsearch', 'username'),
         'password': config.get('elasticsearch', 'password'),
@@ -571,9 +418,11 @@ if NODECONDUCTOR['ELASTICSEARCH']['protocol'] == 'https':
         NODECONDUCTOR['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
 
 # Sentry integration
-# See also: http://raven.readthedocs.org/en/latest/integrations/django.html#setup
+# See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/
 if config.get('sentry', 'dsn') != '':
     INSTALLED_APPS = INSTALLED_APPS + ('raven.contrib.django.raven_compat',)
+    for logger in ['celery.worker', 'django', 'nodeconductor', 'requests']:
+        LOGGING['loggers'][logger]['handlers'].append('sentry')
     RAVEN_CONFIG = {
         'dsn': config.get('sentry', 'dsn'),
     }
