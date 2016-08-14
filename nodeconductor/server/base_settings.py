@@ -34,6 +34,10 @@ INSTALLED_APPS = (
     'django.contrib.humanize',
     'django.contrib.staticfiles',
 
+    # 'material',
+    # 'material.frontend',
+    # 'material.admin',
+
     'nodeconductor.landing',
     'nodeconductor.logging',
     'nodeconductor.core',
@@ -99,12 +103,12 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [os.path.join(BASE_DIR, 'nodeconductor', 'templates')],
         'OPTIONS': {
-            'context_processors': (
+            'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-            ) + ADMIN_TEMPLATE_CONTEXT_PROCESSORS,
+            ] + ADMIN_TEMPLATE_CONTEXT_PROCESSORS,
             'loaders': (
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader',

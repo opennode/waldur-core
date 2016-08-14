@@ -1,5 +1,5 @@
 ADMIN_INSTALLED_APPS = (
-    'fluent_dashboard',
+   'fluent_dashboard',
     'admin_tools',
     'admin_tools.theming',
     'admin_tools.menu',
@@ -9,7 +9,7 @@ ADMIN_INSTALLED_APPS = (
 
 # FIXME: Move generic (not related to admin) context processors to base_settings
 # Note: replace 'django.core.context_processors' with 'django.template.context_processors' in Django 1.8+
-ADMIN_TEMPLATE_CONTEXT_PROCESSORS = (
+ADMIN_TEMPLATE_CONTEXT_PROCESSORS = [
     'django.contrib.auth.context_processors.auth',
     'django.contrib.messages.context_processors.messages',
     'django.core.context_processors.debug',
@@ -18,7 +18,7 @@ ADMIN_TEMPLATE_CONTEXT_PROCESSORS = (
     'django.core.context_processors.request',  # required by django-admin-tools >= 0.7.0
     'django.core.context_processors.static',
     'django.core.context_processors.tz',
-)
+]
 
 ADMIN_TEMPLATE_LOADERS = (
     'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
