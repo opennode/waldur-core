@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import calendar
+import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
@@ -16,7 +17,7 @@ from django.utils.lru_cache import lru_cache
 
 from jsonfield import JSONField
 from model_utils import FieldTracker
-from gm2m import GM2MField
+from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
@@ -92,6 +93,11 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
     @staticmethod
     def is_leaf_scope(scope):
         return scope._meta.model in PayableMixin.get_all_models()
+
+    def get_previous(self):
+        """ Get estimate for the same scope for previous month. """
+        month, year = (self.month - 1, self.year) if self.month != 1 else (12, self.year - 1)
+        return PriceEstimate.objects.get(scope=self.scope, month=month, year=year)
 
     def update_from_leaf(self):
         if self.is_leaf:
@@ -231,6 +237,64 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
 
     def __str__(self):
         return '%s for %s-%s %.2f' % (self.scope, self.year, self.month, self.total)
+
+
+class ConsumptionDetailUpdateError(Exception):
+    pass
+
+
+class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
+    """ Resource consumption details per month.
+
+        Warning! Use method "update_configuration" to update configurations,
+        do not update them manually.
+    """
+    price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
+    configuration = JSONField(default={}, help_text='Current resource configuration.')
+    last_update_time = models.DateTimeField(help_text='Last configuration change time.')
+    consumed_before_update = JSONField(
+        default={}, help_text='How many consumables were used by resource before last update.')
+
+    objects = managers.ConsumptionDetailsManager()
+
+    def update_configuration(self, new_configuration):
+        """ Save how much consumables were used and update current configuration. """
+        if new_configuration == self.configuration:
+            return
+        now = timezone.now()
+        if now.month != self.price_estimate.month:
+            raise ConsumptionDetailUpdateError('It is possible to update consumption details only for current month.')
+        minutes_from_last_update = self._get_minutes_from_last_update(now)
+        for consumable, usage in self.configuration.items():
+            consumed_after_modification = usage * minutes_from_last_update
+            self.consumed_before_update[consumable] = (
+                self.consumed_before_update.get(consumable, 0) + consumed_after_modification)
+        self.configuration = new_configuration
+        self.last_update_time = now
+        self.save()
+
+    @property
+    def consumed(self):
+        """ How many consumables were be used by resource for whole month. """
+        _consumed = {}
+        month_end = self._get_month_end()
+        minutes_from_last_update = self._get_minutes_from_last_update(month_end)
+        for consumable in set(self.configuration.keys() + self.consumed_before_update.keys()):
+            consumed_after_modification = self.configuration.get(consumable, 0) * minutes_from_last_update
+            _consumed[consumable] = consumed_after_modification + self.consumed_before_update[consumable]
+        return _consumed
+
+    def _get_month_end(self):
+        year, month = self.price_estimate.year, self.price_estimate.month
+        days_in_month = calendar.monthrange(year, month)[1]
+        last_day_of_month = datetime.date(month=month, year=year, day=days_in_month)
+        last_second_of_month = datetime.datetime.combine(last_day_of_month, datetime.time.max)
+        return timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
+
+    def _get_minutes_from_last_update(self, time):
+        """ How much minutes passed from last update to given time """
+        time_from_last_update = time - self.last_update_time
+        return int(time_from_last_update.total_seconds() / 60)
 
 
 class AbstractPriceListItem(models.Model):

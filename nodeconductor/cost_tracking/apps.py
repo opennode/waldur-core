@@ -12,6 +12,8 @@ class CostTrackingConfig(AppConfig):
         from nodeconductor.core.handlers import preserve_fields_before_update
         from nodeconductor.cost_tracking import handlers
         from nodeconductor.cost_tracking.models import PayableMixin
+        from nodeconductor.quotas import models as quotas_models
+        from nodeconductor.structure import models as structure_models
         from nodeconductor.structure.signals import resource_imported, resource_provisioned
 
         PriceEstimate = self.get_model('PriceEstimate')
@@ -97,3 +99,16 @@ class CostTrackingConfig(AppConfig):
                 dispatch_uid=('nodeconductor.cost_tracking.handlers.delete_price_estimate_on_scope_deletion_{}_{}'
                               .format(model.__name__, index))
             )
+
+        for index, model in enumerate(structure_models.ResourceMixin.get_all_models()):
+            signals.post_save.connect(
+                handlers.update_consumption_details_on_resource_update,
+                sender=model,
+                dispatch_uid='update_consumption_details_on_resource_update_%s_%s' % (model.__name__, index),
+            )
+
+        signals.post_save.connect(
+            handlers.update_consumption_details_on_resource_quota_update,
+            sender=quotas_models.Quota,
+            dispatch_uid='update_consumption_details_on_resource_quota_update',
+        )

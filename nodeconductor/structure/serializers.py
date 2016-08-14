@@ -1009,6 +1009,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings__type',
             'settings__shared',
             'settings__error_message',
+            'settings__options',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
@@ -1116,6 +1117,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 except ServiceBackendNotImplemented:
                     pass
 
+                self._validate_settings(settings)
+
                 settings.save()
                 executors.ServiceSettingsCreateExecutor.execute(settings)
                 attrs['settings'] = settings
@@ -1125,6 +1128,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     del attrs[f]
 
         return attrs
+
+    def _validate_settings(self, settings):
+        pass
 
     def get_resources_count(self, service):
         return self.get_resources_count_map[service.pk]
@@ -1480,9 +1486,12 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     def get_fields(self):
         fields = super(VirtualMachineSerializer, self).get_fields()
-        if 'ssh_public_key' in fields:
-            fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
-                user=self.context['request'].user)
+        if 'request' in self.context:
+            user = self.context['request'].user
+            ssh_public_key = fields.get('ssh_public_key')
+            if ssh_public_key:
+                ssh_public_key.query_params = {'user_uuid': user.uuid.hex}
+                ssh_public_key.queryset = ssh_public_key.queryset.filter(user=user)
         return fields
 
     def create(self, validated_data):

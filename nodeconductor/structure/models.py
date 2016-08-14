@@ -674,9 +674,12 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
         return SupportedServices.get_service_backend(self.type)(self, **kwargs)
 
     def get_option(self, name):
-        defaults = self.get_backend().DEFAULTS
         options = self.options or {}
-        return options.get(name) or defaults.get(name)
+        if name in options:
+            return options.get(name)
+        else:
+            defaults = self.get_backend().DEFAULTS
+            return defaults.get(name)
 
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
