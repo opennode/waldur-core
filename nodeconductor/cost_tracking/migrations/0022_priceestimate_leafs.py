@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
             model_name='priceestimate',
             name='leafs',
             field=models.ManyToManyField(related_name='_priceestimate_leafs_+', to='cost_tracking.PriceEstimate'),
-            ),
+        ),
         migrations.RunPython(init_leafs),
         migrations.RemoveField(
             model_name='priceestimate',
