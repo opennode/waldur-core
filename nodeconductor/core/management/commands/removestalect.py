@@ -12,6 +12,10 @@ class Command(BaseCommand):
             if estimate.content_type.model_class() is None:
                 estimate.delete()
 
+        for item in cost_tracking_models.DefaultPriceListItem.objects.all():
+            if item.resource_content_type.model_class() is None:
+                item.delete()
+
         for entry in LogEntry.objects.all():
             if entry.content_type.model_class() is None:
                 entry.delete()
