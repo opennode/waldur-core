@@ -4,4 +4,3 @@ recursive-include nodeconductor/templates *.html
 recursive-include nodeconductor/landing/templates *.html
 recursive-include nodeconductor/logging/templates *.html
 recursive-include nodeconductor/structure/templates *.html
-recursive-include nodeconductor/template/templates *.html

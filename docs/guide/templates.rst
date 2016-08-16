@@ -1,6 +1,8 @@
 Templates workflow
 ------------------
 
+**This workflow is only related to the ITACLOUD assembly.**
+
 1. Staff defines a template group through admin interfaces and links several
 templates to it. A template corresponds to provisioning of a resource and allows
 to set default options.
