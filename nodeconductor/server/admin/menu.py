@@ -77,6 +77,7 @@ class CustomMenu(Menu):
                 models=('nodeconductor.core.*',
                         'nodeconductor_organization.*',
                         'nodeconductor.structure.*',
+                        'nodeconductor_assembly_itacloud.template.*',  # Hack to show template groups in admin
                         )
             ),
             CustomAppList(
