@@ -12,7 +12,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.104.0
+Version: 0.104.1
 Release: 1.el7
 License: Copyright 2014 OpenNode LLC.  All rights reserved.
 
@@ -35,7 +35,7 @@ Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
 Requires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
-Requires: python-django-taggit >= 0.17.5
+Requires: python-django-taggit >= 0.20.2
 Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
 Requires: python-hiredis >= 0.2.0
@@ -213,6 +213,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Thu Aug 18 2016 Jenkins <jenkins@opennodecloud.com> - 0.104.1-1.el7
+- New upstream release
+
 * Sun Aug 14 2016 Jenkins <jenkins@opennodecloud.com> - 0.104.0-1.el7
 - New upstream release
 

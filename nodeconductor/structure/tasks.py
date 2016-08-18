@@ -77,8 +77,8 @@ def pull_service_settings():
 
 # Small work around to use @throttle decorator. Ideally we need to come with
 # solution how to use BackendMethodTask with @throttle.
-@shared_task
-@throttle(concurrency=2, key='service_settings_sync', is_background=True)
+@shared_task(is_background=True)
+@throttle(concurrency=2, key='service_settings_sync')
 def sync_service_settings(serialized_service_settings):
     service_settings = core_utils.deserialize_instance(serialized_service_settings)
     backend = service_settings.get_backend()
