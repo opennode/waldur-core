@@ -12,4 +12,4 @@ Please make sure that the following is addressed when making a pull request:
 - the code is following pep8 code conventions;
 
 ## License
-By contributing your code, you agree to license your contribution under the [Apache v2 license](LICENSE.md).
+By contributing your code, you agree to license your contribution under the [MIT license](LICENSE.md).
