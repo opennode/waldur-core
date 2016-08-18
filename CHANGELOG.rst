@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.104.1
+---------------
+- Revert damage to /admin (upgrade strongly suggested).
+
 Release 0.104.0
 ---------------
 - Render actions metadata for new resources.
