@@ -57,6 +57,16 @@ class EventFilterBackend(filters.BaseFilterBackend):
             field = core_serializers.GenericRelatedField(related_models=utils.get_loggable_models())
             field._context = {'request': request}
             obj = field.to_internal_value(request.query_params['scope'])
+
+            # XXX: Ilja - disabling this hack and re-opening a ticket. Additional analysis is required for
+            # a proper resolution
+            # # XXX: hack to prevent leaking customer events
+            # permitted_uuids = [uuid.hex for uuids in
+            #                    obj.get_permitted_objects_uuids(request.user).values() for uuid in uuids]
+            # if obj.uuid.hex not in permitted_uuids:
+            #     raise ValidationError('You do not have permission to view events for scope %s'
+            #                           % request.query_params['scope'])
+
             for key, val in obj.filter_by_logged_object().items():
                 # Use "{field_name}.raw" to get the non-analyzed version of the value
                 # https://github.com/elastic/kibana/issues/364

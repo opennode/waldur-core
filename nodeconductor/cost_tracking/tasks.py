@@ -5,14 +5,14 @@ from nodeconductor.cost_tracking.models import PriceEstimate, PayableMixin
 
 
 @shared_task(name='nodeconductor.cost_tracking.update_projected_estimate')
-def update_projected_estimate(customer_uuid=None, serialized_resource=None):
+def update_projected_estimate(customer_uuid=None, serialized_resource=None, back_propagate_price=False):
 
     if customer_uuid and serialized_resource:
         raise RuntimeError("Either customer_uuid or serialized_resource could be supplied, both received.")
 
     if serialized_resource:
         resource = deserialize_instance(serialized_resource)
-        PriceEstimate.update_price_for_resource(resource)
+        PriceEstimate.update_price_for_resource(resource, back_propagate_price)
 
     else:
         # XXX: it's quite inefficient -- will update ancestors many times

@@ -40,7 +40,6 @@ INSTALLED_APPS = (
     'nodeconductor.monitoring',
     'nodeconductor.quotas',
     'nodeconductor.structure',
-    'nodeconductor.template',
     'nodeconductor.cost_tracking',
 
     'rest_framework',
@@ -120,7 +119,7 @@ AUTH_USER_MODEL = 'core.User'
 WSGI_APPLICATION = 'nodeconductor.server.wsgi.application'
 
 # Internationalization
-# https://docs.djangoproject.com/en/1.6/topics/i18n/
+# https://docs.djangoproject.com/en/1.8/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -132,7 +131,7 @@ USE_L10N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.6/howto/static-files/
+# https://docs.djangoproject.com/en/1.8/howto/static-files/
 STATIC_URL = '/static/'
 
 BROKER_URL = 'redis://localhost'

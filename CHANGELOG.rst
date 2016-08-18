@@ -3,7 +3,21 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Nothing yet.
+
+Release 0.104.1
+---------------
+- Revert damage to /admin (upgrade strongly suggested).
+
+Release 0.104.0
+---------------
+- Render actions metadata for new resources.
+- Historical resource calculation is made optional.
+- Fix Sentry integration.
+- Implemented unlinking provider with all resources.
+- Expose creation time of resources in /admin.
+- Make service models quota-aware.
+- Silence failed sync actions if resources was already erred.
 
 Release 0.103.0
 ---------------

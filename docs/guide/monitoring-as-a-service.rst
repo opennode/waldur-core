@@ -133,11 +133,14 @@ See also: `NodeConductor Zabbix plugin configuration <http://nodeconductor-zabbi
    {
         "engine": "django.db.backends.mysql",
         "name": "zabbix",
-        "host": "%",
+        "host": "XXX", 
         "user": "nodeconductor",
         "password": "{{ response.user_data|bootstrap_opts:'p' }}",
         "port": "3306"
    }
+
+Parameter "host" should be specified based on environment and Zabbix image 
+configuration.
 
 
 Requests from frontend

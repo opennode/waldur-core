@@ -9,26 +9,6 @@ import django.core.validators
 import nodeconductor.core.validators
 
 
-class ApplicationTypes(object):
-    WORDPRESS = 'wordpress'
-    POSTGRESQL = 'postgresql'
-    ZIMBRA = 'zimbra'
-    NONE = 'none'
-
-    CHOICES = (
-        (WORDPRESS, 'WordPress'),
-        (POSTGRESQL, 'PostgreSQL'),
-        (ZIMBRA, 'Zimbra'),
-        (NONE, 'None'),
-    )
-
-
-def init_default_application_types(apps, schema_editor):
-    ApplicationType = apps.get_model('cost_tracking', 'ApplicationType')
-    for slug, name in ApplicationTypes.CHOICES:
-        ApplicationType.objects.update_or_create(slug=slug, defaults={'name': name})
-
-
 class Migration(migrations.Migration):
 
     replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage'), ('cost_tracking', '0009_defaultpricelistitem_name'), ('cost_tracking', '0010_applicationtype'), ('cost_tracking', '0011_applicationtype_slug'), ('cost_tracking', '0012_fix_fields_length')]
@@ -105,5 +85,4 @@ class Migration(migrations.Migration):
             },
             bases=(models.Model,),
         ),
-        migrations.RunPython(init_default_application_types),
     ]

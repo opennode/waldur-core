@@ -4,6 +4,8 @@ import json
 import datetime
 import logging
 
+from celery import current_app
+
 
 class EventFormatter(logging.Formatter):
 
@@ -71,6 +73,19 @@ class RequireNotEvent(logging.Filter):
 
     def filter(self, record):
         return not getattr(record, 'event', False)
+
+
+class RequireNotBackgroundTask(logging.Filter):
+    """ Filter out messages from background tasks """
+
+    def filter(self, record):
+        try:
+            name = getattr(record, 'data', {})['name']
+            task = current_app.tasks[name]
+        except KeyError:
+            return True
+        is_background = getattr(task, 'is_background', False)
+        return not is_background
 
 
 class TCPEventHandler(logging.handlers.SocketHandler, object):

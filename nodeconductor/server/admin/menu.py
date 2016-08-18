@@ -50,7 +50,7 @@ class CustomMenu(Menu):
         'nodeconductor_saltstack.*',
         'nodeconductor_zabbix.*',
         'nodeconductor_jira.*',
-        'nodeconductor_plus.gitlab.*',
+        'nodeconductor_gitlab.*',
         'nodeconductor_oracle_dbaas.*',
         'nodeconductor_paas_oracle.*',
     )
@@ -77,6 +77,7 @@ class CustomMenu(Menu):
                 models=('nodeconductor.core.*',
                         'nodeconductor_organization.*',
                         'nodeconductor.structure.*',
+                        'nodeconductor_assembly_itacloud.template.*',  # Hack to show template groups in admin
                         )
             ),
             CustomAppList(

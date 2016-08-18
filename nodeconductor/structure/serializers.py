@@ -272,12 +272,10 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'service__settings__uuid',
             'service__settings__shared'
         )
-        for service in SupportedServices.get_service_models().values():
-            link_model = service['service_project_link']
-            links = link_model.objects.all()
-            if not hasattr(link_model, 'cloud'):
-                links = links.select_related('service', 'service__settings') \
-                             .only(*related_fields)
+        for link_model in ServiceProjectLink.get_all_models():
+            links = (link_model.objects.all()
+                     .select_related('service', 'service__settings')
+                     .only(*related_fields))
             if isinstance(self.instance, list):
                 links = links.filter(project__in=self.instance)
             else:
@@ -967,6 +965,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     error_message = serializers.ReadOnlyField(source='settings.error_message')
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     tags = serializers.SerializerMethodField()
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -979,7 +978,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
-            'available_for_all', 'scope', 'tags',
+            'available_for_all', 'scope', 'tags', 'quotas',
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
@@ -1010,10 +1009,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings__type',
             'settings__shared',
             'settings__error_message',
+            'settings__options',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
-        return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects))
+        return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects), 'quotas')
 
     def get_tags(self, service):
         return service.settings.get_tags()
@@ -1117,6 +1117,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 except ServiceBackendNotImplemented:
                     pass
 
+                self._validate_settings(settings)
+
                 settings.save()
                 executors.ServiceSettingsCreateExecutor.execute(settings)
                 attrs['settings'] = settings
@@ -1126,6 +1128,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     del attrs[f]
 
         return attrs
+
+    def _validate_settings(self, settings):
+        pass
 
     def get_resources_count(self, service):
         return self.get_resources_count_map[service.pk]
@@ -1281,6 +1286,13 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
     service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
 
+    service_settings = serializers.HyperlinkedRelatedField(
+        source='service_project_link.service.settings',
+        view_name='servicesettings-detail',
+        read_only=True,
+        lookup_field='uuid')
+    service_settings_uuid = serializers.ReadOnlyField(source='service_project_link.service.settings.uuid')
+
     customer = serializers.HyperlinkedRelatedField(
         source='service_project_link.project.customer',
         view_name='customer-detail',
@@ -1304,6 +1316,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         fields = MonitoringSerializerMixin.Meta.fields + (
             'url', 'uuid', 'name', 'description', 'start_time',
             'service', 'service_name', 'service_uuid',
+            'service_settings', 'service_settings_uuid',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'project_groups', 'tags', 'error_message',
@@ -1399,13 +1412,15 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     state = serializers.ReadOnlyField(source='get_state_display')
     created = serializers.DateTimeField(read_only=True)
+    back_propagate_price = serializers.BooleanField(
+        default=True, write_only=True, help_text='Import historical resource usage')
 
     class Meta(object):
         model = NotImplemented
         view_name = NotImplemented
         fields = (
             'url', 'uuid', 'name', 'state', 'created',
-            'backend_id', 'project'
+            'backend_id', 'project', 'back_propagate_price'
         )
         read_only_fields = ('name',)
         extra_kwargs = {
@@ -1471,9 +1486,12 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     def get_fields(self):
         fields = super(VirtualMachineSerializer, self).get_fields()
-        if 'ssh_public_key' in fields:
-            fields['ssh_public_key'].queryset = fields['ssh_public_key'].queryset.filter(
-                user=self.context['request'].user)
+        if 'request' in self.context:
+            user = self.context['request'].user
+            ssh_public_key = fields.get('ssh_public_key')
+            if ssh_public_key:
+                ssh_public_key.query_params = {'user_uuid': user.uuid.hex}
+                ssh_public_key.queryset = ssh_public_key.queryset.filter(user=user)
         return fields
 
     def create(self, validated_data):

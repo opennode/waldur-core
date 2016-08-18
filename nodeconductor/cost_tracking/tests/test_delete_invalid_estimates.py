@@ -10,7 +10,8 @@ from . import factories
 class DeleteInvalidPriceEstimatesTest(TestCase):
     def setUp(self):
         customer = structure_factories.CustomerFactory()
-        service = structure_factories.TestServiceFactory(customer=customer)
+        settings = structure_factories.ServiceSettingsFactory(customer=customer)
+        service = structure_factories.TestServiceFactory(settings=settings, customer=customer)
         project = structure_factories.ProjectFactory(customer=customer)
         link = structure_factories.TestServiceProjectLinkFactory(service=service, project=project)
         self.resource = structure_factories.TestInstanceFactory(service_project_link=link)
@@ -19,8 +20,20 @@ class DeleteInvalidPriceEstimatesTest(TestCase):
         year = self.resource_estimate.year
         month = self.resource_estimate.month
 
+        self.customer_estimate = factories.PriceEstimateFactory(
+            scope=customer, year=year, month=month
+        )
+
         self.service_estimate = factories.PriceEstimateFactory(
             scope=service, year=year, month=month
+        )
+
+        self.settings_estimate = factories.PriceEstimateFactory(
+            scope=settings, year=year, month=month
+        )
+
+        self.link_estimate = factories.PriceEstimateFactory(
+            scope=link, year=year, month=month
         )
 
         self.project_estimate = factories.PriceEstimateFactory(

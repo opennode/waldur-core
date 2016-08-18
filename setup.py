@@ -9,6 +9,7 @@ dev_requires = [
 tests_requires = [
     'ddt>=1.0.0,<1.1.0',
     'factory_boy==2.4.1',
+    'freezegun==0.3.7',
     'mock>=1.0.1',
     'mock-django==0.6.6',
     'six>=1.9.0',
@@ -28,7 +29,7 @@ install_requires = [
     'django-permission==0.9.2',
     'django-redis-cache>=1.6.5',
     'django-reversion>=1.8.7,<=1.9.3',
-    'django-taggit>=0.17.5',
+    'django-taggit>=0.20.2',
     'django-uuidfield==0.5.0',
     'djangorestframework>=3.1.3,<3.2.0',
     'elasticsearch>=1.0.0,<2.0.0',
@@ -46,7 +47,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.103.0',
+    version='0.104.1',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

@@ -40,7 +40,7 @@ from nodeconductor.structure.signals import structure_role_granted, structure_ro
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
-from nodeconductor.structure.utils import get_coordinates_by_ip
+from nodeconductor.structure.utils import get_coordinates_by_ip, sort_dependencies
 
 
 def validate_service_type(service_type):
@@ -523,15 +523,11 @@ class Project(core_models.DescribableMixin,
         return [self.customer]
 
     def get_children(self):
-        return itertools.chain.from_iterable(
-            m.objects.filter(project=self) for m in ServiceProjectLink.get_all_models())
-
-    def get_links(self):
         """
         Get all service project links connected to current project
         """
-        return [link for model in SupportedServices.get_service_models().values()
-                     for link in model['service_project_link'].objects.filter(project=self)]
+        return itertools.chain.from_iterable(
+            m.objects.filter(project=self) for m in ServiceProjectLink.get_all_models())
 
 
 @python_2_unicode_compatible
@@ -678,9 +674,12 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
         return SupportedServices.get_service_backend(self.type)(self, **kwargs)
 
     def get_option(self, name):
-        defaults = self.get_backend().DEFAULTS
         options = self.options or {}
-        return options.get(name) or defaults.get(name)
+        if name in options:
+            return options.get(name)
+        else:
+            defaults = self.get_backend().DEFAULTS
+            return defaults.get(name)
 
     def __str__(self):
         return '%s (%s)' % (self.name, self.get_type_display())
@@ -702,6 +701,7 @@ class Service(core_models.SerializableAbstractMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
               core_models.DescendantMixin,
+              quotas_models.QuotaModelMixin,
               LoggableMixin,
               StructureModel):
     """ Base service class. """
@@ -766,8 +766,14 @@ class Service(core_models.SerializableAbstractMixin,
         return [self.settings]
 
     def get_children(self):
-        return itertools.chain.from_iterable(
-            m.objects.filter(service=self) for m in ServiceProjectLink.get_all_models())
+        return self.get_service_project_links()
+
+    def unlink_descendants(self):
+        descendants = sort_dependencies(self._meta.model, self.get_descendants())
+        for descendant in descendants:
+            if isinstance(descendant, ResourceMixin):
+                descendant.unlink()
+            descendant.delete()
 
 
 class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
@@ -1171,7 +1177,7 @@ class ResourceMixin(MonitoringModelMixin,
         return itertools.chain(
             self._get_generic_related_resources(),
             # XXX: Temporary hack to speed up queries. Related resources should be removed.
-            # self._get_concrete_related_resources(),
+            self._get_concrete_related_resources(),
             # self._get_concrete_linked_resources(),
             # self._get_generic_linked_resources()
         )
@@ -1186,7 +1192,7 @@ class ResourceMixin(MonitoringModelMixin,
             if isinstance(field, GenericForeignKey))
 
     def _get_concrete_related_resources(self):
-        # For example, returns GitLab projects for group
+        # For example, returns Zabbix IT Service for Zabbix Host
 
         return itertools.chain.from_iterable(
             rel.related_model.objects.filter(**{rel.field.name: self})
@@ -1261,6 +1267,10 @@ class ResourceMixin(MonitoringModelMixin,
     def decrease_backend_quotas_usage(self):
         """ Decrease usage of quotas that were released on resource deletion """
         pass
+
+    def unlink(self):
+        # XXX: add special attribute to an instance in order to be tracked by signal handler
+        setattr(self, 'PERFORM_UNLINK', True)
 
 
 # deprecated, use NewResource instead.
