@@ -70,7 +70,7 @@ Developing NodeConductor
 License
 -------
 
-NodeConductor is open-source under Apache v2 license.
+NodeConductor is open-source under MIT license.
 
 
 Indices and tables
