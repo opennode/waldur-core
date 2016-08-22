@@ -4,7 +4,6 @@ import calendar
 import datetime
 import logging
 
-from dateutil.relativedelta import relativedelta
 from django.apps import apps
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -21,225 +20,169 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
-from nodeconductor.cost_tracking import CostTrackingRegister, managers
+from nodeconductor.cost_tracking import managers
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
-from nodeconductor.structure import models as structure_models
-from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
+from nodeconductor.structure import models as structure_models, SupportedServices
 
 
 logger = logging.getLogger(__name__)
 
 
+# TODO:
+# 1. Write and test resource price estimate population. DONE.
+# 2. Replace leafs with child-parent relationships. DONE.
+# 3. Implement and test propagation. DONE.
+# 4. Support scope deletion. DONE.
+# 5. Every hour update field "consumed".
+# 6. Provide data-migrations. And data-initialization for current month.
+
+
+# This is moved to separate issues:
+# 7. Support Import operation. NC-1548
+# 8. Copy alert and threshold from previous price estimate if they exists. Rewrite limit checks. NC-1537
+
+
+class EstimateUpdateError(Exception):
+    pass
+
+
 @python_2_unicode_compatible
-class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin):
+class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, core_models.DescendantMixin):
     """ Store prices based on both estimates and actual consumption.
-        Every record holds a list of leaf estimates with actual data.
 
-                         /--- Service ---\
-        (top) Customer --                 ---> SPL --> Resource (leaf)
-                         \--- Project ---/
-
-        Only leaf node has actual data.
-        Another ones should be re-calculated on every change of leaf one.
+        Every record holds a list of children estimates.
+                   /--- Service ---\
+        Customer --                 ---> SPL --> Resource
+                   \--- Project ---/
+        Only resource node has actual data.
+        Another ones should be re-calculated on every change of resource estimate.
     """
-
     content_type = models.ForeignKey(ContentType, null=True, related_name='+')
     object_id = models.PositiveIntegerField(null=True)
     scope = GenericForeignKey('content_type', 'object_id')
+    details = JSONField(blank=True, help_text='Saved scope details. Field is populated on scope deletion.')
+    parents = models.ManyToManyField('PriceEstimate', related_name='children', help_text='Price estimate parents')
 
-    scope_customer = models.ForeignKey(structure_models.Customer, null=True, related_name='+')
-    leafs = models.ManyToManyField('PriceEstimate', related_name='+')
-
-    total = models.FloatField(default=0)
-    consumed = models.FloatField(default=0)
-    details = JSONField(blank=True)
-    limit = models.FloatField(default=-1)
+    total = models.FloatField(default=0, help_text='Predicted price for scope for current month.')
+    consumed = models.FloatField(default=0, help_text='Price for resource until now.')
+    limit = models.FloatField(
+        default=-1, help_text='How many funds object can consume in current month."-1" means no limit.')
 
     month = models.PositiveSmallIntegerField(validators=[MaxValueValidator(12), MinValueValidator(1)])
     year = models.PositiveSmallIntegerField()
 
-    is_manually_input = models.BooleanField(default=False)
-    is_visible = models.BooleanField(default=True)
-
     objects = managers.PriceEstimateManager('scope')
 
     class Meta:
-        unique_together = ('content_type', 'object_id', 'month', 'year', 'is_manually_input')
+        unique_together = ('content_type', 'object_id', 'month', 'year',)
+
+    def __str__(self):
+        name = self._get_scope_name() if self.scope else self.details.get('name')
+        return '%s for %s-%s %.2f' % (name, self.year, self.month, self.total)
 
     @classmethod
     @lru_cache(maxsize=1)
     def get_estimated_models(cls):
         return (
-            PayableMixin.get_all_models() +
+            structure_models.ResourceMixin.get_all_models() +
             structure_models.ServiceProjectLink.get_all_models() +
             structure_models.Service.get_all_models() +
             [structure_models.ServiceSettings] +
             [structure_models.Project, structure_models.Customer]
         )
 
+    def get_parents(self):  # For DescendantMixin
+        return self.parents.all()
+
+    def get_children(self):  # For DescendantMixin
+        return self.children.all()
+
+    def get_log_fields(self):  # For LoggableMixin
+        return 'uuid', 'scope', 'threshold', 'total', 'consumed'
+
+    def is_over_threshold(self):  # For AlertThresholdMixin
+        return self.total >= self.threshold
+
     @classmethod
-    @lru_cache(maxsize=1)
-    def get_editable_estimated_models(cls):
-        return (
-            PayableMixin.get_all_models() +
-            structure_models.ServiceProjectLink.get_all_models()
-        )
-
-    @property
-    def is_leaf(self):
-        return self.scope and self.is_leaf_scope(self.scope)
-
-    @staticmethod
-    def is_leaf_scope(scope):
-        return scope._meta.model in PayableMixin.get_all_models()
+    def get_checkable_objects(cls):  # For AlertThresholdMixin
+        """ Raise alerts only for price estimates that describes current month. """
+        today = timezone.now()
+        return cls.objects.filter(year=today.year, month=today.month)
 
     def get_previous(self):
         """ Get estimate for the same scope for previous month. """
         month, year = (self.month - 1, self.year) if self.month != 1 else (12, self.year - 1)
         return PriceEstimate.objects.get(scope=self.scope, month=month, year=year)
 
-    def update_from_leaf(self):
-        if self.is_leaf:
+    def create_ancestors(self):
+        """ Crete price estimates for scope ancestors if they does not exists """
+        if not isinstance(self.scope, core_models.DescendantMixin):
             return
+        scope_parents = self.scope.get_parents()
+        for scope_parent in scope_parents:
+            parent, created = PriceEstimate.objects.get_or_create(scope=scope_parent, month=self.month, year=self.year)
+            self.parents.add(parent)
+            if created:
+                parent.create_ancestors()
 
-        leaf_estimates = list(self.leafs.all())
-        self.total = sum(e.total for e in leaf_estimates)
-        self.consumed = sum(e.consumed for e in leaf_estimates)
-        self.save(update_fields=['total', 'consumed'])
+    def init_details(self):
+        """ Initialize price estimate details based on its scope """
+        self.details = {
+            'name': self._get_scope_name(),
+            'description': getattr(self.scope, 'description', ''),
+        }
+        if hasattr(self.scope, 'backend_id'):
+            self.details['backend_id'] = self.scope.backend_id
+        self.save(update_fields=['details'])
 
-    def update_ancestors(self):
-        for parent in self.scope.get_ancestors():
-            parent_estimate, created = self.__class__.objects.get_or_create(
-                object_id=parent.id,
-                content_type=ContentType.objects.get_for_model(parent),
-                month=self.month, year=self.year)
-            if self.is_leaf and not parent_estimate.leafs.filter(id=self.id):
-                parent_estimate.leafs.add(self)
-            parent_estimate.update_from_leaf()
+    def update_total(self):
+        """ Re-calculate price of resource and its ancestors for whole month,
+            based on its configuration and consumption details.
+        """
+        if self.consumption_details is None:
+            raise EstimateUpdateError('Cannot update total for price estimate that does not have consumption details.')
+        if not isinstance(self.scope, structure_models.ResourceMixin):
+            raise EstimateUpdateError('Cannot update total for price estimate that is not related to resource.')
+        new_total = self._get_total()
+        diff = new_total - self.total
+        with transaction.atomic():
+            self.total = new_total
+            self.save(update_fields=['total'])
+            self.update_ancestors_total(diff)
 
-    @classmethod
-    def update_ancestors_for_resource(cls, resource):
-        for estimate in cls.objects.filter(scope=resource, is_manually_input=False):
-            estimate.update_ancestors()
+    def update_ancestors_total(self, diff):
+        for ancestor in self.get_ancestors():
+            ancestor.total += diff
+            ancestor.save(update_fields=['total'])
 
-    @classmethod
-    def delete_estimates_for_resource(cls, resource):
-        for estimate in cls.objects.filter(scope=resource):
-            estimate.delete()
-            for parent in resource.get_ancestors():
-                qs = cls.objects.filter(scope=parent, month=estimate.month, year=estimate.year)
-                for parent_estimate in qs:
-                    parent_estimate.leafs.remove(estimate)
-                    parent_estimate.update_from_leaf()
+    def _get_total(self):
+        """ Calculate price of price estimate scope for whole month """
+        consumed = self.consumption_details.consumed_in_month
+        price_list_items = PriceListItem.get_for_resource(self.scope)
+        consumables_prices = {(item.item_type, item.key): item.minute_rate for item in price_list_items}
+        total = 0
+        for consumable, usage in consumed.items():
+            item_type, key = [c.strip() for c in consumable.split(':')]
+            try:
+                total += consumables_prices[(item_type, key)] * usage
+            except KeyError:
+                logger.error('Price list item for consumable "%s" does not exist.' % consumable)
+        return total
 
-    @classmethod
-    def update_metadata_for_resource(cls, scope):
-        cls.objects.filter(scope=scope).update(
-            scope_customer=scope.customer,
-            details=dict(
-                scope_name=scope.name,
-                scope_backend_id=scope.backend_id
-            ))
-
-    @classmethod
-    def update_metadata_for_scope(cls, scope):
-        cls.objects.filter(scope=scope).update(
-            scope_customer=scope.customer,
-            details=dict(scope_name=scope.name)
-        )
-
-    @classmethod
-    def update_price_for_scope(cls, scope):
-        # update Resource and re-calculate ancestors
-        if cls.is_leaf_scope(scope):
-            return cls.update_price_for_resource(scope)
-
-        # re-calculate scope and descendants till Resource
-        family_scope = [scope] + [s for s in scope.get_descendants() if not cls.is_leaf_scope(s)]
-        for estimate in cls.objects.filter(scope__in=family_scope, is_manually_input=False):
-            estimate.update_from_leaf()
-
-    @classmethod
-    def update_price_for_resource(cls, resource, back_propagate_price=False):
-
-        @transaction.atomic
-        def update_estimate(month, year, total, consumed=None, update_if_exists=True):
-            estimate, created = cls.objects.get_or_create(
-                object_id=resource.id,
-                content_type=ContentType.objects.get_for_model(resource),
-                month=month, year=year, is_manually_input=False)
-
-            if update_if_exists or created:
-                estimate.consumed = total if consumed is None else consumed
-                estimate.total = total
-                estimate.save(update_fields=['total', 'consumed'])
-
-        try:
-            cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)
-            monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(resource))
-        except ServiceBackendNotImplemented:
-            return
-        except ServiceBackendError as e:
-            logger.error("Failed to get cost estimate for resource %s: %s", resource, e)
-        except Exception as e:
-            logger.exception("Failed to get cost estimate for resource %s: %s", resource, e)
+    def _get_scope_name(self):
+        if isinstance(self.scope, structure_models.ServiceProjectLink):
+            # We need to display some meaningful name for SPL.
+            return '%s | %s' % (self.scope.project.name, self.scope.service.name)
         else:
-            logger.info("Update cost estimate for resource %s: %s", resource, monthly_cost)
-
-            now = timezone.now()
-            created = resource.created
-
-            days_in_month = calendar.monthrange(created.year, created.month)[1]
-            month_start = created.replace(day=1, hour=0, minute=0, second=0)
-            month_end = month_start + timezone.timedelta(days=days_in_month)
-            seconds_in_month = (month_end - month_start).total_seconds()
-
-            def prorata_cost(work_interval):
-                return round(monthly_cost * work_interval.total_seconds() / seconds_in_month, 2)
-
-            if created.month == now.month and created.year == now.year:
-                # update only current month
-                update_estimate(
-                    now.month, now.year,
-                    total=prorata_cost(month_end - created),
-                    consumed=prorata_cost(now - created))
-            else:
-                # update current month
-                update_estimate(
-                    now.month, now.year,
-                    total=monthly_cost,
-                    consumed=prorata_cost(now - now.replace(day=1, hour=0, minute=0, second=0)))
-
-                if back_propagate_price:
-                    # update first month
-                    update_estimate(
-                        created.month, created.year,
-                        total=prorata_cost(month_end - created),
-                        update_if_exists=False)
-
-                    # update price for previous months if it does not exist:
-                    date = now - relativedelta(months=+1)
-                    while not (date.month == created.month and date.year == created.year):
-                        update_estimate(date.month, date.year, monthly_cost, update_if_exists=False)
-                        date -= relativedelta(months=+1)
-
-    def get_log_fields(self):
-        return 'uuid', 'scope', 'threshold', 'total', 'consumed'
-
-    def is_over_threshold(self):
-        return self.total >= self.threshold
-
-    @classmethod
-    def get_checkable_objects(cls):
-        dt = timezone.now()
-        return cls.objects.filter(year=dt.year, month=dt.month)
-
-    def __str__(self):
-        return '%s for %s-%s %.2f' % (self.scope, self.year, self.month, self.total)
+            return self.scope.name
 
 
 class ConsumptionDetailUpdateError(Exception):
+    pass
+
+
+class ConsumptionDetailCalculateError(Exception):
     pass
 
 
@@ -274,14 +217,24 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         self.save()
 
     @property
-    def consumed(self):
-        """ How many consumables were be used by resource for whole month. """
+    def consumed_in_month(self):
+        """ How many resources were (or will be) consumed until end of the month """
+        return self._get_consumed(self._get_month_end())
+
+    @property
+    def consumed_until_now(self):
+        """ How many consumables were used by resource until now. """
+        return self._get_consumed(timezone.now())
+
+    def _get_consumed(self, time):
+        """ How many consumables were used (or will be) by resource until given time. """
+        minutes_from_last_update = self._get_minutes_from_last_update(time)
+        if minutes_from_last_update < 0:
+            raise ConsumptionDetailCalculateError('Cannot calculate consumption if time < last modification date.')
         _consumed = {}
-        month_end = self._get_month_end()
-        minutes_from_last_update = self._get_minutes_from_last_update(month_end)
         for consumable in set(self.configuration.keys() + self.consumed_before_update.keys()):
             consumed_after_modification = self.configuration.get(consumable, 0) * minutes_from_last_update
-            _consumed[consumable] = consumed_after_modification + self.consumed_before_update[consumable]
+            _consumed[consumable] = consumed_after_modification + self.consumed_before_update.get(consumable, 0)
         return _consumed
 
     def _get_month_end(self):
@@ -302,28 +255,40 @@ class AbstractPriceListItem(models.Model):
         abstract = True
 
     value = models.DecimalField("Hourly rate", default=0, max_digits=11, decimal_places=5)
-    units = models.CharField(max_length=255, blank=True)  # TODO: Rename to currency
+    units = models.CharField(max_length=255, blank=True)
 
     @property
     def monthly_rate(self):
-        return '%0.2f' % (self.value * hours_in_month())
+        return '%0.2f' % (self.value * 60 * hours_in_month())
+
+    @property
+    def minute_rate(self):
+        return float(self.value) / 60
 
 
 @python_2_unicode_compatible
 class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, AbstractPriceListItem):
     """
     Default price list item for all resources of supported service types.
+
     It is fetched from cost tracking backend.
+    Field "name" represents how price item will be represented for user.
     """
+    item_type = models.CharField(max_length=255, help_text='Type of price list item. Examples: storage, flavor.')
+    key = models.CharField(
+        max_length=255, help_text='Key that corresponds particular consumable. Example: name of flavor.')
     resource_content_type = models.ForeignKey(ContentType, default=None)
-    key = models.CharField(max_length=255)
-    item_type = models.CharField(max_length=255)
-    metadata = JSONField(blank=True)
+    # Field "metadata" is deprecated. We decided to store objects separately from their prices.
+    metadata = JSONField(
+        blank=True, help_text='Details of the item, that corresponds price list item. Example: details of flavor.')
 
     tracker = FieldTracker()
 
     def __str__(self):
         return 'Price list item %s: %s = %s for %s' % (self.name, self.key, self.value, self.resource_content_type)
+
+    class Meta:
+        unique_together = ('key', 'item_type', 'resource_content_type')
 
     @property
     def resource_type(self):
@@ -357,7 +322,23 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
         if resource not in valid_resources:
             raise ValidationError('Service does not support required content type')
 
+    @staticmethod
+    def get_for_resource(resource):
+        """ Get list of all price list items that should be used for resource.
 
+            If price list item is defined for service - return it, otherwise -
+            return default price list item.
+        """
+        resource_content_type = ContentType.objects.get_for_model(resource)
+        default_items = set(DefaultPriceListItem.objects.filter(resource_content_type=resource_content_type))
+        service = resource.service_project_link.service
+        items = set(PriceListItem.objects.filter(
+            default_price_list_item__in=default_items, service=service).select_related('default_price_list_item'))
+        rewrited_defaults = set([i.default_price_list_item for i in items])
+        return items | (default_items - rewrited_defaults)
+
+
+# Deprecated. Should be removed.
 class PayableMixin(models.Model):
     """ Extend Resource model with methods to track usage cost and handle orders """
 
