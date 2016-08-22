@@ -1,25 +1,15 @@
 """
 Cost tracking - add-on for NC plugins.
+Allows to calculate price estimates for resources from your plugin.
 
 
-Add-on adds next functional to plugin:
-
- - calculate and store price estimate for each resource, service, project, customer.
- - register resource consumables (ex: CPU, storage for VMs) prices and show
-   their prices for resource cost calculation.
- - get resource used items for current moment.
+How to use.
+    Define CostTrackingStrategy for each resource that price should be tracked
+    and register Strategy in CostTrackingRegister. Thats all.
 
 
-Add-on connection:
-
-    1. Implement CostTrackingBackend interface.
-
-        class OpenStackCostTrackingBackend(CostTrackingBackend):
-            ...
-
-    2. Add application to add-on register.
-
-        CostTrackingRegister.register(self.label, cost_tracking.OpenStackCostTrackingBackend)
+How it estimate calculation works.
+    
 
 """
 import logging
@@ -44,9 +34,55 @@ class CostTrackingStrategy(object):
     def get_consumables(cls, resource):
         """ Return dictionary of consumables that are used by resource.
 
-            Example: {'storage': 10240, 'ram': 1024, ...}
+            Dictionary key - consumable type and key separated by ":". Example: 'flavor: small'
+            Dictionary value - how many units of consumables is used by resource.
+            Example: {
+                'storage: 1 MB': 10240,
+                'flavor: small': 1,
+                ...
+            }
         """
         return {}
+
+    @classmethod
+    def get_consumables_default_prices(cls):
+        """ For each possible consumable return price details.
+
+            Output format:
+            [
+                {
+                    "item_type": type of consumable,
+                    "key": consumable name,
+                    "units": consumable units (MB, GB, points, etc.),
+                    "value": price for consumable usage per one minute,
+                    "name": item pretty name, that will be visible for user,
+                }
+                ...
+            ]
+            Output example:
+            [
+                {
+                    "item_type": "storage"
+                    "key": "1 MB",
+                    "units": "MB",
+                    "value": 0.5,
+                    "name": "1 MB of storage",
+                },
+                {
+                    "item_type": "flavor"
+                    "key": "small",
+                    "units": "",
+                    "value": 10,
+                    "name": "Small flavor",
+                }
+                ...
+            ]
+        """
+        return []
+
+
+class ResourceNotRegisteredError(TypeError):
+    pass
 
 
 class CostTrackingRegister(object):
@@ -60,13 +96,22 @@ class CostTrackingRegister(object):
         cls.registered_resources[strategy.resource_class] = strategy
 
     @classmethod
-    def get_consumables(cls, resource):
+    def _get_strategy(cls, resource):
         try:
-            strategy = cls.registered_resources[resource.__class__]
+            return cls.registered_resources[resource.__class__]
         except KeyError:
-            raise TypeError('Resource %s is not registered for cost tracking. Make sure that its strategy '
-                            'is added to CostTrackingRegister' % resource.__class__.__name__)
+            raise ResourceNotRegisteredError('Resource %s is not registered for cost tracking. Make sure that its '
+                                             'strategy is added to CostTrackingRegister' % resource.__class__.__name__)
+
+    @classmethod
+    def get_consumables(cls, resource):
+        strategy = cls._get_strategy(resource)
         return strategy.get_consumables(resource)
+
+    @classmethod
+    def get_consumables_default_prices(cls, resource):
+        strategy = cls._get_strategy(resource)
+        return strategy.get_consumables_default_prices()
 
     # XXX: deprecated. Should be removed.
     @classmethod

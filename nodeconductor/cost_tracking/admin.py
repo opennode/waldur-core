@@ -57,7 +57,7 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "resource_content_type":
-            kwargs["queryset"] = _get_content_type_queryset(models.PayableMixin.get_all_models())
+            kwargs["queryset"] = _get_content_type_queryset(CostTrackingRegister.registered_resources.keys())
         return super(DefaultPriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_extra_actions(self):
@@ -105,10 +105,8 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
 
 
 class PriceEstimateAdmin(admin.ModelAdmin):
-    fields = ('content_type', 'object_id', 'total',
-              ('month', 'year'), ('is_manually_input', 'is_visible'))
+    fields = ('content_type', 'object_id', 'total', ('month', 'year'))
     list_display = ('content_type', 'object_id', 'total', 'month', 'year')
-    list_filter = ('is_manually_input', 'is_visible')
     search_fields = ('month', 'year', 'object_id', 'total')
 
 

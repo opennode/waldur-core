@@ -5,8 +5,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
+from nodeconductor.cost_tracking import CostTrackingRegister
+from nodeconductor.cost_tracking.models import PriceEstimate
 from nodeconductor.structure import models as structure_models
-from nodeconductor.cost_tracking.models import PriceEstimate, PayableMixin
 
 
 class Command(BaseCommand):
@@ -69,8 +70,7 @@ class Command(BaseCommand):
             structure_models.Service,
             structure_models.ServiceProjectLink,
             structure_models.Project,
-            PayableMixin
-        )
+        ) + tuple(CostTrackingRegister.registered_resources.keys())
 
     def get_estimates_without_scope_in_month(self, customer_pk):
         """

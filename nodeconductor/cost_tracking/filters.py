@@ -10,16 +10,6 @@ from nodeconductor.cost_tracking import models, serializers
 from nodeconductor.structure import models as structure_models, SupportedServices
 
 
-class PriceEstimateFilter(django_filters.FilterSet):
-    is_manually_input = django_filters.BooleanFilter()
-
-    class Meta:
-        model = models.PriceEstimate
-        fields = [
-            'is_manually_input',
-        ]
-
-
 class PriceEstimateScopeFilterBackend(core_filters.GenericKeyFilterBackend):
 
     def get_related_models(self):
