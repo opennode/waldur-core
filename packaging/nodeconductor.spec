@@ -14,7 +14,7 @@ Name: nodeconductor
 Summary: NodeConductor
 Version: 0.104.1
 Release: 1.el7
-License: Copyright 2014 OpenNode LLC.  All rights reserved.
+License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # MySQL-python is needed to use MySQL as database backend
