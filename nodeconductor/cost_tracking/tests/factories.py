@@ -104,7 +104,7 @@ class TestNewInstanceCostTrackingStrategy(CostTrackingStrategy):
             '%s: 1 MB' % cls.Types.STORAGE: resource.disk if resource.state != States.ERRED else 0,
             '%s: 1 MB' % cls.Types.RAM: resource.ram if resource.runtime_state == 'online' else 0,
             '%s: 1 core' % cls.Types.CORES: resource.cores if resource.runtime_state == 'online' else 0,
-            '%s: test_quota' % cls.Types.FLAVOR: resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage,
+            '%s: test_quota' % cls.Types.QUOTAS: resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage,
         }
         if resource.flavor_name and resource.state != States.ERRED:
             consumables[('%s: %s' % (cls.Types.FLAVOR, resource.flavor_name))] = 1

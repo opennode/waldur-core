@@ -141,7 +141,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             based on its configuration and consumption details.
         """
         self._chesk_is_updatable()
-        new_total = self._get_price_for_consumed(self.consumption_details.consumed_in_month)
+        new_total = self._get_price(self.consumption_details.consumed_in_month)
         diff = new_total - self.total
         with transaction.atomic():
             self.total = new_total
@@ -157,10 +157,10 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
     def update_consumed(self):
         """ Re-calculate price of resource until now. Does not update ancestors. """
         self._chesk_is_updatable()
-        self.consumed = self._get_price_for_consumed(self.consumption_details.consumed_until_now)
-        self.save(update_fields=['total'])
+        self.consumed = self._get_price(self.consumption_details.consumed_until_now)
+        self.save(update_fields=['consumed'])
 
-    def _get_price_for_consumed(self, consumed):
+    def _get_price(self, consumed):
         """ Calculate price estimate for scope depends on consumed data and price list items.
             Map each consumable to price list item and multiply price its price by time of usage.
         """

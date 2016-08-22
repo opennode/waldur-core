@@ -6,8 +6,9 @@ from __future__ import absolute_import
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 import warnings
-
 from datetime import timedelta
+
+from celery.schedules import crontab
 
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor.server.admin.settings import *
@@ -168,9 +169,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=30),
         'args': (),
     },
-    'update-current-month-cost-projections': {
-        'task': 'nodeconductor.cost_tracking.update_projected_estimate',
-        'schedule': timedelta(hours=24),
+    'recalculate-consumed-price-estimates': {
+        'task': 'nodeconductor.cost_tracking.recalculate_consumed_estimate',
+        # To avoid bugs and unexpected behavior - do not re-calculate estimates
+        # right in the end of the month.
+        'schedule': crontab(minute=10),
         'args': (),
     },
     'close-alerts-without-scope': {

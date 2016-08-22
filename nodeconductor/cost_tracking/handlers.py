@@ -30,13 +30,6 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
             pass
 
 
-def update_projected_estimate(sender, instance, back_propagate_price=False, **kwargs):
-    send_task('cost_tracking', 'update_projected_estimate')(
-        serialized_resource=serialize_instance(instance),
-        back_propagate_price=back_propagate_price
-    )
-
-
 # XXX: Why is this only for project, but not for customer?
 #      Looks strange that we are checking project separately.
 #      I think this error should be raised for each price estimate independently
