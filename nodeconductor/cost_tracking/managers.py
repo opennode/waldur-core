@@ -1,8 +1,8 @@
 import datetime
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
-from django.db import models as django_models, IntegrityError
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import models as django_models
 from django.db.models import Q
 from django.utils import timezone
 
@@ -49,24 +49,23 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
 
     def get_current(self, scope):
         now = timezone.now()
-        try:
-            return self.get(scope=scope, year=now.year, month=now.month)
-        except MultipleObjectsReturned:
-            return self.get(scope=scope, year=now.year, month=now.month, is_manually_input=True)
+        return self.get(scope=scope, year=now.year, month=now.month)
 
-    def create_or_update(self, scope, **defaults):
-        """
-        We don't use built-in update_or_create method because
-        we need to deal with manually input and auto-generated price estimates.
+    def get_or_create_current(self, scope):
+        now = timezone.now()
+        return self.get_or_create(
+            object_id=scope.id,
+            content_type=ContentType.objects.get_for_model(scope),
+            month=now.month, year=now.year)
 
-        1. If price estimate for current date does not exist yet, we generate it.
-        2. If both auto-generated and manually input price estimates exist, we should update both.
+    def get_or_create_current_with_ancestors(self, scope):
+        """ Get or create scope price estimate for current month and
+            initialize estimates of its ancestors if they does not exist.
         """
-        today = timezone.now()
-        try:
-            self.create(scope=scope, year=today.year, month=today.month, is_manually_input=False, **defaults)
-        except IntegrityError:
-            self.filter(scope=scope, year=today.year, month=today.month).update(**defaults)
+        price_estimate, created = self.get_or_create_current(scope=scope)
+        if created:
+            price_estimate.create_ancestors()  # XXX: quite strange to call model method in manager. Think about this.
+        return price_estimate, created
 
 
 class ConsumptionDetailsQuerySet(django_models.QuerySet):
@@ -98,7 +97,3 @@ class PriceListItemManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
     def get_available_models(self):
         """ Return list of models that are acceptable """
         return Service.get_all_models()
-
-
-class ResourcePriceItemManager(GenericKeyMixin, django_models.Manager):
-    pass

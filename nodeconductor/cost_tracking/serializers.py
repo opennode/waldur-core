@@ -15,7 +15,7 @@ from nodeconductor.structure.serializers import ProjectSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
-    scope = GenericRelatedField(related_models=models.PriceEstimate.get_editable_estimated_models())
+    scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models())
     scope_name = serializers.SerializerMethodField()
     scope_type = serializers.SerializerMethodField()
     resource_type = serializers.SerializerMethodField()
@@ -23,24 +23,17 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
     class Meta(object):
         model = models.PriceEstimate
         fields = ('url', 'uuid', 'scope', 'total', 'consumed', 'month', 'year',
-                  'is_manually_input', 'scope_name', 'scope_type', 'resource_type', 'threshold')
-        read_only_fields = ('is_manually_input', 'threshold')
+                  'scope_name', 'scope_type', 'resource_type', 'threshold')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-        protected_fields = ('scope', 'year', 'month')
 
     def validate(self, data):
         if self.instance is None and models.PriceEstimate.objects.filter(
-                scope=data['scope'], year=data['year'], month=data['month'], is_manually_input=True).exists():
+                scope=data['scope'], year=data['year'], month=data['month']).exists():
             raise serializers.ValidationError(
                 'Estimate for given month already exists. Use PATCH request to update it.')
         return data
-
-    def create(self, validated_data):
-        validated_data['is_manually_input'] = True
-        price_estimate = super(PriceEstimateSerializer, self).create(validated_data)
-        return price_estimate
 
     def get_scope_name(self, obj):
         if obj.scope:

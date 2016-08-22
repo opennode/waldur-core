@@ -76,62 +76,6 @@ class PriceEstimateListTest(BaseCostTrackingTest):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-@ddt
-class PriceEstimateCreateTest(BaseCostTrackingTest):
-
-    def setUp(self):
-        super(PriceEstimateCreateTest, self).setUp()
-
-        self.valid_data = {
-            'scope': structure_factories.TestServiceProjectLinkFactory.get_url(self.service_project_link),
-            'total': 100,
-            'details': {'ram': 50, 'disk': 50},
-            'month': 7,
-            'year': 2015,
-        }
-
-    @data('owner', 'staff')
-    def test_user_can_create_price_estimate(self, user):
-        self.client.force_authenticate(self.users[user])
-        response = self.client.post(factories.PriceEstimateFactory.get_list_url(), data=self.valid_data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(models.PriceEstimate.objects.filter(
-            scope=self.service_project_link,
-            is_manually_input=True,
-            month=self.valid_data['month'],
-            year=self.valid_data['year'],
-            is_visible=True).exists()
-        )
-
-    @data('manager', 'administrator')
-    def test_user_without_permissions_can_not_create_price_estimate(self, user):
-        self.client.force_authenticate(self.users[user])
-        response = self.client.post(factories.PriceEstimateFactory.get_list_url(), data=self.valid_data)
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    @data('owner', 'staff', 'manager', 'administrator')
-    def test_user_cannot_create_price_estimate_for_project(self, user):
-        self.valid_data['scope'] = structure_factories.ProjectFactory.get_url(self.project)
-
-        self.client.force_authenticate(self.users[user])
-        response = self.client.post(factories.PriceEstimateFactory.get_list_url(), data=self.valid_data)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_manually_inputed_price_estimate_replaces_autocalcuted(self):
-        price_estimate = factories.PriceEstimateFactory(
-            scope=self.service_project_link, month=self.valid_data['month'], year=self.valid_data['year'])
-
-        self.client.force_authenticate(self.users['owner'])
-        response = self.client.post(factories.PriceEstimateFactory.get_list_url(), data=self.valid_data)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        reread_price_estimate = models.PriceEstimate.objects.get(id=price_estimate.id)
-        self.assertFalse(reread_price_estimate.is_visible)
-
-
 class PriceEstimateUpdateTest(BaseCostTrackingTest):
 
     def setUp(self):
@@ -163,20 +107,12 @@ class PriceEstimateUpdateTest(BaseCostTrackingTest):
         response = self.client.patch(factories.PriceEstimateFactory.get_url(self.price_estimate), data=self.valid_data)
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-        reread_price_estimate = models.PriceEstimate.objects.get(id=self.price_estimate.id)
-        self.assertFalse(reread_price_estimate.is_manually_input)
 
 
 class PriceEstimateDeleteTest(BaseCostTrackingTest):
 
     def setUp(self):
         super(PriceEstimateDeleteTest, self).setUp()
-
-        self.manual_link_price_estimate = factories.PriceEstimateFactory(
-            scope=self.service_project_link, is_manually_input=True)
-        self.auto_link_price_estimate = factories.PriceEstimateFactory(
-            scope=self.service_project_link, is_manually_input=False,
-            month=self.manual_link_price_estimate.month, year=self.manual_link_price_estimate.year)
         self.project_price_estimate = factories.PriceEstimateFactory(scope=self.project)
 
     def test_autocreated_price_estimate_cannot_be_deleted(self):
@@ -184,14 +120,6 @@ class PriceEstimateDeleteTest(BaseCostTrackingTest):
         response = self.client.delete(factories.PriceEstimateFactory.get_url(self.project_price_estimate))
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_autocreated_price_estimate_become_visible_on_manual_estimate_deletion(self):
-        self.client.force_authenticate(self.users['staff'])
-        response = self.client.delete(factories.PriceEstimateFactory.get_url(self.manual_link_price_estimate))
-
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        reread_auto_link_price_estimate = models.PriceEstimate.objects.get(id=self.auto_link_price_estimate.id)
-        self.assertTrue(reread_auto_link_price_estimate.is_visible)
 
 
 class ScopeTypeFilterTest(BaseCostTrackingTest):
@@ -252,6 +180,7 @@ class HistoricResourceTest(BaseCostTrackingTest):
             self.assertEqual(response.data['resource_type'], 'Test.TestInstance')
 
 
+# This is test for signals. TODO: move it to test_handlers.
 class DeletePriceEstimateForStructureModelsTest(BaseCostTrackingTest):
     def test_if_service_deleted_its_price_estimate_remains(self):
         estimate = factories.PriceEstimateFactory(scope=self.service)

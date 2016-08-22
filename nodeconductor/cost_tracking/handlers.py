@@ -94,7 +94,7 @@ def scope_deletion(sender, instance, **kwargs):
     elif isinstance(instance, structure_models.Customer):
         _customer_deletion(customer=instance)
     else:
-        price_estimate = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=instance)
+        price_estimate, _ = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=instance)
         price_estimate.init_details()
 
 
@@ -135,7 +135,7 @@ def resource_quota_update(sender, instance, **kwargs):
 
 
 def _update_resource_estimate(resource, new_configuration):
-    price_estimate = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=resource)
+    price_estimate, _ = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=resource)
     consumption_details, _ = models.ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
     consumption_details.update_configuration(new_configuration)
     price_estimate.update_total()

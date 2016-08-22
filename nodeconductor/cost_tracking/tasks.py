@@ -1,25 +1,25 @@
 from celery import shared_task
+from django.db.models import Sum
 
-from nodeconductor.core.utils import deserialize_instance
-from nodeconductor.cost_tracking.models import PriceEstimate, PayableMixin
+from nodeconductor.cost_tracking import CostTrackingRegister, models
+from nodeconductor.structure import models as structure_models
 
 
-@shared_task(name='nodeconductor.cost_tracking.update_projected_estimate')
-def update_projected_estimate(customer_uuid=None, serialized_resource=None, back_propagate_price=False):
-
-    if customer_uuid and serialized_resource:
-        raise RuntimeError("Either customer_uuid or serialized_resource could be supplied, both received.")
-
-    if serialized_resource:
-        resource = deserialize_instance(serialized_resource)
-        PriceEstimate.update_price_for_resource(resource, back_propagate_price)
-
-    else:
-        # XXX: it's quite inefficient -- will update ancestors many times
-        for model in PayableMixin.get_all_models():
-            queryset = model.objects.exclude(state=model.States.ERRED)
-            if customer_uuid:
-                queryset = queryset.filter(customer__uuid=customer_uuid)
-
-            for resource in queryset.iterator():
-                PriceEstimate.update_price_for_resource(resource)
+@shared_task
+def recalculate_consumed_estimate():
+    """ Recalculate how many consumables were used by resource until now. """
+    # Step 1. Recalculate resources estimates.
+    for resource_model in CostTrackingRegister.registered_resources:
+        for resource in resource_model.objects.all():
+            price_estimate, created = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=resource)
+            if created:
+                price_estimate.update_total()
+            price_estimate.update_consumed()
+    # Step 2. Move from down to top and recalculate consumed estimate for each
+    #         objects based on its children.
+    estimated_models = [structure_models.ServiceProjectLink, structure_models.Service, structure_models.Service,
+                        structure_models.Project, structure_models.Customer, structure_models.ServiceSettings]
+    for model in estimated_models:
+        for obj in model.objects.all():
+            obj.consumed = obj.children.all().aggregate(Sum('consumed'))
+            obj.save(update_fields=['consumed'])

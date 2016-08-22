@@ -136,29 +136,34 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             self.details['backend_id'] = self.scope.backend_id
         self.save(update_fields=['details'])
 
-    def update_total(self):
+    def update_total(self, update_ancestors=True):
         """ Re-calculate price of resource and its ancestors for whole month,
             based on its configuration and consumption details.
         """
-        if self.consumption_details is None:
-            raise EstimateUpdateError('Cannot update total for price estimate that does not have consumption details.')
-        if not isinstance(self.scope, structure_models.ResourceMixin):
-            raise EstimateUpdateError('Cannot update total for price estimate that is not related to resource.')
-        new_total = self._get_total()
+        self._chesk_is_updatable()
+        new_total = self._get_price_for_consumed(self.consumption_details.consumed_in_month)
         diff = new_total - self.total
         with transaction.atomic():
             self.total = new_total
             self.save(update_fields=['total'])
-            self.update_ancestors_total(diff)
+            if update_ancestors:
+                self.update_ancestors_total(diff)
 
     def update_ancestors_total(self, diff):
         for ancestor in self.get_ancestors():
             ancestor.total += diff
             ancestor.save(update_fields=['total'])
 
-    def _get_total(self):
-        """ Calculate price of price estimate scope for whole month """
-        consumed = self.consumption_details.consumed_in_month
+    def update_consumed(self):
+        """ Re-calculate price of resource until now. Does not update ancestors. """
+        self._chesk_is_updatable()
+        self.consumed = self._get_price_for_consumed(self.consumption_details.consumed_until_now)
+        self.save(update_fields=['total'])
+
+    def _get_price_for_consumed(self, consumed):
+        """ Calculate price estimate for scope depends on consumed data and price list items.
+            Map each consumable to price list item and multiply price its price by time of usage.
+        """
         price_list_items = PriceListItem.get_for_resource(self.scope)
         consumables_prices = {(item.item_type, item.key): item.minute_rate for item in price_list_items}
         total = 0
@@ -169,6 +174,15 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             except KeyError:
                 logger.error('Price list item for consumable "%s" does not exist.' % consumable)
         return total
+
+    def _chesk_is_updatable(self):
+        """ Raise error if price estimate does not have consumption details or
+            does not belong to resource
+        """
+        if self.consumption_details is None:
+            raise EstimateUpdateError('Cannot update consumed for price estimate that does not have consumption details.')
+        if not isinstance(self.scope, structure_models.ResourceMixin):
+            raise EstimateUpdateError('Cannot update consumed for price estimate that is not related to resource.')
 
     def _get_scope_name(self):
         if isinstance(self.scope, structure_models.ServiceProjectLink):
