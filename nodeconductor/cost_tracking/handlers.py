@@ -3,16 +3,14 @@ import logging
 
 from dateutil.relativedelta import relativedelta
 
-from nodeconductor.core.tasks import send_task
-from nodeconductor.core.utils import serialize_instance
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister, ResourceNotRegisteredError
-from nodeconductor.structure import ServiceBackendNotImplemented, ServiceBackendError
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import ServiceBackendNotImplemented, ServiceBackendError, models as structure_models
 
 
 logger = logging.getLogger(__name__)
 
 
+# XXX: Should we copy limit too?
 def copy_threshold_from_previous_price_estimate(sender, instance, created=False, **kwargs):
     if created:
         current_date = datetime.date.today().replace(year=instance.year, month=instance.month, day=1)

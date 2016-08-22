@@ -15,7 +15,7 @@ class PriceEstimateListTest(BaseCostTrackingTest):
         super(PriceEstimateListTest, self).setUp()
 
         self.link_price_estimate = factories.PriceEstimateFactory(
-            year=2012, month=10, scope=self.service_project_link, is_manually_input=True)
+            year=2012, month=10, scope=self.service_project_link)
         self.project_price_estimate = factories.PriceEstimateFactory(scope=self.project, year=2015, month=7)
 
     @data('owner', 'manager', 'administrator')
@@ -144,69 +144,3 @@ class ScopeTypeFilterTest(BaseCostTrackingTest):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(len(response.data), 1)
             self.assertEqual(response.data[0]['uuid'], estimate.uuid.hex)
-
-
-@ddt
-class HistoricResourceTest(BaseCostTrackingTest):
-    def setUp(self):
-        super(HistoricResourceTest, self).setUp()
-        resource1 = structure_factories.TestInstanceFactory(service_project_link=self.service_project_link)
-        self.resource1_estimate = factories.PriceEstimateFactory(scope=resource1)
-        resource1.delete()
-
-        resource2 = structure_factories.TestInstanceFactory(service_project_link=self.service_project_link)
-        self.resource2_estimate = factories.PriceEstimateFactory(scope=resource2)
-
-    @data('owner', 'staff')
-    def test_user_can_filter_price_estimates_by_customer(self, user):
-        self.client.force_authenticate(self.users[user])
-        response = self.client.get(factories.PriceEstimateFactory.get_list_url(),
-                                   {'customer': self.customer.uuid.hex})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-
-    def test_user_can_not_see_historic_resources_for_other_customer(self):
-        self.client.force_authenticate(structure_factories.UserFactory())
-        response = self.client.get(factories.PriceEstimateFactory.get_list_url(),
-                                   {'customer': self.customer.uuid.hex})
-        self.assertEqual(len(response.data), 0)
-
-    def test_resource_exposes_scope_type_and_resource_type(self):
-        self.client.force_authenticate(self.users['owner'])
-        for estimate in (self.resource1_estimate, self.resource2_estimate):
-            response = self.client.get(factories.PriceEstimateFactory.get_url(estimate))
-            self.assertEqual(response.data['scope_name'], estimate.scope.name)
-            self.assertEqual(response.data['scope_type'], 'resource')
-            self.assertEqual(response.data['resource_type'], 'Test.TestInstance')
-
-
-# This is test for signals. TODO: move it to test_handlers.
-class DeletePriceEstimateForStructureModelsTest(BaseCostTrackingTest):
-    def test_if_service_deleted_its_price_estimate_remains(self):
-        estimate = factories.PriceEstimateFactory(scope=self.service)
-        self.service.delete()
-        estimate.refresh_from_db()
-        self.assertEqual(estimate.details['scope_name'], self.service.name)
-        self.assertEqual(estimate.object_id, None)
-
-    def test_if_settings_deleted_its_price_estimate_remains(self):
-        service_settings = self.service.settings
-        estimate = factories.PriceEstimateFactory(scope=service_settings)
-        service_settings.delete()
-        estimate.refresh_from_db()
-        self.assertEqual(estimate.details['scope_name'], service_settings.name)
-        self.assertEqual(estimate.object_id, None)
-
-    def test_if_project_deleted_its_price_estimate_remains(self):
-        estimate = factories.PriceEstimateFactory(scope=self.project)
-        self.project.delete()
-        estimate.refresh_from_db()
-        self.assertEqual(estimate.details['scope_name'], self.project.name)
-        self.assertEqual(estimate.object_id, None)
-
-    def test_if_customer_deleted_its_price_estimate_deleted(self):
-        estimate = factories.PriceEstimateFactory(scope=self.customer)
-        self.customer.projects.all().delete()
-        self.customer.project_groups.all().delete()
-        self.customer.delete()
-        self.assertFalse(models.PriceEstimate.objects.filter(id=estimate.id).exists())

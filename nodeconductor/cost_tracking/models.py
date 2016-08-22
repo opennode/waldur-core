@@ -61,7 +61,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
     content_type = models.ForeignKey(ContentType, null=True, related_name='+')
     object_id = models.PositiveIntegerField(null=True)
     scope = GenericForeignKey('content_type', 'object_id')
-    details = JSONField(blank=True, help_text='Saved scope details. Field is populated on scope deletion.')
+    details = JSONField(default={}, help_text='Saved scope details. Field is populated on scope deletion.')
     parents = models.ManyToManyField('PriceEstimate', related_name='children', help_text='Price estimate parents')
 
     total = models.FloatField(default=0, help_text='Predicted price for scope for current month.')
