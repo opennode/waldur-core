@@ -2,7 +2,6 @@ import factory
 
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
 
 from nodeconductor.cost_tracking import models, CostTrackingStrategy
 from nodeconductor.structure.tests import models as test_models
@@ -91,11 +90,34 @@ class PriceListItemFactory(AbstractPriceListItemFactory):
 class TestNewInstanceCostTrackingStrategy(CostTrackingStrategy):
     resource_class = test_models.TestNewInstance
 
+    class Types(object):
+        STORAGE = 'storage'
+        RAM = 'ram'
+        CORES = 'cores'
+        QUOTAS = 'quotas'
+        FLAVOR = 'flavor'
+
     @classmethod
     def get_consumables(cls, resource):
-        return {
-            'disk': resource.disk if resource.state != test_models.TestNewInstance.States.ERRED else 0,
-            'ram': resource.ram if resource.runtime_state == 'online' else 0,
-            'cores': resource.cores if resource.runtime_state == 'online' else 0,
-            'test_quota': resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage,
+        States = test_models.TestNewInstance.States
+        consumables = {
+            '%s: 1 MB' % cls.Types.STORAGE: resource.disk if resource.state != States.ERRED else 0,
+            '%s: 1 MB' % cls.Types.RAM: resource.ram if resource.runtime_state == 'online' else 0,
+            '%s: 1 core' % cls.Types.CORES: resource.cores if resource.runtime_state == 'online' else 0,
+            '%s: test_quota' % cls.Types.FLAVOR: resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage,
         }
+        if resource.flavor_name and resource.state != States.ERRED:
+            consumables[('%s: %s' % (cls.Types.FLAVOR, resource.flavor_name))] = 1
+        return consumables
+
+    @classmethod
+    def get_consumables_default_prices(cls):
+        return [
+            {"item_type": cls.Types.STORAGE, "key": "1 MB", "units": "MB", "rate": 0.5, "name": "Storage"},
+            {"item_type": cls.Types.RAM, "key": "1 MB", "units": "MB", "rate": 1, "name": "RAM"},
+            {"item_type": cls.Types.CORES, "key": "1 core", "units": "", "rate": 10, "name": "Cores"},
+            {"item_type": cls.Types.QUOTAS, "key": "test_quota", "units": "", "rate": 2, "name": "Test quota"},
+            {"item_type": cls.Types.FLAVOR, "key": "small", "units": "", "rate": 20, "name": "Small flavor"},
+            {"item_type": cls.Types.FLAVOR, "key": "medium", "units": "", "rate": 40, "name": "Medium flavor"},
+            {"item_type": cls.Types.FLAVOR, "key": "large", "units": "", "rate": 60, "name": "Large flavor"},
+        ]
