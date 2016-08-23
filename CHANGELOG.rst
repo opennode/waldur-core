@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Fix scoped service settings descendant resource unlinking.
 
 Release 0.104.1
 ---------------
