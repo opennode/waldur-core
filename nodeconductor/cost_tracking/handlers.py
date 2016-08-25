@@ -85,8 +85,8 @@ def scope_deletion(sender, instance, **kwargs):
     elif isinstance(instance, structure_models.Customer):
         _customer_deletion(customer=instance)
     else:
-        price_estimate, _ = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=instance)
-        price_estimate.init_details()
+        for price_estimate in models.PriceEstimate.objects.filter(scope=instance):
+            price_estimate.init_details()
 
 
 def _customer_deletion(customer):

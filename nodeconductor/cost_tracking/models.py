@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # 2. Replace leafs with child-parent relationships. DONE.
 # 3. Implement and test propagation. DONE.
 # 4. Support scope deletion. DONE.
-# 5. Every hour update field "consumed".
+# 5. Every hour update field "consumed". DONE
 # 6. Provide data-migrations. And data-initialization for current month.
 
 

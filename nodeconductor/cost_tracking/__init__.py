@@ -2,15 +2,7 @@
 Cost tracking - add-on for NC plugins.
 Allows to calculate price estimates for resources from your plugin.
 
-
-How to use.
-    Define CostTrackingStrategy for each resource that price should be tracked
-    and register Strategy in CostTrackingRegister. Thats all.
-
-
-How it estimate calculation works.
-    
-
+Check developer guide for more details.
 """
 import logging
 from decimal import Decimal

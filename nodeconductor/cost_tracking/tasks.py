@@ -33,7 +33,7 @@ def _update_resource_consumed(resource):
 
 
 def _update_ancestor_consumed(ancestor):
-    price_estimate = models.PriceEstimate.objects.get_current(scope=ancestor)
+    price_estimate, _ = models.PriceEstimate.objects.get_or_create_current(scope=ancestor)
     resource_descendants = [descendant for descendant in price_estimate.get_descendants()
                             if isinstance(descendant.scope, structure_models.ResourceMixin)]
     price_estimate.consumed = sum([descendant.consumed for descendant in resource_descendants])
