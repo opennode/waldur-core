@@ -55,6 +55,7 @@ config_defaults = {
         'log_file': '',  # empty to disable logging to file
         'log_level': 'INFO',
         'syslog': 'false',
+        'requests_log': 'false'
     },
     'mysql': {
         'host': 'localhost',
@@ -335,6 +336,25 @@ if config.getboolean('logging', 'syslog'):
     LOGGING['handlers']['syslog']['address'] = '/dev/log'
     LOGGING['loggers']['django']['handlers'].append('syslog')
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog')
+
+if config.getboolean('logging', 'requests_log'):
+    # Enabling debugging at http.client level (requests->urllib3->http.client)
+    # you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
+    # the only thing missing will be the response.body which is not logged.
+    try: # for Python 3
+        from http.client import HTTPConnection
+    except ImportError:
+        from httplib import HTTPConnection
+
+    HTTPConnection.debuglevel = 1
+
+    LOGGING['root']['level'] = 'DEBUG'
+    LOGGING['handlers']['file']['level'] = 'DEBUG'
+    LOGGING['loggers']['requests.packages.urllib3'] = {
+        'handlers': 'file',
+        'level': 'DEBUG',
+        'propagate': True
+    }
 
 if config.get('events', 'log_file') != '':
     LOGGING['handlers']['file-event']['filename'] = config.get('events', 'log_file')
