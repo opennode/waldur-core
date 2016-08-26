@@ -16,6 +16,19 @@ default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
 logger = logging.getLogger(__name__)
 
 
+class ConsumableItem(object):
+
+    def __init__(self, item_type, key, name=None, units='', default_price=0):
+        self.item_type = item_type
+        self.key = key
+        self.default_price = default_price
+        self.name = name if name is not None else '%s: %s' % (item_type, key)
+        self.units = units
+
+    def __str__(self):
+        return '%s: %s' % (self.item_type, self.key)
+
+
 class CostTrackingStrategy(object):
     """ Describes all methods that should be implemented to enable cost
         tracking for particular resource.
@@ -23,50 +36,48 @@ class CostTrackingStrategy(object):
     resource_class = NotImplemented
 
     @classmethod
-    def get_consumables(cls, resource):
+    def get_configuration(cls, resource):
         """ Return dictionary of consumables that are used by resource.
 
-            Dictionary key - consumable type and key separated by ":". Example: 'flavor: small'
-            Dictionary value - how many units of consumables is used by resource.
+            Dictionary key - ConsumableItem instance.
+            Dictionary value - how many units of consumable is used by resource.
             Example: {
-                'storage: 1 MB': 10240,
-                'flavor: small': 1,
+                ConsumableItem('storage', '1 MB'): 10240,
+                ConsumableItem('flavor', 'small'): 1,
                 ...
             }
         """
         return {}
 
     @classmethod
-    def get_consumables_default_prices(cls):
-        """ For each possible consumable return price details.
+    def get_consumable_items(cls):
+        """ Return list of all possible consumed items.
 
             Output format:
             [
-                {
-                    "item_type": type of consumable,
-                    "key": consumable name,
-                    "units": consumable units (MB, GB, points, etc.),
-                    "value": price for consumable usage per one minute,
-                    "name": item pretty name, that will be visible for user,
-                }
+                ConsumableItem(
+                    item_type=<type of consumable>,
+                    key=<consumable name>,
+                    name=<item pretty name, that will be visible for user>,
+                    units=<consumable units (MB, GB, points, etc.>,
+                    default_price=<price for consumable usage per hour>,
+                )
                 ...
             ]
             Output example:
             [
-                {
-                    "item_type": "storage"
-                    "key": "1 MB",
-                    "units": "MB",
-                    "value": 0.5,
-                    "name": "1 MB of storage",
-                },
-                {
-                    "item_type": "flavor"
-                    "key": "small",
-                    "units": "",
-                    "value": 10,
-                    "name": "Small flavor",
-                }
+                ConsumableItem(
+                    item_type="storage"
+                    key="1 MB",
+                    units="MB",
+                    name="1 MB of storage",
+                    default_price=0.5,
+                ),
+                ConsumableItem(
+                    item_type="flavor"
+                    key="small",
+                    name="Small flavor",
+                ),
                 ...
             ]
         """
@@ -88,46 +99,31 @@ class CostTrackingRegister(object):
         cls.registered_resources[strategy.resource_class] = strategy
 
     @classmethod
-    def _get_strategy(cls, resource):
+    def _get_strategy(cls, resource_class):
         try:
-            return cls.registered_resources[resource.__class__]
+            return cls.registered_resources[resource_class]
         except KeyError:
             raise ResourceNotRegisteredError('Resource %s is not registered for cost tracking. Make sure that its '
-                                             'strategy is added to CostTrackingRegister' % resource.__class__.__name__)
+                                             'strategy is added to CostTrackingRegister' % resource_class.__name__)
 
     @classmethod
-    def get_consumables(cls, resource):
-        strategy = cls._get_strategy(resource)
-        return strategy.get_consumables(resource)
+    def get_configuration(cls, resource):
+        """ Return how much consumables are used by resource with current configuration.
 
-    @classmethod
-    def get_all_default_items_data(cls):
-        """ Get default price items data grouped by resources.
-
-        Example output:
-        {
-            <OpenStack.Instance class>: [
-                {
-                    "item_type": "license-os"
-                    "key": "ubuntu",
-                    "units": "",
-                    "value": 1,
-                    "name": "OS: Ubuntu",
-                },
-                {
-                    "item_type": "flavor"
-                    "key": "small",
-                    "units": "",
-                    "value": 10,
-                    "name": "Small flavor",
-                }
-                ...
-            ]
-            ...
-        }
+            Output example:
+            {
+                "storage: 1 MB": 10240,
+                "flavor: small": 1,
+            }
         """
-        return {resource_class: strategy.get_consumables_default_prices()
-                for resource_class, strategy in cls.registered_resources.items()}
+        strategy = cls._get_strategy(resource.__class__)
+        return {str(item): usage for item, usage in strategy.get_configuration(resource).items()}
+
+    @classmethod
+    def get_consumable_items(cls, resource_class):
+        """ Get all possible consumables items for given resource class """
+        strategy = cls._get_strategy(resource_class)
+        return strategy.get_consumable_items()
 
     # XXX: deprecated. Should be removed.
     @classmethod

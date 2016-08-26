@@ -3,7 +3,7 @@ import factory
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 
-from nodeconductor.cost_tracking import models, CostTrackingStrategy
+from nodeconductor.cost_tracking import models, CostTrackingStrategy, ConsumableItem
 from nodeconductor.structure.tests import models as test_models
 from nodeconductor.structure.tests import factories as structure_factories
 
@@ -98,26 +98,32 @@ class TestNewInstanceCostTrackingStrategy(CostTrackingStrategy):
         FLAVOR = 'flavor'
 
     @classmethod
-    def get_consumables(cls, resource):
+    def get_configuration(cls, resource):
         States = test_models.TestNewInstance.States
+        if resource.state == States.ERRED:
+            return {}
+        resource_quota_usage = resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage
         consumables = {
-            '%s: 1 MB' % cls.Types.STORAGE: resource.disk if resource.state != States.ERRED else 0,
-            '%s: 1 MB' % cls.Types.RAM: resource.ram if resource.runtime_state == 'online' else 0,
-            '%s: 1 core' % cls.Types.CORES: resource.cores if resource.runtime_state == 'online' else 0,
-            '%s: test_quota' % cls.Types.QUOTAS: resource.quotas.get(name=test_models.TestNewInstance.Quotas.test_quota).usage,
+            ConsumableItem(item_type=cls.Types.STORAGE, key='1 MB'): resource.disk,
+            ConsumableItem(item_type=cls.Types.QUOTAS, key='test_quota'): resource_quota_usage,
         }
-        if resource.flavor_name and resource.state != States.ERRED:
-            consumables[('%s: %s' % (cls.Types.FLAVOR, resource.flavor_name))] = 1
+        if resource.runtime_state == 'online':
+            consumables.update({
+                ConsumableItem(item_type=cls.Types.RAM, key='1 MB'): resource.ram,
+                ConsumableItem(item_type=cls.Types.CORES, key='1 core'): resource.cores,
+            })
+        if resource.flavor_name:
+            consumables[ConsumableItem(item_type=cls.Types.FLAVOR, key=resource.flavor_name)] = 1
         return consumables
 
     @classmethod
-    def get_consumables_default_prices(cls):
+    def get_configuration_default_prices(cls):
         return [
-            {"item_type": cls.Types.STORAGE, "key": "1 MB", "units": "MB", "rate": 0.5, "name": "Storage"},
-            {"item_type": cls.Types.RAM, "key": "1 MB", "units": "MB", "rate": 1, "name": "RAM"},
-            {"item_type": cls.Types.CORES, "key": "1 core", "units": "", "rate": 10, "name": "Cores"},
-            {"item_type": cls.Types.QUOTAS, "key": "test_quota", "units": "", "rate": 2, "name": "Test quota"},
-            {"item_type": cls.Types.FLAVOR, "key": "small", "units": "", "rate": 20, "name": "Small flavor"},
-            {"item_type": cls.Types.FLAVOR, "key": "medium", "units": "", "rate": 40, "name": "Medium flavor"},
-            {"item_type": cls.Types.FLAVOR, "key": "large", "units": "", "rate": 60, "name": "Large flavor"},
+            ConsumableItem(cls.Types.STORAGE, "1 MB", units='MB', name='Storage'),
+            ConsumableItem(cls.Types.RAM, "1 MB", units='MB', name='RAM', default_price=1),
+            ConsumableItem(cls.Types.CORES, "1 core", name='Cores'),
+            ConsumableItem(cls.Types.QUOTAS, "test_quota", name='Test quota'),
+            ConsumableItem(cls.Types.FLAVOR, "small", name='Small flavor'),
+            ConsumableItem(cls.Types.FLAVOR, "medium", name='Medium flavor'),
+            ConsumableItem(cls.Types.FLAVOR, "large", name='Large flavor'),
         ]

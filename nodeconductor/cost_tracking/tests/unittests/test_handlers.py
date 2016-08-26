@@ -35,7 +35,8 @@ class ResourceUpdateTest(TestCase):
 
         resource.runtime_state = 'offline'
         resource.save()
-        expected = {'ram: 1 MB': 0, 'storage: 1 MB': 20 * 1024, 'cores: 1 core': 0, 'quotas: test_quota': 0}
+        # test resource uses only storage and quota when it is offline
+        expected = {'storage: 1 MB': 20 * 1024, 'quotas: test_quota': 0}
         consumption_details.refresh_from_db()
         self.assertDictEqual(consumption_details.configuration, expected)
 

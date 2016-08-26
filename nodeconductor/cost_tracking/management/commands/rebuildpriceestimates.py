@@ -38,7 +38,7 @@ def _create_resource_estimate(resource, today):
     price_estimate = models.PriceEstimate.objects.create(scope=resource, month=today.month, year=today.year)
     details = models.ConsumptionDetails(
         price_estimate=price_estimate,
-        configuration=CostTrackingRegister.get_consumables(resource),
+        configuration=CostTrackingRegister.get_configuration(resource),
         last_update_time=_get_month_start(today),
     )
     details.save()

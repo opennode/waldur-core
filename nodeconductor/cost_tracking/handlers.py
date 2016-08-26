@@ -108,7 +108,7 @@ def resource_update(sender, instance, **kwargs):
     """ Update resource consumption details and price estimate if its configuration has changed """
     resource = instance
     try:
-        new_configuration = CostTrackingRegister.get_consumables(resource)
+        new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
     _update_resource_estimate(resource, new_configuration)
@@ -119,7 +119,7 @@ def resource_quota_update(sender, instance, **kwargs):
     quota = instance
     resource = quota.scope
     try:
-        new_configuration = CostTrackingRegister.get_consumables(resource)
+        new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
     _update_resource_estimate(resource, new_configuration)

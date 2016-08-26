@@ -7,7 +7,7 @@ from django.shortcuts import redirect
 from django.utils.translation import ungettext
 
 from nodeconductor.core.admin import DynamicModelAdmin
-from nodeconductor.cost_tracking import models, CostTrackingRegister
+from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models, admin as structure_admin
 
@@ -69,14 +69,14 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
     def init_from_registered_resources(self, request):
         """ Create default price list items for each registered resource. """
         created_items = []
-
         with transaction.atomic():
-            for resource_class, items_data in CostTrackingRegister.get_all_default_items_data().items():
+            for resource_class in CostTrackingRegister.registered_resources:
                 resource_content_type = ContentType.objects.get_for_model(resource_class)
-                for item_data in items_data:
-                    item, created = self._create_or_update_default_price_list_item(resource_content_type, item_data)
+                for consumable_item in CostTrackingRegister.get_consumable_items(resource_class):
+                    price_list_item, created = self._create_or_update_default_price_list_item(
+                        resource_content_type, consumable_item)
                     if created:
-                        created_items.append(item)
+                        created_items.append(price_list_item)
 
         if created_items:
             message = ungettext(
@@ -92,31 +92,31 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
 
     init_from_registered_resources.name = 'Init from registered resources'
 
-    def _create_or_update_default_price_list_item(self, resource_content_type, data):
+    def _create_or_update_default_price_list_item(self, resource_content_type, consumable_item):
         default_item, created = models.DefaultPriceListItem.objects.update_or_create(
             resource_content_type=resource_content_type,
-            item_type=data['item_type'],
-            key=data['key'],
-            defaults={'units': data.get('units', '')},
+            item_type=consumable_item.item_type,
+            key=consumable_item.key,
+            defaults={'units': consumable_item.units},
         )
         if created:
-            default_item.value = data.get('value', 0)
-            default_item.name = data['name']
+            default_item.value = consumable_item.default_price
+            default_item.name = consumable_item.name
             default_item.save()
         return default_item, created
 
     def delete_not_registered_items(self, request):
         deleted_items = []
-        default_items_data = CostTrackingRegister.get_all_default_items_data()
 
-        for default_item in models.DefaultPriceListItem.objects.all():
+        for price_list_item in models.DefaultPriceListItem.objects.all():
             try:
-                items_data = default_items_data[default_item.resource_content_type.model_class()]
-                next(item_data for item_data in items_data
-                     if item_data['key'] == default_item.key and item_data['item_type'] == default_item.item_type)
-            except (KeyError, StopIteration):
-                deleted_items.append(default_item.name)
-                default_item.delete()
+                resource_class = price_list_item.resource_content_type.model_class()
+                consumable_items = CostTrackingRegister.get_consumable_items(resource_class)
+                next(item for item in consumable_items
+                     if item.key == price_list_item.key and item.item_type == price_list_item.item_type)
+            except (ResourceNotRegisteredError, StopIteration):
+                deleted_items.append(price_list_item.name)
+                price_list_item.delete()
 
         if deleted_items:
             message = ungettext(
