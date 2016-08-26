@@ -80,7 +80,7 @@ class ResourceNotRegisteredError(TypeError):
 class CostTrackingRegister(object):
     """ Register of all connected NC plugins """
 
-    _register = {}
+    _register = {}  # deprecated
     registered_resources = {}
 
     @classmethod
@@ -101,9 +101,33 @@ class CostTrackingRegister(object):
         return strategy.get_consumables(resource)
 
     @classmethod
-    def get_consumables_default_prices(cls, resource):
-        strategy = cls._get_strategy(resource)
-        return strategy.get_consumables_default_prices()
+    def get_all_default_items_data(cls):
+        """ Get default price items data grouped by resources.
+
+        Example output:
+        {
+            <OpenStack.Instance class>: [
+                {
+                    "item_type": "license-os"
+                    "key": "ubuntu",
+                    "units": "",
+                    "value": 1,
+                    "name": "OS: Ubuntu",
+                },
+                {
+                    "item_type": "flavor"
+                    "key": "small",
+                    "units": "",
+                    "value": 10,
+                    "name": "Small flavor",
+                }
+                ...
+            ]
+            ...
+        }
+        """
+        return {resource_class: strategy.get_consumables_default_prices()
+                for resource_class, strategy in cls.registered_resources.items()}
 
     # XXX: deprecated. Should be removed.
     @classmethod

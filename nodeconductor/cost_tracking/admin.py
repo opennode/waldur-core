@@ -63,32 +63,21 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
     def get_extra_actions(self):
         return (
             super(DefaultPriceListItemAdmin, self).get_extra_actions() +
-            [self.init_from_registered_applications]
+            [self.init_from_registered_resources, self.delete_not_registered_items]
         )
 
-    def init_from_registered_applications(self, request):
+    def init_from_registered_resources(self, request):
+        """ Create default price list items for each registered resource. """
         created_items = []
-        for backend in CostTrackingRegister.get_registered_backends():
-            try:
-                default_items = backend.get_default_price_list_items()
-            except NotImplementedError:
-                continue
-            with transaction.atomic():
-                for default_item in default_items:
-                    item, created = models.DefaultPriceListItem.objects.update_or_create(
-                        resource_content_type=default_item.resource_content_type,
-                        item_type=default_item.item_type,
-                        key=default_item.key,
-                        defaults={
-                            'name': '{}: {}'.format(default_item.item_type, default_item.key),
-                            'metadata': default_item.metadata,
-                            'units': default_item.units
-                        }
-                    )
+
+        with transaction.atomic():
+            for resource_class, items_data in CostTrackingRegister.get_all_default_items_data().items():
+                resource_content_type = ContentType.objects.get_for_model(resource_class)
+                for item_data in items_data:
+                    item, created = self._create_or_update_default_price_list_item(resource_content_type, item_data)
                     if created:
-                        item.value = default_item.value
-                        item.save()
                         created_items.append(item)
+
         if created_items:
             message = ungettext(
                 'Price item was created: {}'.format(created_items[0].name),
@@ -97,11 +86,51 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
             )
             self.message_user(request, message)
         else:
-            self.message_user(request, "Price items for all registered applications have been updated")
+            self.message_user(request, "Price items for all registered resources have been updated")
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
-    init_from_registered_applications.name = 'Init from registered applications'
+    init_from_registered_resources.name = 'Init from registered resources'
+
+    def _create_or_update_default_price_list_item(self, resource_content_type, data):
+        default_item, created = models.DefaultPriceListItem.objects.update_or_create(
+            resource_content_type=resource_content_type,
+            item_type=data['item_type'],
+            key=data['key'],
+            defaults={'units': data.get('units', '')},
+        )
+        if created:
+            default_item.value = data.get('value', 0)
+            default_item.name = data['name']
+            default_item.save()
+        return default_item, created
+
+    def delete_not_registered_items(self, request):
+        deleted_items = []
+        default_items_data = CostTrackingRegister.get_all_default_items_data()
+
+        for default_item in models.DefaultPriceListItem.objects.all():
+            try:
+                items_data = default_items_data[default_item.resource_content_type.model_class()]
+                next(item_data for item_data in items_data
+                     if item_data['key'] == default_item.key and item_data['item_type'] == default_item.item_type)
+            except (KeyError, StopIteration):
+                deleted_items.append(default_item.name)
+                default_item.delete()
+
+        if deleted_items:
+            message = ungettext(
+                'Price item was deleted: {}'.format(deleted_items[0]),
+                'Price items were created: {}'.format(', '.join(item for item in deleted_items)),
+                len(deleted_items)
+            )
+            self.message_user(request, message)
+        else:
+            self.message_user(request, "Nothing to delete. All default price items are registered.")
+
+        return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
+
+    delete_not_registered_items.name = 'Delete not registered items'
 
 
 class PriceEstimateAdmin(admin.ModelAdmin):
