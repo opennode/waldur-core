@@ -6,7 +6,7 @@ from django.db import transaction
 from django.shortcuts import redirect
 from django.utils.translation import ungettext
 
-from nodeconductor.core.admin import DynamicModelAdmin
+from nodeconductor.core import admin as core_admin, utils as core_utils
 from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models, admin as structure_admin
@@ -18,21 +18,13 @@ def _get_content_type_queryset(models_list):
     return ContentType.objects.filter(id__in=content_type_ids)
 
 
-class PriceListItemAdmin(admin.ModelAdmin):
-    list_display = ('uuid', 'default_price_list_item', 'service', 'units', 'value')
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "content_type":
-            kwargs["queryset"] = _get_content_type_queryset(structure_models.Service.get_all_models())
-        return super(PriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
-
-
 class ResourceTypeFilter(SimpleListFilter):
     title = 'resource_type'
     parameter_name = 'resource_type'
 
     def lookups(self, request, model_admin):
-        return [(k, k) for k in SupportedServices.get_resource_models().keys()]
+        return [(name, name) for name, model in SupportedServices.get_resource_models()
+                if model in CostTrackingRegister.registered_resources]
 
     def queryset(self, request, queryset):
         if self.value():
@@ -42,9 +34,7 @@ class ResourceTypeFilter(SimpleListFilter):
         return queryset
 
 
-class DefaultPriceListItemAdmin(DynamicModelAdmin,
-                                structure_admin.ChangeReadonlyMixin,
-                                admin.ModelAdmin):
+class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('full_name', 'item_type', 'key', 'value', 'monthly_rate', 'resource_type')
     list_filter = ('item_type', ResourceTypeFilter)
     fields = ('name', ('value', 'monthly_rate'), 'resource_content_type', ('item_type', 'key'))
@@ -133,12 +123,40 @@ class DefaultPriceListItemAdmin(DynamicModelAdmin,
     delete_not_registered_items.name = 'Delete not registered items'
 
 
+class PriceListItemAdmin(admin.ModelAdmin):
+    list_display = ('uuid', 'default_price_list_item', 'service', 'units', 'value')
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "content_type":
+            kwargs["queryset"] = _get_content_type_queryset(structure_models.Service.get_all_models())
+        return super(PriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+class ScopeTypeFilter(SimpleListFilter):
+    title = 'resource_type'
+    parameter_name = 'resource_type'
+
+    def lookups(self, request, model_admin):
+        resources = [(model, name) for name, model in SupportedServices.get_resource_models().items()]
+        others = [(model, model.__name__) for model in models.PriceEstimate.get_estimated_models()
+                  if not issubclass(model, structure_models.ResourceMixin)]
+        estimated_models = [(core_utils.serialize_class(model), name) for model, name in resources + others]
+        return sorted(estimated_models, key=lambda x: x[1])
+
+    def queryset(self, request, queryset):
+        if self.value():
+            model = core_utils.deserialize_class(self.value())
+            return queryset.filter(content_type=ContentType.objects.get_for_model(model))
+        return queryset
+
+
 class PriceEstimateAdmin(admin.ModelAdmin):
     fields = ('content_type', 'object_id', 'total', ('month', 'year'))
     list_display = ('content_type', 'object_id', 'total', 'month', 'year')
+    list_filter = (ScopeTypeFilter, 'year', 'month')
     search_fields = ('month', 'year', 'object_id', 'total')
 
 
-admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.DefaultPriceListItem, DefaultPriceListItemAdmin)
+admin.site.register(models.PriceListItem, PriceListItemAdmin)
 admin.site.register(models.PriceEstimate, PriceEstimateAdmin)
