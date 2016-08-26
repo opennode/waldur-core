@@ -14,4 +14,3 @@ customer_account_credited = Signal(providing_args=['instance', 'amount'])
 customer_account_debited = Signal(providing_args=['instance', 'amount'])
 
 resource_imported = Signal(providing_args=['instance', 'back_propagate_price'])  # WTF is "back_propagate_price"???
-resource_provisioned = Signal(providing_args=['instance'])

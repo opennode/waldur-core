@@ -299,13 +299,11 @@ def log_resource_action(sender, instance, name, source, target, **kwargs):
     if isinstance(instance, StateMixin):
         if source == StateMixin.States.CREATING:
             if target == StateMixin.States.OK:
-                signals.resource_provisioned.send(sender=instance.__class__, instance=instance)
                 log_resource_creation_succeeded(instance)
             elif target == StateMixin.States.ERRED:
                 log_resource_creation_failed(instance)
     elif source == Resource.States.PROVISIONING:
         if target == Resource.States.ONLINE:
-            signals.resource_provisioned.send(sender=instance.__class__, instance=instance)
             log_resource_creation_succeeded(instance)
         elif target == Resource.States.ERRED:
             log_resource_creation_failed(instance)
