@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Fix scoped service settings descendant resource unlinking.
+- Enable HTTP client debugging.
 
 Release 0.104.1
 ---------------
