@@ -1,7 +1,7 @@
 Cost tracking
 =============
 
-Add-on for NC plugins. It allows to calculate price estimates for resources.
+Add-on for NodeConductor plugins. It allows to calculate price estimates for resources.
 
 
 How to use
@@ -45,16 +45,17 @@ How to use
 How total estimate calculation works
 ------------------------------------
 
-Total price estimate - price of the consumables that resource will in a month.
+Total price estimate - price of the consumables that resource will use in a month.
 
 Total price estimate is calculated for all registered resources and their
 structure objects: SPLs, projects, services, service settings, customers.
 
-Module "cost_tracking" connects to django signals to keep resource estimate and 
+Module "cost_tracking" connects to Django signals to keep resource estimate and 
 consumption details up to date (check the code of the handlers for more details).
-Model "ConsuptionDetails" stores current resource configuration and how many
+Model "ConsumptionDetails" stores current resource configuration and how many
 consumables were used by a resource. On each configuration update module updates
-resource consumption details and recalculates price estimate.
+consumption details and recalculates price estimates for resource and all his 
+ancestors.
 
 
 How consumed estimate calculation works
