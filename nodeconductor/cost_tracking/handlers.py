@@ -79,7 +79,7 @@ def scope_deletion(sender, instance, **kwargs):
 
     is_resource = isinstance(instance, structure_models.ResourceMixin)
     if is_resource and getattr(instance, 'PERFORM_UNLINK', False):
-        pass  # TODO: support unlink operation
+        pass  # TODO: support unlink operation NC-1548
     elif is_resource and not getattr(instance, 'PERFORM_UNLINK', False):
         _resource_deletion(resource=instance)
     elif isinstance(instance, structure_models.Customer):
@@ -126,7 +126,9 @@ def resource_quota_update(sender, instance, **kwargs):
 
 
 def _update_resource_estimate(resource, new_configuration):
-    price_estimate, _ = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=resource)
+    price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope=resource)
+    if created:
+        price_estimate.create_ancestors()
     consumption_details, _ = models.ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
     consumption_details.update_configuration(new_configuration)
     price_estimate.update_total()

@@ -58,15 +58,6 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
             content_type=ContentType.objects.get_for_model(scope),
             month=now.month, year=now.year)
 
-    def get_or_create_current_with_ancestors(self, scope):
-        """ Get or create scope price estimate for current month and
-            initialize estimates of its ancestors if they does not exist.
-        """
-        price_estimate, created = self.get_or_create_current(scope=scope)
-        if created:
-            price_estimate.create_ancestors()  # XXX: quite strange to call model method in manager. Think about this.
-        return price_estimate, created
-
 
 class ConsumptionDetailsQuerySet(django_models.QuerySet):
 

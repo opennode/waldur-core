@@ -29,20 +29,6 @@ from nodeconductor.structure import models as structure_models, SupportedService
 logger = logging.getLogger(__name__)
 
 
-# TODO:
-# 1. Write and test resource price estimate population. DONE.
-# 2. Replace leafs with child-parent relationships. DONE.
-# 3. Implement and test propagation. DONE.
-# 4. Support scope deletion. DONE.
-# 5. Every hour update field "consumed". DONE
-# 6. Provide data-migrations. And data-initialization for current month.
-
-
-# This is moved to separate issues:
-# 7. Support Import operation. NC-1548
-# 8. Copy alert and threshold from previous price estimate if they exists. Rewrite limit checks. NC-1537
-
-
 class EstimateUpdateError(Exception):
     pass
 

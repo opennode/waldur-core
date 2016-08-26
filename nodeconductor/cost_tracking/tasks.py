@@ -25,9 +25,10 @@ def recalculate_consumed_estimate():
 
 
 def _update_resource_consumed(resource):
-    price_estimate, created = models.PriceEstimate.objects.get_or_create_current_with_ancestors(scope=resource)
+    price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope=resource)
     if created:
         models.ConsumptionDetails.objects.create(price_estimate=price_estimate)
+        price_estimate.create_ancestors()
         price_estimate.update_total()
     price_estimate.update_consumed()
 
