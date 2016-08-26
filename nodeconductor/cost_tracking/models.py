@@ -88,7 +88,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         return 'uuid', 'scope', 'threshold', 'total', 'consumed'
 
     def is_over_threshold(self):  # For AlertThresholdMixin
-        return self.total >= self.threshold
+        return self.total > self.threshold
 
     @classmethod
     def get_checkable_objects(cls):  # For AlertThresholdMixin
@@ -126,7 +126,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         """ Re-calculate price of resource and its ancestors for whole month,
             based on its configuration and consumption details.
         """
-        self._chesk_is_updatable()
+        self._check_is_updatable()
         new_total = self._get_price(self.consumption_details.consumed_in_month)
         diff = new_total - self.total
         with transaction.atomic():
@@ -142,7 +142,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
 
     def update_consumed(self):
         """ Re-calculate price of resource until now. Does not update ancestors. """
-        self._chesk_is_updatable()
+        self._check_is_updatable()
         self.consumed = self._get_price(self.consumption_details.consumed_until_now)
         self.save(update_fields=['consumed'])
 
@@ -161,7 +161,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
                 logger.error('Price list item for consumable "%s" does not exist.' % consumable)
         return total
 
-    def _chesk_is_updatable(self):
+    def _check_is_updatable(self):
         """ Raise error if price estimate does not have consumption details or
             does not belong to resource
         """
