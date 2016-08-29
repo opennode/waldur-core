@@ -137,6 +137,7 @@ class ResourceQuotaUpdateTest(TestCase):
         self.assertEqual(consumption_details.configuration['quotas: test_quota'], 5)
 
 
+@freeze_time('2016-08-08 13:00:00')
 class ScopeDeleteTest(TestCase):
 
     def setUp(self):
@@ -152,7 +153,6 @@ class ScopeDeleteTest(TestCase):
         self.customer = self.project.customer
         self.service = self.spl.service
 
-    @freeze_time('2016-08-08 13:00:00')
     def test_all_estimates_are_deleted_on_customer_deletion(self):
         self.resource.delete()
         self.project.delete()
@@ -162,7 +162,6 @@ class ScopeDeleteTest(TestCase):
             self.assertFalse(models.PriceEstimate.objects.filter(scope=scope).exists(),
                              'Unexpected price estimate exists for %s %s' % (scope.__class__.__name__, scope))
 
-    @freeze_time('2016-08-08 13:00:00')
     def test_estimate_is_recalculated_on_resource_deletion(self):
         self.resource.delete()
 
@@ -170,7 +169,6 @@ class ScopeDeleteTest(TestCase):
         for scope in (self.spl, self.service, self.project, self.customer):
             self.assertEqual(models.PriceEstimate.objects.get_current(scope).total, expected)
 
-    @freeze_time('2016-08-08 13:00:00')
     def test_estimate_populate_details_on_scope_deletion(self):
         scopes = (self.resource, self.service, self.project)
         for scope in scopes:
