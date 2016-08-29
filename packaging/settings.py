@@ -284,12 +284,6 @@ LOGGING = {
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper(),
         },
-        # Send logs to Sentry
-        # See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/#integration-with-logging
-        'sentry': {
-            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-            'level': 'ERROR',
-        },
         # Send logs to web hook
         'hook-event': {
             'class': 'nodeconductor.logging.log.HookHandler',
@@ -341,6 +335,22 @@ if config.getboolean('logging', 'syslog'):
     LOGGING['handlers']['syslog']['address'] = '/dev/log'
     LOGGING['loggers']['django']['handlers'].append('syslog')
     LOGGING['loggers']['nodeconductor']['handlers'].append('syslog')
+
+if config.get('logging', 'log_level').upper() == 'DEBUG':
+    # Enabling debugging at http.client level (requests->urllib3->http.client)
+    # you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
+    # the only thing missing will be the response.body which is not logged.
+    try: # for Python 3
+        from http.client import HTTPConnection
+    except ImportError:
+        from httplib import HTTPConnection
+    HTTPConnection.debuglevel = 1
+
+    LOGGING['loggers']['requests.packages.urllib3'] = {
+        'handlers': ['file'],
+        'level': 'DEBUG',
+        'propagate': True
+    }
 
 if config.get('events', 'log_file') != '':
     LOGGING['handlers']['file-event']['filename'] = config.get('events', 'log_file')
@@ -421,11 +431,19 @@ if NODECONDUCTOR['ELASTICSEARCH']['protocol'] == 'https':
 # See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/
 if config.get('sentry', 'dsn') != '':
     INSTALLED_APPS = INSTALLED_APPS + ('raven.contrib.django.raven_compat',)
-    for logger in ['celery.worker', 'django', 'nodeconductor', 'requests']:
-        LOGGING['loggers'][logger]['handlers'].append('sentry')
+
     RAVEN_CONFIG = {
         'dsn': config.get('sentry', 'dsn'),
     }
+
+    # Send logs to Sentry
+    # See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/#integration-with-logging
+    LOGGING['handlers']['sentry'] = {
+        'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+        'level': 'ERROR',
+    }
+    for logger in ['celery.worker', 'django', 'nodeconductor', 'requests']:
+        LOGGING['loggers'][logger]['handlers'].append('sentry')
 
 extensions = ('nodeconductor_plus.py', 'nodeconductor_saml2.py')
 for extension_name in extensions:

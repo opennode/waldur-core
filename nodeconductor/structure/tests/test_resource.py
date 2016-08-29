@@ -1,7 +1,7 @@
 from rest_framework import test, status
 
-from nodeconductor.structure.models import Resource, NewResource
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure.models import Resource, NewResource, ServiceSettings
+from nodeconductor.structure.tests import factories, models as test_models
 
 
 class ResourceRemovalTest(test.APITransactionTestCase):
@@ -32,3 +32,21 @@ class ResourceRemovalTest(test.APITransactionTestCase):
         url = factories.TestInstanceFactory.get_url(vm)
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED, response.data)
+
+    def test_when_virtual_machine_is_deleted_descendant_resources_unlinked(self):
+        # Arrange
+        vm = factories.TestInstanceFactory()
+        settings = factories.ServiceSettingsFactory(scope=vm)
+        service = factories.TestServiceFactory(settings=settings)
+        link = factories.TestServiceProjectLinkFactory(service=service)
+        child_vm = factories.TestInstanceFactory(service_project_link=link)
+        other_vm = factories.TestInstanceFactory()
+
+        # Act
+        vm.delete()
+
+        # Assert
+        self.assertFalse(test_models.TestInstance.objects.filter(id=child_vm.id).exists())
+        self.assertFalse(test_models.TestService.objects.filter(id=service.id).exists())
+        self.assertFalse(ServiceSettings.objects.filter(id=settings.id).exists())
+        self.assertTrue(test_models.TestInstance.objects.filter(id=other_vm.id).exists())

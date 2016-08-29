@@ -250,7 +250,7 @@ class SupportedServices(object):
         data = {}
         for service in cls._registry.values():
             service_model = apps.get_model(service['model_name'])
-            service_project_link = cls.get_service_project_link(service_model)
+            service_project_link = service_model.projects.through
             service_project_link_url = reverse(cls.get_list_view_for_model(service_project_link), request=request)
 
             data[service['name']] = {
@@ -287,7 +287,7 @@ class SupportedServices(object):
         data = {}
         for key, service in cls._registry.items():
             service_model = apps.get_model(service['model_name'])
-            service_project_link = cls.get_service_project_link(service_model)
+            service_project_link = service_model.projects.through
             data[key] = {
                 'service': service_model,
                 'service_project_link': service_project_link,
@@ -296,11 +296,6 @@ class SupportedServices(object):
             }
 
         return data
-
-    @classmethod
-    def get_service_project_link(cls, service_model):
-        return next(m.related_model for m in service_model._meta.get_all_related_objects()
-                    if m.name.endswith('serviceprojectlink'))
 
     @classmethod
     @lru_cache(maxsize=1)
