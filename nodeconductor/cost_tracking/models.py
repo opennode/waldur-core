@@ -173,7 +173,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
     def _get_scope_name(self):
         if isinstance(self.scope, structure_models.ServiceProjectLink):
             # We need to display some meaningful name for SPL.
-            return '%s | %s' % (self.scope.project.name, self.scope.service.name)
+            return str(self.scope)
         else:
             return self.scope.name
 
