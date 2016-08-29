@@ -23,7 +23,7 @@ class ResourceTypeFilter(SimpleListFilter):
     parameter_name = 'resource_type'
 
     def lookups(self, request, model_admin):
-        return [(name, name) for name, model in SupportedServices.get_resource_models()
+        return [(name, name) for name, model in SupportedServices.get_resource_models().items()
                 if model in CostTrackingRegister.registered_resources]
 
     def queryset(self, request, queryset):
@@ -80,8 +80,6 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
-    init_from_registered_resources.name = 'Init from registered resources'
-
     def _create_or_update_default_price_list_item(self, resource_content_type, consumable_item):
         default_item, created = models.DefaultPriceListItem.objects.update_or_create(
             resource_content_type=resource_content_type,
@@ -119,8 +117,6 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
             self.message_user(request, "Nothing to delete. All default price items are registered.")
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
-
-    delete_not_registered_items.name = 'Delete not registered items'
 
 
 class PriceListItemAdmin(admin.ModelAdmin):
