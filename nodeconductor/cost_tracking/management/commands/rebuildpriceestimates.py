@@ -4,8 +4,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from nodeconductor.cost_tracking import models, CostTrackingRegister
-from nodeconductor.structure import models as structure_models
+from nodeconductor.cost_tracking import models, CostTrackingRegister, tasks
 
 
 class Command(BaseCommand):
@@ -17,17 +16,12 @@ class Command(BaseCommand):
         with transaction.atomic():
             # Delete current month price estimates
             models.PriceEstimate.objects.filter(month=today.month, year=today.year).delete()
-            # Recalculate resources estimates.
+            # Create new estimates for resources and ancestors
             for resource_model in CostTrackingRegister.registered_resources:
                 for resource in resource_model.objects.all():
                     _create_resource_estimate(resource, today)
-            # Move from down to top and recalculate consumed estimate for each
-            # objects based on its children.
-            ancestors_models = [m for m in models.PriceEstimate.get_estimated_models()
-                                if not issubclass(m, structure_models.ResourceMixin)]
-            for model in ancestors_models:
-                for ancestor in model.objects.all():
-                    _update_ancestor_consumed(ancestor, today)
+            # recalculate consumed estimate
+            tasks.recalculate_consumed_estimate()
 
 
 def _get_month_start(today):
@@ -44,12 +38,3 @@ def _create_resource_estimate(resource, today):
     details.save()
     price_estimate.create_ancestors()
     price_estimate.update_total()
-    price_estimate.update_consumed()
-
-
-def _update_ancestor_consumed(ancestor, today):
-    price_estimate, _ = models.PriceEstimate.objects.get_or_create(scope=ancestor, month=today.month, year=today.year)
-    resource_descendants = [descendant for descendant in price_estimate.get_descendants()
-                            if isinstance(descendant.scope, structure_models.ResourceMixin)]
-    price_estimate.consumed = sum([descendant.consumed for descendant in resource_descendants])
-    price_estimate.save(update_fields=['consumed'])
