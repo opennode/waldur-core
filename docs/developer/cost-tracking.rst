@@ -19,7 +19,7 @@ How to use
             FLAVOR = 'flavor'
 
         @classmethod
-        def get_consumables(cls, resource):
+        def get_configuration(cls, resource):
             # which consumables are used by resource
             return {
                 ConsumableItem(cls.Types.FLAVOR, resource.flavor_name): 1,
@@ -27,7 +27,7 @@ How to use
             }
 
         @classmethod
-        def get_consumables_default_prices(cls):
+        def get_consumable_items(cls):
             return [
                 ConsumableItem(cls.Types.STORAGE, "1 MB", units='MB', name='Storage'),
                 ConsumableItem(cls.Types.FLAVOR, "small", name='Small flavor'),
