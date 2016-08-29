@@ -53,10 +53,7 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
 
     def get_or_create_current(self, scope):
         now = timezone.now()
-        return self.get_or_create(
-            object_id=scope.id,
-            content_type=ContentType.objects.get_for_model(scope),
-            month=now.month, year=now.year)
+        return self.get_or_create(scope=scope, month=now.month, year=now.year)
 
 
 class ConsumptionDetailsQuerySet(django_models.QuerySet):
