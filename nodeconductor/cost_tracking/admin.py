@@ -96,7 +96,7 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
         return default_item, created
 
     def delete_not_registered_items(self, request):
-        deleted_items = []
+        deleted_items_names = []
 
         for price_list_item in models.DefaultPriceListItem.objects.all():
             try:
@@ -105,14 +105,14 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
                 next(item for item in consumable_items
                      if item.key == price_list_item.key and item.item_type == price_list_item.item_type)
             except (ResourceNotRegisteredError, StopIteration):
-                deleted_items.append(price_list_item.name)
+                deleted_items_names.append(price_list_item.name)
                 price_list_item.delete()
 
-        if deleted_items:
+        if deleted_items_names:
             message = ungettext(
-                'Price item was deleted: {}'.format(deleted_items[0]),
-                'Price items were created: {}'.format(', '.join(item for item in deleted_items)),
-                len(deleted_items)
+                'Price item was deleted: {}'.format(deleted_items_names[0]),
+                'Price items were deleted: {}'.format(', '.join(item for item in deleted_items_names)),
+                len(deleted_items_names)
             )
             self.message_user(request, message)
         else:
