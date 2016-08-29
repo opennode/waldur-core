@@ -3,7 +3,9 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Rewrite price estimate calculation logic.
+- Do not allow to edit price estimates manually.
+- Store resources consumption details.
 
 Release 0.104.0
 ---------------
