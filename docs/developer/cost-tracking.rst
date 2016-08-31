@@ -23,7 +23,7 @@ How to use
             # which consumables are used by resource
             return {
                 ConsumableItem(cls.Types.FLAVOR, resource.flavor_name): 1,
-                ConsumableItem(cls.Types.STORAGE, '1 MB)': resource.disk,
+                ConsumableItem(cls.Types.STORAGE, '1 MB'): resource.disk,
             }
 
         @classmethod
