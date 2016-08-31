@@ -79,7 +79,7 @@ def scope_deletion(sender, instance, **kwargs):
 
     is_resource = isinstance(instance, structure_models.ResourceMixin)
     if is_resource and getattr(instance, 'PERFORM_UNLINK', False):
-        pass  # TODO: support unlink operation NC-1548
+        _resource_unlink(resource=instance)
     elif is_resource and not getattr(instance, 'PERFORM_UNLINK', False):
         _resource_deletion(resource=instance)
     elif isinstance(instance, structure_models.Customer):
@@ -87,6 +87,14 @@ def scope_deletion(sender, instance, **kwargs):
     else:
         for price_estimate in models.PriceEstimate.objects.filter(scope=instance):
             price_estimate.init_details()
+
+
+def _resource_unlink(resource):
+    if resource.__class__ not in CostTrackingRegister.registered_resources:
+        return
+    for price_estimate in models.PriceEstimate.objects.filter(scope=resource):
+        price_estimate.update_ancestors_total(diff=-price_estimate.total)
+        price_estimate.delete()
 
 
 def _customer_deletion(customer):
