@@ -64,5 +64,5 @@ How consumed estimate calculation works
 Consumed price estimate - how many consumables were used by resource until now.
 
 It is too expensive to recalculate consumed estimate on each user request.
-Thats why we have the background task that recalculate consumed estimate every
+That's why we have the background task that recalculates consumed estimate every
 hour and stores it in the database.

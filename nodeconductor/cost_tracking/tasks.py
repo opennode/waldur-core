@@ -16,7 +16,7 @@ def recalculate_consumed_estimate():
         for resource in resource_model.objects.all():
             _update_resource_consumed(resource)
     # Step 2. Move from down to top and recalculate consumed estimate for each
-    #         objects based on its children.
+    #         object based on its children.
     ancestors_models = [m for m in models.PriceEstimate.get_estimated_models()
                         if not issubclass(m, structure_models.ResourceMixin)]
     for model in ancestors_models:
