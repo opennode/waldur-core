@@ -695,6 +695,15 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     def get_type_display(self):
         return SupportedServices.get_name_for_type(self.type)
 
+    def get_services(self):
+        service_model = SupportedServices.get_service_models()[self.type]['service']
+        return service_model.objects.filter(settings=self)
+
+    def unlink_descendants(self):
+        for service in self.get_services():
+            service.unlink_descendants()
+            service.delete()
+
 
 @python_2_unicode_compatible
 class Service(core_models.SerializableAbstractMixin,
