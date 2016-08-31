@@ -1,7 +1,7 @@
 from django.test import TestCase
 from freezegun import freeze_time
 
-from nodeconductor.cost_tracking import models
+from nodeconductor.cost_tracking import models, ConsumableItem
 from nodeconductor.cost_tracking.tests import factories
 
 
@@ -9,7 +9,7 @@ class ConsumptionDetailsManagerTest(TestCase):
 
     def test_create_method_get_configuration_from_previous_month_details(self):
         with freeze_time("2016-08-01"):
-            configuration = {'storage': 10240, 'ram': 2048}
+            configuration = {ConsumableItem('storage', '1 MB'): 10240, ConsumableItem('ram', '1 MB'): 2048}
             price_estimate = factories.PriceEstimateFactory(year=2016, month=8)
             consumption_details = factories.ConsumptionDetailsFactory(price_estimate=price_estimate)
             consumption_details.update_configuration(configuration)
