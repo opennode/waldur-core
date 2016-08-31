@@ -26,7 +26,17 @@ class ConsumableItem(object):
         self.units = units
 
     def __str__(self):
-        return '%s: %s' % (self.item_type, self.key)
+        return self.name
+
+    def __hash__(self):
+        return hash((self.item_type, self.key))
+
+    def __eq__(self, other):
+        return (self.item_type, self.key) == (other.item_type, other.key)
+
+    def __ne__(self, other):
+        # Not strictly necessary, but to avoid having both x==y and x!=y True at the same time
+        return not(self == other)
 
 
 class CostTrackingStrategy(object):
@@ -112,12 +122,13 @@ class CostTrackingRegister(object):
 
             Output example:
             {
-                "storage: 1 MB": 10240,
-                "flavor: small": 1,
+                <ConsumableItem instance>: <usage>,
+                <ConsumableItem instance>: <usage>,
+                ...
             }
         """
         strategy = cls._get_strategy(resource.__class__)
-        return {str(item): usage for item, usage in strategy.get_configuration(resource).items()}
+        return strategy.get_configuration(resource)
 
     @classmethod
     def get_consumable_items(cls, resource_class):

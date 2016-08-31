@@ -20,7 +20,7 @@ from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
 from nodeconductor.core.utils import hours_in_month
-from nodeconductor.cost_tracking import managers
+from nodeconductor.cost_tracking import managers, ConsumableItem
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
 from nodeconductor.structure import models as structure_models, SupportedServices
@@ -153,12 +153,11 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         price_list_items = PriceListItem.get_for_resource(self.scope)
         consumables_prices = {(item.item_type, item.key): item.minute_rate for item in price_list_items}
         total = 0
-        for consumable, usage in consumed.items():
-            item_type, key = [c.strip() for c in consumable.split(':')]
+        for consumable_item, usage in consumed.items():
             try:
-                total += consumables_prices[(item_type, key)] * usage
+                total += consumables_prices[(consumable_item.item_type, consumable_item.key)] * usage
             except KeyError:
-                logger.error('Price list item for consumable "%s" does not exist.' % consumable)
+                logger.error('Price list item for consumable "%s" does not exist.' % consumable_item)
         return total
 
     def _check_is_updatable(self):
@@ -186,6 +185,52 @@ class ConsumptionDetailCalculateError(Exception):
     pass
 
 
+class ConsumableItemsField(JSONField):
+    """ Store consumable items and their usage as JSON.
+
+        Represent data in format:
+        {
+            <ConsumableItem instance>: <usage>,
+            <ConsumableItem instance>: <usage>,
+            ...
+        }
+        Store data in format:
+        [
+            {
+                "item_type": xx,
+                "key": xx,
+                "usage": xx,
+            }
+            ...
+        ]
+    """
+    def pre_init(self, value, obj):
+        """ JSON field initializes field in "pre_init" method, so it is better to override it. """
+        value = super(ConsumableItemsField, self).pre_init(value, obj)
+        if obj._state.adding:
+            value = self._deserialize(value)
+        return value
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        if prepared:
+            return value
+
+        if not isinstance(value, dict):
+            raise TypeError('ConsumableItemsField value should be dict. Received: %s' % value)
+        if any([not isinstance(item, ConsumableItem) for item in value]):
+            raise TypeError('ConsumableItemsField keys should be instances of ConsumableItem class.')
+
+        prep_value = self._serialize(value)
+        return super(ConsumableItemsField, self).get_db_prep_value(prep_value, connection, prepared)
+
+    def _serialize(self, value):
+        return [{'usage': usage, 'item_type': item.item_type, 'key': item.key}
+                for item, usage in value.items()]
+
+    def _deserialize(self, serialized_value):
+        return {ConsumableItem(item['item_type'], item['key']): item['usage'] for item in serialized_value}
+
+
 class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
     """ Resource consumption details per month.
 
@@ -193,9 +238,9 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         do not update them manually.
     """
     price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
-    configuration = JSONField(default={}, help_text='Current resource configuration.')
+    configuration = ConsumableItemsField(default={}, help_text='Current resource configuration.')
     last_update_time = models.DateTimeField(help_text='Last configuration change time.')
-    consumed_before_update = JSONField(
+    consumed_before_update = ConsumableItemsField(
         default={}, help_text='How many consumables were used by resource before last update.')
 
     objects = managers.ConsumptionDetailsManager()
@@ -208,10 +253,10 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         if now.month != self.price_estimate.month:
             raise ConsumptionDetailUpdateError('It is possible to update consumption details only for current month.')
         minutes_from_last_update = self._get_minutes_from_last_update(now)
-        for consumable, usage in self.configuration.items():
+        for consumable_item, usage in self.configuration.items():
             consumed_after_modification = usage * minutes_from_last_update
-            self.consumed_before_update[consumable] = (
-                self.consumed_before_update.get(consumable, 0) + consumed_after_modification)
+            self.consumed_before_update[consumable_item] = (
+                self.consumed_before_update.get(consumable_item, 0) + consumed_after_modification)
         self.configuration = new_configuration
         self.last_update_time = now
         self.save()
@@ -232,9 +277,10 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         if minutes_from_last_update < 0:
             raise ConsumptionDetailCalculateError('Cannot calculate consumption if time < last modification date.')
         _consumed = {}
-        for consumable in set(self.configuration.keys() + self.consumed_before_update.keys()):
-            consumed_after_modification = self.configuration.get(consumable, 0) * minutes_from_last_update
-            _consumed[consumable] = consumed_after_modification + self.consumed_before_update.get(consumable, 0)
+        for consumable_item in set(self.configuration.keys() + self.consumed_before_update.keys()):
+            after_update = self.configuration.get(consumable_item, 0) * minutes_from_last_update
+            before_update = self.consumed_before_update.get(consumable_item, 0)
+            _consumed[consumable_item] = after_update + before_update
         return _consumed
 
     def _get_month_end(self):
