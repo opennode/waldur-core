@@ -12,7 +12,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.104.1
+Version: 0.105.0
 Release: 1.el7
 License: MIT
 
@@ -213,6 +213,9 @@ EOF
 %systemd_postun_with_restart %{name}-celerybeat.service
 
 %changelog
+* Wed Aug 31 2016 Jenkins <jenkins@opennodecloud.com> - 0.105.0-1.el7
+- New upstream release
+
 * Thu Aug 18 2016 Jenkins <jenkins@opennodecloud.com> - 0.104.1-1.el7
 - New upstream release
 
