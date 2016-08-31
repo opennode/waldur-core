@@ -207,7 +207,7 @@ class ConsumableItemsField(JSONField):
     def pre_init(self, value, obj):
         """ JSON field initializes field in "pre_init" method, so it is better to override it. """
         value = super(ConsumableItemsField, self).pre_init(value, obj)
-        if obj._state.adding:
+        if isinstance(value, list):
             value = self._deserialize(value)
         return value
 
