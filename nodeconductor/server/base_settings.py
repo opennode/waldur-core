@@ -26,6 +26,8 @@ MEDIA_URL = '/media/'
 
 ALLOWED_HOSTS = []
 
+SERIALIZATION_MODULES = {'gm2mjson': 'gm2m.serializers.json'}
+
 # Application definition
 INSTALLED_APPS = (
     'django.contrib.auth',

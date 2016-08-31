@@ -3,7 +3,15 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Rewrite price estimate calculation logic.
+- Do not allow to edit price estimates manually.
+- Store resources consumption details.
+- Fix scoped service settings descendant resource unlinking.
+- Enable HTTP client debugging.
+
+Release 0.104.1
+---------------
+- Revert damage to /admin (upgrade strongly suggested).
 
 Release 0.104.0
 ---------------

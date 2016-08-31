@@ -19,20 +19,20 @@ How to use
             FLAVOR = 'flavor'
 
         @classmethod
-        def get_consumables(cls, resource):
+        def get_configuration(cls, resource):
             # which consumables are used by resource
             return {
-                '%s: %s' % (cls.Types.FLAVOR, resource.flavor_name): 1,
-                '%s: 1 MB' % cls.Types.STORAGE: resource.disk,
+                ConsumableItem(cls.Types.FLAVOR, resource.flavor_name): 1,
+                ConsumableItem(cls.Types.STORAGE, '1 MB'): resource.disk,
             }
 
         @classmethod
-        def get_consumables_default_prices(cls):
+        def get_consumable_items(cls):
             return [
-                {"item_type": cls.Types.STORAGE, "key": "1 MB", "units": "MB", "rate": 0.5, "name": "Storage"},
-                {"item_type": cls.Types.FLAVOR, "key": "small", "units": "", "rate": 20, "name": "Small flavor"},
-                {"item_type": cls.Types.FLAVOR, "key": "medium", "units": "", "rate": 40, "name": "Medium flavor"},
-                {"item_type": cls.Types.FLAVOR, "key": "large", "units": "", "rate": 60, "name": "Large flavor"},
+                ConsumableItem(cls.Types.STORAGE, "1 MB", units='MB', name='Storage'),
+                ConsumableItem(cls.Types.FLAVOR, "small", name='Small flavor'),
+                ConsumableItem(cls.Types.FLAVOR, "medium", name='Medium flavor'),
+                ConsumableItem(cls.Types.FLAVOR, "large", name='Large flavor'),
             ]
 
 2. Register Strategy in CostTrackingRegister.

@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 from freezegun import freeze_time
 
-from nodeconductor.cost_tracking import CostTrackingRegister, models
+from nodeconductor.cost_tracking import CostTrackingRegister, models, ConsumableItem
 from nodeconductor.cost_tracking.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.tests.models import TestNewInstance
@@ -25,25 +25,33 @@ class ResourceUpdateTest(TestCase):
 
         price_estimate = models.PriceEstimate.objects.get(scope=resource, month=today.month, year=today.year)
         consumption_details = price_estimate.consumption_details
-        expected = {'ram: 1 MB': 2048, 'storage: 1 MB': 20 * 1024, 'cores: 1 core': 2, 'quotas: test_quota': 0}
+        expected = {
+            ConsumableItem('ram', '1 MB'): 2048,
+            ConsumableItem('storage', '1 MB'): 20 * 1024,
+            ConsumableItem('cores', '1 core'): 2,
+            ConsumableItem('quotas', 'test_quota'): 0,
+        }
         self.assertDictEqual(consumption_details.configuration, expected)
 
         resource.ram = 1024
         resource.save()
         consumption_details.refresh_from_db()
-        self.assertEqual(consumption_details.configuration['ram: 1 MB'], resource.ram)
+        self.assertEqual(consumption_details.configuration[ConsumableItem('ram', '1 MB')], resource.ram)
 
         resource.runtime_state = 'offline'
         resource.save()
         # test resource uses only storage and quota when it is offline
-        expected = {'storage: 1 MB': 20 * 1024, 'quotas: test_quota': 0}
+        expected = {
+            ConsumableItem('storage', '1 MB'): 20 * 1024,
+            ConsumableItem('quotas', 'test_quota'): 0
+        }
         consumption_details.refresh_from_db()
         self.assertDictEqual(consumption_details.configuration, expected)
 
         resource.flavor_name = 'small'
         resource.save()
         consumption_details.refresh_from_db()
-        self.assertEqual(consumption_details.configuration['flavor: small'], 1)
+        self.assertEqual(consumption_details.configuration[ConsumableItem('flavor', 'small')], 1)
 
     def test_price_estimate_of_resource_is_keeped_up_to_date(self):
         resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
@@ -126,17 +134,19 @@ class ResourceQuotaUpdateTest(TestCase):
     def test_consumption_details_of_resource_is_keeped_up_to_date_on_quota_change(self):
         today = timezone.now()
         resource = structure_factories.TestNewInstanceFactory()
+        quota_item = ConsumableItem('quotas', 'test_quota')
 
         price_estimate = models.PriceEstimate.objects.get(scope=resource, month=today.month, year=today.year)
         consumption_details = price_estimate.consumption_details
-        self.assertEqual(consumption_details.configuration['quotas: test_quota'], 0)
+        self.assertEqual(consumption_details.configuration[quota_item], 0)
 
         resource.set_quota_usage(TestNewInstance.Quotas.test_quota, 5)
 
         consumption_details.refresh_from_db()
-        self.assertEqual(consumption_details.configuration['quotas: test_quota'], 5)
+        self.assertEqual(consumption_details.configuration[quota_item], 5)
 
 
+@freeze_time('2016-08-08 13:00:00')
 class ScopeDeleteTest(TestCase):
 
     def setUp(self):
@@ -152,7 +162,6 @@ class ScopeDeleteTest(TestCase):
         self.customer = self.project.customer
         self.service = self.spl.service
 
-    @freeze_time('2016-08-08 13:00:00')
     def test_all_estimates_are_deleted_on_customer_deletion(self):
         self.resource.delete()
         self.project.delete()
@@ -162,7 +171,6 @@ class ScopeDeleteTest(TestCase):
             self.assertFalse(models.PriceEstimate.objects.filter(scope=scope).exists(),
                              'Unexpected price estimate exists for %s %s' % (scope.__class__.__name__, scope))
 
-    @freeze_time('2016-08-08 13:00:00')
     def test_estimate_is_recalculated_on_resource_deletion(self):
         self.resource.delete()
 
@@ -170,7 +178,6 @@ class ScopeDeleteTest(TestCase):
         for scope in (self.spl, self.service, self.project, self.customer):
             self.assertEqual(models.PriceEstimate.objects.get_current(scope).total, expected)
 
-    @freeze_time('2016-08-08 13:00:00')
     def test_estimate_populate_details_on_scope_deletion(self):
         scopes = (self.resource, self.service, self.project)
         for scope in scopes:

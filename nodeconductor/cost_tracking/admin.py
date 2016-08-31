@@ -23,7 +23,7 @@ class ResourceTypeFilter(SimpleListFilter):
     parameter_name = 'resource_type'
 
     def lookups(self, request, model_admin):
-        return [(name, name) for name, model in SupportedServices.get_resource_models()
+        return [(name, name) for name, model in SupportedServices.get_resource_models().items()
                 if model in CostTrackingRegister.registered_resources]
 
     def queryset(self, request, queryset):
@@ -80,8 +80,6 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
-    init_from_registered_resources.name = 'Init from registered resources'
-
     def _create_or_update_default_price_list_item(self, resource_content_type, consumable_item):
         default_item, created = models.DefaultPriceListItem.objects.update_or_create(
             resource_content_type=resource_content_type,
@@ -96,7 +94,7 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
         return default_item, created
 
     def delete_not_registered_items(self, request):
-        deleted_items = []
+        deleted_items_names = []
 
         for price_list_item in models.DefaultPriceListItem.objects.all():
             try:
@@ -105,22 +103,20 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
                 next(item for item in consumable_items
                      if item.key == price_list_item.key and item.item_type == price_list_item.item_type)
             except (ResourceNotRegisteredError, StopIteration):
-                deleted_items.append(price_list_item.name)
+                deleted_items_names.append(price_list_item.name)
                 price_list_item.delete()
 
-        if deleted_items:
+        if deleted_items_names:
             message = ungettext(
-                'Price item was deleted: {}'.format(deleted_items[0]),
-                'Price items were created: {}'.format(', '.join(item for item in deleted_items)),
-                len(deleted_items)
+                'Price item was deleted: {}'.format(deleted_items_names[0]),
+                'Price items were deleted: {}'.format(', '.join(item for item in deleted_items_names)),
+                len(deleted_items_names)
             )
             self.message_user(request, message)
         else:
             self.message_user(request, "Nothing to delete. All default price items are registered.")
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
-
-    delete_not_registered_items.name = 'Delete not registered items'
 
 
 class PriceListItemAdmin(admin.ModelAdmin):

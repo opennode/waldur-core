@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 from django.db import migrations, models
 import jsonfield.fields
 
+import nodeconductor.cost_tracking.models
+
 
 class Migration(migrations.Migration):
 
@@ -75,5 +77,15 @@ class Migration(migrations.Migration):
         migrations.RemoveField(
             model_name='priceestimate',
             name='scope_customer',
+        ),
+        migrations.AlterField(
+            model_name='consumptiondetails',
+            name='configuration',
+            field=nodeconductor.cost_tracking.models.ConsumableItemsField(default={}, help_text='Current resource configuration.'),
+        ),
+        migrations.AlterField(
+            model_name='consumptiondetails',
+            name='consumed_before_update',
+            field=nodeconductor.cost_tracking.models.ConsumableItemsField(default={}, help_text='How many consumables were used by resource before last update.'),
         ),
     ]
