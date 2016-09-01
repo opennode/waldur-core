@@ -124,6 +124,41 @@ class ResourceUpdateTest(TestCase):
                 ancestor_estimate = models.PriceEstimate.objects.get(scope=ancestor, month=today.month, year=today.year)
                 self.assertAlmostEqual(ancestor_estimate.total, expected)
 
+    def test_historical_estimates_are_initialized(self):
+        resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
+        price_list_item = models.DefaultPriceListItem.objects.create(
+            item_type='storage', key='1 MB', resource_content_type=resource_content_type, value=0.1)
+
+        creation_time = timezone.make_aware(datetime.datetime(2016, 7, 15, 11, 0))
+        import_time = timezone.make_aware(datetime.datetime(2016, 9, 2, 10, 0))
+        with freeze_time(import_time):
+            resource = structure_factories.TestNewInstanceFactory(
+                state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024, created=creation_time)
+            ancestors = [resource.service_project_link, resource.service_project_link.service,
+                         resource.service_project_link.project, resource.service_project_link.project.customer]
+
+        # signal should init estimates for resource and its ancestors for previous months
+        for scope in [resource] + ancestors:
+            self.assertTrue(models.PriceEstimate.objects.filter(scope=scope, month=7, year=2016))
+            self.assertTrue(models.PriceEstimate.objects.filter(scope=scope, month=8, year=2016))
+
+        # Check price estimates total calculation for month #7
+        month_end = timezone.make_aware(datetime.datetime(2016, 7, 31, 23, 59, 59))
+        work_minutes = int((month_end - creation_time).total_seconds() / 60)
+        expected = work_minutes * price_list_item.minute_rate * resource.disk
+        for scope in [resource] + ancestors:
+            estimate = models.PriceEstimate.objects.get(scope=scope, month=7, year=2016)
+            self.assertEqual(estimate.total, expected)
+
+        # Check price estimates total calculation for month #8
+        month_start = timezone.make_aware(datetime.datetime(2016, 8, 1))
+        month_end = timezone.make_aware(datetime.datetime(2016, 8, 31, 23, 59, 59))
+        work_minutes = int((month_end - month_start).total_seconds() / 60)
+        expected = work_minutes * price_list_item.minute_rate * resource.disk
+        for scope in [resource] + ancestors:
+            estimate = models.PriceEstimate.objects.get(scope=scope, month=8, year=2016)
+            self.assertEqual(estimate.total, expected)
+
 
 class ResourceQuotaUpdateTest(TestCase):
 

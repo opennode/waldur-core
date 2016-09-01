@@ -2,6 +2,7 @@ import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
+from django.utils import timezone
 
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister, ResourceNotRegisteredError
 from nodeconductor.structure import ServiceBackendNotImplemented, ServiceBackendError, models as structure_models
@@ -112,14 +113,19 @@ def _resource_deletion(resource):
     price_estimate.init_details()
 
 
-def resource_update(sender, instance, **kwargs):
-    """ Update resource consumption details and price estimate if its configuration has changed """
+def resource_update(sender, instance, created=False, **kwargs):
+    """ Update resource consumption details and price estimate if its configuration has changed.
+        Create estimates for previous months if resource was created not in current month.
+    """
     resource = instance
     try:
         new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
     _update_resource_estimate(resource, new_configuration)
+    # Try to create historical price estimates
+    if created:
+        _create_historical_estimates(resource, new_configuration)
 
 
 def resource_quota_update(sender, instance, **kwargs):
@@ -131,6 +137,29 @@ def resource_quota_update(sender, instance, **kwargs):
     except ResourceNotRegisteredError:
         return
     _update_resource_estimate(resource, new_configuration)
+
+
+def _create_historical_estimates(resource, configuration):
+    """ Create consumption details and price estimates for past months.
+
+        Usually we need to update historical values on resource import.
+    """
+    today = timezone.now()
+    month_start = timezone.make_aware(datetime.datetime(day=1, month=today.month, year=today.year))
+    while month_start > resource.created:
+        month_start -= relativedelta(months=1)
+        price_estimate = models.PriceEstimate.objects.create(
+            scope=resource, month=month_start.month, year=month_start.year)
+        price_estimate.create_ancestors()
+        # configuration is updated directly because we want to avoid recalculation
+        # of consumed items based on current time.
+        consumption_details = models.ConsumptionDetails(
+            price_estimate=price_estimate,
+            last_update_time=max(month_start, resource.created),
+            configuration=configuration,
+        )
+        consumption_details.save()
+        price_estimate.update_total()
 
 
 def _update_resource_estimate(resource, new_configuration):
