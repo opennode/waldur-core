@@ -92,7 +92,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
 
     @classmethod
     def get_checkable_objects(cls):  # For AlertThresholdMixin
-        """ Raise alerts only for price estimates that describes current month. """
+        """ Raise alerts only for price estimates that describe current month. """
         today = timezone.now()
         return cls.objects.filter(year=today.year, month=today.month)
 
@@ -102,7 +102,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         return PriceEstimate.objects.get(scope=self.scope, month=month, year=year)
 
     def create_ancestors(self):
-        """ Crete price estimates for scope ancestors if they does not exists """
+        """ Create price estimates for scope ancestors if they do not exist """
         if not isinstance(self.scope, core_models.DescendantMixin):
             return
         scope_parents = self.scope.get_parents()
@@ -123,7 +123,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         self.save(update_fields=['details'])
 
     def update_total(self, update_ancestors=True):
-        """ Re-calculate price of resource and its ancestors for whole month,
+        """ Re-calculate price of resource and its ancestors for the whole month,
             based on its configuration and consumption details.
         """
         self._check_is_updatable()
@@ -272,7 +272,7 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         return self._get_consumed(timezone.now())
 
     def _get_consumed(self, time):
-        """ How many consumables were used (or will be) by resource until given time. """
+        """ How many consumables were (or will be) used by resource until given time. """
         minutes_from_last_update = self._get_minutes_from_last_update(time)
         if minutes_from_last_update < 0:
             raise ConsumptionDetailCalculateError('Cannot calculate consumption if time < last modification date.')
