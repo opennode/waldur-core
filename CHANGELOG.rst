@@ -8,6 +8,8 @@ Release NEXT
 - Store resources consumption details.
 - Fix scoped service settings descendant resource unlinking.
 - Enable HTTP client debugging.
+- Rewrite price estimate calculation with link/unlink operations. 
+- Remove resource provisioned signal.
 
 Release 0.104.1
 ---------------
