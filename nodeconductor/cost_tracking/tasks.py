@@ -1,25 +1,41 @@
 from celery import shared_task
 
-from nodeconductor.core.utils import deserialize_instance
-from nodeconductor.cost_tracking.models import PriceEstimate, PayableMixin
+from nodeconductor.cost_tracking import CostTrackingRegister, models
+from nodeconductor.structure import models as structure_models
 
 
-@shared_task(name='nodeconductor.cost_tracking.update_projected_estimate')
-def update_projected_estimate(customer_uuid=None, serialized_resource=None, back_propagate_price=False):
+@shared_task(name='nodeconductor.cost_tracking.recalculate_consumed_estimate')
+def recalculate_consumed_estimate():
+    """ Recalculate how many consumables were used by resource until now.
 
-    if customer_uuid and serialized_resource:
-        raise RuntimeError("Either customer_uuid or serialized_resource could be supplied, both received.")
+        Regular task. It is too expensive to calculate consumed price on each
+        request, so we store cached price each hour.
+    """
+    # Step 1. Recalculate resources estimates.
+    for resource_model in CostTrackingRegister.registered_resources:
+        for resource in resource_model.objects.all():
+            _update_resource_consumed(resource)
+    # Step 2. Move from down to top and recalculate consumed estimate for each
+    #         object based on its children.
+    ancestors_models = [m for m in models.PriceEstimate.get_estimated_models()
+                        if not issubclass(m, structure_models.ResourceMixin)]
+    for model in ancestors_models:
+        for ancestor in model.objects.all():
+            _update_ancestor_consumed(ancestor)
 
-    if serialized_resource:
-        resource = deserialize_instance(serialized_resource)
-        PriceEstimate.update_price_for_resource(resource, back_propagate_price)
 
-    else:
-        # XXX: it's quite inefficient -- will update ancestors many times
-        for model in PayableMixin.get_all_models():
-            queryset = model.objects.exclude(state=model.States.ERRED)
-            if customer_uuid:
-                queryset = queryset.filter(customer__uuid=customer_uuid)
+def _update_resource_consumed(resource):
+    price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope=resource)
+    if created:
+        models.ConsumptionDetails.objects.create(price_estimate=price_estimate)
+        price_estimate.create_ancestors()
+        price_estimate.update_total()
+    price_estimate.update_consumed()
 
-            for resource in queryset.iterator():
-                PriceEstimate.update_price_for_resource(resource)
+
+def _update_ancestor_consumed(ancestor):
+    price_estimate, _ = models.PriceEstimate.objects.get_or_create_current(scope=ancestor)
+    resource_descendants = [descendant for descendant in price_estimate.get_descendants()
+                            if isinstance(descendant.scope, structure_models.ResourceMixin)]
+    price_estimate.consumed = sum([descendant.consumed for descendant in resource_descendants])
+    price_estimate.save(update_fields=['consumed'])

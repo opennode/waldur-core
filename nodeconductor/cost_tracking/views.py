@@ -24,7 +24,7 @@ class PriceEditPermissionMixin(object):
         return False
 
 
-class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
+class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewSet):
     queryset = models.PriceEstimate.objects.all()
     serializer_class = serializers.PriceEstimateSerializer
     lookup_field = 'uuid'
@@ -32,9 +32,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         filters.AdditionalPriceEstimateFilterBackend,
         filters.PriceEstimateScopeFilterBackend,
         ScopeTypeFilterBackend,
-        DjangoMappingFilterBackend,
     )
-    filter_class = filters.PriceEstimateFilter
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_serializer_class(self):
@@ -45,24 +43,8 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         return self.serializer_class
 
     def get_queryset(self):
-        return models.PriceEstimate.objects.filtered_for_user(self.request.user).filter(is_visible=True).order_by(
+        return models.PriceEstimate.objects.filtered_for_user(self.request.user).order_by(
             '-year', '-month')
-
-    def perform_create(self, serializer):
-        if not self.can_user_modify_price_object(serializer.validated_data['scope']):
-            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
-
-        super(PriceEstimateViewSet, self).perform_create(serializer)
-
-    def initial(self, request, *args, **kwargs):
-        if self.action in ('partial_update', 'destroy', 'update'):
-            price_estimate = self.get_object()
-            if not price_estimate.is_manually_input:
-                raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
-            if not self.can_user_modify_price_object(price_estimate.scope):
-                raise exceptions.PermissionDenied('You do not have permission to perform this action.')
-
-        return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
 
     def list(self, request, *args, **kwargs):
         """
@@ -136,7 +118,11 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         if not self.can_user_modify_price_object(scope):
             raise exceptions.PermissionDenied()
 
-        models.PriceEstimate.objects.create_or_update(scope, threshold=threshold)
+        price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
+        if created and isinstance(scope, structure_models.ResourceMixin):  # TODO: Check is it possible to move this code to manager.
+            models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
+        price_estimate.threshold = threshold
+        price_estimate.save(update_fields=['threshold'])
         return response.Response({'detail': 'Threshold for price estimate is updated'},
                                  status=status.HTTP_200_OK)
 
@@ -170,7 +156,11 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         if not self.can_user_modify_price_object(scope):
             raise exceptions.PermissionDenied()
 
-        models.PriceEstimate.objects.create_or_update(scope, limit=limit)
+        price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
+        if created and isinstance(scope, structure_models.ResourceMixin):
+            models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
+        price_estimate.limit = limit
+        price_estimate.save(update_fields=['limit'])
         return response.Response({'detail': 'Limit for price estimate is updated'},
                                  status=status.HTTP_200_OK)
 

@@ -51,6 +51,7 @@ class TestNewInstance(core_models.RuntimeStateMixin,
                       structure_models.ResourceMixin):
 
     service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
+    flavor_name = models.CharField(max_length=255, blank=True)
 
     class Quotas(QuotaModelMixin.Quotas):
         test_quota = QuotaField(default_limit=1)

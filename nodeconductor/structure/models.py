@@ -772,7 +772,7 @@ class Service(core_models.SerializableAbstractMixin,
         return self.projects.through.objects.filter(service=self)
 
     def get_parents(self):
-        return [self.settings]
+        return [self.settings, self.customer]
 
     def get_children(self):
         return self.get_service_project_links()
@@ -870,9 +870,10 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return [self.project, self.service]
 
     def get_children(self):
+        resource_models = [m for m in ResourceMixin.get_all_models()
+                           if m.service_project_link.field.related_model == self.__class__]
         return itertools.chain.from_iterable(
-            m.objects.filter(service_project_link=self) for m in
-            SupportedServices.get_related_models(self)['resources'])
+            m.objects.filter(service_project_link=self) for m in resource_models)
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.name, self.project.name)

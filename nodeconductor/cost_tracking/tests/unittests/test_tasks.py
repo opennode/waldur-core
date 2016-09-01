@@ -1,106 +1,78 @@
-from dateutil.relativedelta import relativedelta
+import datetime
 
-from django.test import TransactionTestCase
-from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
+from django.test import TestCase
+from freezegun import freeze_time
 
-from nodeconductor.core.utils import serialize_instance
-from nodeconductor.cost_tracking.models import PriceEstimate
-from nodeconductor.cost_tracking.tasks import update_projected_estimate
-from nodeconductor.structure import models as structure_models
+from nodeconductor.cost_tracking import models, CostTrackingRegister, tasks
+from nodeconductor.cost_tracking.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.structure.tests import TestTrackingBackend
+from nodeconductor.structure.tests.models import TestNewInstance
 
 
-class UpdateProjectedEstimateTest(TransactionTestCase):
+class RecalculateConsumedEstimateTest(TestCase):
 
     def setUp(self):
-        self.customer = structure_factories.CustomerFactory()
-        self.project = structure_factories.ProjectFactory(customer=self.customer)
-        self.spl1 = structure_factories.TestServiceProjectLinkFactory(project=self.project)
-        self.spl2 = structure_factories.TestServiceProjectLinkFactory(project=self.project)
+        resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
+        self.price_list_item = models.DefaultPriceListItem.objects.create(
+            item_type='storage', key='1 MB', resource_content_type=resource_content_type, value=2)
+        CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
+        self.start_time = datetime.datetime(2016, 8, 8, 11, 0)
+        with freeze_time(self.start_time):
+            self.resource = structure_factories.TestNewInstanceFactory(disk=20 * 1024)
+        self.spl = self.resource.service_project_link
+        self.project = self.spl.project
+        self.customer = self.project.customer
+        self.service = self.spl.service
 
-        two_months_ago = timezone.now() - relativedelta(months=+2)
-        self.instance1 = structure_factories.TestInstanceFactory(
-            service_project_link=self.spl1,
-            state=structure_models.Resource.States.ONLINE,
-            created=two_months_ago)
-        self.instance2 = structure_factories.TestInstanceFactory(
-            service_project_link=self.spl2,
-            state=structure_models.Resource.States.ONLINE,
-            created=two_months_ago)
+    def test_consumed_is_recalculated_properly_for_resource(self):
+        calculation_time = datetime.datetime(2016, 8, 8, 15, 0)
+        with freeze_time(calculation_time):
+            tasks.recalculate_consumed_estimate()
+            price_estimate = models.PriceEstimate.objects.get_current(scope=self.resource)
 
-        # mock estimate calculation task for tests:
-        self.INSTANCE_MONTHLY_COST = 10
-        TestTrackingBackend.get_monthly_cost_estimate = classmethod(lambda c, i: self.INSTANCE_MONTHLY_COST)
+        working_minutes = (calculation_time - self.start_time).total_seconds() / 60
+        expected = working_minutes * self.price_list_item.minute_rate * self.resource.disk
+        self.assertAlmostEqual(price_estimate.consumed, expected)
 
-    def test_estimate_calculation_for_current_month_if_parents_has_no_estimates(self):
-        update_projected_estimate(customer_uuid=self.customer.uuid.hex)
+    def test_consumed_is_recalculated_properly_for_ancestors(self):
+        with freeze_time(self.start_time):
+            self.second_resource = structure_factories.TestNewInstanceFactory(
+                disk=10 * 1024, service_project_link=self.spl)
 
-        now = timezone.now()
-        kwargs = {'month': now.month, 'year': now.year}
-        self.assertEqual(PriceEstimate.objects.get(scope=self.instance1, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.instance2, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.spl1, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.spl2, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.project, **kwargs).total, self.INSTANCE_MONTHLY_COST * 2)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.customer, **kwargs).total, self.INSTANCE_MONTHLY_COST * 2)
+        calculation_time = datetime.datetime(2016, 8, 8, 15, 0)
+        with freeze_time(calculation_time):
+            tasks.recalculate_consumed_estimate()
+            price_estimates = [models.PriceEstimate.objects.get_current(scope=ancestor) for ancestor in
+                               (self.customer, self.service, self.spl, self.project)]
 
-    def test_estimate_calculation_for_current_month_if_parents_already_have_estimates(self):
-        now = timezone.now()
-        customer_total = 20
-        estimate = PriceEstimate.objects.create(
-            scope=self.customer, month=now.month, year=now.year, total=customer_total)
+        working_minutes = (calculation_time - self.start_time).total_seconds() / 60
+        # each ancestor is connected with 2 resources
+        expected = working_minutes * self.price_list_item.minute_rate * (self.resource.disk + self.second_resource.disk)
+        for price_estimate in price_estimates:
+            message = 'Price estimate "consumed" is calculated wrongly for "%s". Real value: %s, expected: %s.' % (
+                price_estimate.scope, price_estimate.consumed, expected)
+            self.assertAlmostEqual(price_estimate.consumed, expected, msg=message)
 
-        update_projected_estimate(customer_uuid=self.customer.uuid.hex)
+    def test_new_estimates_are_created_in_new_month(self):
+        month_start = datetime.datetime(2016, 9, 1, 0, 0)
+        month_end = datetime.datetime(2016, 9, 30, 23, 59, 59)
+        calculation_time = datetime.datetime(2016, 9, 1, 1, 0)
+        with freeze_time(calculation_time):
+            tasks.recalculate_consumed_estimate()
+            price_estimates = [models.PriceEstimate.objects.get_current(scope=scope) for scope in
+                               (self.resource, self.service, self.spl, self.project, self.customer)]
 
-        reread_estimate = PriceEstimate.objects.get(id=estimate.id)
-        self.assertEqual(reread_estimate.total, self.INSTANCE_MONTHLY_COST * 2)
+        total_working_minutes = int((month_end - month_start).total_seconds() / 60)
+        expected_total = total_working_minutes * self.price_list_item.minute_rate * self.resource.disk
+        for price_estimate in price_estimates:
+            message = 'Price estimate "total" is calculated wrongly for "%s". Real value: %s, expected: %s.' % (
+                price_estimate.scope, price_estimate.total, expected_total)
+            self.assertAlmostEqual(price_estimate.total, expected_total, msg=message)
 
-    def test_estimate_calculation_for_current_month_if_instance_already_has_estimate(self):
-        now = timezone.now()
-        instance_total = 20
-        estimate = PriceEstimate.objects.create(
-            scope=self.instance1, month=now.month, year=now.year, total=instance_total)
-
-        update_projected_estimate(serialized_resource=serialize_instance(self.instance1))
-
-        reread_estimate = PriceEstimate.objects.get(id=estimate.id)
-        self.assertEqual(reread_estimate.total, self.INSTANCE_MONTHLY_COST)
-
-    def test_estimate_calculation_does_not_change_previous_month_estimate_if_it_exists(self):
-        month_ago = timezone.now() - relativedelta(months=+1)
-        instance_total = 20
-        customer_total = instance_total * 2
-        instance1_estimate = PriceEstimate.objects.create(
-            scope=self.instance1, month=month_ago.month, year=month_ago.year, total=instance_total)
-        instance2_estimate = PriceEstimate.objects.create(
-            scope=self.instance2, month=month_ago.month, year=month_ago.year, total=instance_total)
-        customer_estimate = PriceEstimate.objects.create(
-            scope=self.customer, month=month_ago.month, year=month_ago.year, total=customer_total)
-
-        self.update_projected_estimate()
-
-        reread_instance1_estimate = PriceEstimate.objects.get(id=instance1_estimate.id)
-        self.assertEqual(reread_instance1_estimate.total, instance_total)
-        reread_instance2_estimate = PriceEstimate.objects.get(id=instance2_estimate.id)
-        self.assertEqual(reread_instance2_estimate.total, instance_total)
-        reread_customer_estimate = PriceEstimate.objects.get(id=customer_estimate.id)
-        self.assertEqual(reread_customer_estimate.total, customer_total)
-
-    def test_estimate_calculation_creates_estimates_for_previous_monthes_if_it_does_not_exist(self):
-        self.update_projected_estimate()
-        month_ago = timezone.now() - relativedelta(months=+1)
-        kwargs = {'month': month_ago.month, 'year': month_ago.year}
-        self.assertEqual(PriceEstimate.objects.get(scope=self.instance1, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.instance2, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.spl1, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.spl2, **kwargs).total, self.INSTANCE_MONTHLY_COST)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.project, **kwargs).total, self.INSTANCE_MONTHLY_COST * 2)
-        self.assertEqual(PriceEstimate.objects.get(scope=self.customer, **kwargs).total, self.INSTANCE_MONTHLY_COST * 2)
-
-    def update_projected_estimate(self):
-        update_projected_estimate(customer_uuid=self.customer.uuid.hex)
-        update_projected_estimate(
-            serialized_resource=serialize_instance(self.instance1), back_propagate_price=True)
-        update_projected_estimate(
-            serialized_resource=serialize_instance(self.instance2), back_propagate_price=True)
+        working_minutes = int((calculation_time - month_start).total_seconds() / 60)
+        expected_consumed = working_minutes * self.price_list_item.minute_rate * self.resource.disk
+        for price_estimate in price_estimates:
+            message = 'Price estimate "consumed" is calculated wrongly for "%s". Real value: %s, expected: %s.' % (
+                price_estimate.scope, price_estimate.consumed, expected_consumed)
+            self.assertAlmostEqual(price_estimate.consumed, expected_consumed, msg=message)
