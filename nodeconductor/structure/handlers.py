@@ -428,9 +428,7 @@ def delete_service_settings_on_scope_delete(sender, instance, **kwargs):
         resources could be safely deleted from NC.
     """
     for service_settings in ServiceSettings.objects.filter(scope=instance):
-        resource_models = SupportedServices.get_service_name_resources(service_settings.type)
-        for resource_model in resource_models:
-            resource_model.objects.all().delete()
+        service_settings.unlink_descendants()
         service_settings.delete()
 
 
