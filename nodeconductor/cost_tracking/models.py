@@ -18,8 +18,7 @@ from jsonfield import JSONField
 from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
 
-from nodeconductor.core import models as core_models
-from nodeconductor.core.utils import hours_in_month
+from nodeconductor.core import models as core_models, utils as core_utils
 from nodeconductor.cost_tracking import managers, ConsumableItem
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
@@ -146,6 +145,26 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         self.consumed = self._get_price(self.consumption_details.consumed_until_now)
         self.save(update_fields=['consumed'])
 
+    @classmethod
+    def create_historical(cls, resource, configuration, date):
+        """ Create price estimate and consumption details backdating.
+
+            Method assumes that resource had given configuration from given date
+            to the end of the month.
+        """
+        price_estimate = cls.objects.create(scope=resource, month=date.month, year=date.year)
+        price_estimate.create_ancestors()
+        # configuration is updated directly because we want to avoid recalculation
+        # of consumed items based on current time.
+        details = ConsumptionDetails(
+            price_estimate=price_estimate,
+            configuration=configuration,
+            last_update_time=date,
+        )
+        details.save()
+        price_estimate.update_total()
+        return price_estimate
+
     def _get_price(self, consumed):
         """ Calculate price estimate for scope depends on consumed data and price list items.
             Map each consumable to price list item and multiply price its price by time of usage.
@@ -264,7 +283,8 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
     @property
     def consumed_in_month(self):
         """ How many resources were (or will be) consumed until end of the month """
-        return self._get_consumed(self._get_month_end())
+        month_end = core_utils.month_end(datetime.date(self.price_estimate.year, self.price_estimate.month, 1))
+        return self._get_consumed(month_end)
 
     @property
     def consumed_until_now(self):
@@ -283,13 +303,6 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
             _consumed[consumable_item] = after_update + before_update
         return _consumed
 
-    def _get_month_end(self):
-        year, month = self.price_estimate.year, self.price_estimate.month
-        days_in_month = calendar.monthrange(year, month)[1]
-        last_day_of_month = datetime.date(month=month, year=year, day=days_in_month)
-        last_second_of_month = datetime.datetime.combine(last_day_of_month, datetime.time.max)
-        return timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
-
     def _get_minutes_from_last_update(self, time):
         """ How much minutes passed from last update to given time """
         time_from_last_update = time - self.last_update_time
@@ -305,7 +318,7 @@ class AbstractPriceListItem(models.Model):
 
     @property
     def monthly_rate(self):
-        return '%0.2f' % (self.value * 60 * hours_in_month())
+        return '%0.2f' % (self.value * 60 * core_utils.hours_in_month())
 
     @property
     def minute_rate(self):

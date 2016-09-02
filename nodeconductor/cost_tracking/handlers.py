@@ -2,7 +2,9 @@ import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
+from django.utils import timezone
 
+from nodeconductor.core import utils as core_utils
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister, ResourceNotRegisteredError
 from nodeconductor.structure import ServiceBackendNotImplemented, ServiceBackendError, models as structure_models
 
@@ -79,7 +81,7 @@ def scope_deletion(sender, instance, **kwargs):
 
     is_resource = isinstance(instance, structure_models.ResourceMixin)
     if is_resource and getattr(instance, 'PERFORM_UNLINK', False):
-        pass  # TODO: support unlink operation NC-1548
+        _resource_unlink(resource=instance)
     elif is_resource and not getattr(instance, 'PERFORM_UNLINK', False):
         _resource_deletion(resource=instance)
     elif isinstance(instance, structure_models.Customer):
@@ -87,6 +89,14 @@ def scope_deletion(sender, instance, **kwargs):
     else:
         for price_estimate in models.PriceEstimate.objects.filter(scope=instance):
             price_estimate.init_details()
+
+
+def _resource_unlink(resource):
+    if resource.__class__ not in CostTrackingRegister.registered_resources:
+        return
+    for price_estimate in models.PriceEstimate.objects.filter(scope=resource):
+        price_estimate.update_ancestors_total(diff=-price_estimate.total)
+        price_estimate.delete()
 
 
 def _customer_deletion(customer):
@@ -104,14 +114,19 @@ def _resource_deletion(resource):
     price_estimate.init_details()
 
 
-def resource_update(sender, instance, **kwargs):
-    """ Update resource consumption details and price estimate if its configuration has changed """
+def resource_update(sender, instance, created=False, **kwargs):
+    """ Update resource consumption details and price estimate if its configuration has changed.
+        Create estimates for previous months if resource was created not in current month.
+    """
     resource = instance
     try:
         new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
     _update_resource_estimate(resource, new_configuration)
+    # Try to create historical price estimates
+    if created:
+        _create_historical_estimates(resource, new_configuration)
 
 
 def resource_quota_update(sender, instance, **kwargs):
@@ -123,6 +138,18 @@ def resource_quota_update(sender, instance, **kwargs):
     except ResourceNotRegisteredError:
         return
     _update_resource_estimate(resource, new_configuration)
+
+
+def _create_historical_estimates(resource, configuration):
+    """ Create consumption details and price estimates for past months.
+
+        Usually we need to update historical values on resource import.
+    """
+    today = timezone.now()
+    month_start = core_utils.month_start(today)
+    while month_start > resource.created:
+        month_start -= relativedelta(months=1)
+        models.PriceEstimate.create_historical(resource, configuration, max(month_start, resource.created))
 
 
 def _update_resource_estimate(resource, new_configuration):

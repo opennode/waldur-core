@@ -1825,8 +1825,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            back_propagate_price = serializer.validated_data.pop('back_propagate_price')
-
             customer = serializer.validated_data['project'].customer
             if not request.user.is_staff and not customer.has_user(request.user):
                 raise PermissionDenied(
@@ -1840,7 +1838,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             resource_imported.send(
                 sender=resource.__class__,
                 instance=resource,
-                back_propagate_price=back_propagate_price
             )
 
             return Response(serializer.data, status=status.HTTP_200_OK)

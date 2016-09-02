@@ -6,6 +6,7 @@ from django.db import models as django_models
 from django.db.models import Q
 from django.utils import timezone
 
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.managers import GenericKeyMixin
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import Service
@@ -58,9 +59,6 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
 
 class ConsumptionDetailsQuerySet(django_models.QuerySet):
 
-    def _get_month_start(self, month, year):
-        return timezone.make_aware(datetime.datetime(day=1, month=month, year=year))
-
     def create(self, price_estimate):
         """ Take configuration from previous month, it it exists.
             Set last_update_time equals to the beginning of the month.
@@ -73,7 +71,8 @@ class ConsumptionDetailsQuerySet(django_models.QuerySet):
         else:
             configuration = previous_price_estimate.consumption_details.configuration
             kwargs['configuration'] = configuration
-        kwargs['last_update_time'] = self._get_month_start(price_estimate.month, price_estimate.year)
+        month_start = core_utils.month_start(datetime.date(price_estimate.year, price_estimate.month, 1))
+        kwargs['last_update_time'] = month_start
         return super(ConsumptionDetailsQuerySet, self).create(price_estimate=price_estimate, **kwargs)
 
 
