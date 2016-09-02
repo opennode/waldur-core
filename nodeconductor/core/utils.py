@@ -1,4 +1,5 @@
 import calendar
+import datetime
 import importlib
 import re
 
@@ -7,8 +8,6 @@ import requests
 import time
 
 from collections import OrderedDict
-from datetime import datetime
-from datetime import timedelta
 from operator import itemgetter
 
 from django.apps import apps
@@ -76,18 +75,18 @@ def datetime_to_timestamp(datetime):
 
 
 def timestamp_to_datetime(timestamp, replace_tz=True):
-    dt = datetime.fromtimestamp(int(timestamp))
+    dt = datetime.datetime.fromtimestamp(int(timestamp))
     if replace_tz:
         dt = dt.replace(tzinfo=timezone.get_current_timezone())
     return dt
 
 
 def timeshift(**kwargs):
-    return timezone.now().replace(microsecond=0) + timedelta(**kwargs)
+    return timezone.now().replace(microsecond=0) + datetime.timedelta(**kwargs)
 
 
 def hours_in_month(month=None, year=None):
-    now = datetime.now()
+    now = datetime.datetime.now()
     if not month:
         month = now.month
     if not year:
@@ -95,6 +94,17 @@ def hours_in_month(month=None, year=None):
 
     days_in_month = calendar.monthrange(year, month)[1]
     return 24 * days_in_month
+
+
+def month_start(date):
+    return timezone.make_aware(datetime.datetime(day=1, month=date.month, year=date.year))
+
+
+def month_end(date):
+    days_in_month = calendar.monthrange(date.year, date.month)[1]
+    last_day_of_month = datetime.date(month=date.month, year=date.year, day=days_in_month)
+    last_second_of_month = datetime.datetime.combine(last_day_of_month, datetime.time.max)
+    return timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
 
 
 def request_api(request, url_or_view_name, method='GET', data=None, params=None, verify=False):

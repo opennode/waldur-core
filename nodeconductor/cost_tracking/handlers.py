@@ -4,6 +4,7 @@ import logging
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 
+from nodeconductor.core import utils as core_utils
 from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister, ResourceNotRegisteredError
 from nodeconductor.structure import ServiceBackendNotImplemented, ServiceBackendError, models as structure_models
 
@@ -145,21 +146,10 @@ def _create_historical_estimates(resource, configuration):
         Usually we need to update historical values on resource import.
     """
     today = timezone.now()
-    month_start = timezone.make_aware(datetime.datetime(day=1, month=today.month, year=today.year))
+    month_start = core_utils.month_start(today)
     while month_start > resource.created:
         month_start -= relativedelta(months=1)
-        price_estimate = models.PriceEstimate.objects.create(
-            scope=resource, month=month_start.month, year=month_start.year)
-        price_estimate.create_ancestors()
-        # configuration is updated directly because we want to avoid recalculation
-        # of consumed items based on current time.
-        consumption_details = models.ConsumptionDetails(
-            price_estimate=price_estimate,
-            last_update_time=max(month_start, resource.created),
-            configuration=configuration,
-        )
-        consumption_details.save()
-        price_estimate.update_total()
+        models.PriceEstimate.create_historical(resource, configuration, max(month_start, resource.created))
 
 
 def _update_resource_estimate(resource, new_configuration):
