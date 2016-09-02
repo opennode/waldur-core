@@ -10,6 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
@@ -94,6 +95,9 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         """ Raise alerts only for price estimates that describes current month. """
         today = timezone.now()
         return cls.objects.filter(year=today.year, month=today.month)
+
+    def is_resource_estimate(self):
+        return issubclass(self.content_type.model_class(), structure_models.ResourceMixin)
 
     def get_previous(self):
         """ Get estimate for the same scope for previous month. """
@@ -185,7 +189,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         """
         if self.consumption_details is None:
             raise EstimateUpdateError('Cannot update consumed for price estimate that does not have consumption details.')
-        if not isinstance(self.scope, structure_models.ResourceMixin):
+        if not self.is_resource_estimate() or not self.scope:
             raise EstimateUpdateError('Cannot update consumed for price estimate that is not related to resource.')
 
     def _get_scope_name(self):
@@ -361,6 +365,15 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
         cls = self.resource_content_type.model_class()
         if cls:
             return SupportedServices.get_name_for_model(cls)
+
+    @classmethod
+    def get_consumable_items_pretty_names(cls, resource_content_type, consumable_items):
+        query = Q()
+        for consumable_item in consumable_items:
+            query |= (Q(item_type=consumable_item.item_type) & Q(key=consumable_item.key))
+        price_list_items = cls.objects.filter(query, resource_content_type=resource_content_type)
+        return {ConsumableItem(item_type, key): name
+                for item_type, key, name in price_list_items.values_list('item_type', 'key', 'name')}
 
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):

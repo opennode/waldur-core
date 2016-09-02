@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from django.db import IntegrityError
 from django.utils import six
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 
 from nodeconductor.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
@@ -19,25 +18,20 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
     scope_name = serializers.SerializerMethodField()
     scope_type = serializers.SerializerMethodField()
     resource_type = serializers.SerializerMethodField()
+    consumption_details = serializers.SerializerMethodField(
+        help_text="How much of each consumables were used by resource")
 
     class Meta(object):
         model = models.PriceEstimate
         fields = ('url', 'uuid', 'scope', 'total', 'consumed', 'month', 'year',
-                  'scope_name', 'scope_type', 'resource_type', 'threshold')
+                  'scope_name', 'scope_type', 'resource_type', 'threshold', 'consumption_details')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
 
-    def validate(self, data):
-        if self.instance is None and models.PriceEstimate.objects.filter(
-                scope=data['scope'], year=data['year'], month=data['month']).exists():
-            raise serializers.ValidationError(
-                'Estimate for given month already exists. Use PATCH request to update it.')
-        return data
-
     def get_scope_name(self, obj):
         if obj.scope:
-            return six.text_type(obj.scope)
+            return getattr(obj.scope, 'name', six.text_type(obj.scope))
         if obj.details:
             return obj.details.get('scope_name')
 
@@ -45,8 +39,19 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
         return ScopeTypeFilterBackend.get_scope_type(obj.content_type.model_class())
 
     def get_resource_type(self, obj):
-        if self.get_scope_type(obj) == 'resource':
+        if obj.is_resource_estimate():
             return SupportedServices.get_name_for_model(obj.content_type.model_class())
+
+    def get_consumption_details(self, obj):
+        try:
+            consumption_details = obj.consumption_details
+        except models.ConsumptionDetails.DoesNotExist:
+            return
+        consumed_in_month = consumption_details.consumed_in_month
+        consumable_items = consumed_in_month.keys()
+        pretty_names = models.DefaultPriceListItem.get_consumable_items_pretty_names(
+            obj.content_type, consumable_items)
+        return {pretty_names[item]: consumed_in_month[item] for item in consumable_items}
 
 
 class YearMonthField(serializers.CharField):
@@ -100,7 +105,7 @@ class PriceListItemSerializer(AugmentedSerializerMixin,
         try:
             return super(PriceListItemSerializer, self).create(validated_data)
         except IntegrityError:
-            raise ValidationError('Price list item for service already exists')
+            raise serializers.ValidationError('Price list item for service already exists')
 
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
