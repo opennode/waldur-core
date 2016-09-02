@@ -9,11 +9,13 @@
 %define __celerybeat_systemd_unit_file %{_unitdir}/%{name}-celerybeat.service
 %define __conf_file %{__conf_dir}/settings.ini
 %define __logrotate_conf_file %{__logrotate_dir}/%{name}
+%define __uwsgi_conf_file %{__conf_dir}/uwsgi.ini
+%define __uwsgi_systemd_unit_file %{_unitdir}/%{name}-uwsgi.service
 
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.105.0
-Release: 1.el7
+Release: 2.el7
 License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
@@ -51,6 +53,7 @@ Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1
 Requires: PyYAML
+Requires: uwsgi-plugin-python
 
 Source0: %{name}-%{version}.tar.gz
 
@@ -83,10 +86,12 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}%{_unitdir}
 cp packaging%{__celery_systemd_unit_file} %{buildroot}%{__celery_systemd_unit_file}
 cp packaging%{__celerybeat_systemd_unit_file} %{buildroot}%{__celerybeat_systemd_unit_file}
+cp packaging%{__uwsgi_systemd_unit_file} %{buildroot}%{__uwsgi_systemd_unit_file}
 
 mkdir -p %{buildroot}%{__conf_dir}
 cp packaging%{__celery_conf_file} %{buildroot}%{__celery_conf_file}
 cp packaging%{__conf_file} %{buildroot}%{__conf_file}
+cp packaging%{__uwsgi_conf_file} %{buildroot}%{__uwsgi_conf_file}
 
 mkdir -p %{buildroot}%{__data_dir}/static
 cat > tmp_settings.py << EOF
@@ -137,10 +142,12 @@ rm -rf %{buildroot}
 %{__work_dir}
 %config(noreplace) %{__celery_conf_file}
 %config(noreplace) %{__conf_file}
+%config(noreplace) %{__uwsgi_conf_file}
 
 %post
 %systemd_post %{name}-celery.service
 %systemd_post %{name}-celerybeat.service
+%systemd_post %{name}-uwsgi.service
 
 if [ "$1" = 1 ]; then
     # This package is being installed for the first time
@@ -167,7 +174,7 @@ NodeConductor installed successfully.
 Next steps:
 
 1. Configure database server connection in %{__conf_file}.
-   Database server (default: MySQL) must be running already.
+   Database server (default: PostgreSQL) must be running already.
 
 2. Configure task queue backend connection in %{__conf_file}.
    Key-value store (default: Redis) must be running already.
@@ -176,29 +183,30 @@ Next steps:
 
 4. Create database (if not yet done):
 
-    -- MySQL
-    CREATE DATABASE nodeconductor CHARACTER SET = utf8;
-    CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
-    GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
+     -- MySQL
+     CREATE DATABASE nodeconductor CHARACTER SET = utf8;
+     CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
+     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
 
-    -- PostgreSQL
-    --CREATE DATABASE nodeconductor ENCODING 'UTF8';
-    --CREATE USER nodeconductor WITH PASSWORD 'nodeconductor';
+     -- PostgreSQL
+     CREATE DATABASE nodeconductor ENCODING 'UTF8';
+     CREATE USER nodeconductor WITH PASSWORD 'nodeconductor';
 
 5. Migrate the database:
 
-    su - nodeconductor -c "nodeconductor migrate --noinput"
+     su - nodeconductor -c "nodeconductor migrate --noinput"
 
-Note: you will need to run this again on next NodeConductor update.
+   Note: you will need to run this again on next NodeConductor update.
 
-6. Start task queue backend:
+6. Start NodeConductor services:
 
-    systemctl start nodeconductor-celery
-    systemctl start nodeconductor-celerybeat
+     systemctl start nodeconductor-celery
+     systemctl start nodeconductor-celerybeat
+     systemctl start nodeconductor-uwsgi
 
 7. Create first superuser (if needed and not yet done):
 
-    nodeconductor createsuperuser
+     su - nodeconductor -c "nodeconductor createsuperuser"
 
 All done. Happy NodeConducting!
 ------------------------------------------------------------------------
@@ -207,12 +215,17 @@ EOF
 %preun
 %systemd_preun %{name}-celery.service
 %systemd_preun %{name}-celerybeat.service
+%systemd_preun %{name}-uwsgi.service
 
 %postun
 %systemd_postun_with_restart %{name}-celery.service
 %systemd_postun_with_restart %{name}-celerybeat.service
+%systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Fri Sep 2 2016 Jenkins <jenkins@opennodecloud.com> - 0.105.0-2.el7
+- Add uWSGI as WSGI runner
+
 * Wed Aug 31 2016 Jenkins <jenkins@opennodecloud.com> - 0.105.0-1.el7
 - New upstream release
 

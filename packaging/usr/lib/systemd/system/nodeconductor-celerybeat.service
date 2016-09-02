@@ -1,5 +1,5 @@
 [Unit]
-Description=Celery beat
+Description=NodeConductor Celery beat service
 After=network.target
 
 [Service]
