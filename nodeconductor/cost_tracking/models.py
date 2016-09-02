@@ -303,13 +303,6 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
             _consumed[consumable_item] = after_update + before_update
         return _consumed
 
-    def _get_month_end(self):
-        year, month = self.price_estimate.year, self.price_estimate.month
-        days_in_month = calendar.monthrange(year, month)[1]
-        last_day_of_month = datetime.date(month=month, year=year, day=days_in_month)
-        last_second_of_month = datetime.datetime.combine(last_day_of_month, datetime.time.max)
-        return timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
-
     def _get_minutes_from_last_update(self, time):
         """ How much minutes passed from last update to given time """
         time_from_last_update = time - self.last_update_time
