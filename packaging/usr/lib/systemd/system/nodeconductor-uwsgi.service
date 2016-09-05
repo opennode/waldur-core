@@ -1,0 +1,17 @@
+[Unit]
+Description=NodeConductor uWSGI service
+After=network.target
+
+[Service]
+User=nodeconductor
+Group=nodeconductor
+PermissionsStartOnly=true
+WorkingDirectory=/var/lib/nodeconductor
+ExecStartPre=/usr/bin/mkdir -p /run/nodeconductor/uwsgi
+ExecStartPre=/usr/bin/chown -R nodeconductor:nodeconductor /run/nodeconductor/uwsgi
+ExecStart=/usr/sbin/uwsgi --ini /etc/nodeconductor/uwsgi.ini
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
