@@ -536,6 +536,15 @@ class ServiceSettingsFilter(django_filters.FilterSet):
         fields = ('name', 'type', 'state', 'shared')
 
 
+class ServiceSettingsScopeFilterBackend(core_filters.GenericKeyFilterBackend):
+
+    def get_related_models(self):
+        return models.ResourceMixin.get_all_models()
+
+    def get_field_name(self):
+        return 'scope'
+
+
 class ServiceFilterMetaclass(FilterSetMetaclass):
     """ Build a list of supported resource via serializers definition.
         See SupportedServices for details.
