@@ -14,7 +14,7 @@ def create_permissions(app_config, verbosity=2, interactive=True, using=DEFAULT_
     Create permissions for the User.groups.through objects so that DjangoObjectPermissions could be applied.
     """
     # Note, this handler is supposed to be in management package of an app,
-    # see https://docs.djangoproject.com/en/1.7/ref/signals/#django.db.models.signals.post_migrate for details
+    # see https://docs.djangoproject.com/en/1.8/ref/signals/#django.db.models.signals.post_migrate for details
 
     # The implementation is based on django.contrib.auth.management.create_permissions
 
