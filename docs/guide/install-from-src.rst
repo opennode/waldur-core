@@ -187,8 +187,8 @@ For example,
 See also: `Django database settings`_.
 
 .. _Django: https://www.djangoproject.com/
-.. _Django documentation: https://docs.djangoproject.com/en/1.6/
-.. _Django database settings: https://docs.djangoproject.com/en/1.7/ref/settings/#databases
+.. _Django documentation: https://docs.djangoproject.com/en/1.8/
+.. _Django database settings: https://docs.djangoproject.com/en/1.8/ref/settings/#databases
 .. _ICMP Types and Codes: http://en.wikipedia.org/wiki/Internet_Control_Message_Protocol#Control_messages
 .. _CIDR notation: http://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing#CIDR_notation
 .. _SAML2: https://en.wikipedia.org/wiki/SAML_2.0
