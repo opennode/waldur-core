@@ -75,6 +75,24 @@ class PriceEstimateListTest(BaseCostTrackingTest):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_user_can_define_children_visibility_depth(self):
+        customer_price_estimate = factories.PriceEstimateFactory(scope=self.customer, year=2015, month=7)
+        customer_price_estimate.children.add(self.project_price_estimate)
+        spl_price_estimate = factories.PriceEstimateFactory(scope=self.service_project_link, year=2015, month=7)
+        self.project_price_estimate.children.add(spl_price_estimate)
+
+        self.client.force_authenticate(self.users['owner'])
+
+        response = self.client.get(factories.PriceEstimateFactory.get_url(customer_price_estimate), data={'depth': 1})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # with visibility depth 1 we want to see customer estimate children
+        self.assertEqual(len(response.data['children']), 1)
+        project_estimate_data = response.data['children'][0]
+        self.assertEqual(project_estimate_data['uuid'], self.project_price_estimate.uuid.hex)
+        # with visibility depth 1 we do not want to see grandchildren
+        self.assertNotIn('children', project_estimate_data)
+
 
 class PriceEstimateUpdateTest(BaseCostTrackingTest):
 
