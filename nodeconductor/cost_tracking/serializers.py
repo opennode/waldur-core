@@ -21,13 +21,33 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
     consumption_details = serializers.SerializerMethodField(
         help_text="How much of each consumables were used by resource")
 
+    def __init__(self, *args, **kwargs):
+        depth = kwargs.get('context', {}).pop('depth', 0)  # allow to modify depth dynamically
+        self.Meta.depth = depth
+        super(PriceEstimateSerializer, self).__init__(*args, **kwargs)
+
     class Meta(object):
         model = models.PriceEstimate
         fields = ('url', 'uuid', 'scope', 'total', 'consumed', 'month', 'year',
-                  'scope_name', 'scope_type', 'resource_type', 'threshold', 'consumption_details')
+                  'scope_name', 'scope_type', 'resource_type', 'threshold', 'consumption_details', 'children')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+    def get_fields(self):
+        display_children = self.Meta.depth > 0
+        fields = super(PriceEstimateSerializer, self).get_fields()
+        if not display_children:
+            del fields['children']
+        return fields
+
+    def build_nested_field(self, field_name, relation_info, nested_depth):
+        """ Use PriceEstimateSerializer to serialize estimate children """
+        if field_name != 'children':
+            return super(PriceEstimateSerializer, self).build_nested_field(field_name, relation_info, nested_depth)
+        field_class = self.__class__
+        field_kwargs = {'read_only': True, 'many': True, 'context': {'depth': nested_depth - 1}}
+        return field_class, field_kwargs
 
     def get_scope_name(self, obj):
         if obj.scope:
