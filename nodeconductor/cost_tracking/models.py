@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import calendar
 import datetime
 import logging
 

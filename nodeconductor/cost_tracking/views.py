@@ -64,7 +64,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewS
         Currently there are following types: customer, project, service, serviceprojectlink, resource.
 
         You can specify GET parameter ?depth to show price estimate children. For example with ?depth=2 customer
-        price estimate will shows its children - project and service and grandchildren - serviceproejctlink.
+        price estimate will shows its children - project and service and grandchildren - serviceprojectlink.
         """
         return super(PriceEstimateViewSet, self).list(request, *args, **kwargs)
 
