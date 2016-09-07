@@ -42,6 +42,16 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewS
             return serializers.PriceEstimateLimitSerializer
         return self.serializer_class
 
+    def get_serializer_context(self):
+        context = super(PriceEstimateViewSet, self).get_serializer_context()
+        try:
+            depth = int(self.request.query_params['depth'])
+        except (TypeError, KeyError):
+            pass  # use default depth if it is not defined or defined wrongly.
+        else:
+            context['depth'] = min(depth, 10)  # DRF restriction - serializer depth cannot be > 10
+        return context
+
     def get_queryset(self):
         return models.PriceEstimate.objects.filtered_for_user(self.request.user).order_by(
             '-year', '-month')
@@ -51,43 +61,12 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewS
         To get a list of price estimates, run **GET** against */api/price-estimates/* as authenticated user.
 
         `scope_type` is generic type of object for which price estimate is calculated.
-        Currently there are following types: customer, project, serviceprojectlink, service, resource.
+        Currently there are following types: customer, project, service, serviceprojectlink, resource.
 
-        Run **POST** against */api/price-estimates/* to create price estimate. Manually created price estimate
-        will replace auto calculated estimate. Manual creation is available only for estimates for resources and
-        service-project-links. Only customer owner and staff can edit price estimates.
-
-        Request example:
-
-        .. code-block:: http
-
-            POST /api/price-estimates/
-            Accept: application/json
-            Content-Type: application/json
-            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-            Host: example.com
-
-            {
-                "scope": "http://example.com/api/instances/ab2e3d458e8a4ecb9dded36f3e46878d/",
-                "total": 1000,
-                "consumed": 800,
-                "month": 8,
-                "year": 2015
-            }
+        You can specify GET parameter ?depth to show price estimate children. For example with ?depth=2 customer
+        price estimate will shows its children - project and service and grandchildren - serviceprojectlink.
         """
-
         return super(PriceEstimateViewSet, self).list(request, *args, **kwargs)
-
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Run **PATCH** request against */api/price-estimates/<uuid>/* to update manually created price estimate.
-        Only fields "total" and "consumed" could be updated. Only customer owner
-        and staff can update price estimates.
-
-        Run **DELETE** request against */api/price-estimates/<uuid>/* to delete price estimate. Estimate will be
-        replaced with auto calculated (if it exists). Only customer owner and staff can delete price estimates.
-        """
-        return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
 
     @decorators.list_route(methods=['post'])
     def threshold(self, request, **kwargs):

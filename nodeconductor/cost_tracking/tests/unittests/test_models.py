@@ -95,3 +95,16 @@ class PriceListItemTest(TestCase):
 
         expected = {default_item1, item}
         self.assertSetEqual(models.PriceListItem.get_for_resource(resource), expected)
+
+
+class DefaultPriceListItemTest(TestCase):
+
+    def test_get_consumable_items_pretty_names(self):
+        item_type, key = 'flavor', 'small'
+        price_list_item = factories.DefaultPriceListItemFactory(item_type=item_type, key=key, name='Pretty name')
+        consumable_item = ConsumableItem(item_type, key)
+
+        expected = {consumable_item: price_list_item.name}
+        actual = models.DefaultPriceListItem.get_consumable_items_pretty_names(
+            price_list_item.resource_content_type, [consumable_item])
+        self.assertDictEqual(actual, expected)
