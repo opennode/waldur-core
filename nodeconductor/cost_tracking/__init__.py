@@ -132,7 +132,7 @@ class CostTrackingRegister(object):
 
     @classmethod
     def get_consumable_items(cls, resource_class):
-        """ Get all possible consumables items for given resource class """
+        """ Get all possible consumable items for given resource class """
         strategy = cls._get_strategy(resource_class)
         return strategy.get_consumable_items()
 
