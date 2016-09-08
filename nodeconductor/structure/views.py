@@ -1180,7 +1180,8 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
     queryset = models.ServiceSettings.objects.filter()
     serializer_class = serializers.ServiceSettingsSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,
+                       filters.ServiceSettingsScopeFilterBackend)
     filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
 

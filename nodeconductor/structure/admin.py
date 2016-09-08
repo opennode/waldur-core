@@ -279,10 +279,6 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         fields = super(ServiceSettingsAdmin, self).get_readonly_fields(request, obj)
-        if obj and not obj.shared:
-            if request.method == 'GET':
-                obj.password = '(hidden)'
-            return fields + ('password',)
         if not obj:
             return fields + ('state',)
         return fields
