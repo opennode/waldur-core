@@ -3,7 +3,11 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Rewrite price estimate calculation logic.
+- Do not allow to edit price estimates manually.
+- Store resources consumption details.
+- Rewrite price estimate calculation with link/unlink operations. 
+- Remove resource provisioned signal.
 
 Release 0.105.0
 ---------------

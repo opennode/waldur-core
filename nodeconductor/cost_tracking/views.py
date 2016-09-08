@@ -24,7 +24,7 @@ class PriceEditPermissionMixin(object):
         return False
 
 
-class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
+class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewSet):
     queryset = models.PriceEstimate.objects.all()
     serializer_class = serializers.PriceEstimateSerializer
     lookup_field = 'uuid'
@@ -32,9 +32,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         filters.AdditionalPriceEstimateFilterBackend,
         filters.PriceEstimateScopeFilterBackend,
         ScopeTypeFilterBackend,
-        DjangoMappingFilterBackend,
     )
-    filter_class = filters.PriceEstimateFilter
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_serializer_class(self):
@@ -44,68 +42,31 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
             return serializers.PriceEstimateLimitSerializer
         return self.serializer_class
 
+    def get_serializer_context(self):
+        context = super(PriceEstimateViewSet, self).get_serializer_context()
+        try:
+            depth = int(self.request.query_params['depth'])
+        except (TypeError, KeyError):
+            pass  # use default depth if it is not defined or defined wrongly.
+        else:
+            context['depth'] = min(depth, 10)  # DRF restriction - serializer depth cannot be > 10
+        return context
+
     def get_queryset(self):
-        return models.PriceEstimate.objects.filtered_for_user(self.request.user).filter(is_visible=True).order_by(
+        return models.PriceEstimate.objects.filtered_for_user(self.request.user).order_by(
             '-year', '-month')
-
-    def perform_create(self, serializer):
-        if not self.can_user_modify_price_object(serializer.validated_data['scope']):
-            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
-
-        super(PriceEstimateViewSet, self).perform_create(serializer)
-
-    def initial(self, request, *args, **kwargs):
-        if self.action in ('partial_update', 'destroy', 'update'):
-            price_estimate = self.get_object()
-            if not price_estimate.is_manually_input:
-                raise exceptions.MethodNotAllowed('Auto calculated price estimate can not be edited or deleted')
-            if not self.can_user_modify_price_object(price_estimate.scope):
-                raise exceptions.PermissionDenied('You do not have permission to perform this action.')
-
-        return super(PriceEstimateViewSet, self).initial(request, *args, **kwargs)
 
     def list(self, request, *args, **kwargs):
         """
         To get a list of price estimates, run **GET** against */api/price-estimates/* as authenticated user.
 
         `scope_type` is generic type of object for which price estimate is calculated.
-        Currently there are following types: customer, project, serviceprojectlink, service, resource.
+        Currently there are following types: customer, project, service, serviceprojectlink, resource.
 
-        Run **POST** against */api/price-estimates/* to create price estimate. Manually created price estimate
-        will replace auto calculated estimate. Manual creation is available only for estimates for resources and
-        service-project-links. Only customer owner and staff can edit price estimates.
-
-        Request example:
-
-        .. code-block:: http
-
-            POST /api/price-estimates/
-            Accept: application/json
-            Content-Type: application/json
-            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-            Host: example.com
-
-            {
-                "scope": "http://example.com/api/instances/ab2e3d458e8a4ecb9dded36f3e46878d/",
-                "total": 1000,
-                "consumed": 800,
-                "month": 8,
-                "year": 2015
-            }
+        You can specify GET parameter ?depth to show price estimate children. For example with ?depth=2 customer
+        price estimate will shows its children - project and service and grandchildren - serviceprojectlink.
         """
-
         return super(PriceEstimateViewSet, self).list(request, *args, **kwargs)
-
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Run **PATCH** request against */api/price-estimates/<uuid>/* to update manually created price estimate.
-        Only fields "total" and "consumed" could be updated. Only customer owner
-        and staff can update price estimates.
-
-        Run **DELETE** request against */api/price-estimates/<uuid>/* to delete price estimate. Estimate will be
-        replaced with auto calculated (if it exists). Only customer owner and staff can delete price estimates.
-        """
-        return super(PriceEstimateViewSet, self).retrieve(request, *args, **kwargs)
 
     @decorators.list_route(methods=['post'])
     def threshold(self, request, **kwargs):
@@ -136,7 +97,11 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         if not self.can_user_modify_price_object(scope):
             raise exceptions.PermissionDenied()
 
-        models.PriceEstimate.objects.create_or_update(scope, threshold=threshold)
+        price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
+        if created and isinstance(scope, structure_models.ResourceMixin):  # TODO: Check is it possible to move this code to manager.
+            models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
+        price_estimate.threshold = threshold
+        price_estimate.save(update_fields=['threshold'])
         return response.Response({'detail': 'Threshold for price estimate is updated'},
                                  status=status.HTTP_200_OK)
 
@@ -170,7 +135,11 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         if not self.can_user_modify_price_object(scope):
             raise exceptions.PermissionDenied()
 
-        models.PriceEstimate.objects.create_or_update(scope, limit=limit)
+        price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
+        if created and isinstance(scope, structure_models.ResourceMixin):
+            models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
+        price_estimate.limit = limit
+        price_estimate.save(update_fields=['limit'])
         return response.Response({'detail': 'Limit for price estimate is updated'},
                                  status=status.HTTP_200_OK)
 

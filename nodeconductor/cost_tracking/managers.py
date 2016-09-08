@@ -1,11 +1,12 @@
 import datetime
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist
-from django.db import models as django_models, IntegrityError
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import models as django_models
 from django.db.models import Q
 from django.utils import timezone
 
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.managers import GenericKeyMixin
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.models import Service
@@ -49,30 +50,14 @@ class PriceEstimateManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
 
     def get_current(self, scope):
         now = timezone.now()
-        try:
-            return self.get(scope=scope, year=now.year, month=now.month)
-        except MultipleObjectsReturned:
-            return self.get(scope=scope, year=now.year, month=now.month, is_manually_input=True)
+        return self.get(scope=scope, year=now.year, month=now.month)
 
-    def create_or_update(self, scope, **defaults):
-        """
-        We don't use built-in update_or_create method because
-        we need to deal with manually input and auto-generated price estimates.
-
-        1. If price estimate for current date does not exist yet, we generate it.
-        2. If both auto-generated and manually input price estimates exist, we should update both.
-        """
-        today = timezone.now()
-        try:
-            self.create(scope=scope, year=today.year, month=today.month, is_manually_input=False, **defaults)
-        except IntegrityError:
-            self.filter(scope=scope, year=today.year, month=today.month).update(**defaults)
+    def get_or_create_current(self, scope):
+        now = timezone.now()
+        return self.get_or_create(scope=scope, month=now.month, year=now.year)
 
 
 class ConsumptionDetailsQuerySet(django_models.QuerySet):
-
-    def _get_month_start(self, month, year):
-        return timezone.make_aware(datetime.datetime(day=1, month=month, year=year))
 
     def create(self, price_estimate):
         """ Take configuration from previous month, it it exists.
@@ -86,7 +71,8 @@ class ConsumptionDetailsQuerySet(django_models.QuerySet):
         else:
             configuration = previous_price_estimate.consumption_details.configuration
             kwargs['configuration'] = configuration
-        kwargs['last_update_time'] = self._get_month_start(price_estimate.month, price_estimate.year)
+        month_start = core_utils.month_start(datetime.date(price_estimate.year, price_estimate.month, 1))
+        kwargs['last_update_time'] = month_start
         return super(ConsumptionDetailsQuerySet, self).create(price_estimate=price_estimate, **kwargs)
 
 
@@ -98,7 +84,3 @@ class PriceListItemManager(GenericKeyMixin, UserFilterMixin, django_models.Manag
     def get_available_models(self):
         """ Return list of models that are acceptable """
         return Service.get_all_models()
-
-
-class ResourcePriceItemManager(GenericKeyMixin, django_models.Manager):
-    pass

@@ -1412,7 +1412,7 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     state = serializers.ReadOnlyField(source='get_state_display')
     created = serializers.DateTimeField(read_only=True)
-    back_propagate_price = serializers.BooleanField(
+    import_history = serializers.BooleanField(
         default=True, write_only=True, help_text='Import historical resource usage')
 
     class Meta(object):
@@ -1420,7 +1420,7 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
         view_name = NotImplemented
         fields = (
             'url', 'uuid', 'name', 'state', 'created',
-            'backend_id', 'project', 'back_propagate_price'
+            'backend_id', 'project', 'import_history'
         )
         read_only_fields = ('name',)
         extra_kwargs = {

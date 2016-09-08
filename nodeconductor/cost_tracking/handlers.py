@@ -2,50 +2,17 @@ import datetime
 import logging
 
 from dateutil.relativedelta import relativedelta
-from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
-from nodeconductor.core.tasks import send_task
-from nodeconductor.core.utils import serialize_instance
-from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister
-from nodeconductor.cost_tracking.models import PayableMixin
-from nodeconductor.structure import SupportedServices, ServiceBackendNotImplemented, ServiceBackendError
-from nodeconductor.structure import models as structure_models
+from nodeconductor.core import utils as core_utils
+from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister, ResourceNotRegisteredError
+from nodeconductor.structure import ServiceBackendNotImplemented, ServiceBackendError, models as structure_models
 
 
 logger = logging.getLogger(__name__)
 
 
-def make_autocalculate_price_estimate_invisible_on_manual_estimate_creation(sender, instance, created=False, **kwargs):
-    if created and instance.is_manually_input:
-        manually_created_price_estimate = instance
-        (models.PriceEstimate.objects
-            .filter(scope=manually_created_price_estimate.scope,
-                    year=manually_created_price_estimate.year,
-                    month=manually_created_price_estimate.month,
-                    is_manually_input=False)
-            .update(is_visible=False))
-
-
-def make_autocalculated_price_estimate_visible_on_manual_estimate_deletion(sender, instance, **kwargs):
-    deleted_price_estimate = instance
-    if deleted_price_estimate.is_manually_input:
-        (models.PriceEstimate.objects
-            .filter(scope=deleted_price_estimate.scope,
-                    year=deleted_price_estimate.year,
-                    month=deleted_price_estimate.month,
-                    is_manually_input=False)
-            .update(is_visible=True))
-
-
-def make_autocalculate_price_estimate_invisible_if_manually_created_estimate_exists(
-        sender, instance, created=False, **kwargs):
-    if created and not instance.is_manually_input:
-        if models.PriceEstimate.objects.filter(
-                year=instance.year, scope=instance.scope, month=instance.month, is_manually_input=True).exists():
-            instance.is_visible = False
-
-
+# XXX: Should we copy limit too?
 def copy_threshold_from_previous_price_estimate(sender, instance, created=False, **kwargs):
     if created:
         current_date = datetime.date.today().replace(year=instance.year, month=instance.month, day=1)
@@ -61,37 +28,6 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
             instance.save(update_fields=['threshold'])
         except models.PriceEstimate.DoesNotExist:
             pass
-
-
-def update_projected_estimate(sender, instance, back_propagate_price=False, **kwargs):
-    send_task('cost_tracking', 'update_projected_estimate')(
-        serialized_resource=serialize_instance(instance),
-        back_propagate_price=back_propagate_price
-    )
-
-
-def update_price_estimate_ancestors(sender, instance, created=False, **kwargs):
-    # ignore created -- avoid double call from PriceEstimate.update_price_for_resource.update_estimate
-    if not created and instance.is_leaf:
-        instance.update_ancestors()
-
-
-def update_price_estimate_on_resource_spl_change(sender, instance, created=False, **kwargs):
-    is_changed = not created and instance.service_project_link_id != instance._old_values['service_project_link']
-
-    if is_changed:
-        spl_model = SupportedServices.get_related_models(instance)['service_project_link']
-        spl_old = spl_model.objects.get(pk=instance._old_values['service_project_link'])
-
-        old_family_scope = [spl_old] + spl_old.get_ancestors()
-        for estimate in models.PriceEstimate.objects.filter(scope=instance, is_manually_input=False):
-            qs = models.PriceEstimate.objects.filter(
-                scope__in=old_family_scope, month=estimate.month, year=estimate.year)
-            for parent_estimate in qs:
-                parent_estimate.leafs.remove(estimate)
-                parent_estimate.update_from_leaf()
-
-        models.PriceEstimate.update_ancestors_for_resource(instance)
 
 
 # XXX: Why is this only for project, but not for customer?
@@ -133,53 +69,94 @@ def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):
             detail='Total estimated cost of resource and project is over limit.')
 
 
-def delete_price_estimate_on_scope_deletion(sender, instance, **kwargs):
-    # If scope is resource:
-    #    delete -- add metadata about deleted resource, set object_id to NULL
-    #    unlink -- delete all related estimates
-    if isinstance(instance, PayableMixin):
-        if getattr(instance, 'PERFORM_UNLINK', False):
-            models.PriceEstimate.delete_estimates_for_resource(instance)
-        else:
-            models.PriceEstimate.update_metadata_for_resource(instance)
-            # deal with re-usage of primary keys in InnoDB
-            models.PriceEstimate.objects.filter(scope=instance).update(object_id=None)
+def scope_deletion(sender, instance, **kwargs):
+    """ Run different actions on price estimate scope deletion.
 
-    # If scope is customer or service project link then delete all related estimates
-    elif isinstance(instance, (structure_models.Customer,
-                               structure_models.ServiceProjectLink)):
-        models.PriceEstimate.objects.filter(scope=instance).delete()
+        If scope is a customer - delete all customer estimates and their children.
+        If scope is a deleted resource - redefine consumption details, recalculate
+                                         ancestors estimates and update estimate details.
+        If scope is a unlinked resource - delete all resource price estimates and update ancestors.
+        In all other cases - update price estimate details.
+    """
 
-    # Else add metadata about deleted object, set object_id to NULL
-    elif isinstance(instance, (structure_models.Service,
-                               structure_models.ServiceSettings,
-                               structure_models.Project)):
-        models.PriceEstimate.update_metadata_for_scope(instance)
-        models.PriceEstimate.objects.filter(scope=instance).update(object_id=None)
+    is_resource = isinstance(instance, structure_models.ResourceMixin)
+    if is_resource and getattr(instance, 'PERFORM_UNLINK', False):
+        _resource_unlink(resource=instance)
+    elif is_resource and not getattr(instance, 'PERFORM_UNLINK', False):
+        _resource_deletion(resource=instance)
+    elif isinstance(instance, structure_models.Customer):
+        _customer_deletion(customer=instance)
+    else:
+        for price_estimate in models.PriceEstimate.objects.filter(scope=instance):
+            price_estimate.init_details()
 
 
-def update_consumption_details_on_resource_update(sender, instance, **kwargs):
-    resource = instance
-    _update_resource_consumption_details(resource)
-
-
-def update_consumption_details_on_resource_quota_update(sender, instance, **kwargs):
-    quota = instance
-    resource = quota.scope
-    _update_resource_consumption_details(resource)
-
-
-def _update_resource_consumption_details(resource):
+def _resource_unlink(resource):
     if resource.__class__ not in CostTrackingRegister.registered_resources:
         return
-    # TODO: Move this to manager after price estimate refactoring. (NC-1523)
-    today = timezone.now()
-    price_estimate, _ = models.PriceEstimate.objects.get_or_create(
-        object_id=resource.id,
-        content_type=ContentType.objects.get_for_model(resource),
-        month=today.month, year=today.year, is_manually_input=False)
+    for price_estimate in models.PriceEstimate.objects.filter(scope=resource):
+        price_estimate.update_ancestors_total(diff=-price_estimate.total)
+        price_estimate.delete()
 
-    # TODO: rewrite get_or_create: it should take configurations from previous month details if they exists.
+
+def _customer_deletion(customer):
+    for estimate in models.PriceEstimate.objects.filter(scope=customer):
+        for descendant in estimate.get_descendants():
+            descendant.delete()
+
+
+def _resource_deletion(resource):
+    """ Recalculate consumption details and save resource details """
+    if resource.__class__ not in CostTrackingRegister.registered_resources:
+        return
+    new_configuration = {}
+    price_estimate = _update_resource_estimate(resource, new_configuration)
+    price_estimate.init_details()
+
+
+def resource_update(sender, instance, created=False, **kwargs):
+    """ Update resource consumption details and price estimate if its configuration has changed.
+        Create estimates for previous months if resource was created not in current month.
+    """
+    resource = instance
+    try:
+        new_configuration = CostTrackingRegister.get_configuration(resource)
+    except ResourceNotRegisteredError:
+        return
+    _update_resource_estimate(resource, new_configuration)
+    # Try to create historical price estimates
+    if created:
+        _create_historical_estimates(resource, new_configuration)
+
+
+def resource_quota_update(sender, instance, **kwargs):
+    """ Update resource consumption details and price estimate if its configuration has changed """
+    quota = instance
+    resource = quota.scope
+    try:
+        new_configuration = CostTrackingRegister.get_configuration(resource)
+    except ResourceNotRegisteredError:
+        return
+    _update_resource_estimate(resource, new_configuration)
+
+
+def _create_historical_estimates(resource, configuration):
+    """ Create consumption details and price estimates for past months.
+
+        Usually we need to update historical values on resource import.
+    """
+    today = timezone.now()
+    month_start = core_utils.month_start(today)
+    while month_start > resource.created:
+        month_start -= relativedelta(months=1)
+        models.PriceEstimate.create_historical(resource, configuration, max(month_start, resource.created))
+
+
+def _update_resource_estimate(resource, new_configuration):
+    price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope=resource)
+    if created:
+        price_estimate.create_ancestors()
     consumption_details, _ = models.ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
-    new_configuration = CostTrackingRegister.get_consumables(resource)
     consumption_details.update_configuration(new_configuration)
+    price_estimate.update_total()
+    return price_estimate
