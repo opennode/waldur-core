@@ -227,7 +227,7 @@ class ScopeDeleteTest(TestCase):
     # set time to next month to make sure that estimates for previous months are deleted too.
     @freeze_time('2016-09-01 12:00:00')
     def test_estimated_is_removed_on_resource_unlink(self):
-        tasks.recalculate_consumed_estimate()  # recalculate to create new estimates in new month.
+        tasks.recalculate_estimate()  # recalculate to create new estimates in new month.
 
         self.resource.unlink()
         self.resource.delete()

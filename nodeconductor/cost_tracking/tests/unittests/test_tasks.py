@@ -10,7 +10,7 @@ from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.tests.models import TestNewInstance
 
 
-class RecalculateConsumedEstimateTest(TestCase):
+class RecalculateEstimateTest(TestCase):
 
     def setUp(self):
         resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
@@ -28,7 +28,7 @@ class RecalculateConsumedEstimateTest(TestCase):
     def test_consumed_is_recalculated_properly_for_resource(self):
         calculation_time = datetime.datetime(2016, 8, 8, 15, 0)
         with freeze_time(calculation_time):
-            tasks.recalculate_consumed_estimate()
+            tasks.recalculate_estimate()
             price_estimate = models.PriceEstimate.objects.get_current(scope=self.resource)
 
         working_minutes = (calculation_time - self.start_time).total_seconds() / 60
@@ -42,7 +42,7 @@ class RecalculateConsumedEstimateTest(TestCase):
 
         calculation_time = datetime.datetime(2016, 8, 8, 15, 0)
         with freeze_time(calculation_time):
-            tasks.recalculate_consumed_estimate()
+            tasks.recalculate_estimate()
             price_estimates = [models.PriceEstimate.objects.get_current(scope=ancestor) for ancestor in
                                (self.customer, self.service, self.spl, self.project)]
 
@@ -59,7 +59,7 @@ class RecalculateConsumedEstimateTest(TestCase):
         month_end = datetime.datetime(2016, 9, 30, 23, 59, 59)
         calculation_time = datetime.datetime(2016, 9, 1, 1, 0)
         with freeze_time(calculation_time):
-            tasks.recalculate_consumed_estimate()
+            tasks.recalculate_estimate()
             price_estimates = [models.PriceEstimate.objects.get_current(scope=scope) for scope in
                                (self.resource, self.service, self.spl, self.project, self.customer)]
 
