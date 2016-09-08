@@ -8,12 +8,17 @@ import logging
 from decimal import Decimal
 
 from django.db.models import Prefetch
+from django.utils.module_loading import autodiscover_modules
 
 from nodeconductor.structure import ServiceBackendNotImplemented
 
 
 default_app_config = 'nodeconductor.cost_tracking.apps.CostTrackingConfig'
 logger = logging.getLogger(__name__)
+
+
+def autodiscover():
+    autodiscover_modules('cost_tracking')
 
 
 class ConsumableItem(object):
