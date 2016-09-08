@@ -151,8 +151,16 @@ class ScopeTypeFilter(SimpleListFilter):
         return queryset
 
 
+class ConsumptionDetailsInline(admin.StackedInline):
+    model = models.ConsumptionDetails
+    readonly_fields = ('configuration', 'last_update_time', 'consumed_before_update')
+    extra = 0
+    can_delete = False
+
+
 class PriceEstimateAdmin(admin.ModelAdmin):
-    fields = ('content_type', 'object_id', 'total', ('month', 'year'))
+    inlines = [ConsumptionDetailsInline]
+    fields = ('content_type', 'object_id', ('total', 'consumed'), ('month', 'year'))
     list_display = ('content_type', 'object_id', 'total', 'month', 'year')
     list_filter = (ScopeTypeFilter, 'year', 'month')
     search_fields = ('month', 'year', 'object_id', 'total')
