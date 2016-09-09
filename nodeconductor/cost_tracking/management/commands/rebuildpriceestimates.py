@@ -22,4 +22,4 @@ class Command(BaseCommand):
                     date = max(core_utils.month_start(today), resource.created)
                     models.PriceEstimate.create_historical(resource, configuration, date)
             # recalculate consumed estimate
-            tasks.recalculate_consumed_estimate()
+            tasks.recalculate_estimate()

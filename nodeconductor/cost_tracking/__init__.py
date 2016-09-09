@@ -25,6 +25,9 @@ class ConsumableItem(object):
         self.name = name if name is not None else '%s: %s' % (item_type, key)
         self.units = units
 
+    def __repr__(self):
+        return 'ConsumableItem(%s)' % self.name
+
     def __str__(self):
         return self.name
 

@@ -8,6 +8,8 @@ Release NEXT
 - Store resources consumption details.
 - Rewrite price estimate calculation with link/unlink operations. 
 - Remove resource provisioned signal.
+- Add admin action for price estimates recalculation.
+- Display consumption details in admin.
 
 Release 0.105.0
 ---------------

@@ -321,7 +321,7 @@ class AbstractPriceListItem(models.Model):
 
     @property
     def monthly_rate(self):
-        return '%0.2f' % (self.value * 60 * core_utils.hours_in_month())
+        return '%0.2f' % (self.value * core_utils.hours_in_month())
 
     @property
     def minute_rate(self):

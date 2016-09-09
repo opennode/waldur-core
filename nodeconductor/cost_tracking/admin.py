@@ -7,7 +7,7 @@ from django.shortcuts import redirect
 from django.utils.translation import ungettext
 
 from nodeconductor.core import admin as core_admin, utils as core_utils
-from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError
+from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError, tasks
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models, admin as structure_admin
 
@@ -53,7 +53,7 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
     def get_extra_actions(self):
         return (
             super(DefaultPriceListItemAdmin, self).get_extra_actions() +
-            [self.init_from_registered_resources, self.delete_not_registered_items]
+            [self.init_from_registered_resources, self.delete_not_registered_items, self.recalulate_current_estimates]
         )
 
     def init_from_registered_resources(self, request):
@@ -118,6 +118,11 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
+    def recalulate_current_estimates(self, request):
+        tasks.recalculate_estimate(recalculate_total=True)
+        self.message_user(request, "Total and consumed value were successfully recalculated for all price estimates.")
+        return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
+
 
 class PriceListItemAdmin(admin.ModelAdmin):
     list_display = ('uuid', 'default_price_list_item', 'service', 'units', 'value')
@@ -146,8 +151,16 @@ class ScopeTypeFilter(SimpleListFilter):
         return queryset
 
 
+class ConsumptionDetailsInline(admin.StackedInline):
+    model = models.ConsumptionDetails
+    readonly_fields = ('configuration', 'last_update_time', 'consumed_before_update')
+    extra = 0
+    can_delete = False
+
+
 class PriceEstimateAdmin(admin.ModelAdmin):
-    fields = ('content_type', 'object_id', 'total', ('month', 'year'))
+    inlines = [ConsumptionDetailsInline]
+    fields = ('content_type', 'object_id', ('total', 'consumed'), ('month', 'year'))
     list_display = ('content_type', 'object_id', 'total', 'month', 'year')
     list_filter = (ScopeTypeFilter, 'year', 'month')
     search_fields = ('month', 'year', 'object_id', 'total')
