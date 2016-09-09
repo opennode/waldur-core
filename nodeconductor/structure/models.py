@@ -185,7 +185,6 @@ class Customer(core_models.UuidMixin,
 
     registration_code = models.CharField(max_length=160, default='', blank=True)
 
-    billing_backend_id = models.CharField(max_length=255, blank=True)
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
 
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
