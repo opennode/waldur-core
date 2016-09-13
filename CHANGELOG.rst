@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Validate UUID in filters.
 
 Release 0.105.0
 ---------------
