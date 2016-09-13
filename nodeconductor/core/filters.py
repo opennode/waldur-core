@@ -1,12 +1,20 @@
 import six
 from urlparse import urlparse
 
+from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import resolve
 import django_filters
 from rest_framework import filters
 
 from nodeconductor.core import serializers as core_serializers, fields as core_fields, models as core_models
+
+
+class UUIDFilter(django_filters.Filter):
+    """
+    Back-ported from django_filters (0.13)
+    """
+    field_class = forms.UUIDField
 
 
 class DjangoMappingFilterBackend(filters.DjangoFilterBackend):

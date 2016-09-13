@@ -6,7 +6,7 @@ from celery import shared_task
 from django.db import transaction
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.tasks import throttle, StateTransitionTask, ErrorMessageTask, Task
+from nodeconductor.core.tasks import throttle, StateTransitionTask, ErrorMessageTask, Task, ErrorStateTransitionTask
 from nodeconductor.structure import SupportedServices, models, utils
 
 
@@ -65,7 +65,10 @@ class ConnectSharedSettingsTask(Task):
 def pull_service_settings():
     for service_settings in models.ServiceSettings.objects.filter(state=models.ServiceSettings.States.OK):
         serialized = core_utils.serialize_instance(service_settings)
-        sync_service_settings.delay(serialized)
+        sync_service_settings.apply_async(
+            args=(serialized,),
+            link_error=ErrorStateTransitionTask().s(serialized)
+        )
     for service_settings in models.ServiceSettings.objects.filter(state=models.ServiceSettings.States.ERRED):
         serialized = core_utils.serialize_instance(service_settings)
         sync_service_settings.apply_async(

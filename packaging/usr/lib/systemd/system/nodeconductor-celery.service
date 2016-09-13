@@ -1,5 +1,5 @@
 [Unit]
-Description=Celery workers
+Description=NodeConductor Celery worker service
 After=network.target
 
 [Service]

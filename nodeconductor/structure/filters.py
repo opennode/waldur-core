@@ -11,7 +11,7 @@ import taggit
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import models as core_models
-from nodeconductor.core.filters import BaseExternalFilter
+from nodeconductor.core.filters import BaseExternalFilter, UUIDFilter
 from nodeconductor.logging.filters import ExternalAlertFilterBackend
 from nodeconductor.structure import models
 from nodeconductor.structure import serializers
@@ -536,6 +536,15 @@ class ServiceSettingsFilter(django_filters.FilterSet):
         fields = ('name', 'type', 'state', 'shared')
 
 
+class ServiceSettingsScopeFilterBackend(core_filters.GenericKeyFilterBackend):
+
+    def get_related_models(self):
+        return models.ResourceMixin.get_all_models()
+
+    def get_field_name(self):
+        return 'scope'
+
+
 class ServiceFilterMetaclass(FilterSetMetaclass):
     """ Build a list of supported resource via serializers definition.
         See SupportedServices for details.
@@ -549,7 +558,7 @@ class ServiceFilterMetaclass(FilterSetMetaclass):
 
 
 class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filters.FilterSet)):
-    customer = django_filters.CharFilter(name='customer__uuid')
+    customer = UUIDFilter(name='customer__uuid')
     name = django_filters.CharFilter(lookup_type='icontains')
     project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
     project_uuid = django_filters.CharFilter(name='projects__uuid', distinct=True)
@@ -577,9 +586,9 @@ class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filter
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
-    service_uuid = django_filters.CharFilter(name='service__uuid')
-    customer_uuid = django_filters.CharFilter(name='service__customer__uuid')
-    project_uuid = django_filters.CharFilter(name='project__uuid')
+    service_uuid = UUIDFilter(name='service__uuid')
+    customer_uuid = UUIDFilter(name='service__customer__uuid')
+    project_uuid = UUIDFilter(name='project__uuid')
     project = core_filters.URLFilter(view_name='project-detail', name='project__uuid')
 
     class Meta(object):
@@ -599,8 +608,8 @@ class ResourceFilterMetaclass(FilterSetMetaclass):
 class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
                          django_filters.FilterSet)):
     # customer
-    customer = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
-    customer_uuid = django_filters.CharFilter(name='service_project_link__service__customer__uuid')
+    customer = UUIDFilter(name='service_project_link__service__customer__uuid')
+    customer_uuid = UUIDFilter(name='service_project_link__service__customer__uuid')
     customer_name = django_filters.CharFilter(
         name='service_project_link__service__customer__name', lookup_type='icontains')
     customer_native_name = django_filters.CharFilter(
@@ -608,19 +617,19 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     customer_abbreviation = django_filters.CharFilter(
         name='service_project_link__project__customer__abbreviation', lookup_type='icontains')
     # project
-    project = django_filters.CharFilter(name='service_project_link__project__uuid')
-    project_uuid = django_filters.CharFilter(name='service_project_link__project__uuid')
+    project = UUIDFilter(name='service_project_link__project__uuid')
+    project_uuid = UUIDFilter(name='service_project_link__project__uuid')
     project_name = django_filters.CharFilter(name='service_project_link__project__name', lookup_type='icontains')
     # project group
-    project_group = django_filters.CharFilter(name='service_project_link__project__project_groups__uuid')
-    project_group_uuid = django_filters.CharFilter(name='service_project_link__project__project_groups__uuid')
+    project_group = UUIDFilter(name='service_project_link__project__project_groups__uuid')
+    project_group_uuid = UUIDFilter(name='service_project_link__project__project_groups__uuid')
     project_group_name = django_filters.CharFilter(
         name='service_project_link__project__project_groups__name', lookup_type='icontains')
     # service
-    service_uuid = django_filters.CharFilter(name='service_project_link__service__uuid')
+    service_uuid = UUIDFilter(name='service_project_link__service__uuid')
     service_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
     # service settings
-    service_settings_uuid = django_filters.CharFilter(name='service_project_link__service__settings__uuid')
+    service_settings_uuid = UUIDFilter(name='service_project_link__service__settings__uuid')
     service_settings_name = django_filters.CharFilter(name='service_project_link__service__settings__name',
                                                       lookup_type='icontains')
     # resource
@@ -778,7 +787,7 @@ class BaseServicePropertyFilter(django_filters.FilterSet):
 
 
 class ServicePropertySettingsFilter(BaseServicePropertyFilter):
-    settings_uuid = django_filters.CharFilter(name='settings__uuid')
+    settings_uuid = UUIDFilter(name='settings__uuid')
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
 
     class Meta(BaseServicePropertyFilter.Meta):
