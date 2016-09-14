@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.107.0
+---------------
+- Migrated to Django 1.8 UUIDField.
+
 Release 0.106.0
 ---------------
 - Validate UUID in filters.

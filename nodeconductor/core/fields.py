@@ -2,9 +2,11 @@ from __future__ import unicode_literals
 
 import re
 import json
+import uuid
 
 from django.db import models
 from django.core import validators
+from django.utils.encoding import smart_text
 import pycountry
 from rest_framework import serializers
 import six
@@ -172,3 +174,44 @@ class CountryField(models.CharField):
         kwargs.setdefault('choices', CountryField.COUNTRIES)
 
         super(CountryField, self).__init__(*args, **kwargs)
+
+
+class StringUUID(uuid.UUID):
+    def __unicode__(self):
+        return unicode(str(self))
+
+    def __str__(self):
+        return self.hex
+
+    def __len__(self):
+        return len(self.__unicode__())
+
+
+class UUIDField(models.UUIDField):
+    """
+    This class implements backward-compatible non-hyphenated rendering of UUID values.
+    Default field parameters are not exposed in migrations.
+    """
+    def __init__(self, **kwargs):
+        kwargs['default'] = uuid.uuid4
+        kwargs['editable'] = False
+        kwargs['unique'] = True
+        super(UUIDField, self).__init__(**kwargs)
+
+    def deconstruct(self):
+        name, path, args, kwargs = super(UUIDField, self).deconstruct()
+        del kwargs['default']
+        del kwargs['editable']
+        del kwargs['unique']
+        return name, path, args, kwargs
+
+    def _parse_uuid(self, value):
+        if not value:
+            return None
+        return StringUUID(smart_text(value))
+
+    def from_db_value(self, value, expression, connection, context):
+        return self._parse_uuid(value)
+
+    def to_python(self, value):
+        return self._parse_uuid(value)

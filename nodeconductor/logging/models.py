@@ -16,13 +16,14 @@ from django.utils import timezone
 from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
 import requests
-from uuidfield import UUIDField
 
+from nodeconductor.core.fields import UUIDField
 from nodeconductor.core.utils import timestamp_to_datetime
 from nodeconductor.logging import managers
 
 
 logger = logging.getLogger(__name__)
+
 
 class UuidMixin(models.Model):
     # There is circular dependency between logging and core applications.
@@ -31,7 +32,7 @@ class UuidMixin(models.Model):
     class Meta:
         abstract = True
 
-    uuid = UUIDField(auto=True, unique=True)
+    uuid = UUIDField()
 
 
 class Alert(UuidMixin, TimeStampedModel):
