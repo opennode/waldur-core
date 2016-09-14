@@ -177,6 +177,10 @@ class CountryField(models.CharField):
 
 
 class StringUUID(uuid.UUID):
+    """
+    Default UUID class __str__ method returns hyphenated string.
+    This class returns non-hyphenated string.
+    """
     def __unicode__(self):
         return unicode(str(self))
 
@@ -193,7 +197,7 @@ class UUIDField(models.UUIDField):
     Default field parameters are not exposed in migrations.
     """
     def __init__(self, **kwargs):
-        kwargs['default'] = uuid.uuid4
+        kwargs['default'] = lambda: StringUUID(uuid.uuid4().hex)
         kwargs['editable'] = False
         kwargs['unique'] = True
         super(UUIDField, self).__init__(**kwargs)
