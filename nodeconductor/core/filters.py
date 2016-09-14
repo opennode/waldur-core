@@ -1,8 +1,11 @@
+import uuid
+
 import six
 from urlparse import urlparse
 
 from django import forms
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import resolve
 import django_filters
 from rest_framework import filters
@@ -278,17 +281,23 @@ class URLFilter(django_filters.CharFilter):
         self.lookup_field = lookup_field
 
     def get_uuid(self, value):
-        uuid = ''
+        uuid_value = ''
         path = urlparse(value).path
         if path.startswith('/'):
             match = resolve(path)
             if match.url_name == self.view_name:
-                uuid = match.kwargs.get(self.lookup_field)
-        return uuid
+                uuid_value = match.kwargs.get(self.lookup_field)
+        return uuid_value
 
     def filter(self, qs, value):
-        uuid = self.get_uuid(value)
-        return super(URLFilter, self).filter(qs, uuid)
+        if value:
+            uuid_value = self.get_uuid(value)
+            try:
+                uuid.UUID(uuid_value)
+            except ValueError:
+                return qs.none()
+            return super(URLFilter, self).filter(qs, uuid_value)
+        return qs
 
 
 class TimestampFilter(django_filters.NumberFilter):
