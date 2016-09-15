@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.107.1
+---------------
+- Bumped django-model-utils dependency version to 2.5.2.
+
 Release 0.107.0
 ---------------
 - Migrated to Django 1.8 UUIDField.
