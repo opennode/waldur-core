@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
-import uuidfield.fields
+import nodeconductor.core.fields
 
 
 class Migration(migrations.Migration):
@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
             name='PriceListItem',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('value', models.DecimalField(default=0, verbose_name='Hourly rate', max_digits=11, decimal_places=5)),
                 ('units', models.CharField(max_length=255, blank=True)),
                 ('object_id', models.PositiveIntegerField()),
