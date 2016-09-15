@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
+import uuid
 from collections import defaultdict
 
 from datetime import timedelta
@@ -773,6 +774,10 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         # TODO: refactor against django filtering
         user_uuid = self.request.query_params.get('user', None)
         if user_uuid is not None:
+            try:
+                uuid.UUID(user_uuid)
+            except ValueError:
+                return queryset.none()
             queryset = queryset.filter(user__uuid=user_uuid)
 
         return queryset
@@ -877,6 +882,10 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
         # TODO: refactor against django filtering
         user_uuid = self.request.query_params.get('user', None)
         if user_uuid is not None:
+            try:
+                uuid.UUID(user_uuid)
+            except ValueError:
+                return queryset.none()
             queryset = queryset.filter(user__uuid=user_uuid)
 
         # XXX: This should be removed after permissions refactoring
