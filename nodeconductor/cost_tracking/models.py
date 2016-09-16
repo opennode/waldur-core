@@ -122,6 +122,9 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         }
         if hasattr(self.scope, 'backend_id'):
             self.details['backend_id'] = self.scope.backend_id
+        if self.is_resource_estimate():
+            self.details['service_name'] = self.scope.service_project_link.service.name
+            self.details['project_name'] = self.scope.service_project_link.project.name
         self.save(update_fields=['details'])
 
     def update_total(self, update_ancestors=True):
