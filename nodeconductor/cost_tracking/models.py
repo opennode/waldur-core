@@ -316,7 +316,7 @@ class AbstractPriceListItem(models.Model):
     class Meta:
         abstract = True
 
-    value = models.DecimalField("Hourly rate", default=0, max_digits=11, decimal_places=5)
+    value = models.DecimalField("Hourly rate", default=0, max_digits=13, decimal_places=7)
     units = models.CharField(max_length=255, blank=True)
 
     @property
