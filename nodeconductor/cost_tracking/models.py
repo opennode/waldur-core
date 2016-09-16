@@ -63,7 +63,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         unique_together = ('content_type', 'object_id', 'month', 'year',)
 
     def __str__(self):
-        name = self._get_scope_name() if self.scope else self.details.get('name')
+        name = self.get_scope_name() if self.scope else self.details.get('name')
         return '%s for %s-%s %.2f' % (name, self.year, self.month, self.total)
 
     @classmethod
@@ -117,7 +117,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
     def init_details(self):
         """ Initialize price estimate details based on its scope """
         self.details = {
-            'name': self._get_scope_name(),
+            'name': self.get_scope_name(),
             'description': getattr(self.scope, 'description', ''),
         }
         if hasattr(self.scope, 'backend_id'):
@@ -191,7 +191,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         if not self.is_resource_estimate() or not self.scope:
             raise EstimateUpdateError('Cannot update consumed for price estimate that is not related to resource.')
 
-    def _get_scope_name(self):
+    def get_scope_name(self):
         if isinstance(self.scope, structure_models.ServiceProjectLink):
             # We need to display some meaningful name for SPL.
             return str(self.scope)
