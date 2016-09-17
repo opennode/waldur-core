@@ -52,9 +52,7 @@ Additional requirements:
 
     venv/bin/nodeconductor collectstatic --noinput
 
-7. In order to install SAML2_ based authentication you should also install ``nodeconductor-saml2`` plugin.
-
-8. Start NodeConductor:
+7. Start NodeConductor:
 
   .. code-block:: bash
 
