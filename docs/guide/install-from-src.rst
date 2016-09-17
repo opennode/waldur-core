@@ -8,7 +8,7 @@ Additional requirements:
 - ``virtualenv``
 - C compiler and development libraries needed to build dependencies
 
-  - CentOS: ``gcc libffi-devel openssl-devel``
+  - CentOS: ``gcc libffi-devel openssl-devel python-devel``
   - Ubuntu: ``gcc libffi-dev libsasl2-dev libssl-dev python-dev``
 
 **NodeConductor installation**
