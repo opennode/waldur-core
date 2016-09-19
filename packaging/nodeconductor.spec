@@ -14,8 +14,8 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.105.0
-Release: 2.el7
+Version: 0.107.1
+Release: 1.el7
 License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
@@ -32,13 +32,12 @@ Requires: python-django-filter >= 0.10
 Requires: python-django-fluent-dashboard = 0.5.1
 Requires: python-django-fsm = 2.3.0
 Requires: python-django-gm2m = 0.4.2
-Requires: python-django-model-utils = 2.2
+Requires: python-django-model-utils = 2.5.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
 Requires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.20.2
-Requires: python-django-uuidfield = 0.5.0
 Requires: python-elasticsearch = 1.4.0
 Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
@@ -223,6 +222,15 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Thu Sep 15 2016 Jenkins <jenkins@opennodecloud.com> - 0.107.1-1.el7
+- New upstream release
+
+* Thu Sep 15 2016 Jenkins <jenkins@opennodecloud.com> - 0.107.0-1.el7
+- New upstream release
+
+* Tue Sep 13 2016 Jenkins <jenkins@opennodecloud.com> - 0.106.0-1.el7
+- New upstream release
+
 * Fri Sep 2 2016 Jenkins <jenkins@opennodecloud.com> - 0.105.0-2.el7
 - Add uWSGI as WSGI runner
 

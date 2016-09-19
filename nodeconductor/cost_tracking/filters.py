@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import uuid
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 import django_filters
@@ -44,6 +46,10 @@ class AdditionalPriceEstimateFilterBackend(filters.BaseFilterBackend):
         # Filter by customer
         if 'customer' in request.query_params:
             customer_uuid = request.query_params['customer']
+            try:
+                uuid.UUID(customer_uuid)
+            except ValueError:
+                return queryset.none()
             qs = Q()
             for model in models.PriceEstimate.get_estimated_models():
                 content_type = ContentType.objects.get_for_model(model)

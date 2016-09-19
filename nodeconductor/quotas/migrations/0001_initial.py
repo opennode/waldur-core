@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
-import uuidfield.fields
+import nodeconductor.core.fields
 
 
 class Migration(migrations.Migration):
@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             name='Quota',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('name', models.CharField(max_length=150, verbose_name='name')),
                 ('limit', models.FloatField(default=-1)),
                 ('usage', models.FloatField(default=0)),

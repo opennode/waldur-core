@@ -11,6 +11,18 @@ Release NEXT
 - Add admin action for price estimates recalculation.
 - Display consumption details in admin.
 
+Release 0.107.1
+---------------
+- Bumped django-model-utils dependency version to 2.5.2.
+
+Release 0.107.0
+---------------
+- Migrated to Django 1.8 UUIDField.
+
+Release 0.106.0
+---------------
+- Validate UUID in filters.
+
 Release 0.105.0
 ---------------
 - Fix scoped service settings descendant resource unlinking.
