@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 from django.db import models, migrations
 import re
 import nodeconductor.core.models
+import nodeconductor.core.fields
 import django.utils.timezone
 from django.conf import settings
 import django.contrib.auth.models
-import uuidfield.fields
 import django.core.validators
 
 
@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ('last_login', models.DateTimeField(null=True, verbose_name='last login', blank=True)),
                 ('is_superuser', models.BooleanField(default=False, help_text='Designates that this user has all permissions without explicitly assigning them.', verbose_name='superuser status')),
                 ('description', models.CharField(max_length=500, verbose_name='description', blank=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('username', models.CharField(help_text='Required. 30 characters or fewer. Letters, numbers and @/./+/-/_ characters', unique=True, max_length=30, verbose_name='username', validators=[django.core.validators.RegexValidator(re.compile('^[\\w.@+-]+$'), 'Enter a valid username.', 'invalid')])),
                 ('civil_number', models.CharField(null=True, default=None, max_length=10, blank=True, unique=True, verbose_name='civil number')),
                 ('full_name', models.CharField(max_length=100, verbose_name='full name', blank=True)),
@@ -56,7 +56,7 @@ class Migration(migrations.Migration):
             name='SshPublicKey',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('name', models.CharField(max_length=150, blank=True)),
                 ('fingerprint', models.CharField(max_length=47)),
                 ('public_key', models.TextField(validators=[django.core.validators.MaxLengthValidator(2000), nodeconductor.core.models.validate_ssh_public_key])),

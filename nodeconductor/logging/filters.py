@@ -7,7 +7,7 @@ from rest_framework import settings, filters
 from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
-from nodeconductor.core.filters import ExternalFilterBackend
+from nodeconductor.core.filters import ExternalFilterBackend, UUIDFilter
 from nodeconductor.core.utils import camel_case_to_underscore
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.elasticsearch_client import EmptyQueryset
@@ -215,7 +215,7 @@ class ExternalAlertFilterBackend(ExternalFilterBackend):
 
 
 class PushHookFilter(django_filters.FilterSet):
-    author_uuid = django_filters.CharFilter(name='user__uuid')
+    author_uuid = UUIDFilter(name='user__uuid')
     device_id = django_filters.CharFilter()
     token = django_filters.CharFilter()
 

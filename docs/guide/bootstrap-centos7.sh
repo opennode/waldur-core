@@ -2,24 +2,24 @@
 yum -y install epel-release
 yum -y install http://opennodecloud.com/centos/7/nodeconductor-release.rpm
 
-# Set up MySQL
-yum -y install mariadb-server
-systemctl start mariadb
-systemctl enable mariadb
+# Set up PostgreSQL
+yum -y install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-centos95-9.5-2.noarch.rpm
+yum -y install postgresql95-server
+/usr/pgsql-9.5/bin/postgresql95-setup initdb
+systemctl start postgresql-9.5
+systemctl enable postgresql-9.5
 
-mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8"
-mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor'"
-mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost'"
+su - postgres -c "/usr/pgsql-9.5/bin/createdb -EUTF8 nodeconductor"
+su - postgres -c "/usr/pgsql-9.5/bin/createuser nodeconductor"
 
-    # Alternative: set up PostgreSQL
-    #yum -y install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-centos95-9.5-2.noarch.rpm
-    #yum -y install postgresql95-server
-    #/usr/pgsql-9.5/bin/postgresql95-setup initdb
-    #systemctl start postgresql-9.5
-    #systemctl enable postgresql-9.5
+    # Alternative: set up MySQL
+    #yum -y install mariadb-server
+    #systemctl start mariadb
+    #systemctl enable mariadb
     #
-    #su - postgres -c "/usr/pgsql-9.5/bin/createdb -EUTF8 nodeconductor"
-    #su - postgres -c "/usr/pgsql-9.5/bin/createuser nodeconductor"
+    #mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8"
+    #mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor'"
+    #mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost'"
 
 # Set up Redis
 yum -y install redis

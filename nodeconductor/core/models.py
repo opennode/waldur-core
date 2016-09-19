@@ -19,12 +19,11 @@ from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
-from uuidfield import UUIDField
 import reversion
 from reversion.models import Version
 
 from nodeconductor.core import utils
-from nodeconductor.core.fields import CronScheduleField
+from nodeconductor.core.fields import CronScheduleField, UUIDField
 from nodeconductor.core.validators import validate_name
 from nodeconductor.logging.loggers import LoggableMixin
 
@@ -70,7 +69,7 @@ class UuidMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    uuid = UUIDField(auto=True, unique=True)
+    uuid = UUIDField()
 
 
 class ErrorMessageMixin(models.Model):
