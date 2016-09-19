@@ -195,11 +195,14 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             raise EstimateUpdateError('Cannot update consumed for price estimate that is not related to resource.')
 
     def get_scope_name(self):
-        if isinstance(self.scope, structure_models.ServiceProjectLink):
-            # We need to display some meaningful name for SPL.
-            return str(self.scope)
+        if self.scope:
+            if isinstance(self.scope, structure_models.ServiceProjectLink):
+                # We need to display some meaningful name for SPL.
+                return str(self.scope)
+            else:
+                return self.scope.name
         else:
-            return self.scope.name
+            return self.details['name']
 
 
 class ConsumptionDetailUpdateError(Exception):
