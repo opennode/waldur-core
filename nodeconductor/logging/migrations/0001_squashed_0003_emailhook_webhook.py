@@ -7,7 +7,7 @@ import model_utils.fields
 import jsonfield.fields
 import django.db.models.deletion
 from django.conf import settings
-import uuidfield.fields
+import nodeconductor.core.fields
 
 
 class Migration(migrations.Migration):
@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('alert_type', models.CharField(max_length=50)),
                 ('message', models.CharField(max_length=255)),
                 ('severity', models.SmallIntegerField(choices=[(10, b'Debug'), (20, b'Info'), (30, b'Warning'), (40, b'Error')])),
@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('event_types', jsonfield.fields.JSONField(verbose_name=b'List of event types')),
                 ('is_active', models.BooleanField(default=True)),
                 ('last_published', models.DateTimeField(default=django.utils.timezone.now)),
@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, verbose_name='created', editable=False)),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('event_types', jsonfield.fields.JSONField(verbose_name=b'List of event types')),
                 ('is_active', models.BooleanField(default=True)),
                 ('last_published', models.DateTimeField(default=django.utils.timezone.now)),

@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from django.db import models, migrations
 import jsonfield.fields
-import uuidfield.fields
+import nodeconductor.core.fields
 import django.core.validators
 
 import nodeconductor.core.validators
@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
             name='PriceEstimate',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('object_id', models.PositiveIntegerField()),
                 ('total', models.FloatField(default=0)),
                 ('details', jsonfield.fields.JSONField(blank=True)),
@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
             name='PriceListItem',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('content_type', models.ForeignKey(to='contenttypes.ContentType')),
                 ('object_id', models.PositiveIntegerField()),
                 ('key', models.CharField(max_length=255)),
@@ -61,7 +61,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, max_length=32, editable=False, blank=True)),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('key', models.CharField(max_length=255)),
                 ('value', models.DecimalField(default=0, verbose_name=b'Hourly rate', max_digits=9, decimal_places=2)),
                 ('units', models.CharField(max_length=255, blank=True)),
