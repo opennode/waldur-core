@@ -407,19 +407,3 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
             default_price_list_item__in=default_items, service=service).select_related('default_price_list_item'))
         rewrited_defaults = set([i.default_price_list_item for i in items])
         return items | (default_items - rewrited_defaults)
-
-
-# Deprecated. Should be removed.
-class PayableMixin(models.Model):
-    """ Extend Resource model with methods to track usage cost and handle orders """
-
-    billing_backend_id = models.CharField(max_length=255, blank=True, help_text='ID of a resource in backend')
-    last_usage_update_time = models.DateTimeField(blank=True, null=True)
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_all_models(cls):
-        return [model for model in apps.get_models() if issubclass(model, cls)]
-
-    class Meta(object):
-        abstract = True
