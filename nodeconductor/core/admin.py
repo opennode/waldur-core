@@ -154,6 +154,7 @@ class DynamicModelAdmin(admin.ModelAdmin):
     Allows to inject extra actions into urls and template context using AdminActionsRegister.
     Inherited model admin should use or extend admin/core/change_list.html template.
     """
+    change_list_template = 'admin/core/change_list.html'
 
     def get_urls(self):
         """

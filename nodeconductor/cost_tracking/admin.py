@@ -40,7 +40,6 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
     fields = ('name', ('value', 'monthly_rate'), 'resource_content_type', ('item_type', 'key'))
     readonly_fields = ('monthly_rate',)
     change_readonly_fields = ('resource_content_type', 'item_type', 'key')
-    change_list_template = 'admin/core/change_list.html'
 
     def full_name(self, obj):
         return obj.name or obj.units or obj.uuid
