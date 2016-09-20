@@ -132,7 +132,7 @@ class ExecutorAdminAction(object):
 
 class ExtraActionsMixin(object):
     """
-    Allows to add extra action to admin list page.
+    Allows to add extra actions to admin list page.
     """
     change_list_template = 'admin/core/change_list.html'
 
