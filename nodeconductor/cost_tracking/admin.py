@@ -34,13 +34,12 @@ class ResourceTypeFilter(SimpleListFilter):
         return queryset
 
 
-class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
+class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('full_name', 'item_type', 'key', 'value', 'monthly_rate', 'resource_type')
     list_filter = ('item_type', ResourceTypeFilter)
     fields = ('name', ('value', 'monthly_rate'), 'resource_content_type', ('item_type', 'key'))
     readonly_fields = ('monthly_rate',)
     change_readonly_fields = ('resource_content_type', 'item_type', 'key')
-    change_list_template = 'admin/core/change_list.html'
 
     def full_name(self, obj):
         return obj.name or obj.units or obj.uuid
@@ -51,10 +50,11 @@ class DefaultPriceListItemAdmin(core_admin.DynamicModelAdmin, structure_admin.Ch
         return super(DefaultPriceListItemAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_extra_actions(self):
-        return (
-            super(DefaultPriceListItemAdmin, self).get_extra_actions() +
-            [self.init_from_registered_resources, self.delete_not_registered_items, self.recalulate_current_estimates]
-        )
+        return [
+            self.init_from_registered_resources,
+            self.delete_not_registered_items,
+            self.recalulate_current_estimates,
+        ]
 
     def init_from_registered_resources(self, request):
         """ Create default price list items for each registered resource. """

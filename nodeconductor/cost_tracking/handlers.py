@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 # XXX: Should we copy limit too?
 def copy_threshold_from_previous_price_estimate(sender, instance, created=False, **kwargs):
-    if created:
+    if created and instance.scope:
         current_date = datetime.date.today().replace(year=instance.year, month=instance.month, day=1)
         prev_date = current_date - relativedelta(months=1)
         try:
