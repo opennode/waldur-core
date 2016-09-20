@@ -1,4 +1,3 @@
-import collections
 from collections import defaultdict
 
 from django import forms
@@ -131,30 +130,14 @@ class ExecutorAdminAction(object):
         pass
 
 
-class AdminActionsRegister(object):
+class ExtraActionsMixin(object):
     """
-    Allows to register model admin actions from other
-    applications in order to break circular dependency.
-    """
-    _register = collections.defaultdict(list)
-
-    @classmethod
-    def register(cls, admin_class, action, name=None):
-        if name:
-            action.name = name
-        cls._register[admin_class].append(action)
-
-    @classmethod
-    def get_actions(cls, admin_class):
-        return cls._register[admin_class]
-
-
-class DynamicModelAdmin(admin.ModelAdmin):
-    """
-    Allows to inject extra actions into urls and template context using AdminActionsRegister.
-    Inherited model admin should use or extend admin/core/change_list.html template.
+    Allows to add extra action to admin list page.
     """
     change_list_template = 'admin/core/change_list.html'
+
+    def get_extra_actions(self):
+        raise NotImplementedError('Method "get_extra_actions" should be implemented in ExtraActionsMixin.')
 
     def get_urls(self):
         """
@@ -167,7 +150,7 @@ class DynamicModelAdmin(admin.ModelAdmin):
             view = self.admin_site.admin_view(action)
             urls.append(url(regex, view))
 
-        return urls + super(DynamicModelAdmin, self).get_urls()
+        return urls + super(ExtraActionsMixin, self).get_urls()
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -184,7 +167,7 @@ class DynamicModelAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         extra_context['extra_links'] = links
 
-        return super(DynamicModelAdmin, self).changelist_view(
+        return super(ExtraActionsMixin, self).changelist_view(
             request, extra_context=extra_context,
         )
 
@@ -192,7 +175,4 @@ class DynamicModelAdmin(admin.ModelAdmin):
         return action.__name__
 
     def _get_action_label(self, action):
-        return getattr(action, 'name', action.__name__.replace('_', ' '))
-
-    def get_extra_actions(self):
-        return AdminActionsRegister.get_actions(self.__class__)
+        return getattr(action, 'name', action.__name__.replace('_', ' ').capitalize())
