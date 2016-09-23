@@ -545,7 +545,6 @@ class BackgroundTask(CeleryTask):
         """ Do not run background task if previous task is not completed """
         if not self.is_previous_task_completed(*args, **kwargs):
             message = 'Background task %s was not scheduled, because its predecessor is not completed yet.' % self.name
-            print message
             logger.info(message)
             return
         return super(BackgroundTask, self).apply_async(args=args, kwargs=kwargs, **options)

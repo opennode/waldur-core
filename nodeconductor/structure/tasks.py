@@ -75,8 +75,6 @@ class BackgroundPullTask(core_tasks.BackgroundTask):
             self.on_pull_success(instance)
 
     def is_equal(self, other_task, serialized_instance):
-        print self.name == other_task['name'], serialized_instance in other_task['args']
-        print serialized_instance, other_task['args']
         return self.name == other_task['name'] and serialized_instance in other_task['args']
 
     def pull(self, instance):
