@@ -113,6 +113,7 @@ class BackgroundPullTask(core_tasks.BackgroundTask):
 
 
 class BackgroundListPullTask(core_tasks.BackgroundTask):
+    """ Schedules pull task for each stable object of the model. """
     model = NotImplemented
     pull_task = NotImplemented
 
