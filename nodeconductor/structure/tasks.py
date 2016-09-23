@@ -62,7 +62,7 @@ class ConnectSharedSettingsTask(core_tasks.Task):
 class BackgroundPullTask(core_tasks.BackgroundTask):
     """ Pull information about object from backend. Method "pull" should be implemented.
 
-        Task marks object as ERRED if pull failed and recover if pull succeed.
+        Task marks object as ERRED if pull failed and recovers it if pull succeed.
     """
 
     def run(self, serialized_instance):
