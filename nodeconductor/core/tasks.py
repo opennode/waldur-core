@@ -531,19 +531,19 @@ class BackgroundTask(CeleryTask):
         """
         raise NotImplementedError('BackgroundTask should implement "is_equal" method to avoid queue overload.')
 
-    def is_previous_task_completed(self, *args, **kwargs):
-        """ Return True if task that is equal to current is uncompleted """
+    def is_previous_task_processing(self, *args, **kwargs):
+        """ Return True if exist task that is equal to current and is uncompleted """
         app = self._get_app()
         inspect = app.control.inspect()
         active = inspect.active() or {}
         scheduled = inspect.scheduled() or {}
         reserved = inspect.reserved() or {}
         uncompleted = sum(active.values() + scheduled.values() + reserved.values(), [])
-        return not any(self.is_equal(task, *args, **kwargs) for task in uncompleted)
+        return any(self.is_equal(task, *args, **kwargs) for task in uncompleted)
 
     def apply_async(self, args=None, kwargs=None, **options):
-        """ Do not run background task if previous task is not completed """
-        if not self.is_previous_task_completed(*args, **kwargs):
+        """ Do not run background task if previous task is uncompleted """
+        if self.is_previous_task_processing(*args, **kwargs):
             message = 'Background task %s was not scheduled, because its predecessor is not completed yet.' % self.name
             logger.info(message)
             return
