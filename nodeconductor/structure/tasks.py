@@ -4,10 +4,10 @@ import logging
 
 from celery import shared_task
 from django.db import transaction
+from django.utils import six
 
-from nodeconductor.core import utils as core_utils
-from nodeconductor.core.tasks import throttle, StateTransitionTask, ErrorMessageTask, Task, ErrorStateTransitionTask
-from nodeconductor.structure import SupportedServices, models, utils
+from nodeconductor.core import utils as core_utils, tasks as core_tasks
+from nodeconductor.structure import SupportedServices, models, utils, ServiceBackendError
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def detect_vm_coordinates(vm_str):
         vm.save(update_fields=['latitude', 'longitude'])
 
 
-class ConnectSharedSettingsTask(Task):
+class ConnectSharedSettingsTask(core_tasks.Task):
 
     def execute(self, service_settings):
         logger.debug('About to connect service settings "%s" to all available customers' % service_settings.name)
@@ -59,30 +59,80 @@ class ConnectSharedSettingsTask(Task):
         logger.info('Successfully connected service settings "%s" to all available customers' % service_settings.name)
 
 
-# CeleryBeat tasks
+class BackgroundPullTask(core_tasks.BackgroundTask):
+    """ Pull information about object from backend. Method "pull" should be implemented.
 
-@shared_task(name='nodeconductor.structure.pull_service_settings')
-def pull_service_settings():
-    for service_settings in models.ServiceSettings.objects.filter(state=models.ServiceSettings.States.OK):
-        serialized = core_utils.serialize_instance(service_settings)
-        sync_service_settings.apply_async(
-            args=(serialized,),
-            link_error=ErrorStateTransitionTask().s(serialized)
-        )
-    for service_settings in models.ServiceSettings.objects.filter(state=models.ServiceSettings.States.ERRED):
-        serialized = core_utils.serialize_instance(service_settings)
-        sync_service_settings.apply_async(
-            args=(serialized,),
-            link=StateTransitionTask().si(serialized, state_transition='recover'),
-            link_error=ErrorMessageTask().s(serialized),
-        )
+        Task marks object as ERRED if pull failed and recovers it if pull succeed.
+    """
+
+    def run(self, serialized_instance):
+        instance = core_utils.deserialize_instance(serialized_instance)
+        try:
+            self.pull(instance)
+        except ServiceBackendError as e:
+            self.on_pull_fail(instance, e)
+        else:
+            self.on_pull_success(instance)
+
+    def is_equal(self, other_task, serialized_instance):
+        return self.name == other_task['name'] and serialized_instance in other_task['args']
+
+    def pull(self, instance):
+        """ Pull instance from backend.
+
+            This method should not handle backend exception.
+        """
+        raise NotImplementedError('Pull task should implement pull method.')
+
+    def on_pull_fail(self, instance, error):
+        error_message = six.text_type(error)
+        self.log_error_message(instance, error_message)
+        self.set_instance_erred(instance, error_message)
+
+    def on_pull_success(self, instance):
+        if instance.state == instance.States.ERRED:
+            instance.recover()
+            instance.error_message = ''
+            instance.save(update_fields=['state', 'error_message'])
+
+    def log_error_message(self, instance, error_message):
+        logger_message = 'Failed to pull %s %s (PK: %s). Error: %s' % (
+            instance.__class__.__name__, instance.name, instance.pk, error_message)
+        if instance.state == instance.States.ERRED:  # report error on debug level if instance already was erred.
+            logger.debug(logger_message)
+        else:
+            logger.error(logger_message, exc_info=True)
+
+    def set_instance_erred(self, instance, error_message):
+        """ Mark instance as erred and save error message """
+        instance.set_erred()
+        instance.error_message = error_message
+        instance.save(update_fields=['state', 'error_message'])
 
 
-# Small work around to use @throttle decorator. Ideally we need to come with
-# solution how to use BackendMethodTask with @throttle.
-@shared_task(is_background=True)
-@throttle(concurrency=2, key='service_settings_sync')
-def sync_service_settings(serialized_service_settings):
-    service_settings = core_utils.deserialize_instance(serialized_service_settings)
-    backend = service_settings.get_backend()
-    backend.sync()
+class BackgroundListPullTask(core_tasks.BackgroundTask):
+    """ Schedules pull task for each stable object of the model. """
+    model = NotImplemented
+    pull_task = NotImplemented
+
+    def is_equal(self, other_task):
+        return self.name == other_task['name']
+
+    def run(self):
+        States = self.model.States
+        for instance in self.model.objects.filter(state__in=[States.ERRED, States.OK]).exclude(backend_id=''):
+            serialized = core_utils.serialize_instance(instance)
+            self.pull_task().delay(serialized)
+
+
+class ServiceSettingsBackgroundPullTask(BackgroundPullTask):
+
+    def pull(self, service_settings):
+        backend = service_settings.get_backend()
+        backend.sync()
+
+
+class ServiceSettingsListPullTask(BackgroundListPullTask):
+    name = 'nodeconductor.structure.ServiceSettingsListPullTask'
+    model = models.ServiceSettings
+    pull_task = ServiceSettingsBackgroundPullTask

@@ -166,7 +166,7 @@ CACHES = {
 # Regular tasks
 CELERYBEAT_SCHEDULE = {
     'pull-service-settings': {
-        'task': 'nodeconductor.structure.pull_service_settings',
+        'task': 'nodeconductor.structure.ServiceSettingsListPullTask',
         'schedule': timedelta(minutes=30),
         'args': (),
     },
