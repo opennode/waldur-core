@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Introduce base class for background tasks.
 
 Release 0.107.1
 ---------------
