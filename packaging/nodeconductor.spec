@@ -50,7 +50,7 @@ Requires: python-redis = 2.10.3
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
-Requires: python-urllib3 >= 1.10.1
+Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
 Requires: PyYAML
 Requires: uwsgi-plugin-python
 
