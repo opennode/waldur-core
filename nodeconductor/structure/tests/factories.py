@@ -180,7 +180,7 @@ class TestServiceProjectLinkFactory(factory.DjangoModelFactory):
         model = test_models.TestServiceProjectLink
 
     service = factory.SubFactory(TestServiceFactory)
-    project = factory.SubFactory(ProjectFactory)
+    project = factory.LazyAttribute(lambda spl: ProjectFactory(customer=spl.service.customer))
 
     @classmethod
     def get_url(cls, spl=None, action=None):
