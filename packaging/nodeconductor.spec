@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.108.0
+Version: 0.108.1
 Release: 1.el7
 License: MIT
 
@@ -50,7 +50,7 @@ Requires: python-redis = 2.10.3
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
-Requires: python-urllib3 >= 1.10.1
+Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
 Requires: PyYAML
 Requires: uwsgi-plugin-python
 
@@ -222,6 +222,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Tue Sep 27 2016 Jenkins <jenkins@opennodecloud.com> - 0.108.1-1.el7
+- New upstream release
+
 * Tue Sep 27 2016 Jenkins <jenkins@opennodecloud.com> - 0.108.0-1.el7
 - New upstream release
 

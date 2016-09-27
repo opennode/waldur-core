@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet
 
+Release 0.108.1
+---------------
+Don't use urllib3 1.18 because it's not compatible with old setuptools.
+
 Release 0.108.0
 ---------------
 - Introduction of usage-based price estimatation and billing. 

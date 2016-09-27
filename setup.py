@@ -42,11 +42,12 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
+    'urllib3<1.18',
 ]
 
 setup(
     name='nodeconductor',
-    version='0.108.0',
+    version='0.108.1',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
