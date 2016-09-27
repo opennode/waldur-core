@@ -42,6 +42,7 @@ install_requires = [
     'redis==2.10.3',
     'requests>=2.6.0',
     'sqlparse>=0.1.11',
+    'urllib3<1.18',
 ]
 
 setup(
