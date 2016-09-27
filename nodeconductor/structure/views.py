@@ -1312,10 +1312,13 @@ class ResourceViewSet(mixins.ListModelMixin,
             'private_clouds': models.ResourceMixin.get_private_cloud_models()
         }
         category = self.request.query_params.get('resource_category')
+        if not category:
+            return resource_models
+
         category_models = choices.get(category)
         if category_models:
-            resource_models = {k: v for k, v in resource_models.items() if v in category_models}
-        return resource_models
+            return {k: v for k, v in resource_models.items() if v in category_models}
+        return {}
 
     def list(self, request, *args, **kwargs):
         """
