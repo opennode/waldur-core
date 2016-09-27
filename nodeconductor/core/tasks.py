@@ -508,6 +508,48 @@ class ExecutorTask(Task):
         self.executor.execute(instance, async=False, **kwargs)
 
 
+class BackgroundTask(CeleryTask):
+    """ Task that is run in background via celerybeat.
+
+        Background task features:
+         - background task does not start if previous task with the same name
+           and input parameters is not completed yet;
+         - all background tasks are scheduled in separate queue "background";
+         - by default we do not log background tasks in celery logs. So tasks
+           should log themselves explicitly and make sure that they will not
+           spam error messages.
+
+        Implement "is_equal" method to define what tasks are equal and should
+        be executed simultaneously.
+    """
+    is_background = True
+
+    def is_equal(self, other_task, *args, **kwargs):
+        """ Return True if task do the same operation as other_task.
+
+            Note! Other task is represented as serialized celery task - dictionary.
+        """
+        raise NotImplementedError('BackgroundTask should implement "is_equal" method to avoid queue overload.')
+
+    def is_previous_task_processing(self, *args, **kwargs):
+        """ Return True if exist task that is equal to current and is uncompleted """
+        app = self._get_app()
+        inspect = app.control.inspect()
+        active = inspect.active() or {}
+        scheduled = inspect.scheduled() or {}
+        reserved = inspect.reserved() or {}
+        uncompleted = sum(active.values() + scheduled.values() + reserved.values(), [])
+        return any(self.is_equal(task, *args, **kwargs) for task in uncompleted)
+
+    def apply_async(self, args=None, kwargs=None, **options):
+        """ Do not run background task if previous task is uncompleted """
+        if self.is_previous_task_processing(*args, **kwargs):
+            message = 'Background task %s was not scheduled, because its predecessor is not completed yet.' % self.name
+            logger.info(message)
+            return
+        return super(BackgroundTask, self).apply_async(args=args, kwargs=kwargs, **options)
+
+
 def log_celery_task(request):
     """ Add description to celery log output """
     task = request.task
@@ -527,6 +569,7 @@ def log_celery_task(request):
         ' eta:[{0}]'.format(request.eta) if request.eta else '',
         ' expires:[{0}]'.format(request.expires) if request.expires else '',
     )
+
 
 # XXX: drop the hack and use shadow name in celery 4.0
 Request.__str__ = log_celery_task

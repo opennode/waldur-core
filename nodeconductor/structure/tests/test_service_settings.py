@@ -1,8 +1,4 @@
-import unittest
-
-from mock import patch
-from rest_framework import status
-from rest_framework import test
+from rest_framework import status, test
 
 from django.core.urlresolvers import reverse
 
@@ -118,27 +114,3 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         response = self.client.patch(self._get_settings_url(self.settings['owned']), payload)
         settings = ServiceSettings.objects.get(uuid=self.settings['owned'].uuid)
         self.assertEqual(settings.password, payload['password'], response.data)
-
-    @unittest.skip('Creating settings via common endpoint is disabled for now')
-    def test_user_can_create_settings(self):
-        self.client.force_authenticate(user=self.users['owner'])
-
-        payload = {
-            "customer": factories.CustomerFactory.get_url(self.customers['owned']),
-            "name": "Test",
-            "backend_url": "http://example.com",
-            "username": "user",
-            "password": "secret",
-            "type": "DemoService",
-        }
-
-        with patch('celery.app.base.Celery.send_task') as mocked_task:
-            response = self.client.post(self._get_settings_url(), payload)
-            self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
-
-            settings = ServiceSettings.objects.get(name=payload['name'])
-            self.assertFalse(settings.shared)
-
-            mocked_task.assert_called_with(
-                'nodeconductor.structure.sync_service_settings',
-                (settings.uuid.hex,), {'initial': True})

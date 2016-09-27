@@ -14,3 +14,4 @@
 .. include:: monitoring-as-a-service.rst
 .. include:: dr-backups.rst
 .. include:: version.rst
+.. include:: cost-tracking.rst

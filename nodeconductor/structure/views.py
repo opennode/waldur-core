@@ -1312,10 +1312,13 @@ class ResourceViewSet(mixins.ListModelMixin,
             'private_clouds': models.ResourceMixin.get_private_cloud_models()
         }
         category = self.request.query_params.get('resource_category')
+        if not category:
+            return resource_models
+
         category_models = choices.get(category)
         if category_models:
-            resource_models = {k: v for k, v in resource_models.items() if v in category_models}
-        return resource_models
+            return {k: v for k, v in resource_models.items() if v in category_models}
+        return {}
 
     def list(self, request, *args, **kwargs):
         """
@@ -1479,7 +1482,7 @@ class CounterMixin(object):
         if response.ok:
             return response.total
         else:
-            logger.warning('Unable to execute API request with URL %s and error %s', url, response.data)
+            logger.warning('Unable to execute API request with URL %s and error %s', url, response.reason)
         return 0
 
 
@@ -1835,8 +1838,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            back_propagate_price = serializer.validated_data.pop('back_propagate_price')
-
             customer = serializer.validated_data['project'].customer
             if not request.user.is_staff and not customer.has_user(request.user):
                 raise PermissionDenied(
@@ -1850,7 +1851,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             resource_imported.send(
                 sender=resource.__class__,
                 instance=resource,
-                back_propagate_price=back_propagate_price
             )
 
             return Response(serializer.data, status=status.HTTP_200_OK)

@@ -99,42 +99,11 @@ class CustomerAdminForm(ModelForm):
 class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
-              'billing_backend_id', 'country', 'vat_code', 'is_company', 'balance', 'owners')
+              'country', 'vat_code', 'is_company', 'balance', 'owners')
     readonly_fields = ['balance']
-    actions = ['update_projected_estimate']
-    list_display = ['name', 'billing_backend_id', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
+    list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
+                    'get_private_cloud_count']
     inlines = [QuotaInline]
-
-    def update_projected_estimate(self, request, queryset):
-        customers_without_backend_id = []
-        succeeded_customers = []
-        for customer in queryset:
-            if not customer.billing_backend_id:
-                customers_without_backend_id.append(customer)
-                continue
-            send_task('cost_tracking', 'update_projected_estimate')(
-                customer_uuid=customer.uuid.hex)
-            succeeded_customers.append(customer)
-
-        if succeeded_customers:
-            message = ungettext(
-                'Projected estimate generation successfully scheduled for customer %(customers_names)s',
-                'Projected estimate generation successfully scheduled for customers: %(customers_names)s',
-                len(succeeded_customers)
-            )
-            message = message % {'customers_names': ', '.join([c.name for c in succeeded_customers])}
-            self.message_user(request, message)
-
-        if customers_without_backend_id:
-            message = ungettext(
-                'Cannot generate estimate for customer without backend id: %(customers_names)s',
-                'Cannot generate estimate for customers without backend id: %(customers_names)s',
-                len(customers_without_backend_id)
-            )
-            message = message % {'customers_names': ', '.join([c.name for c in customers_without_backend_id])}
-            self.message_user(request, message)
-
-    update_projected_estimate.short_description = "Update projected cost estimate"
 
 
 class ProjectAdminForm(ModelForm):

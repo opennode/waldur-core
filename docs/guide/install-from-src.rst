@@ -8,7 +8,7 @@ Additional requirements:
 - ``virtualenv``
 - C compiler and development libraries needed to build dependencies
 
-  - CentOS: ``gcc libffi-devel openssl-devel``
+  - CentOS: ``gcc libffi-devel openssl-devel python-devel``
   - Ubuntu: ``gcc libffi-dev libsasl2-dev libssl-dev python-dev``
 
 **NodeConductor installation**
@@ -52,9 +52,7 @@ Additional requirements:
 
     venv/bin/nodeconductor collectstatic --noinput
 
-7. In order to install SAML2_ based authentication you should also install ``nodeconductor-saml2`` plugin.
-
-8. Start NodeConductor:
+7. Start NodeConductor:
 
   .. code-block:: bash
 

@@ -5,10 +5,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
+from nodeconductor.cost_tracking import CostTrackingRegister
+from nodeconductor.cost_tracking.models import PriceEstimate
 from nodeconductor.structure import models as structure_models
-from nodeconductor.cost_tracking.models import PriceEstimate, PayableMixin
 
 
+# XXX: This command is not working properly now.
+#      We need to decide is it necessary with new structure.
 class Command(BaseCommand):
     """
     This management command removes following price estimates:
@@ -56,8 +59,8 @@ class Command(BaseCommand):
 
     def get_all_estimates_wihout_scope_in_month(self):
         invalid_estimates = []
-        for customer in structure_models.Customer.objects.all().only('pk'):
-            customer_estimates = self.get_estimates_without_scope_in_month(customer.pk)
+        for customer in structure_models.Customer.objects.all():
+            customer_estimates = self.get_estimates_without_scope_in_month(customer)
             invalid_estimates.extend(customer_estimates)
         ids = [estimate.pk for estimate in invalid_estimates]
         return PriceEstimate.objects.filter(pk__in=ids)
@@ -69,18 +72,16 @@ class Command(BaseCommand):
             structure_models.Service,
             structure_models.ServiceProjectLink,
             structure_models.Project,
-            PayableMixin
-        )
+        ) + tuple(CostTrackingRegister.registered_resources.keys())
 
-    def get_estimates_without_scope_in_month(self, customer_pk):
+    def get_estimates_without_scope_in_month(self, customer):
         """
         It is expected that valid row for each month contains at least one
         price estimate for customer, service setting, service,
         service project link, project and resource.
         Otherwise all price estimates in the row should be deleted.
         """
-        qs = self.get_price_estimates_for_customer(customer_pk).only('year', 'month')
-        estimates = list(qs)
+        estimates = self.get_price_estimates_for_customer(customer)
         if not estimates:
             return []
 
@@ -103,19 +104,16 @@ class Command(BaseCommand):
             if any(map(lambda table: len(table[date]) == 0, tables.values())):
                 for table in tables.values():
                     invalid_estimates.extend(table[date])
+        print invalid_estimates
         return invalid_estimates
 
-    def get_price_estimates_for_customer(self, customer_pk):
-        qs = Q(scope_customer__pk=customer_pk)
-        for model in PriceEstimate.get_estimated_models():
-            if model == structure_models.Customer:
-                ids = [customer_pk]
-            else:
-                ids = model.objects.filter(customer__pk=customer_pk).distinct().values_list('pk', flat=True)
-            content_type = ContentType.objects.get_for_model(model)
-            if ids:
-                qs |= Q(content_type=content_type, object_id__in=ids)
-        return PriceEstimate.objects.all().filter(qs)
+    def get_price_estimates_for_customer(self, customer):
+        descendants_estimates = []
+        customer_descendants = customer.get_descendants()
+        for descendant in customer_descendants:
+            descendants_estimates += list(PriceEstimate.objects.filter(scope=descendant))
+        customer_estimates = PriceEstimate.objects.filter(scope=customer)
+        return list(customer_estimates) + descendants_estimates
 
     def delete_price_estimates_without_scope_and_details(self):
         invalid_estimates = self.get_invalid_price_estimates()

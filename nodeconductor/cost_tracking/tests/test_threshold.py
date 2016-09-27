@@ -9,6 +9,7 @@ from nodeconductor.logging.tasks import check_threshold
 from nodeconductor.structure.tests.factories import ProjectFactory, UserFactory
 
 
+# XXX: This tests should be moved to test_handlers. NC-1537.
 class PriceEstimateThresholdAlertTest(test.APITransactionTestCase):
     def test_price_estimate_is_copied_from_previous_one(self):
         project = ProjectFactory()
