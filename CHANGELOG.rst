@@ -3,13 +3,13 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Rewrite price estimate calculation logic.
-- Do not allow to edit price estimates manually.
-- Store resources consumption details.
-- Rewrite price estimate calculation with link/unlink operations. 
-- Remove resource provisioned signal.
-- Add admin action for price estimates recalculation.
-- Display consumption details in admin.
+- Introduction of usage-based price estimatation and billing. 
+- Prohibit editting of price estimates manually.
+- Preserve consumption details of resources.
+- Refactor price estimates calculation for link and unlink operations. 
+- Remove "resource provisioned" signal.
+- Add admin action for recalculation of price estimates.
+- Display resource consumption details in admin.
 - Introduce base class for background tasks.
 
 Release 0.107.1
