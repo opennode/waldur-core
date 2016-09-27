@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet
+
+Release 0.108.0
+---------------
 - Introduction of usage-based price estimatation and billing. 
 - Prohibit editting of price estimates manually.
 - Preserve consumption details of resources.
