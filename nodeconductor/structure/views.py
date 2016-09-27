@@ -1479,7 +1479,7 @@ class CounterMixin(object):
         if response.ok:
             return response.total
         else:
-            logger.warning('Unable to execute API request with URL %s and error %s', url, response.data)
+            logger.warning('Unable to execute API request with URL %s and error %s', url, response.reason)
         return 0
 
 

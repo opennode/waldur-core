@@ -10,6 +10,7 @@ Release NEXT
 - Remove resource provisioned signal.
 - Add admin action for price estimates recalculation.
 - Display consumption details in admin.
+- Introduce base class for background tasks.
 
 Release 0.107.1
 ---------------
