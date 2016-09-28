@@ -204,6 +204,15 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         else:
             return self.details['name']
 
+    def collect_children(self):
+        """
+        Recursively collect children estimates. Returns generator.
+        """
+        for child in self.children.filter():
+            yield child
+            for grandchild in child.collect_children():
+                yield grandchild
+
 
 class ConsumptionDetailUpdateError(Exception):
     pass
