@@ -20,13 +20,13 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 
 class PriorityRouter(object):
-    """ Run heavy tasks in a separate queue.
-        One must supply is_heavy_task=True as a keyword argument to task decorator.
-    """
+    """ Run heavy tasks and background tasks in separate queues. """
     def route_for_task(self, task_name, *args, **kwargs):
         task = app.tasks.get(task_name)
         if getattr(task, 'is_heavy_task', False):
             return {'queue': 'heavy'}
+        if getattr(task, 'is_background', False):
+            return {'queue': 'background'}
         return None
 
 
