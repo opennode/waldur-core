@@ -14,6 +14,8 @@ and exception handling.
 Tasks
 -----
 
+There are 3 types of task queues: regular (used by default), heavy and background.
+
 Regular tasks
 ^^^^^^^^^^^^^
 
@@ -25,17 +27,22 @@ views or serializer.
 Heavy tasks
 ^^^^^^^^^^^
 
-Use separate queue for heavy task which takes too long in order not to flood general queue.
-Note! You need to use heavy tasks only if a backend does not allow to split use
-smaller regular tasks.
+If task takes too long to complete, you should try to break it down into smaller regular tasks
+in order to avoid flooding general queue. Only if backend does not allow to do so,
+you should mark such tasks as heavy so that they use separate queue.
 
 .. code-block:: python
 
-    # Place task into a separate queue for heavy tasks
     @shared_task(is_heavy_task=True)
     def heavy(uuid=0):
         print '** Heavy %s' % uuid
 
+Throttle tasks
+^^^^^^^^^^^^^^
+
+Some backends don't allow to execute several operations concurrently within the same scope.
+For example, one OpenStack settings does not support provisioning of more than 4 instances together.
+In this case task throttling should be used.
 
 Background tasks
 ^^^^^^^^^^^^^^^^
