@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Use separate queue for background tasks.
 
 Release 0.108.2
 ---------------
