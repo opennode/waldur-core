@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Use separate queue for background tasks.
+- Fix service settings sync task.
 
 Release 0.108.2
 ---------------
