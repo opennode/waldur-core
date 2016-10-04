@@ -26,8 +26,8 @@ Heavy tasks
 ^^^^^^^^^^^
 
 Use separate queue for heavy task which takes too long in order not to flood general queue.
-Note! Try to avoid You need to use heavy tasks only if a backend does not allow to split tasks
-into smaller regular tasks.
+Note! You need to use heavy tasks only if a backend does not allow to split use
+smaller regular tasks.
 
 .. code-block:: python
 
