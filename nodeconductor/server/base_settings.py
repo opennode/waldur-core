@@ -147,6 +147,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_QUEUES = {
     'tasks': {'exchange': 'tasks'},
     'heavy': {'exchange': 'heavy'},
+    'background': {'exchange': 'background'},
 }
 CELERY_DEFAULT_QUEUE = 'tasks'
 CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
