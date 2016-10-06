@@ -1939,7 +1939,7 @@ def safe_operation(valid_state=None):
 
                     # Important! We are passing back the instance from current transaction to a view
                     try:
-                        view_fn(self, request, resource, *args, **kwargs)
+                        response = view_fn(self, request, resource, *args, **kwargs)
                     except ServiceBackendNotImplemented:
                         raise MethodNotAllowed(operation_name)
 
@@ -1949,6 +1949,9 @@ def safe_operation(valid_state=None):
             except IntegrityError:
                 return Response({'status': '%s was not scheduled' % operation_name},
                                 status=status.HTTP_400_BAD_REQUEST)
+
+            if response is not None:
+                return response
 
             if resource.pk is None:
                 return Response(status=status.HTTP_204_NO_CONTENT)

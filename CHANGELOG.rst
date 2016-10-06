@@ -6,6 +6,7 @@ Release NEXT
 - Use separate queue for background tasks.
 - Fix service settings sync task.
 - Refactor PrivateCloudMixin -> PrivateCloud abstract model.
+- Allow to use custom responses with @safe_operation decorator.
 
 Release 0.108.2
 ---------------
