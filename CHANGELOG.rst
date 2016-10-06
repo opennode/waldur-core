@@ -5,6 +5,7 @@ Release NEXT
 ------------
 - Use separate queue for background tasks.
 - Fix service settings sync task.
+- Refactor PrivateCloudMixin -> PrivateCloud abstract model.
 
 Release 0.108.2
 ---------------
