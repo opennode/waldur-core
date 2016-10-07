@@ -1557,7 +1557,7 @@ class AggregateSerializer(serializers.Serializer):
 
 
 class PrivateCloudSerializer(BaseResourceSerializer):
-    extra_configuration = core_serializers.JSONField()
+    extra_configuration = core_serializers.JSONField(required=False)
 
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + ('extra_configuration',)
