@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
@@ -885,12 +885,6 @@ def validate_yaml(value):
         raise ValidationError('A valid YAML value is required.')
 
 
-class PrivateCloudMixin(models.Model):
-
-    class Meta(object):
-        abstract = True
-
-
 class ApplicationMixin(models.Model):
 
     class Meta(object):
@@ -1180,7 +1174,7 @@ class ResourceMixin(MonitoringModelMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_private_cloud_models(cls):
-        return [resource for resource in cls.get_all_models() if issubclass(resource, PrivateCloudMixin)]
+        return [resource for resource in cls.get_all_models() if issubclass(resource, PrivateCloud)]
 
     def get_related_resources(self):
         return itertools.chain(
@@ -1296,6 +1290,15 @@ class NewResource(ResourceMixin, core_models.StateMixin):
 
 
 class PublishableResource(PublishableMixin, Resource):
+
+    class Meta(object):
+        abstract = True
+
+
+class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin, NewResource):
+    extra_configuration = JSONField(default={}, help_text='Configuration details that are not represented on backend.')
+    dependent_service_settings = GenericRelation(
+        ServiceSettings, help_text='Service settings that are configured based on this private cloud.')
 
     class Meta(object):
         abstract = True

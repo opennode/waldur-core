@@ -208,3 +208,11 @@ class StateExecutorViewSet(mixins.StateMixin,
                            ModelViewSet):
     """ Create/Update/Delete operations via executors """
     pass
+
+
+class UpdateOnlyStateExecutorViewSet(mixins.StateMixin,
+                                     mixins.UpdateExecutorMixin,
+                                     mixins.DeleteExecutorMixin,
+                                     ModelViewSet):
+    """ Update/Delete operations via executors """
+    pass

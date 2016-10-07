@@ -1554,3 +1554,10 @@ class AggregateSerializer(serializers.Serializer):
         projects = self.get_projects(user)
         return [model.objects.filter(project__in=projects)
                 for model in ServiceProjectLink.get_all_models()]
+
+
+class PrivateCloudSerializer(BaseResourceSerializer):
+    extra_configuration = core_serializers.JSONField()
+
+    class Meta(BaseResourceSerializer.Meta):
+        fields = BaseResourceSerializer.Meta.fields + ('extra_configuration',)

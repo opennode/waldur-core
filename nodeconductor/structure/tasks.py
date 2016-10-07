@@ -75,7 +75,7 @@ class BackgroundPullTask(core_tasks.BackgroundTask):
             self.on_pull_success(instance)
 
     def is_equal(self, other_task, serialized_instance):
-        return self.name == other_task['name'] and serialized_instance in other_task['args']
+        return self.name == other_task.get('name') and serialized_instance in other_task.get('args', [])
 
     def pull(self, instance):
         """ Pull instance from backend.
@@ -116,11 +116,14 @@ class BackgroundListPullTask(core_tasks.BackgroundTask):
     pull_task = NotImplemented
 
     def is_equal(self, other_task):
-        return self.name == other_task['name']
+        return self.name == other_task.get('name')
+
+    def get_pulled_objects(self):
+        States = self.model.States
+        return self.model.objects.filter(state__in=[States.ERRED, States.OK]).exclude(backend_id='')
 
     def run(self):
-        States = self.model.States
-        for instance in self.model.objects.filter(state__in=[States.ERRED, States.OK]).exclude(backend_id=''):
+        for instance in self.get_pulled_objects():
             serialized = core_utils.serialize_instance(instance)
             self.pull_task().delay(serialized)
 
@@ -136,3 +139,7 @@ class ServiceSettingsListPullTask(BackgroundListPullTask):
     name = 'nodeconductor.structure.ServiceSettingsListPullTask'
     model = models.ServiceSettings
     pull_task = ServiceSettingsBackgroundPullTask
+
+    def get_pulled_objects(self):
+        States = self.model.States
+        return self.model.objects.filter(state__in=[States.ERRED, States.OK])

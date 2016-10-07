@@ -3,11 +3,19 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Nothing yet.
+
+Release 0.108.2
+---------------
+- Fix filtering price estimate by customer UUID.
+- Use separate queue for background tasks.
+- Fix service settings sync task.
+- Refactor PrivateCloudMixin -> PrivateCloud abstract model.
+- Allow to use custom responses with @safe_operation decorator.
 
 Release 0.108.1
 ---------------
-Don't use urllib3 1.18 because it's not compatible with old setuptools.
+- Don't use urllib3 1.18 because it's not compatible with old setuptools.
 
 Release 0.108.0
 ---------------

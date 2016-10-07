@@ -147,6 +147,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_QUEUES = {
     'tasks': {'exchange': 'tasks'},
     'heavy': {'exchange': 'heavy'},
+    'background': {'exchange': 'background'},
 }
 CELERY_DEFAULT_QUEUE = 'tasks'
 CELERY_ROUTES = ('nodeconductor.server.celery.PriorityRouter',)
@@ -171,8 +172,8 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=30),
         'args': (),
     },
-    'recalculate-consumed-price-estimates': {
-        'task': 'nodeconductor.cost_tracking.recalculate_consumed_estimate',
+    'recalculate-price-estimates': {
+        'task': 'nodeconductor.cost_tracking.recalculate_estimate',
         # To avoid bugs and unexpected behavior - do not re-calculate estimates
         # right in the end of the month.
         'schedule': crontab(minute=10),

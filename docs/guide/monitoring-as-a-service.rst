@@ -92,6 +92,7 @@ See also: `NodeConductor Zabbix plugin configuration <http://nodeconductor-zabbi
 .. code-block:: bash
 
   nodeconductor initsecuritygroups zabbix
+  nodeconductor initsecuritygroups zabbix-agent
 
 3. Create template group:
 

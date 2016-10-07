@@ -162,3 +162,33 @@ class ScopeTypeFilterTest(BaseCostTrackingTest):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(len(response.data), 1)
             self.assertEqual(response.data[0]['uuid'], estimate.uuid.hex)
+
+
+class CustomerFilterTest(BaseCostTrackingTest):
+    def setUp(self):
+        super(CustomerFilterTest, self).setUp()
+        resource = structure_factories.TestInstanceFactory()
+        resource_estimate = factories.PriceEstimateFactory(scope=resource)
+        resource_estimate.create_ancestors()
+        link = resource.service_project_link
+        customer = link.customer
+        project = link.project
+        service = link.service
+
+        scopes = {link, customer, project, service, resource}
+        self.estimates = {models.PriceEstimate.objects.get(scope=scope) for scope in scopes}
+        self.customer = customer
+
+        resource2 = structure_factories.TestInstanceFactory()
+        resource2_estimate = factories.PriceEstimateFactory(scope=resource2)
+        resource2_estimate.create_ancestors()
+
+    def test_user_can_filter_price_estimate_by_customer_uuid(self):
+        self.client.force_authenticate(self.users['staff'])
+        response = self.client.get(
+            factories.PriceEstimateFactory.get_list_url(),
+            data={'customer': self.customer.uuid.hex})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({estimate['uuid'] for estimate in response.data},
+                         {estimate.uuid.hex for estimate in self.estimates})
