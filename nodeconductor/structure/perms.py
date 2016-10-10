@@ -85,8 +85,6 @@ service_project_link_permission_logic = FilteredCollaboratorsPermissionLogic(
     any_permission=True,
 )
 
-private_cloud_permission_logic = StaffPermissionLogic(any_permission=True)
-
 
 def property_permission_logic(prefix, user_field=None):
     return FilteredCollaboratorsPermissionLogic(
