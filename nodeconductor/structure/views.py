@@ -200,6 +200,17 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
                           rf_permissions.DjangoObjectPermissions)
     filter_class = filters.ProjectFilter
 
+    def get_serializer_class(self):
+        if self.action == 'users':
+            return serializers.ProjectUserSerializer
+        return super(ProjectViewSet, self).get_serializer_class()
+
+    def get_serializer_context(self):
+        context = super(ProjectViewSet, self).get_serializer_context()
+        if self.action == 'users':
+            context['project'] = self.get_object()
+        return context
+
     def list(self, request, *args, **kwargs):
         """
         To get a list of projects, run **GET** against */api/projects/* as authenticated user.
@@ -319,6 +330,14 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         customer.validate_quota_change({'nc_project_count': 1}, raise_exception=True)
 
         super(ProjectViewSet, self).perform_create(serializer)
+
+    @detail_route()
+    def users(self, request, uuid=None):
+        """ A list of users connected to the customer """
+        project = self.get_object()
+        queryset = self.paginate_queryset(project.get_users())
+        serializer = self.get_serializer(queryset, many=True)
+        return self.get_paginated_response(serializer.data)
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
