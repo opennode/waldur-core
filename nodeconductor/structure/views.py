@@ -1326,9 +1326,10 @@ class ResourceViewSet(mixins.ListModelMixin,
 
     def _filter_by_category(self, resource_models):
         choices = {
-            'apps': models.ResourceMixin.get_app_models(),
-            'vms': models.ResourceMixin.get_vm_models(),
-            'private_clouds': models.ResourceMixin.get_private_cloud_models()
+            'apps': models.ApplicationMixin.get_all_models(),
+            'vms': models.VirtualMachineMixin.get_all_models(),
+            'private_clouds': models.PrivateCloud.get_all_models(),
+            'storages': models.Storage.get_all_models(),
         }
         category = self.request.query_params.get('resource_category')
         if not category:
@@ -1357,7 +1358,7 @@ class ResourceViewSet(mixins.ListModelMixin,
 
           /api/<resource_endpoint>/?resource_type=DigitalOcean.Droplet&resource_type=OpenStack.Instance
 
-        - Specify category, one of vms, apps or private_clouds, for example:
+        - Specify category, one of vms, apps, private_clouds or storages for example:
 
           /api/<resource_endpoint>/?category=vms
 
@@ -1516,6 +1517,7 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             "vms": 1,
             "apps": 0,
             "private_clouds": 1,
+            "storages": 2,
             "services": 1,
             "projects": 1,
             "users": 3
@@ -1534,6 +1536,7 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             'vms': self.get_vms(),
             'apps': self.get_apps(),
             'private_clouds': self.get_private_clouds(),
+            'storages': self.get_storages(),
             'projects': self.get_projects(),
             'services': self.get_services(),
             'users': self.customer.get_users().count()
@@ -1548,13 +1551,16 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self._total_count(models.ResourceMixin.get_vm_models())
+        return self._total_count(models.VirtualMachineMixin.get_all_models())
 
     def get_apps(self):
-        return self._total_count(models.ResourceMixin.get_app_models())
+        return self._total_count(models.ApplicationMixin.get_all_models())
 
     def get_private_clouds(self):
-        return self._total_count(models.ResourceMixin.get_private_cloud_models())
+        return self._total_count(models.PrivateCloud.get_all_models())
+
+    def get_storages(self):
+        return self._total_count(models.Storage.get_all_models())
 
     def get_projects(self):
         return self._count_model(models.Project)
@@ -1584,6 +1590,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             "apps": 0,
             "vms": 1,
             "private_clouds": 1,
+            "storages": 2,
             "premium_support_contracts": 0,
         }
     """
@@ -1602,6 +1609,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'vms': self.get_vms(),
             'apps': self.get_apps(),
             'private_clouds': self.get_private_clouds(),
+            'storages': self.get_storages(),
             'users': self.get_users(),
             'premium_support_contracts': self.get_premium_support_contracts()
         })
@@ -1615,13 +1623,16 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self._total_count(models.ResourceMixin.get_vm_models())
+        return self._total_count(models.VirtualMachineMixin.get_all_models())
 
     def get_apps(self):
-        return self._total_count(models.ResourceMixin.get_app_models())
+        return self._total_count(models.ApplicationMixin.get_all_models())
 
     def get_private_clouds(self):
-        return self._total_count(models.ResourceMixin.get_private_cloud_models())
+        return self._total_count(models.PrivateCloud.get_all_models())
+
+    def get_storages(self):
+        return self._total_count(models.Storage.get_all_models())
 
     def get_users(self):
         return self.get_count('user-list', {
