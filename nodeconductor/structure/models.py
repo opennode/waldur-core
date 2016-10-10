@@ -1302,3 +1302,10 @@ class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin,
 
     class Meta(object):
         abstract = True
+
+
+class Storage(core_models.RuntimeStateMixin, NewResource):
+    size = models.PositiveIntegerField(help_text='Size in MiB')
+
+    class Meta(object):
+        abstract = True
