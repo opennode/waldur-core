@@ -1307,9 +1307,10 @@ class ResourceViewSet(mixins.ListModelMixin,
 
     def _filter_by_category(self, resource_models):
         choices = {
-            'apps': models.ResourceMixin.get_app_models(),
-            'vms': models.ResourceMixin.get_vm_models(),
-            'private_clouds': models.ResourceMixin.get_private_cloud_models()
+            'apps': models.ApplicationMixin.get_all_models(),
+            'vms': models.VirtualMachineMixin.get_all_models(),
+            'private_clouds': models.PrivateCloud.get_all_models(),
+            'storage': models.Storage.get_all_models(),
         }
         category = self.request.query_params.get('resource_category')
         if not category:

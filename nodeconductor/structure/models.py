@@ -198,25 +198,29 @@ class Customer(core_models.UuidMixin,
             target_models=lambda: Service.get_all_models(),
             path_to_scope='customer',
         )
+        nc_service_project_link_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: ServiceProjectLink.get_all_models(),
+            path_to_scope='project.customer',
+        )
         nc_user_count = quotas_fields.QuotaField()
         nc_resource_count = quotas_fields.CounterQuotaField(
             target_models=lambda: ResourceMixin.get_all_models(),
             path_to_scope='project.customer',
         )
         nc_app_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: ResourceMixin.get_app_models(),
+            target_models=lambda: ApplicationMixin.get_all_models(),
             path_to_scope='project.customer',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: ResourceMixin.get_vm_models(),
+            target_models=lambda: VirtualMachineMixin.get_all_models(),
             path_to_scope='project.customer',
         )
         nc_private_cloud_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: ResourceMixin.get_private_cloud_models(),
+            target_models=lambda: PrivateCloud.get_all_models(),
             path_to_scope='project.customer',
         )
-        nc_service_project_link_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: ServiceProjectLink.get_all_models(),
+        nc_storage_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Storage.get_all_models(),
             path_to_scope='project.customer',
         )
 
@@ -410,15 +414,19 @@ class Project(core_models.DescribableMixin,
             path_to_scope='project',
         )
         nc_app_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: ResourceMixin.get_app_models(),
+            target_models=lambda: ApplicationMixin.get_all_models(),
             path_to_scope='project',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: ResourceMixin.get_vm_models(),
+            target_models=lambda: VirtualMachineMixin.get_all_models(),
             path_to_scope='project',
         )
         nc_private_cloud_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: ResourceMixin.get_private_cloud_models(),
+            target_models=lambda: PrivateCloud.get_all_models(),
+            path_to_scope='project',
+        )
+        nc_storage_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Storage.get_all_models(),
             path_to_scope='project',
         )
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
@@ -1160,21 +1168,6 @@ class ResourceMixin(MonitoringModelMixin,
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_vm_models(cls):
-        return [resource for resource in cls.get_all_models() if issubclass(resource, VirtualMachineMixin)]
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_app_models(cls):
-        return [resource for resource in cls.get_all_models() if issubclass(resource, ApplicationMixin)]
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_private_cloud_models(cls):
-        return [resource for resource in cls.get_all_models() if issubclass(resource, PrivateCloud)]
 
     def get_related_resources(self):
         return itertools.chain(
