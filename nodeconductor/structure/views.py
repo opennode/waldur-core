@@ -1516,6 +1516,7 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             'vms': self.get_vms(),
             'apps': self.get_apps(),
             'private_clouds': self.get_private_clouds(),
+            'storages': self.get_storages(),
             'projects': self.get_projects(),
             'services': self.get_services(),
             'users': self.customer.get_users().count()
@@ -1530,13 +1531,16 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self._total_count(models.ResourceMixin.get_vm_models())
+        return self._total_count(models.VirtualMachineMixin.get_all_models())
 
     def get_apps(self):
-        return self._total_count(models.ResourceMixin.get_app_models())
+        return self._total_count(models.ApplicationMixin.get_all_models())
 
     def get_private_clouds(self):
-        return self._total_count(models.ResourceMixin.get_private_cloud_models())
+        return self._total_count(models.PrivateCloud.get_all_models())
+
+    def get_storages(self):
+        return self._total_count(models.Storage.get_all_models())
 
     def get_projects(self):
         return self._count_model(models.Project)
@@ -1584,6 +1588,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             'vms': self.get_vms(),
             'apps': self.get_apps(),
             'private_clouds': self.get_private_clouds(),
+            'storages': self.get_storages(),
             'users': self.get_users(),
             'premium_support_contracts': self.get_premium_support_contracts()
         })
@@ -1597,13 +1602,16 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         })
 
     def get_vms(self):
-        return self._total_count(models.ResourceMixin.get_vm_models())
+        return self._total_count(models.VirtualMachineMixin.get_all_models())
 
     def get_apps(self):
-        return self._total_count(models.ResourceMixin.get_app_models())
+        return self._total_count(models.ApplicationMixin.get_all_models())
 
     def get_private_clouds(self):
-        return self._total_count(models.ResourceMixin.get_private_cloud_models())
+        return self._total_count(models.PrivateCloud.get_all_models())
+
+    def get_storages(self):
+        return self._total_count(models.Storage.get_all_models())
 
     def get_users(self):
         return self.get_count('user-list', {
