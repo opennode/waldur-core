@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.108.3
+---------------
+- Introduce new abstract model Storage.
+
 Release 0.108.2
 ---------------
 - Fix filtering price estimate by customer UUID.
