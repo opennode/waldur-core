@@ -1498,6 +1498,7 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
             "vms": 1,
             "apps": 0,
             "private_clouds": 1,
+            "storages": 2,
             "services": 1,
             "projects": 1,
             "users": 3
@@ -1570,6 +1571,7 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
             "apps": 0,
             "vms": 1,
             "private_clouds": 1,
+            "storages": 2,
             "premium_support_contracts": 0,
         }
     """

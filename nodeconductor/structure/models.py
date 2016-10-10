@@ -898,6 +898,11 @@ class ApplicationMixin(models.Model):
     class Meta(object):
         abstract = True
 
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
 
 class VirtualMachineMixin(CoordinatesMixin):
     def __init__(self, *args, **kwargs):
@@ -935,6 +940,11 @@ class VirtualMachineMixin(CoordinatesMixin):
         if self.internal_ips:
             return self.internal_ips
         return None
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
 
 
 class PublishableMixin(models.Model):
