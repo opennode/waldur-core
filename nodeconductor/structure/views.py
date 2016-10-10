@@ -1329,7 +1329,7 @@ class ResourceViewSet(mixins.ListModelMixin,
             'apps': models.ApplicationMixin.get_all_models(),
             'vms': models.VirtualMachineMixin.get_all_models(),
             'private_clouds': models.PrivateCloud.get_all_models(),
-            'storage': models.Storage.get_all_models(),
+            'storages': models.Storage.get_all_models(),
         }
         category = self.request.query_params.get('resource_category')
         if not category:
@@ -1358,7 +1358,7 @@ class ResourceViewSet(mixins.ListModelMixin,
 
           /api/<resource_endpoint>/?resource_type=DigitalOcean.Droplet&resource_type=OpenStack.Instance
 
-        - Specify category, one of vms, apps or private_clouds, for example:
+        - Specify category, one of vms, apps, private_clouds or storages for example:
 
           /api/<resource_endpoint>/?category=vms
 
