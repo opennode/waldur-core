@@ -380,7 +380,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['url', 'uuid', 'username', 'full_name', 'role', 'permission', 'projects']
+        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission', 'projects']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -419,6 +419,36 @@ class CustomerUserSerializer(serializers.ModelSerializer):
                                    kwargs={'pk': projectrole[proj.id][1]},
                                    request=request))
         ]) for proj in projects]
+
+
+class ProjectUserSerializer(serializers.ModelSerializer):
+    role = serializers.ReadOnlyField(source='group.projectrole.get_role_type_display')
+    permission = serializers.HyperlinkedRelatedField(
+        source='perm.pk',
+        view_name='project_permission-detail',
+        queryset=User.groups.through.objects.all(),
+    )
+
+    class Meta:
+        model = User
+        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission']
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+    def to_representation(self, user):
+        project = self.context['project']
+        try:
+            group = user.groups.get(projectrole__project=project)
+        except user.groups.model.DoesNotExist:
+            group = None
+            perm = None
+        else:
+            perm = User.groups.through.objects.get(user=user, group=group)
+
+        setattr(user, 'group', group)
+        setattr(user, 'perm', perm)
+        return super(ProjectUserSerializer, self).to_representation(user)
 
 
 class BalanceHistorySerializer(serializers.ModelSerializer):
