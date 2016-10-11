@@ -16,6 +16,7 @@ from nodeconductor.logging import urls as logging_urls
 from nodeconductor.monitoring import urls as monitoring_urls
 from nodeconductor.quotas import urls as quotas_urls
 from nodeconductor.structure import urls as structure_urls
+from nodeconductor.users import urls as users_urls
 
 
 admin.autodiscover()
@@ -28,6 +29,7 @@ logging_urls.register_in(router)
 monitoring_urls.register_in(router)
 quotas_urls.register_in(router)
 structure_urls.register_in(router)
+users_urls.register_in(router)
 
 
 urlpatterns = patterns(

@@ -44,6 +44,7 @@ INSTALLED_APPS = (
     'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.cost_tracking',
+    'nodeconductor.users',
 
     'rest_framework',
     'rest_framework.authtoken',
