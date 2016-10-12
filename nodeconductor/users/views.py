@@ -1,4 +1,6 @@
+from rest_framework import filters as rf_filters
 from rest_framework import mixins
+from rest_framework import permissions
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.decorators import detail_route
@@ -7,6 +9,7 @@ from rest_framework.response import Response
 
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
+from nodeconductor.users import filters
 from nodeconductor.users import models
 from nodeconductor.users import serializers
 
@@ -17,7 +20,9 @@ class InvitationViewSet(mixins.CreateModelMixin,
                         viewsets.GenericViewSet):
     queryset = models.Invitation.objects.all()
     serializer_class = serializers.InvitationSerializer
-    filter_backends = (structure_filters.GenericRoleFilter,)
+    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
+    filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_class = filters.InvitationFilter
     lookup_field = 'uuid'
 
     def can_create_invitation_with(self, customer):
@@ -29,7 +34,12 @@ class InvitationViewSet(mixins.CreateModelMixin,
         return customer.has_user(user, structure_models.CustomerRole.OWNER)
 
     def perform_create(self, serializer):
-        customer = serializer.validated_data['project_role']['project'].customer
+        project_role = serializer.validated_data.get('project_role', {})
+        if project_role:
+            customer = project_role['project'].customer
+        else:
+            customer_role = serializer.validated_data.get('customer_role', {})
+            customer = customer_role['customer']
 
         if not self.can_create_invitation_with(customer):
             raise PermissionDenied('You do not have permission to perform this action.')

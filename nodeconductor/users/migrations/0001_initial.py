@@ -2,6 +2,8 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
+import django.utils.timezone
+import model_utils.fields
 import nodeconductor.core.fields
 
 
@@ -19,8 +21,11 @@ class Migration(migrations.Migration):
                 ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('state', models.CharField(default='pending', max_length=8, choices=[('accepted', 'Accepted'), ('canceled', 'Canceled'), ('pending', 'Pending')])),
                 ('link_template', models.CharField(help_text='The template must include {uuid} parameter e.g. http://example.com/invitation/{uuid}', max_length=255)),
-                ('email', models.EmailField(help_text='Invitation link will be send to this email.', max_length=254)),
-                ('project_role', models.ForeignKey(related_name='invitations', to='structure.ProjectRole')),
+                ('email', models.EmailField(help_text='Invitation link will be sent to this email.', max_length=254)),
+                ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False)),
+                ('customer', models.ForeignKey(related_name='invitations', to='structure.Customer')),
+                ('customer_role', models.ForeignKey(related_name='invitations', blank=True, to='structure.CustomerRole', null=True)),
+                ('project_role', models.ForeignKey(related_name='invitations', blank=True, to='structure.ProjectRole', null=True)),
             ],
             options={
                 'abstract': False,

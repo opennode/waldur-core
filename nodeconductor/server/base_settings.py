@@ -195,6 +195,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=30),
         'args': (),
     },
+    'cancel-expired-invitations': {
+        'task': 'nodeconductor.users.cancel_expired_invitations',
+        'schedule': timedelta(minutes=30),
+        'args': (),
+    },
 }
 
 NODECONDUCTOR = {
@@ -204,6 +209,7 @@ NODECONDUCTOR = {
 
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
+    'INVITATION_LIFETIME': timedelta(weeks=1),
 }
 
 

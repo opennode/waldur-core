@@ -368,7 +368,7 @@ class CustomerRole(models.Model):
     permission_group = models.OneToOneField(Group)
 
     def __str__(self):
-        return self.get_role_type_display()
+        return '%s | %s' % (self.customer.name, self.get_role_type_display())
 
 
 @python_2_unicode_compatible
@@ -389,7 +389,7 @@ class ProjectRole(core_models.UuidMixin, models.Model):
     permission_group = models.OneToOneField(Group)
 
     def __str__(self):
-        return self.get_role_type_display()
+        return '%s | %s' % (self.project.name, self.get_role_type_display())
 
 
 @python_2_unicode_compatible
