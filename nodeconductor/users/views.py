@@ -50,10 +50,8 @@ class InvitationViewSet(mixins.CreateModelMixin,
     def cancel(self, request, uuid=None):
         invitation = self.get_object()
 
-        if invitation.state == models.Invitation.State.CANCELED:
-            raise ValidationError('Invitation is already canceled.')
-        elif invitation.state == models.Invitation.State.ACCEPTED:
-            raise ValidationError('Cannon cancel invitation as it is already accepted.')
+        if invitation.state != models.Invitation.State.PENDING:
+            raise ValidationError('Only pending invitation can be canceled.')
 
         invitation.state = models.Invitation.State.CANCELED
         invitation.save(update_fields=['state'])

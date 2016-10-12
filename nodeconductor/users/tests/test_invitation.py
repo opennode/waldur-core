@@ -208,7 +208,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
             invitation = factories.ProjectInvitationFactory(created=datetime.now() - timedelta(weeks=1))
             cancel_expired_invitations()
 
-        self.assertEqual(models.Invitation.objects.get(uuid=invitation.uuid).state, models.Invitation.State.CANCELED)
+        self.assertEqual(models.Invitation.objects.get(uuid=invitation.uuid).state, models.Invitation.State.EXPIRED)
 
     # Helper methods
     def _get_valid_project_invitation_payload(self, invitation=None, project_role=None):

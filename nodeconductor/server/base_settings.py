@@ -197,7 +197,7 @@ CELERYBEAT_SCHEDULE = {
     },
     'cancel-expired-invitations': {
         'task': 'nodeconductor.users.cancel_expired_invitations',
-        'schedule': timedelta(minutes=30),
+        'schedule': timedelta(hours=24),
         'args': (),
     },
 }

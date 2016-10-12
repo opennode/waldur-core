@@ -26,10 +26,17 @@ class InvitationForm(forms.ModelForm):
 
 class InvitationAdmin(admin.ModelAdmin):
     form = InvitationForm
-    fields = ('email', 'project_role', 'customer_role', 'state', 'created')
-    readonly_fields = ('created',)
+    fields = ('email', 'project_role', 'customer_role', 'state', 'modified', 'created')
+    readonly_fields = ('created', 'modified')
     list_display = ('email', 'uuid', 'project_role', 'customer_role', 'state')
     list_filter = ('state',)
     search_fields = ('email', 'uuid')
+
+    def save_model(self, request, obj, form, change):
+        if obj.project_role is not None:
+            obj.customer = obj.project_role.project.customer
+        else:
+            obj.customer = obj.customer_role.customer
+        return super(InvitationAdmin, self).save_model(request, obj, form, change)
 
 admin.site.register(models.Invitation, InvitationAdmin)

@@ -49,12 +49,18 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.Invitation
         fields = ('url', 'uuid', 'state', 'link_template', 'email',
-                  'project', 'project_role', 'customer', 'customer_role', 'created')
-        read_only_fields = ('url', 'uuid', 'state', 'created')
+                  'project', 'project_role', 'customer', 'customer_role', 'modified', 'created')
+        read_only_fields = ('url', 'uuid', 'state', 'modified', 'created')
         view_name = 'user-invitation-detail'
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
+
+    def validate_email(self, email):
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError('User with provided email already exists.')
+
+        return email
 
     def validate(self, attrs):
         link_template = attrs['link_template']
@@ -73,8 +79,6 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
             raise serializers.ValidationError({'customer_role': 'Customer role must be provided.'})
         elif project and project_role.get('role_type') is None:
             raise serializers.ValidationError({'project_role': 'Project role must be provided.'})
-        elif User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError({'email': 'User with provided email already exists.'})
 
         return attrs
 

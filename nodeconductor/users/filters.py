@@ -62,8 +62,8 @@ class InvitationFilter(django_filters.FilterSet):
         ]
         order_by = [
             'email',
-            'state'
+            'state',
             # desc
             '-email',
-            '-state'
+            '-state',
         ]
