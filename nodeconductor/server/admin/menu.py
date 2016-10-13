@@ -61,11 +61,11 @@ class CustomMenu(Menu):
     """
 
     IAAS_CLOUDS = (
+        'nodeconductor_assembly_waldur.packages.*',
         'nodeconductor_azure.*',
         'nodeconductor_openstack.*',
         'nodeconductor_plus.aws.*',
         'nodeconductor_plus.digitalocean.*',
-        'nodeconductor_assembly_waldour.packages.*'
     )
 
     APPLICATION_PROVIDERS = (
