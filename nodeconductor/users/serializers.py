@@ -14,7 +14,8 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         view_name='project-detail',
         lookup_field='uuid',
         queryset=structure_models.Project.objects.all(),
-        required=False
+        required=False,
+        allow_null=True
     )
     project_role = MappedChoiceField(
         source='project_role.role_type',
@@ -26,14 +27,16 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
             'admin': structure_models.ProjectRole.ADMINISTRATOR,
             'manager': structure_models.ProjectRole.MANAGER,
         },
-        required=False
+        required=False,
+        allow_null=True
     )
     customer = serializers.HyperlinkedRelatedField(
         source='customer_role.customer',
         view_name='customer-detail',
         lookup_field='uuid',
         queryset=structure_models.Customer.objects.all(),
-        required=False
+        required=False,
+        allow_null=True
     )
     customer_role = MappedChoiceField(
         source='customer_role.role_type',
@@ -43,7 +46,8 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         choice_mappings={
             'owner': structure_models.CustomerRole.OWNER,
         },
-        required=False
+        required=False,
+        allow_null=True
     )
 
     class Meta(object):
