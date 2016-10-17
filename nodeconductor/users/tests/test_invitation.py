@@ -133,6 +133,19 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
                                                                                 action='cancel'))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_authenticated_user_can_accept_project_invitation(self):
+        self.client.force_authenticate(user=self.user)
+
+        data = dict(user=structure_factories.UserFactory.get_url(self.user))
+        response = self.client.post(
+            factories.ProjectInvitationFactory.get_url(self.project_invitation, action='accept'), data
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project_invitation.refresh_from_db()
+        self.assertEqual(self.project_invitation.state, models.Invitation.State.ACCEPTED)
+        self.assertTrue(self.project.has_user(self.user, self.project_invitation.project_role.role_type))
+
     # API tests
     def test_invitation_update_is_not_allowed(self):
         self.client.force_authenticate(user=self.staff)
