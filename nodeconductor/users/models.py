@@ -33,5 +33,18 @@ class Invitation(core_models.UuidMixin, TimeStampedModel):
     def get_expiration_time(self):
         return self.created + settings.NODECONDUCTOR['INVITATION_LIFETIME']
 
+    def accept(self, user):
+        if self.project_role is not None:
+            self.project_role.project.add_user(user, self.project_role.role_type)
+        else:
+            self.customer.add_user(user, self.customer_role.role_type)
+
+        self.state = self.State.ACCEPTED
+        self.save(update_fields=['state'])
+
+    def cancel(self):
+        self.state = self.State.CANCELED
+        self.save(update_fields=['state'])
+
     def __str__(self):
         return self.email

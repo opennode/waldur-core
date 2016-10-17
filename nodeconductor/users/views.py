@@ -58,9 +58,7 @@ class InvitationViewSet(mixins.CreateModelMixin,
         if invitation.state != models.Invitation.State.PENDING:
             raise ValidationError('Only pending invitation can be canceled.')
 
-        invitation.state = models.Invitation.State.CANCELED
-        invitation.save(update_fields=['state'])
-
+        invitation.cancel()
         return Response({'detail': "Invitation has been successfully canceled."},
                         status=status.HTTP_200_OK)
 
@@ -68,19 +66,9 @@ class InvitationViewSet(mixins.CreateModelMixin,
     def accept(self, request, uuid=None):
         invitation = self.get_object()
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-
         if invitation.state != models.Invitation.State.PENDING:
             raise ValidationError('Only pending invitation can be accepted.')
-        elif invitation.project_role is not None:
-            invitation.project_role.project.add_user(user, invitation.project_role.role_type)
-        else:
-            invitation.customer_role.customer.add_user(user, invitation.customer_role.role_type)
 
-        invitation.state = models.Invitation.State.ACCEPTED
-        invitation.save(update_fields=['state'])
-
+        invitation.accept(request.user)
         return Response({'detail': "Invitation has been successfully accepted."},
                         status=status.HTTP_200_OK)

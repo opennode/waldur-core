@@ -104,11 +104,3 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
             validated_data['customer'] = customer
 
         return super(InvitationSerializer, self).create(validated_data)
-
-
-class AcceptInvitationSerializer(serializers.Serializer):
-        user = serializers.HyperlinkedRelatedField(
-            view_name='user-detail',
-            lookup_field='uuid',
-            queryset=User.objects.all()
-        )
