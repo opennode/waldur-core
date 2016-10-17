@@ -201,7 +201,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
 
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, {'project_role': ["Project role must be provided."]})
+        self.assertEqual(response.data, {'project_role': ["Project and its role must be provided."]})
 
     def test_user_cannot_create_customer_invitation_without_customer_role(self):
         self.client.force_authenticate(user=self.staff)
@@ -210,7 +210,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
 
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, {'customer_role': ["Customer role must be provided."]})
+        self.assertEqual(response.data, {'customer_role': ["Customer and its role must be provided."]})
 
     def test_user_cannot_create_invitation_for_existing_user(self):
         self.client.force_authenticate(user=self.staff)
