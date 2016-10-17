@@ -25,6 +25,11 @@ class InvitationViewSet(mixins.CreateModelMixin,
     filter_class = filters.InvitationFilter
     lookup_field = 'uuid'
 
+    def get_serializer_class(self):
+        if self.action == 'accept':
+            return serializers.AcceptInvitationSerializer
+        return super(InvitationViewSet, self).get_serializer_class()
+
     def can_create_invitation_with(self, customer):
         user = self.request.user
 
@@ -53,8 +58,17 @@ class InvitationViewSet(mixins.CreateModelMixin,
         if invitation.state != models.Invitation.State.PENDING:
             raise ValidationError('Only pending invitation can be canceled.')
 
-        invitation.state = models.Invitation.State.CANCELED
-        invitation.save(update_fields=['state'])
-
+        invitation.cancel()
         return Response({'detail': "Invitation has been successfully canceled."},
+                        status=status.HTTP_200_OK)
+
+    @detail_route(methods=['post'], filter_backends=[], permission_classes=[permissions.IsAuthenticated])
+    def accept(self, request, uuid=None):
+        invitation = self.get_object()
+
+        if invitation.state != models.Invitation.State.PENDING:
+            raise ValidationError('Only pending invitation can be accepted.')
+
+        invitation.accept(request.user)
+        return Response({'detail': "Invitation has been successfully accepted."},
                         status=status.HTTP_200_OK)
