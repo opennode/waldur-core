@@ -25,11 +25,6 @@ class InvitationViewSet(mixins.CreateModelMixin,
     filter_class = filters.InvitationFilter
     lookup_field = 'uuid'
 
-    def get_serializer_class(self):
-        if self.action == 'accept':
-            return serializers.AcceptInvitationSerializer
-        return super(InvitationViewSet, self).get_serializer_class()
-
     def can_create_invitation_with(self, customer):
         user = self.request.user
 
