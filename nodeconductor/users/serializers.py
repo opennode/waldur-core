@@ -30,6 +30,7 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         required=False,
         allow_null=True
     )
+    project_name = serializers.ReadOnlyField(source='project.name')
     customer = serializers.HyperlinkedRelatedField(
         source='customer_role.customer',
         view_name='customer-detail',
@@ -49,13 +50,15 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         required=False,
         allow_null=True
     )
+    customer_name = serializers.ReadOnlyField(source='customer.name')
 
     expires = serializers.DateTimeField(source='get_expiration_time', read_only=True)
 
     class Meta(object):
         model = models.Invitation
         fields = ('url', 'uuid', 'state', 'link_template', 'email',
-                  'project', 'project_role', 'customer', 'customer_role', 'created', 'expires')
+                  'project', 'project_role', 'project_name',
+                  'customer', 'customer_role', 'customer_name', 'created', 'expires')
         read_only_fields = ('url', 'uuid', 'state', 'created', 'expires')
         view_name = 'user-invitation-detail'
         extra_kwargs = {

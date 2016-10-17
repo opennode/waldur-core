@@ -139,7 +139,7 @@ LOGGING = {
 }
 
 # Settings, that are related to NodeCondoctor applications
-NODECONDUCTOR = {
+NODECONDUCTOR.update({
     'EXTENSIONS_AUTOREGISTER': True,
     'DEFAULT_SECURITY_GROUPS': (
         {
@@ -161,7 +161,7 @@ NODECONDUCTOR = {
             ),
         },
     ),
-}
+})
 
 # Example of settings for elasticsearch
 NODECONDUCTOR['ELASTICSEARCH'] = {
