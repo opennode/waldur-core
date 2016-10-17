@@ -35,7 +35,8 @@ class InvitationViewSet(mixins.CreateModelMixin,
 
     def perform_create(self, serializer):
         project_role = serializer.validated_data.get('project_role', {})
-        if project_role:
+        project = project_role.get('project')
+        if project is not None:
             customer = project_role['project'].customer
         else:
             customer_role = serializer.validated_data.get('customer_role', {})
