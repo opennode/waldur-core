@@ -9,9 +9,7 @@ from rest_framework.response import Response
 
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
-from nodeconductor.users import filters
-from nodeconductor.users import models
-from nodeconductor.users import serializers
+from nodeconductor.users import models, filters, serializers
 
 
 class InvitationViewSet(mixins.CreateModelMixin,
@@ -21,7 +19,11 @@ class InvitationViewSet(mixins.CreateModelMixin,
     queryset = models.Invitation.objects.all()
     serializer_class = serializers.InvitationSerializer
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
-    filter_backends = (structure_filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_backends = (
+        structure_filters.GenericRoleFilter,
+        rf_filters.DjangoFilterBackend,
+        filters.InvitationCustomerFilterBackend,
+    )
     filter_class = filters.InvitationFilter
     lookup_field = 'uuid'
 

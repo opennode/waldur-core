@@ -1,6 +1,10 @@
 from __future__ import unicode_literals
 
+import uuid
+
 import django_filters
+from django.db.models import Q
+from rest_framework.filters import DjangoFilterBackend
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.structure import models as structure_models
@@ -29,13 +33,6 @@ class InvitationFilter(django_filters.FilterSet):
             'manager': structure_models.ProjectRole.MANAGER,
         },
     )
-    customer = core_filters.UUIDFilter(
-        name='customer_role__customer__uuid',
-    )
-    customer_url = core_filters.URLFilter(
-        view_name='customer-detail',
-        name='customer_role__customer__uuid',
-    )
     customer_role = core_filters.MappedChoiceFilter(
         name='customer_role__role_type',
         choices=(
@@ -53,8 +50,6 @@ class InvitationFilter(django_filters.FilterSet):
         fields = [
             'email',
             'state',
-            'customer',
-            'customer_url',
             'customer_role',
             'project',
             'project_url',
@@ -67,3 +62,31 @@ class InvitationFilter(django_filters.FilterSet):
             '-email',
             '-state',
         ]
+
+
+class InvitationCustomerFilterBackend(DjangoFilterBackend):
+    url_filter = core_filters.URLFilter(
+        view_name='customer-detail',
+        name='customer_role__customer__uuid',
+    )
+
+    def filter_queryset(self, request, queryset, view):
+        customer_uuid = self.extract_customer_uuid(request)
+        if not customer_uuid:
+            return queryset
+
+        try:
+            uuid.UUID(customer_uuid)
+        except ValueError:
+            return queryset.none()
+
+        query = Q(customer_role__customer__uuid=customer_uuid)
+        query |= Q(project_role__project__customer__uuid=customer_uuid)
+        return queryset.filter(query)
+
+    def extract_customer_uuid(self, request):
+        if 'customer_url' in request.query_params:
+            return self.url_filter.get_uuid(request.query_params['customer_url'])
+
+        if 'customer' in request.query_params:
+            return request.query_params['customer']
