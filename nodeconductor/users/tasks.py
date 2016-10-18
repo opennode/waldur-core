@@ -50,4 +50,4 @@ def send_invitation(invitation_uuid, sender_name):
 
     logger.debug('Sending invitation to {email} to join {name} {type} as {role}'.format(
         email=invitation.email, **context))
-    send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [invitation.email])
+    send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [invitation.email], html_message=html_message)
