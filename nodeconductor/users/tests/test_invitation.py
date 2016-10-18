@@ -230,6 +230,31 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
 
         self.assertEqual(models.Invitation.objects.get(uuid=invitation.uuid).state, models.Invitation.State.EXPIRED)
 
+    def test_filtering_by_customer_uuid_includes_project_invitations_for_that_customer_too(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(factories.InvitationBaseFactory.get_list_url(), {
+            'customer': self.customer.uuid.hex
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_filtering_by_customer_url_includes_project_invitations_for_that_customer_too(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(factories.InvitationBaseFactory.get_list_url(), {
+            'customer_url': structure_factories.CustomerFactory.get_url(self.customer)
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_filtering_by_another_customer_does_not_includes_project_invitations_for_initial_customer(self):
+        other_customer = structure_factories.CustomerFactory()
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(factories.InvitationBaseFactory.get_list_url(), {
+            'customer': other_customer.uuid.hex
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
     # Helper methods
     def _get_valid_project_invitation_payload(self, invitation=None, project_role=None):
         invitation = invitation or factories.ProjectInvitationFactory.build()
