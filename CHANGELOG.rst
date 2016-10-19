@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Introduced user invitations.
+- Fix service settings deletion on scope deletion.
 
 Release 0.108.3
 ---------------
