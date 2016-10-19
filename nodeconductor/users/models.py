@@ -10,7 +10,7 @@ from nodeconductor.structure import models as structure_models
 
 
 @python_2_unicode_compatible
-class Invitation(core_models.UuidMixin, TimeStampedModel):
+class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessageMixin):
     class Permissions(object):
         customer_path = 'customer'
 

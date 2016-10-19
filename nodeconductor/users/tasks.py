@@ -1,10 +1,14 @@
 import logging
 
+from smtplib import SMTPException
+
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
+
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.users import models
 
 
@@ -29,25 +33,29 @@ def send_invitation(invitation_uuid, sender_name):
     invitation = models.Invitation.objects.get(uuid=invitation_uuid)
 
     if invitation.project_role is not None:
-        context = {
-            'type': 'project',
-            'name': invitation.project_role.project.name.capitalize(),
-            'role': invitation.project_role.get_role_type_display
-        }
-    else:
-        context = {
-            'type': 'organization',
-            'name': invitation.customer.name.capitalize(),
-            'role': invitation.customer_role.get_role_type_display
-        }
+        context = dict(type='project', name=invitation.project_role.project.name)
+        role_prefix = 'project' if invitation.project_role.role_type == ProjectRole.MANAGER else 'system'
+        context['role'] = '%s %s' % (role_prefix, invitation.project_role.get_role_type_display())
 
-    context['sender'] = sender_name.title()
+    else:
+        context = dict(
+            type='organization',
+            name=invitation.customer_role.customer.name,
+            role=invitation.customer_role.get_role_type_display()
+        )
+
+    context['sender'] = sender_name
     context['link'] = invitation.link_template.format(uuid=invitation_uuid)
 
     subject = render_to_string('users/invitation_subject.txt', context)
     text_message = render_to_string('users/invitation_message.txt', context)
     html_message = render_to_string('users/invitation_message.html', context)
 
-    logger.debug('Sending invitation to {email} to join {name} {type} as {role}'.format(
+    logger.debug('About to send invitation to {email} to join {name} {type} as {role}'.format(
         email=invitation.email, **context))
-    send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [invitation.email], html_message=html_message)
+    try:
+        send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [invitation.email], html_message=html_message)
+    except SMTPException as e:
+        invitation.error_message = str(e)
+        invitation.save(update_fields=['error_message'])
+        raise

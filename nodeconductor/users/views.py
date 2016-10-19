@@ -60,14 +60,16 @@ class InvitationViewSet(mixins.CreateModelMixin,
             raise ValidationError('Only pending invitation can be resent.')
 
         tasks.send_invitation.delay(invitation.uuid.hex, self.request.user.full_name or self.request.user.username)
-        return Response({'detail': "Invitation has been successfully sent."},
+        return Response({'detail': "Invitation sending has been successfully scheduled."},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
     def cancel(self, request, uuid=None):
         invitation = self.get_object()
 
-        if invitation.state != models.Invitation.State.PENDING:
+        if not self.can_manage_invitation_with(invitation.customer):
+            raise PermissionDenied('You do not have permission to perform this action.')
+        elif invitation.state != models.Invitation.State.PENDING:
             raise ValidationError('Only pending invitation can be canceled.')
 
         invitation.cancel()
