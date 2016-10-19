@@ -410,8 +410,15 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
 def delete_service_settings_on_service_delete(sender, instance, **kwargs):
     """ Delete not shared service settings without services """
     service = instance
-    if not service.settings.shared:
-        service.settings.delete()
+    try:
+        service_settings = service.settings
+    except ServiceSettings.DoesNotExist:
+        # On service settings scope deletion Django collector goes wild and
+        # tries to delete service settings before services. To prevent this
+        # issue lets skip service that does not have settings.
+        return
+    if not service_settings.shared:
+        service_settings.delete()
 
 
 def init_resource_start_time(sender, instance, name, source, target, **kwargs):
