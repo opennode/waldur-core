@@ -26,8 +26,8 @@ class InvitationForm(forms.ModelForm):
 
 class InvitationAdmin(admin.ModelAdmin):
     form = InvitationForm
-    fields = ('email', 'project_role', 'customer_role', 'state', 'modified', 'created')
-    readonly_fields = ('created', 'modified')
+    fields = ('email', 'project_role', 'customer_role', 'state', 'error_message', 'modified', 'created')
+    readonly_fields = ('created', 'modified', 'error_message')
     list_display = ('email', 'uuid', 'project_role', 'customer_role', 'state')
     list_filter = ('state',)
     search_fields = ('email', 'uuid')
