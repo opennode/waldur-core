@@ -49,6 +49,7 @@ class InvitationFilter(django_filters.FilterSet):
         model = models.Invitation
         fields = [
             'email',
+            'civil_number',
             'state',
             'customer_role',
             'project',

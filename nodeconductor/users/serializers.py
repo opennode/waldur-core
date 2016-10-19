@@ -56,7 +56,7 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Invitation
-        fields = ('url', 'uuid', 'link_template', 'email',
+        fields = ('url', 'uuid', 'link_template', 'email', 'civil_number',
                   'project', 'project_role', 'project_name',
                   'customer', 'customer_role', 'customer_name',
                   'state', 'error_message', 'created', 'expires')

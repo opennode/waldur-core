@@ -82,6 +82,8 @@ class InvitationViewSet(mixins.CreateModelMixin,
 
         if invitation.state != models.Invitation.State.PENDING:
             raise ValidationError('Only pending invitation can be accepted.')
+        elif invitation.civil_number and invitation.civil_number != request.user.civil_number:
+            raise ValidationError('User has an invalid civil number.')
 
         invitation.accept(request.user)
         return Response({'detail': "Invitation has been successfully accepted."},
