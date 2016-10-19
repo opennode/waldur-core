@@ -29,6 +29,7 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
     link_template = models.CharField(max_length=255, help_text='The template must include {uuid} parameter '
                                                                'e.g. http://example.com/invitation/{uuid}')
     email = models.EmailField(help_text='Invitation link will be sent to this email.')
+    civil_number = models.CharField(max_length=50, blank=True, help_text='Civil number of invited user.')
 
     def get_expiration_time(self):
         return self.created + settings.NODECONDUCTOR['INVITATION_LIFETIME']

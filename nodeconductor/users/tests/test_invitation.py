@@ -22,15 +22,15 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
 
-        customer_role = self.customer.roles.get(role_type=structure_models.CustomerRole.OWNER)
-        self.customer_invitation = factories.CustomerInvitationFactory(customer_role=customer_role)
+        self.customer_role = self.customer.roles.get(role_type=structure_models.CustomerRole.OWNER)
+        self.customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role)
 
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.project.add_user(self.project_admin, structure_models.ProjectRole.ADMINISTRATOR)
         self.project.add_user(self.project_manager, structure_models.ProjectRole.MANAGER)
 
-        project_role = self.project.roles.get(role_type=structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_invitation = factories.ProjectInvitationFactory(project_role=project_role)
+        self.project_role = self.project.roles.get(role_type=structure_models.ProjectRole.ADMINISTRATOR)
+        self.project_invitation = factories.ProjectInvitationFactory(project_role=self.project_role)
 
     # List tests
     def test_user_can_list_invitations(self):
@@ -152,6 +152,15 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.customer_invitation.refresh_from_db()
         self.assertEqual(self.customer_invitation.state, models.Invitation.State.ACCEPTED)
         self.assertTrue(self.customer.has_user(self.user, self.customer_invitation.customer_role.role_type))
+
+    def test_user_with_invalid_civil_number_cannot_accept_invitation(self):
+        customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role,
+                                                                  civil_number='123456789')
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['User has an invalid civil number.'])
 
     # API tests
     def test_invitation_update_is_not_allowed(self):
