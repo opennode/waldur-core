@@ -50,9 +50,11 @@ class test_data(object):
         self.args = args
 
     def __call__(self, method):
+        cls = self.__class__
+
         @data(*self.args)
         def wrapped(self, *method_args):
-            method_args = [getattr(test_data, arg) for arg in method_args]
+            method_args = [getattr(cls, arg) for arg in method_args]
             return method(self, *method_args)
         return wrapped
 
