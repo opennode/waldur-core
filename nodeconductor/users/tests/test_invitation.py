@@ -22,15 +22,15 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
 
-        customer_role = self.customer.roles.get(role_type=structure_models.CustomerRole.OWNER)
-        self.customer_invitation = factories.CustomerInvitationFactory(customer_role=customer_role)
+        self.customer_role = self.customer.roles.get(role_type=structure_models.CustomerRole.OWNER)
+        self.customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role)
 
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.project.add_user(self.project_admin, structure_models.ProjectRole.ADMINISTRATOR)
         self.project.add_user(self.project_manager, structure_models.ProjectRole.MANAGER)
 
-        project_role = self.project.roles.get(role_type=structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_invitation = factories.ProjectInvitationFactory(project_role=project_role)
+        self.project_role = self.project.roles.get(role_type=structure_models.ProjectRole.ADMINISTRATOR)
+        self.project_invitation = factories.ProjectInvitationFactory(project_role=self.project_role)
 
     # List tests
     def test_user_can_list_invitations(self):
@@ -133,6 +133,35 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
                                                                                 action='cancel'))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_authenticated_user_can_accept_project_invitation(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.ProjectInvitationFactory.get_url(
+            self.project_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project_invitation.refresh_from_db()
+        self.assertEqual(self.project_invitation.state, models.Invitation.State.ACCEPTED)
+        self.assertTrue(self.project.has_user(self.user, self.project_invitation.project_role.role_type))
+
+    def test_authenticated_user_can_accept_customer_invitation(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(
+            self.customer_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.customer_invitation.refresh_from_db()
+        self.assertEqual(self.customer_invitation.state, models.Invitation.State.ACCEPTED)
+        self.assertTrue(self.customer.has_user(self.user, self.customer_invitation.customer_role.role_type))
+
+    def test_user_with_invalid_civil_number_cannot_accept_invitation(self):
+        customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role,
+                                                                  civil_number='123456789')
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['User has an invalid civil number.'])
+
     # API tests
     def test_invitation_update_is_not_allowed(self):
         self.client.force_authenticate(user=self.staff)
@@ -181,7 +210,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
 
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, {'project_role': ["Project role must be provided."]})
+        self.assertEqual(response.data, {'project_role': ["Project and its role must be provided."]})
 
     def test_user_cannot_create_customer_invitation_without_customer_role(self):
         self.client.force_authenticate(user=self.staff)
@@ -190,7 +219,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
 
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, {'customer_role': ["Customer role must be provided."]})
+        self.assertEqual(response.data, {'customer_role': ["Customer and its role must be provided."]})
 
     def test_user_cannot_create_invitation_for_existing_user(self):
         self.client.force_authenticate(user=self.staff)
@@ -209,6 +238,31 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
             cancel_expired_invitations()
 
         self.assertEqual(models.Invitation.objects.get(uuid=invitation.uuid).state, models.Invitation.State.EXPIRED)
+
+    def test_filtering_by_customer_uuid_includes_project_invitations_for_that_customer_too(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(factories.InvitationBaseFactory.get_list_url(), {
+            'customer': self.customer.uuid.hex
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_filtering_by_customer_url_includes_project_invitations_for_that_customer_too(self):
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(factories.InvitationBaseFactory.get_list_url(), {
+            'customer_url': structure_factories.CustomerFactory.get_url(self.customer)
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_filtering_by_another_customer_does_not_includes_project_invitations_for_initial_customer(self):
+        other_customer = structure_factories.CustomerFactory()
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(factories.InvitationBaseFactory.get_list_url(), {
+            'customer': other_customer.uuid.hex
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
 
     # Helper methods
     def _get_valid_project_invitation_payload(self, invitation=None, project_role=None):
