@@ -1,5 +1,4 @@
 from ddt import data
-from django.core.exceptions import ObjectDoesNotExist
 
 from . import factories
 from .. import models
@@ -13,13 +12,11 @@ class cached_class_property(object):
         self.cache_name = self.method.__name__ + '_cached'
 
     def __get__(self, owner_self, owner_cls):
-        try:
-            value = getattr(owner_cls, self.cache_name)
-            value.refresh_from_db()
-        except (AttributeError, ObjectDoesNotExist):
-            value = self.method(owner_cls)
-            setattr(owner_cls, self.cache_name, value)
-        return value
+        value = getattr(owner_cls, self.cache_name, None)
+        # if object isn't cached or doesn't exist in database - create new one and cache it.
+        if value is None or not value._meta.model.objects.filter(pk=value.pk).exists():
+            setattr(owner_cls, self.cache_name, self.method(owner_cls))
+        return getattr(owner_cls, self.cache_name)
 
 
 class test_data(object):
@@ -77,10 +74,6 @@ class test_data(object):
     @cached_class_property
     def service_project_link(cls):
         return factories.TestServiceProjectLinkFactory(service=cls.service, project=cls.project)
-
-    @cached_class_property
-    def instance(cls):
-        return factories.TestInstanceFactory(service_project_link=cls.service_project_link)
 
     @cached_class_property
     def staff(cls):
