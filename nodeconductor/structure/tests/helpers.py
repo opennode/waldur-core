@@ -5,7 +5,7 @@ from . import factories
 from .. import models
 
 
-class _cached_class_property(object):
+class cached_class_property(object):
     """ Allows to reach classmethod as property and cache returned value in class """
 
     def __init__(self, method):
@@ -56,51 +56,51 @@ class test_data(object):
             return method(self, *method_args)
         return wrapped
 
-    @_cached_class_property
+    @cached_class_property
     def customer(cls):
         return factories.CustomerFactory()
 
-    @_cached_class_property
+    @cached_class_property
     def service_settings(cls):
         return factories.ServiceSettingsFactory(customer=cls.customer)
 
-    @_cached_class_property
+    @cached_class_property
     def project(cls):
         return factories.ProjectFactory(customer=cls.customer)
 
-    @_cached_class_property
+    @cached_class_property
     def service(cls):
         return factories.TestServiceFactory(service_settings=cls.service_settings, customer=cls.customer)
 
-    @_cached_class_property
+    @cached_class_property
     def service_project_link(cls):
         return factories.TestServiceProjectLinkFactory(service=cls.service, project=cls.project)
 
-    @_cached_class_property
+    @cached_class_property
     def instance(cls):
         return factories.TestInstanceFactory(service_project_link=cls.service_project_link)
 
-    @_cached_class_property
+    @cached_class_property
     def staff(cls):
         return factories.UserFactory(is_staff=True)
 
-    @_cached_class_property
+    @cached_class_property
     def user(cls):
         return factories.UserFactory()
 
-    @_cached_class_property
+    @cached_class_property
     def owner(cls):
         owner = factories.UserFactory()
         cls.customer.add_user(owner, models.CustomerRole.OWNER)
         return owner
 
-    @_cached_class_property
+    @cached_class_property
     def admin(cls):
         admin = factories.UserFactory()
         cls.project.add_user(admin, models.ProjectRole.ADMINISTRATOR)
         return admin
 
-    @_cached_class_property
+    @cached_class_property
     def manager(cls):
         manager = factories.UserFactory()
         cls.project.add_user(manager, models.ProjectRole.MANAGER)
