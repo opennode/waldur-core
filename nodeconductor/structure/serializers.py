@@ -415,7 +415,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
             ('url', reverse('project-detail', kwargs={'uuid': proj.uuid}, request=request)),
             ('uuid', proj.uuid),
             ('name', proj.name),
-            ('role', 'admin' if projectrole[proj.id][0] == 0 else 'manager'),
+            ('role', 'admin' if projectrole[proj.id][0] == models.ProjectRole.ADMINISTRATOR else 'manager'),
             ('permission', reverse('project_permission-detail',
                                    kwargs={'pk': projectrole[proj.id][1]},
                                    request=request))
@@ -448,7 +448,7 @@ class ProjectUserSerializer(serializers.ModelSerializer):
             perm = User.groups.through.objects.get(user=user, group=group)
 
         if group:
-            role = 'admin' if group.projectrole.role_type == 0 else 'manager'
+            role = 'admin' if group.projectrole.role_type == models.ProjectRole.ADMINISTRATOR else 'manager'
         else:
             role = None
         setattr(user, 'role', role)
