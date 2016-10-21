@@ -6,3 +6,4 @@
 .. include:: logging.rst
 .. include:: quotas.rst
 .. include:: tasks-and-executors.rst
+.. include:: how-to-write-tests.rst

@@ -138,7 +138,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         ])
     # Civil number is nullable on purpose, otherwise
     # it wouldn't be possible to put a unique constraint on it
-    civil_number = models.CharField(_('civil number'), max_length=10, unique=True, blank=True, null=True, default=None)
+    civil_number = models.CharField(_('civil number'), max_length=50, unique=True, blank=True, null=True, default=None)
     full_name = models.CharField(_('full name'), max_length=100, blank=True)
     native_name = models.CharField(_('native name'), max_length=100, blank=True)
     phone_number = models.CharField(_('phone number'), max_length=40, blank=True)

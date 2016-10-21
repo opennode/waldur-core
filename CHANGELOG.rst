@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Introduced user invitations.
 
 Release 0.108.3
 ---------------
