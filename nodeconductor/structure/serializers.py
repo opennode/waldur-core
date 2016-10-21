@@ -370,7 +370,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
 
 
 class CustomerUserSerializer(serializers.ModelSerializer):
-    role = serializers.ReadOnlyField(source='group.customerrole.get_role_type_display')
+    role = serializers.ReadOnlyField()
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='customer_permission-detail',
@@ -395,7 +395,8 @@ class CustomerUserSerializer(serializers.ModelSerializer):
         else:
             perm = User.groups.through.objects.get(user=user, group=group)
 
-        setattr(user, 'group', group)
+        role = 'owner' if group else None
+        setattr(user, 'role', role)
         setattr(user, 'perm', perm)
         return super(CustomerUserSerializer, self).to_representation(user)
 
@@ -403,7 +404,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
         request = self.context['request']
         customer = self.context['customer']
         projectrole = {
-            g.projectrole.project_id: (g.projectrole.get_role_type_display(),
+            g.projectrole.project_id: (g.projectrole.role_type,
                                        User.groups.through.objects.get(user=user, group=g).pk)
             for g in user.groups.exclude(projectrole=None)
         }
@@ -414,7 +415,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
             ('url', reverse('project-detail', kwargs={'uuid': proj.uuid}, request=request)),
             ('uuid', proj.uuid),
             ('name', proj.name),
-            ('role', projectrole[proj.id][0]),
+            ('role', 'admin' if projectrole[proj.id][0] == models.ProjectRole.ADMINISTRATOR else 'manager'),
             ('permission', reverse('project_permission-detail',
                                    kwargs={'pk': projectrole[proj.id][1]},
                                    request=request))
@@ -422,7 +423,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
 
 class ProjectUserSerializer(serializers.ModelSerializer):
-    role = serializers.ReadOnlyField(source='group.projectrole.get_role_type_display')
+    role = serializers.ReadOnlyField()
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='project_permission-detail',
@@ -446,7 +447,11 @@ class ProjectUserSerializer(serializers.ModelSerializer):
         else:
             perm = User.groups.through.objects.get(user=user, group=group)
 
-        setattr(user, 'group', group)
+        if group:
+            role = 'admin' if group.projectrole.role_type == models.ProjectRole.ADMINISTRATOR else 'manager'
+        else:
+            role = None
+        setattr(user, 'role', role)
         setattr(user, 'perm', perm)
         return super(ProjectUserSerializer, self).to_representation(user)
 
