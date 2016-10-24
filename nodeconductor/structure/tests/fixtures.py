@@ -55,8 +55,12 @@ class ServiceFixture(ProjectFixture):
 
     @cached_property
     def service(self):
-        return factories.TestServiceFactory(service_settings=self.service_settings, customer=self.customer)
+        return factories.TestServiceFactory(settings=self.service_settings, customer=self.customer)
 
     @cached_property
     def service_project_link(self):
         return factories.TestServiceProjectLinkFactory(service=self.service, project=self.project)
+
+    @cached_property
+    def resource(self):
+        return factories.TestInstanceFactory(service_project_link=self.service_project_link)

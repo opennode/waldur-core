@@ -520,3 +520,21 @@ class ProjectUsersListTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.fixture.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class ProjectCountersListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.owner = self.fixture.owner
+        self.admin = self.fixture.admin
+        self.manager = self.fixture.manager
+        self.project = self.fixture.project
+        self.service = self.fixture.service
+        self.resource = self.fixture.resource
+        self.url = factories.ProjectFactory.get_url(self.project, action='counters')
+
+    def test_user_can_get_project_counters(self):
+        self.client.force_authenticate(self.fixture.owner)
+        response = self.client.get(self.url, {'fields': ['users', 'apps', 'vms']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'users': 2, 'apps': 0, 'vms': 1})
