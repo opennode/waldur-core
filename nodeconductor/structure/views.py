@@ -1498,7 +1498,7 @@ class ServicesViewSet(mixins.ListModelMixin,
 
 
 class BaseCounterView(viewsets.GenericViewSet):
-    def list(self, request, uuid):
+    def list(self, request, uuid=None):
         result = {}
         fields = request.query_params.getlist('fields')
         for field, func in self.get_fields().items():
