@@ -30,7 +30,7 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         required=False,
         allow_null=True
     )
-    project_name = serializers.ReadOnlyField(source='project.name')
+    project_name = serializers.ReadOnlyField(source='project_role.project.name')
     customer = serializers.HyperlinkedRelatedField(
         source='customer_role.customer',
         view_name='customer-detail',
