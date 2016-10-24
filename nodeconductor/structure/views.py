@@ -1500,7 +1500,7 @@ class ServicesViewSet(mixins.ListModelMixin,
 class BaseCounterView(viewsets.GenericViewSet):
     def list(self, request, uuid=None):
         result = {}
-        fields = request.query_params.getlist('fields')
+        fields = request.query_params.getlist('fields') or self.get_fields().keys()
         for field, func in self.get_fields().items():
             if field in fields:
                 result[field] = func()
