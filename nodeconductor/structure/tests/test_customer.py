@@ -707,3 +707,20 @@ class CustomerUsersListTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.fixture.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class CustomerCountersListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.owner = self.fixture.owner
+        self.admin = self.fixture.admin
+        self.manager = self.fixture.manager
+        self.customer = self.fixture.customer
+        self.service = self.fixture.service
+        self.url = factories.CustomerFactory.get_url(self.customer, action='counters')
+
+    def test_user_can_get_customer_counters(self):
+        self.client.force_authenticate(self.fixture.owner)
+        response = self.client.get(self.url, {'fields': ['users', 'projects', 'services']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'users': 3, 'projects': 1, 'services': 1})
