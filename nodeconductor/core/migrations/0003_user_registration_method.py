@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='user',
-            name='auth_method',
-            field=models.CharField(default='default', help_text='Indicates what authentication method were used last time.', max_length=50, verbose_name='authentication method', blank=True),
+            name='registration_method',
+            field=models.CharField(default='default', help_text='Indicates what registration method were used.', max_length=50, verbose_name='registration method', blank=True),
         ),
     ]

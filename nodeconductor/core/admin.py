@@ -53,13 +53,13 @@ class UserAdmin(auth_admin.UserAdmin):
     search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email')
     list_filter = ('is_active', 'is_staff', 'is_superuser')
     fieldsets = (
-        (None, {'fields': ('username', 'password', 'auth_method')}),
+        (None, {'fields': ('username', 'password', 'registration_method')}),
         (_('Personal info'), {'fields': ('civil_number', 'full_name', 'native_name', 'email')}),
         (_('Organization'), {'fields': ('organization', 'organization_approved')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
     )
-    readonly_fields = ('auth_method',)
+    readonly_fields = ('registration_method',)
     form = UserChangeForm
     add_form = UserCreationForm
 

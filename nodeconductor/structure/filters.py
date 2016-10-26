@@ -299,7 +299,7 @@ class UserFilter(django_filters.FilterSet):
             'username',
             'civil_number',
             'is_active',
-            'auth_method',
+            'registration_method',
         ]
         order_by = [
             'full_name',
@@ -312,7 +312,7 @@ class UserFilter(django_filters.FilterSet):
             'job_title',
             'username',
             'is_active',
-            'auth_method',
+            'registration_method',
             # descending
             '-full_name',
             '-native_name',
@@ -324,7 +324,7 @@ class UserFilter(django_filters.FilterSet):
             '-job_title',
             '-username',
             '-is_active',
-            '-auth_method',
+            '-registration_method',
         ]
 
 
