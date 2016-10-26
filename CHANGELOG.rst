@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Introduced user invitations.
+- Add "registration_method" field to user model.
 
 Release 0.108.3
 ---------------
