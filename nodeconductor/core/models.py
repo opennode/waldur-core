@@ -138,7 +138,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         ])
     # Civil number is nullable on purpose, otherwise
     # it wouldn't be possible to put a unique constraint on it
-    civil_number = models.CharField(_('civil number'), max_length=10, unique=True, blank=True, null=True, default=None)
+    civil_number = models.CharField(_('civil number'), max_length=50, unique=True, blank=True, null=True, default=None)
     full_name = models.CharField(_('full name'), max_length=100, blank=True)
     native_name = models.CharField(_('native name'), max_length=100, blank=True)
     phone_number = models.CharField(_('phone number'), max_length=40, blank=True)
@@ -155,6 +155,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                     help_text=_('Designates whether this user should be treated as '
                                                 'active. Unselect this instead of deleting accounts.'))
     date_joined = models.DateTimeField(_('date joined'), default=django_timezone.now)
+    registration_method = models.CharField(_('registration method'), max_length=50, default='default', blank=True,
+                                           help_text=_('Indicates what registration method were used.'))
 
     objects = UserManager()
 

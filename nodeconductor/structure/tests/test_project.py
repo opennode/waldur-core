@@ -1,19 +1,16 @@
 from __future__ import unicode_literals
 
+from ddt import data, ddt
 from mock import call
 
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
-from rest_framework import status
-from rest_framework import test
+from rest_framework import status, test
 
 from nodeconductor.structure import signals
-from nodeconductor.structure.models import CustomerRole
-from nodeconductor.structure.models import Project
-from nodeconductor.structure.models import ProjectGroupRole
-from nodeconductor.structure.models import ProjectRole
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure.models import CustomerRole, Project, ProjectGroupRole, ProjectRole
+from nodeconductor.structure.tests import factories, fixtures
 
 
 class ProjectTest(TransactionTestCase):
@@ -496,3 +493,48 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
         response = self.client.get(self._get_project_url(self.projects[project]))
         # 404 is used instead of 403 to hide the fact that the resource exists at all
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+@ddt
+class ProjectUsersListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ProjectFixture()
+        self.admin = self.fixture.admin
+        self.manager = self.fixture.manager
+        self.project = self.fixture.project
+        self.url = factories.ProjectFactory.get_url(self.project, action='users')
+
+    @data('staff', 'owner', 'manager', 'admin')
+    def test_user_can_list_project_users(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+        self.assertSetEqual({user['role'] for user in response.data}, {'admin', 'manager'})
+        self.assertSetEqual({user['uuid'] for user in response.data},
+                            {self.admin.uuid.hex, self.manager.uuid.hex})
+
+    def test_user_can_not_list_project_users(self):
+        self.client.force_authenticate(self.fixture.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class ProjectCountersListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.owner = self.fixture.owner
+        self.admin = self.fixture.admin
+        self.manager = self.fixture.manager
+        self.project = self.fixture.project
+        self.service = self.fixture.service
+        self.resource = self.fixture.resource
+        self.url = factories.ProjectFactory.get_url(self.project, action='counters')
+
+    def test_user_can_get_project_counters(self):
+        self.client.force_authenticate(self.fixture.owner)
+        response = self.client.get(self.url, {'fields': ['users', 'apps', 'vms']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'users': 2, 'apps': 0, 'vms': 1})

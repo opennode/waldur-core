@@ -14,6 +14,7 @@ from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
 from django.utils import six, timezone
+from django.utils.functional import cached_property
 from django.views.static import serve
 from django_fsm import TransitionNotAllowed
 
@@ -1496,8 +1497,24 @@ class ServicesViewSet(mixins.ListModelMixin,
         return super(ServicesViewSet, self).list(request, *args, **kwargs)
 
 
-class CounterMixin(object):
-    def get_count(self, url, params):
+class BaseCounterView(viewsets.GenericViewSet):
+    def list(self, request, uuid=None):
+        result = {}
+        fields = request.query_params.getlist('fields') or self.get_fields().keys()
+        for field, func in self.get_fields().items():
+            if field in fields:
+                result[field] = func()
+
+        return Response(result)
+
+    def get_fields(self):
+        raise NotImplementedError()
+
+    @cached_property
+    def object(self):
+        return self.get_object()
+
+    def get_count(self, url, params=None):
         response = request_api(self.request, url, method='HEAD', params=params)
         if response.ok:
             return response.total
@@ -1506,7 +1523,7 @@ class CounterMixin(object):
         return 0
 
 
-class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
+class CustomerCountersView(BaseCounterView):
     """
     Count number of entities related to customer
 
@@ -1514,10 +1531,6 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
 
         {
             "alerts": 12,
-            "vms": 1,
-            "apps": 0,
-            "private_clouds": 1,
-            "storages": 2,
             "services": 1,
             "projects": 1,
             "users": 3
@@ -1528,39 +1541,24 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         return filter_queryset_for_user(models.Customer.objects.all().only('pk', 'uuid'), self.request.user)
 
-    def list(self, request, uuid):
-        self.customer = self.get_object()
+    def get_fields(self):
+        return {
+            'alerts': self.get_alerts,
+            'projects': self.get_projects,
+            'services': self.get_services,
+            'users': self.get_users
+        }
 
-        return Response({
-            'alerts': self.get_alerts(),
-            'vms': self.get_vms(),
-            'apps': self.get_apps(),
-            'private_clouds': self.get_private_clouds(),
-            'storages': self.get_storages(),
-            'projects': self.get_projects(),
-            'services': self.get_services(),
-            'users': self.customer.get_users().count()
-        })
+    def get_users(self):
+        return self.object.get_users().count()
 
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'customer',
-            'uuid': self.customer.uuid.hex,
+            'uuid': self.object.uuid.hex,
             'exclude_features': self.request.query_params.getlist('exclude_features'),
             'opened': True
         })
-
-    def get_vms(self):
-        return self._total_count(models.VirtualMachineMixin.get_all_models())
-
-    def get_apps(self):
-        return self._total_count(models.ApplicationMixin.get_all_models())
-
-    def get_private_clouds(self):
-        return self._total_count(models.PrivateCloud.get_all_models())
-
-    def get_storages(self):
-        return self._total_count(models.Storage.get_all_models())
 
     def get_projects(self):
         return self._count_model(models.Project)
@@ -1573,12 +1571,12 @@ class CustomerCountersView(CounterMixin, viewsets.GenericViewSet):
         return sum(self._count_model(model) for model in models)
 
     def _count_model(self, model):
-        qs = model.objects.filter(customer=self.customer).only('pk')
+        qs = model.objects.filter(customer=self.object).only('pk')
         qs = filter_queryset_for_user(qs, self.request.user)
         return qs.count()
 
 
-class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
+class ProjectCountersView(BaseCounterView):
     """
     Count number of entities related to project
 
@@ -1599,26 +1597,24 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
     def get_queryset(self):
         return filter_queryset_for_user(models.Project.objects.all().only('pk', 'uuid'), self.request.user)
 
-    def list(self, request, uuid):
-        self.project = self.get_object()
-        self.project_uuid = self.project.uuid.hex
-        self.exclude_features = request.query_params.getlist('exclude_features')
-
-        return Response({
-            'alerts': self.get_alerts(),
-            'vms': self.get_vms(),
-            'apps': self.get_apps(),
-            'private_clouds': self.get_private_clouds(),
-            'storages': self.get_storages(),
-            'users': self.get_users(),
-            'premium_support_contracts': self.get_premium_support_contracts()
-        })
+    def get_fields(self):
+        fields = {
+            'alerts': self.get_alerts,
+            'vms': self.get_vms,
+            'apps': self.get_apps,
+            'private_clouds': self.get_private_clouds,
+            'storages': self.get_storages,
+            'users': self.get_users
+        }
+        if 'nodeconductor_plus.premium_support' in django_settings.INSTALLED_APPS:
+            fields['premium_support_contracts'] = self.get_premium_support_contracts
+        return fields
 
     def get_alerts(self):
         return self.get_count('alert-list', {
             'aggregate': 'project',
-            'uuid': self.project_uuid,
-            'exclude_features': self.exclude_features,
+            'uuid': self.object.uuid.hex,
+            'exclude_features': self.request.query_params.getlist('exclude_features'),
             'opened': True
         })
 
@@ -1635,25 +1631,23 @@ class ProjectCountersView(CounterMixin, viewsets.GenericViewSet):
         return self._total_count(models.Storage.get_all_models())
 
     def get_users(self):
-        return self.get_count('user-list', {
-            'project': self.project_uuid
-        })
+        return self.object.get_users().count()
 
     def get_premium_support_contracts(self):
         return self.get_count('premium-support-contract-list', {
-            'project_uuid': self.project_uuid
+            'project_uuid': self.object.uuid.hex
         })
 
     def _total_count(self, models):
         return sum(self._count_model(model) for model in models)
 
     def _count_model(self, model):
-        qs = model.objects.filter(project=self.project).only('pk')
+        qs = model.objects.filter(project=self.object).only('pk')
         qs = filter_queryset_for_user(qs, self.request.user)
         return qs.count()
 
 
-class UserCountersView(CounterMixin, viewsets.GenericViewSet):
+class UserCountersView(BaseCounterView):
     """
     Count number of entities related to current user
 
@@ -1664,21 +1658,20 @@ class UserCountersView(CounterMixin, viewsets.GenericViewSet):
             "hooks": 1
         }
     """
-    def list(self, request):
-        self.user_uuid = request.user.uuid.hex
 
-        return Response({
-            'keys': self.get_keys(),
-            'hooks': self.get_hooks()
-        })
+    def get_fields(self):
+        return {
+            'keys': self.get_keys,
+            'hooks': self.get_hooks
+        }
 
     def get_keys(self):
         return self.get_count('sshpublickey-list', {
-            'user_uuid': self.user_uuid
+            'user_uuid': self.request.user.uuid.hex
         })
 
     def get_hooks(self):
-        return self.get_count('hooks-list', {})
+        return self.get_count('hooks-list')
 
 
 class UpdateOnlyByPaidCustomerMixin(object):

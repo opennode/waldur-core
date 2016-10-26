@@ -3,20 +3,17 @@ from __future__ import unicode_literals
 
 from unittest import TestCase
 
+from ddt import data, ddt
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
 from permission.utils.logics import add_permission_logic, remove_permission_logic
-from rest_framework import status
-from rest_framework import test
+from rest_framework import status, test
 
 from nodeconductor.structure import signals
-from nodeconductor.structure.models import Customer
-from nodeconductor.structure.models import CustomerRole
-from nodeconductor.structure.models import ProjectRole
-from nodeconductor.structure.models import ProjectGroupRole
+from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole, ProjectGroupRole
 from nodeconductor.structure.perms import OWNER_CAN_MANAGE_CUSTOMER_LOGICS
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure.tests import factories, fixtures
 
 
 class UrlResolverMixin(object):
@@ -680,3 +677,50 @@ class CustomerQuotasTest(test.APITransactionTestCase):
 class CustomerUnicodeTest(TransactionTestCase):
     def test_customer_can_have_unicode_name(self):
         factories.CustomerFactory(name="Моя организация")
+
+
+@ddt
+class CustomerUsersListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ProjectFixture()
+        self.owner = self.fixture.owner
+        self.admin = self.fixture.admin
+        self.manager = self.fixture.manager
+        self.customer = self.fixture.customer
+        self.url = factories.CustomerFactory.get_url(self.customer, action='users')
+
+    @data('staff', 'owner', 'manager', 'admin')
+    def test_user_can_list_customer_users(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+
+        self.assertSetEqual({user['role'] for user in response.data}, {'owner', None, None})
+        self.assertSetEqual({user['uuid'] for user in response.data},
+                            {self.owner.uuid.hex, self.admin.uuid.hex, self.manager.uuid.hex})
+        self.assertSetEqual({user['projects'] and user['projects'][0]['role'] or None
+                             for user in response.data}, {None, 'admin', 'manager'})
+
+    def test_user_can_not_list_project_users(self):
+        self.client.force_authenticate(self.fixture.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class CustomerCountersListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.owner = self.fixture.owner
+        self.admin = self.fixture.admin
+        self.manager = self.fixture.manager
+        self.customer = self.fixture.customer
+        self.service = self.fixture.service
+        self.url = factories.CustomerFactory.get_url(self.customer, action='counters')
+
+    def test_user_can_get_customer_counters(self):
+        self.client.force_authenticate(self.fixture.owner)
+        response = self.client.get(self.url, {'fields': ['users', 'projects', 'services']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'users': 3, 'projects': 1, 'services': 1})

@@ -44,6 +44,7 @@ INSTALLED_APPS = (
     'nodeconductor.quotas',
     'nodeconductor.structure',
     'nodeconductor.cost_tracking',
+    'nodeconductor.users',
 
     'rest_framework',
     'rest_framework.authtoken',
@@ -194,6 +195,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=30),
         'args': (),
     },
+    'cancel-expired-invitations': {
+        'task': 'nodeconductor.users.cancel_expired_invitations',
+        'schedule': timedelta(hours=24),
+        'args': (),
+    },
 }
 
 NODECONDUCTOR = {
@@ -203,6 +209,7 @@ NODECONDUCTOR = {
 
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
+    'INVITATION_LIFETIME': timedelta(weeks=1),
 }
 
 

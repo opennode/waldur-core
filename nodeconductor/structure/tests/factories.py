@@ -110,10 +110,11 @@ class ProjectFactory(factory.DjangoModelFactory):
     customer = factory.SubFactory(CustomerFactory)
 
     @classmethod
-    def get_url(cls, project=None):
+    def get_url(cls, project=None, action=None):
         if project is None:
             project = ProjectFactory()
-        return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
+        url = 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_list_url(cls):
