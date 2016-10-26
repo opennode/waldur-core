@@ -155,6 +155,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                     help_text=_('Designates whether this user should be treated as '
                                                 'active. Unselect this instead of deleting accounts.'))
     date_joined = models.DateTimeField(_('date joined'), default=django_timezone.now)
+    auth_method = models.CharField(_('authentication method'), max_length=50, default='default', blank=True,
+                                   help_text=_('Indicates what authentication method were used last time.'))
 
     objects = UserManager()
 

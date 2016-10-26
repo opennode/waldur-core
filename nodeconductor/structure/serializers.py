@@ -758,6 +758,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'civil_number',
             'description',
             'is_staff', 'is_active',
+            'auth_method',
             'date_joined',
         )
         read_only_fields = (
@@ -765,6 +766,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'civil_number',
             'organization',
             'organization_approved',
+            'auth_method',
             'date_joined',
         )
         extra_kwargs = {
