@@ -11,7 +11,7 @@ from rest_framework import test
 from nodeconductor.structure import serializers
 from nodeconductor.structure import views
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure.tests import factories, fixtures
 
 User = get_user_model()
 
@@ -397,3 +397,23 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             group__projectrole__project=self.projects[project],
         )
         return 'http://testserver' + reverse('project_permission-detail', kwargs={'pk': permission.pk})
+
+
+class ProjectPermissionFilterTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        fixture = fixtures.ProjectFixture()
+        self.admin = fixture.admin
+        self.manager = fixture.manager
+        self.project = fixture.project
+        self.url = reverse('project_permission-list')
+
+    def test_user_can_filter_permission_by_project(self):
+        self.client.force_authenticate(self.manager)
+        response = self.client.get(self.url, {'project': self.project.uuid.hex})
+        self.assertEqual(len(response.data), 2)
+
+    def test_user_can_filter_permission_by_user(self):
+        self.client.force_authenticate(self.manager)
+        response = self.client.get(self.url, {'user': self.admin.uuid.hex})
+        self.assertEqual(len(response.data), 1)

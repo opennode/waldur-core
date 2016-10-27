@@ -788,20 +788,6 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 
         return False
 
-    def get_queryset(self):
-        queryset = super(ProjectPermissionViewSet, self).get_queryset()
-
-        # TODO: refactor against django filtering
-        user_uuid = self.request.query_params.get('user', None)
-        if user_uuid is not None:
-            try:
-                uuid.UUID(user_uuid)
-            except ValueError:
-                return queryset.none()
-            queryset = queryset.filter(user__uuid=user_uuid)
-
-        return queryset
-
     def list(self, request, *args, **kwargs):
         """
         Project permissions expresses connection of users to a project. Each project has two associated user groups that
@@ -898,15 +884,6 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 
     def get_queryset(self):
         queryset = super(ProjectGroupPermissionViewSet, self).get_queryset()
-
-        # TODO: refactor against django filtering
-        user_uuid = self.request.query_params.get('user', None)
-        if user_uuid is not None:
-            try:
-                uuid.UUID(user_uuid)
-            except ValueError:
-                return queryset.none()
-            queryset = queryset.filter(user__uuid=user_uuid)
 
         # XXX: This should be removed after permissions refactoring
         if not self.request.user.is_staff:

@@ -337,6 +337,7 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         view_name='project-detail',
         name='group__projectrole__project__uuid',
     )
+    user = core_filters.UUIDFilter(name='user__uuid')
     user_url = core_filters.URLFilter(
         view_name='user-detail',
         name='user__uuid',
@@ -396,6 +397,7 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         view_name='projectgroup-detail',
         name='group__projectgrouprole__project_group__uuid',
     )
+    user = core_filters.UUIDFilter(name='user__uuid')
     user_url = core_filters.URLFilter(
         view_name='user-detail',
         name='user__uuid',
