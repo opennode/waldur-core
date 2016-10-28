@@ -35,3 +35,22 @@ class InstanceSerializer(structure_serializers.BaseResourceSerializer):
     class Meta(structure_serializers.BaseResourceSerializer.Meta):
         model = models.TestInstance
         view_name = 'test-instances-detail'
+
+
+class NewInstanceSerializer(structure_serializers.BaseResourceSerializer):
+
+    service = serializers.HyperlinkedRelatedField(
+        source='service_project_link.service',
+        view_name='test-detail',
+        read_only=True,
+        lookup_field='uuid')
+
+    service_project_link = serializers.HyperlinkedRelatedField(
+        view_name='test-spl-detail',
+        queryset=models.TestServiceProjectLink.objects.all())
+
+    class Meta(structure_serializers.BaseResourceSerializer.Meta):
+        model = models.TestNewInstance
+        extra_kwargs = {
+            'url': {'view_name': 'test-new-instances-detail'}
+        }
