@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
-import uuid
 from collections import defaultdict
 
 from datetime import timedelta
@@ -774,7 +773,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
-    def can_manage_roles_for(self, project):
+    def can_manage_roles_for(self, project, role):
         user = self.request.user
         if user.is_staff:
             return True
@@ -785,6 +784,9 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         for project_group in project.project_groups.iterator():
             if project_group.has_user(user, models.ProjectGroupRole.MANAGER):
                 return True
+
+        if role == models.ProjectRole.ADMINISTRATOR and project.has_user(user, models.ProjectRole.MANAGER):
+            return True
 
         return False
 
@@ -834,8 +836,9 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     def perform_create(self, serializer):
         affected_project = serializer.validated_data['project']
         affected_user = serializer.validated_data['user']
+        role = serializer.validated_data['role']
 
-        if not self.can_manage_roles_for(affected_project):
+        if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
@@ -848,7 +851,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         affected_project = instance.group.projectrole.project
         role = instance.group.projectrole.role_type
 
-        if not self.can_manage_roles_for(affected_project):
+        if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_project.remove_user(affected_user, role)
