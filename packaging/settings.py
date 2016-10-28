@@ -28,10 +28,6 @@ config_defaults = {
     'auth': {
         'token_lifetime': 3600,
     },
-    'celery': {
-        'broker_url': 'redis://localhost',
-        'result_backend_url': 'redis://localhost',
-    },
     'elasticsearch': {
         # This location is RHEL7-specific, may be different on other platforms
         'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # only has effect if verify_certs is true
@@ -70,6 +66,9 @@ config_defaults = {
         'port': '5432',
         'user': 'nodeconductor',
     },
+    'redis': {
+        'host': 'localhost',
+        'port': '6379',
     'rest_api': {
         'cors_allowed_domains': 'localhost,127.0.0.1',
     },
@@ -87,6 +86,17 @@ for section, options in config_defaults.items():
     for option, value in options.items():
         if not config.has_option(section, option):
             config.set(section, option, value)
+
+redis_url = 'redis://%s:%s' % (config.get('redis', 'host'), config.get('redis', 'port'))
+
+# Handle deprecated settings
+for section in ('billing', 'celery', 'openstack')
+    if config.has_section(section):
+    warnings.warn("'%s' section in settings.ini is no longer supported and will be ignored" % section)
+
+if config.has_option('global', 'enable_order_processing'):
+    warnings.warn(
+        "'global.enable_order_processing' property in settings.ini is no longer supported and will be ignored")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get('global', 'secret_key')
@@ -144,7 +154,7 @@ DATABASES = {
     #
     # Note: if PostgreSQL server is running on local host and is accessible via UNIX socket,
     # leave 'HOST' and 'PORT' empty. For password usage details in this setup see
-    # https://www.postgresql.org/docs/9.2/static/auth-methods.html
+    # https://www.postgresql.org/docs/9.5/static/auth-methods.html
     #
     # Example: create database, user and grant privileges:
     #
@@ -157,15 +167,6 @@ DATABASES = {
     #
     'default': {}
 }
-
-for prop in ('password', 'username', 'tenant_name'):
-    if config.has_option('openstack', prop):
-        warnings.warn("openstack.%s property in settings.ini is no longer supported and will be ignored" % prop)
-
-if config.has_option('global', 'enable_order_processing'):
-    warnings.warn(
-        "global.enable_order_processing property in settings.ini is "
-        "no longer supported and will be ignored")
 
 if config.get('global', 'db_backend') == 'mysql':
     DATABASES['default'] = {
@@ -190,10 +191,6 @@ elif config.has_section('sqlite3'):
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': config.get('sqlite3', 'path'),
     }
-
-if config.has_section('billing'):
-    warnings.warn(
-        "[billing] section in settings.ini is no longer supported and will be ignored")
 
 # Logging
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#logging
@@ -373,6 +370,10 @@ if config.getboolean('events', 'hook'):
 
 STATIC_ROOT = config.get('global', 'static_root')
 
+# Django cache
+# https://docs.djangoproject.com/en/1.8/topics/cache/
+CACHES['default']['LOCATION'] = redis_url
+
 # Django CORS headers
 # See also: https://github.com/ottoyiu/django-cors-headers
 
@@ -396,19 +397,19 @@ MIDDLEWARE_CLASSES = (
 ) + MIDDLEWARE_CLASSES
 
 # Celery
-# See also: http://docs.celeryproject.org/en/latest/getting-started/brokers/index.html#broker-instructions
-# See also: http://docs.celeryproject.org/en/latest/configuration.html#broker-url
-BROKER_URL = config.get('celery', 'broker_url')
-
-# See also: http://docs.celeryproject.org/en/latest/configuration.html#celery-result-backend
-CELERY_RESULT_BACKEND = config.get('celery', 'result_backend_url')
+# See also:
+#  - http://docs.celeryproject.org/en/latest/getting-started/brokers/index.html#broker-instructions
+#  - http://docs.celeryproject.org/en/latest/configuration.html#broker-url
+#  - http://docs.celeryproject.org/en/latest/configuration.html#celery-result-backend
+BROKER_URL = redis_url
+CELERY_RESULT_BACKEND = redis_url
 
 for app in INSTALLED_APPS:
     if app.startswith('nodeconductor_'):
         LOGGING['loggers'][app] = LOGGING['loggers']['nodeconductor']
 
 # NodeConductor internal configuration
-# See also: http://nodeconductor.readthedocs.org/en/stable/guide/intro.html#id1
+# See also: http://nodeconductor.readthedocs.io/en/stable/guide/intro.html#id1
 NODECONDUCTOR.update({
     'ELASTICSEARCH': {
         'username': config.get('elasticsearch', 'username'),
