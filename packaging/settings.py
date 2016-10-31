@@ -91,9 +91,9 @@ for section, options in config_defaults.items():
 redis_url = 'redis://%s:%s' % (config.get('redis', 'host'), config.get('redis', 'port'))
 
 # Handle deprecated settings
-for section in ('billing', 'celery', 'openstack')
+for section in ('billing', 'celery', 'openstack'):
     if config.has_section(section):
-    warnings.warn("'%s' section in settings.ini is no longer supported and will be ignored" % section)
+        warnings.warn("'%s' section in settings.ini is no longer supported and will be ignored" % section)
 
 if config.has_option('global', 'enable_order_processing'):
     warnings.warn(
@@ -338,7 +338,7 @@ if config.get('logging', 'log_level').upper() == 'DEBUG':
     # Enabling debugging at http.client level (requests->urllib3->http.client)
     # you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
     # the only thing missing will be the response.body which is not logged.
-    try: # for Python 3
+    try:  # for Python 3
         from http.client import HTTPConnection
     except ImportError:
         from httplib import HTTPConnection
