@@ -58,6 +58,7 @@ class StateMixin(object):
         return super(StateMixin, self).initial(request, *args, **kwargs)
 
 
+# deprecated
 class RuntimeStateMixin(object):
     runtime_acceptable_states = {}
 
