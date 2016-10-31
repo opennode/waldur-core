@@ -69,6 +69,7 @@ config_defaults = {
     'redis': {
         'host': 'localhost',
         'port': '6379',
+    },
     'rest_api': {
         'cors_allowed_domains': 'localhost,127.0.0.1',
     },
