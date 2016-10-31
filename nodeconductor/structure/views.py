@@ -2011,10 +2011,16 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
     )
     metadata_class = ActionsMetadata
 
+    def initial(self, request, *args, **kwargs):
+        if 'uuid' in kwargs:
+            self.check_operation(request, self.get_object(), self.action)
+        return super(ResourceViewMixin, self).initial(request, *args, **kwargs)
+
     def check_operation(self, request, resource, action):
-        func = getattr(self, action)
-        valid_state = getattr(func, 'valid_state', None)
-        return check_operation(request.user, resource, action, valid_state)
+        if action:
+            func = getattr(self, action)
+            valid_state = getattr(func, 'valid_state', None)
+            return check_operation(request.user, resource, action, valid_state)
 
     def log_resource_creation_scheduled(self, resource):
         event_logger.resource.info(
