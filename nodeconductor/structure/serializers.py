@@ -764,7 +764,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = (
             'uuid',
             'civil_number',
-            'organization',
             'organization_approved',
             'registration_method',
             'date_joined',
