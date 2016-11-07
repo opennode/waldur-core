@@ -19,6 +19,9 @@ Application tests should follow next structure:
 - **/tests/unittests/test_file_name.py** - file for test of classes and methods
   from application file "file_name". Examples: test_models.py, test_handlers.py.
 
+- **/tests/unittests/test_file_name.py:MyClassOrFuncTest** - class for test that is related to particular class or
+  function from file. Examples: ProjectTest, ValidateServiceTypeTest.
+
 
 Tips for writing tests
 ----------------------
