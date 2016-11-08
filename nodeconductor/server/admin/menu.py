@@ -62,6 +62,7 @@ class CustomMenu(Menu):
 
     IAAS_CLOUDS = (
         'nodeconductor_assembly_waldur.packages.*',
+        'nodeconductor_assembly_waldur.invoices.*',
         'nodeconductor_azure.*',
         'nodeconductor_openstack.*',
         'nodeconductor_plus.aws.*',
