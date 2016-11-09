@@ -96,11 +96,12 @@ class ErrorExecutorMixin(object):
 
 
 class SuccessExecutorMixin(object):
-    """ Set object as OK on success """
+    """ Set object as OK on success, cleanup action and its details. """
 
     @classmethod
     def get_success_signature(cls, instance, serialized_instance, **kwargs):
-        return tasks.StateTransitionTask().si(serialized_instance, state_transition='set_ok')
+        return tasks.StateTransitionTask().si(
+            serialized_instance, state_transition='set_ok', action='', action_details='')
 
 
 class DeleteExecutorMixin(object):
@@ -175,8 +176,17 @@ class ActionExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
      - mark object as OK on success action execution;
      - mark object as erred on failed action execution;
     """
+    # TODO: After refactoring field action should become mandatory for implementation
+    action = ''
+
+    @classmethod
+    def get_action_details(self, instance, **kwargs):
+        """ Get detailed action description """
+        return ''
 
     @classmethod
     def pre_apply(cls, instance, **kwargs):
         instance.schedule_updating()
-        instance.save(update_fields=['state'])
+        instance.action = cls.action
+        instance.action_details = cls.get_action_details(instance, **kwargs)
+        instance.save()
