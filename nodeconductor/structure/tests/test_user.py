@@ -181,6 +181,7 @@ class UserPermissionApiTest(test.APITransactionTestCase):
             'is_staff': account.is_staff,
             'is_active': account.is_active,
             'is_superuser': account.is_superuser,
+            'agree_with_policy': True,
         }
 
     def _get_null_payload(self, account=None):
