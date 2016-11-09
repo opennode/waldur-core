@@ -11,7 +11,7 @@ from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.core.urlresolvers import NoReverseMatch
 from django.db import models as django_models, transaction
-from django.utils import six
+from django.utils import six, timezone
 from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
@@ -800,6 +800,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         if not attrs.pop('agree_with_policy'):
             raise serializers.ValidationError({'agree_with_policy': 'User must agree with the policy.'})
 
+        attrs['agreement_date'] = timezone.now()
         user = User(id=getattr(self.instance, 'id', None), **attrs)
         user.clean()
         return attrs
