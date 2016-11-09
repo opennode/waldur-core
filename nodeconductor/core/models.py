@@ -157,6 +157,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     date_joined = models.DateTimeField(_('date joined'), default=django_timezone.now)
     registration_method = models.CharField(_('registration method'), max_length=50, default='default', blank=True,
                                            help_text=_('Indicates what registration method were used.'))
+    agreement_date = models.DateTimeField(_('agreement date'), default=django_timezone.now,
+                                          help_text=_('Indicates when the user has agreed with the policy.'))
 
     objects = UserManager()
 

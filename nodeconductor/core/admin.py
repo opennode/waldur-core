@@ -57,9 +57,9 @@ class UserAdmin(auth_admin.UserAdmin):
         (_('Personal info'), {'fields': ('civil_number', 'full_name', 'native_name', 'email')}),
         (_('Organization'), {'fields': ('organization', 'organization_approved')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser')}),
-        (_('Important dates'), {'fields': ('last_login', 'date_joined')}),
+        (_('Important dates'), {'fields': ('last_login', 'date_joined', 'agreement_date')}),
     )
-    readonly_fields = ('registration_method',)
+    readonly_fields = ('registration_method', 'agreement_date')
     form = UserChangeForm
     add_form = UserCreationForm
 

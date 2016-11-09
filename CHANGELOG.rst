@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-Nothing yet.
+- Added agreement_date field to User model.
 
 Release 0.109.0
 ---------------
