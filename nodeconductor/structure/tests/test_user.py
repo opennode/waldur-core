@@ -76,12 +76,18 @@ class UserPermissionApiTest(test.APITransactionTestCase):
 
     # Manipulation tests
     def test_user_can_change_his_account_email(self):
-        data = {'email': 'example@example.com'}
+        data = {
+            'email': 'example@example.com',
+            'agree_with_policy': True,
+        }
 
         self._ensure_user_can_change_field(self.users['owner'], 'email', data)
 
     def test_user_cannot_change_other_account_email(self):
-        data = {'email': 'example@example.com'}
+        data = {
+            'email': 'example@example.com',
+            'agree_with_policy': True,
+        }
 
         self._ensure_user_cannot_change_field(self.users['owner'], 'email', data)
 
@@ -101,14 +107,20 @@ class UserPermissionApiTest(test.APITransactionTestCase):
 
     @unittest.skip('Disabling as organization is temporary a read-only field.')
     def test_user_can_change_his_account_organization(self):
-        data = {'organization': 'test',
-                'email': 'example@example.com'}
+        data = {
+            'organization': 'test',
+            'email': 'example@example.com',
+            'agree_with_policy': True,
+        }
 
         self._ensure_user_can_change_field(self.users['owner'], 'organization', data)
 
     def test_user_cannot_change_other_account_organization(self):
-        data = {'organization': 'test',
-                'email': 'example@example.com'}
+        data = {
+            'organization': 'test',
+            'email': 'example@example.com',
+            'agree_with_policy': True,
+        }
 
         self._ensure_user_cannot_change_field(self.users['owner'], 'organization', data)
 
