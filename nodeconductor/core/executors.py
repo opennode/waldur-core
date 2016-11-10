@@ -101,7 +101,7 @@ class SuccessExecutorMixin(object):
     @classmethod
     def get_success_signature(cls, instance, serialized_instance, **kwargs):
         return tasks.StateTransitionTask().si(
-            serialized_instance, state_transition='set_ok', action='', action_details='')
+            serialized_instance, state_transition='set_ok', action='', action_details={})
 
 
 class DeleteExecutorMixin(object):
@@ -182,7 +182,7 @@ class ActionExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     @classmethod
     def get_action_details(self, instance, **kwargs):
         """ Get detailed action description """
-        return ''
+        return {}
 
     @classmethod
     def pre_apply(cls, instance, **kwargs):

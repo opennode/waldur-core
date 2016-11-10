@@ -488,7 +488,7 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
 
     def execute(self, instance):
         self.save_error_message(instance)
-        self.state_transition(instance, 'set_erred', action='', action_details='')
+        self.state_transition(instance, 'set_erred', action='', action_details={})
 
 
 class RecoverTask(StateTransitionTask):
