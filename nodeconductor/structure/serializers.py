@@ -11,7 +11,7 @@ from django.contrib import auth
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.core.urlresolvers import NoReverseMatch
 from django.db import models as django_models, transaction
-from django.utils import six
+from django.utils import six, timezone
 from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
@@ -746,6 +746,8 @@ class UserOrganizationSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     email = serializers.EmailField()
+    agree_with_policy = serializers.BooleanField(write_only=True,
+                                                 help_text='User must agree with the policy to register.')
 
     class Meta(object):
         model = User
@@ -760,6 +762,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'is_staff', 'is_active',
             'registration_method',
             'date_joined',
+            'agree_with_policy',
+            'agreement_date',
         )
         read_only_fields = (
             'uuid',
@@ -767,6 +771,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'organization_approved',
             'registration_method',
             'date_joined',
+            'agreement_date',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -792,6 +797,10 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
     def validate(self, attrs):
+        if not attrs.pop('agree_with_policy'):
+            raise serializers.ValidationError({'agree_with_policy': 'User must agree with the policy.'})
+
+        attrs['agreement_date'] = timezone.now()
         user = User(id=getattr(self.instance, 'id', None), **attrs)
         user.clean()
         return attrs
