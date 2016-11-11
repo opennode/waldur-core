@@ -214,15 +214,22 @@ class ExternalAlertFilterBackend(ExternalFilterBackend):
     pass
 
 
-class PushHookFilter(django_filters.FilterSet):
+class BaseHookFilter(django_filters.FilterSet):
     author_uuid = UUIDFilter(name='user__uuid')
+
+    class Meta(object):
+        model = models.BaseHook
+
+
+class HookSummaryFilterBackend(core_filters.SummaryFilter):
+
+    def get_base_filter(self):
+        return BaseHookFilter
+
+
+class PushHookFilter(BaseHookFilter):
     device_id = django_filters.CharFilter()
     token = django_filters.CharFilter()
 
     class Meta(object):
         model = models.PushHook
-        fields = [
-            'author_uuid',
-            'device_id',
-            'token',
-        ]

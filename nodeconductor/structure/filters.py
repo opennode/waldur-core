@@ -837,50 +837,7 @@ class AggregateFilter(BaseExternalFilter):
 ExternalAlertFilterBackend.register(AggregateFilter())
 
 
-class SummaryFilter(core_filters.DjangoMappingFilterBackend):
-    """ Base filter for summary querysets """
-
-    def filter_queryset(self, request, queryset, view):
-        queryset = self.filter(request, queryset, view)
-        queryset = self.order(request, queryset, view)
-        return queryset
-
-    def get_queryset_filter(self, queryset):
-        """ Return specific for queryset filter if it exists """
-        raise NotImplementedError()
-
-    def get_base_filter(self):
-        """ Return base filter that could be used for all summary objects """
-        raise NotImplementedError()
-
-    def _get_filter(self, queryset):
-        try:
-            return self.get_queryset_filter(queryset)
-        except NotImplementedError:
-            return self.get_base_filter()
-
-    def filter(self, request, queryset, view):
-        """ Filter each resource separately using its own filter """
-        summary_queryset = queryset
-        filtered_querysets = []
-        for queryset in summary_queryset.querysets:
-            filter_class = self._get_filter(queryset)
-            queryset = filter_class(request.query_params, queryset=queryset).qs
-            filtered_querysets.append(queryset)
-
-        summary_queryset.querysets = filtered_querysets
-        return summary_queryset
-
-    def order(self, request, queryset, view):
-        """ Order all resources together using BaseResourceFilter """
-        base_filter = self.get_base_filter()
-        ordering = self.get_valid_ordering(request, base_filter)
-        if ordering:
-            queryset = queryset.order_by(ordering)
-        return queryset
-
-
-class ResourceSummaryFilterBackend(SummaryFilter):
+class ResourceSummaryFilterBackend(core_filters.SummaryFilter):
     """ Filter and order SummaryQuerySet of resources """
 
     def get_queryset_filter(self, queryset):
@@ -893,7 +850,7 @@ class ResourceSummaryFilterBackend(SummaryFilter):
         return BaseResourceFilter
 
 
-class ServiceSummaryFilterBackend(SummaryFilter):
+class ServiceSummaryFilterBackend(core_filters.SummaryFilter):
 
     def get_queryset_filter(self, queryset):
         try:
