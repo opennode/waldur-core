@@ -133,3 +133,21 @@ class HookPermisssionsViewTest(BaseHookApiTest):
         self.client.force_authenticate(user=self.other_user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND, response.data)
+
+
+class HookFilterViewTest(BaseHookApiTest):
+    def test_staff_can_filter_webhook_by_author_uuid(self):
+        WebHookFactory(user=self.author)
+        WebHookFactory(user=self.other_user)
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(WebHookFactory.get_list_url(), {'author_uuid': self.author.uuid.hex})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(len(response.data), 1)
+
+    def test_staff_can_filter_summary_hook_by_author_uuid(self):
+        WebHookFactory(user=self.author)
+        PushHookFactory(user=self.other_user)
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.get(reverse('hooks-list'), {'author_uuid': self.other_user.uuid.hex})
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(len(response.data), 1)
