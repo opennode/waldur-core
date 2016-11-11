@@ -180,7 +180,7 @@ class ActionExecutor(SuccessExecutorMixin, ErrorExecutorMixin, BaseExecutor):
     action = ''
 
     @classmethod
-    def get_action_details(self, instance, **kwargs):
+    def get_action_details(cls, instance, **kwargs):
         """ Get detailed action description """
         return {}
 
