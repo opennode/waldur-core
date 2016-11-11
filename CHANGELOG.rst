@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Added agreement_date field to User model.
+- Extended resources privileges for project managers.
 
 Release 0.109.0
 ---------------
