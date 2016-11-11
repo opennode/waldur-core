@@ -182,10 +182,12 @@ def check_operation(user, resource, operation_name, valid_state=None):
     from nodeconductor.structure import models
 
     project = resource.service_project_link.project
-    is_admin = project.has_user(user, models.ProjectRole.ADMINISTRATOR) \
-        or project.customer.has_user(user, models.CustomerRole.OWNER)
+    has_access = user.is_staff or \
+                 project.customer.has_user(user, models.CustomerRole.OWNER) or \
+                 project.has_user(user, models.ProjectRole.ADMINISTRATOR) or \
+                 project.has_user(user, models.ProjectRole.MANAGER)
 
-    if not is_admin and not user.is_staff:
+    if not has_access:
         raise exceptions.PermissionDenied(
             "Only project administrator or staff allowed to perform this action.")
 

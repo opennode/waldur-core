@@ -346,6 +346,7 @@ class BaseHookViewSet(viewsets.ModelViewSet):
     """
     permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (core_filters.StaffOrUserFilter, rf_filters.DjangoFilterBackend)
+    filter_class = filters.BaseHookFilter
     lookup_field = 'uuid'
 
 
@@ -480,7 +481,7 @@ class HookSummary(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     serializer_class = serializers.SummaryHookSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (core_filters.StaffOrUserFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (core_filters.StaffOrUserFilter, filters.HookSummaryFilterBackend)
 
     def get_queryset(self):
         return SummaryQuerySet(models.BaseHook.get_all_models())

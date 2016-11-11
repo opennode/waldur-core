@@ -327,19 +327,26 @@ class EmptyTask(CeleryTask):
 
 
 class StateTransitionTask(Task):
-    """ Execute only instance state transition """
+    """ Execute instance state transition, changes instance action and action details if defined.
+
+        It is impossible to change object action without state transition.
+    """
 
     @classmethod
     def get_description(cls, instance, *args, **kwargs):
         transition_method = kwargs.get('state_transition')
         return 'Change state of object "%s" using method "%s".' % (instance, transition_method)
 
-    def state_transition(self, instance, transition_method):
+    def state_transition(self, instance, transition_method, action=None, action_details=None):
         instance_description = '%s instance `%s` (PK: %s)' % (instance.__class__.__name__, instance, instance.pk)
         old_state = instance.human_readable_state
         try:
             getattr(instance, transition_method)()
-            instance.save(update_fields=['state'])
+            if action is not None:
+                instance.action = action
+            if action_details is not None:
+                instance.action_details = action_details
+            instance.save()
         except IntegrityError:
             message = (
                 'Could not change state of %s, using method `%s` due to concurrent update' %
@@ -356,8 +363,10 @@ class StateTransitionTask(Task):
 
     def pre_execute(self, instance):
         state_transition = self.kwargs.pop('state_transition', None)
+        action = self.kwargs.pop('action', None)
+        action_details = self.kwargs.pop('action_details', None)
         if state_transition is not None:
-            self.state_transition(instance, state_transition)
+            self.state_transition(instance, state_transition, action, action_details)
         super(StateTransitionTask, self).pre_execute(instance)
 
     # Empty execute method allows to use StateTransitionTask as standalone task
@@ -479,7 +488,7 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
 
     def execute(self, instance):
         self.save_error_message(instance)
-        self.state_transition(instance, 'set_erred')
+        self.state_transition(instance, 'set_erred', action='', action_details={})
 
 
 class RecoverTask(StateTransitionTask):

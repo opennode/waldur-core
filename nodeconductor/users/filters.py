@@ -44,6 +44,7 @@ class InvitationFilter(django_filters.FilterSet):
             'owner': structure_models.CustomerRole.OWNER,
         },
     )
+    state = django_filters.MultipleChoiceFilter(choices=models.Invitation.State.CHOICES)
 
     class Meta(object):
         model = models.Invitation
@@ -59,9 +60,11 @@ class InvitationFilter(django_filters.FilterSet):
         order_by = [
             'email',
             'state',
+            'created',
             # desc
             '-email',
             '-state',
+            '-created',
         ]
 
 

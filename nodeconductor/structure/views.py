@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import time
 import logging
 import functools
-import uuid
 from collections import defaultdict
 
 from datetime import timedelta
@@ -774,7 +773,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
-    def can_manage_roles_for(self, project):
+    def can_manage_roles_for(self, project, role):
         user = self.request.user
         if user.is_staff:
             return True
@@ -786,21 +785,10 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
             if project_group.has_user(user, models.ProjectGroupRole.MANAGER):
                 return True
 
+        if role == models.ProjectRole.ADMINISTRATOR and project.has_user(user, models.ProjectRole.MANAGER):
+            return True
+
         return False
-
-    def get_queryset(self):
-        queryset = super(ProjectPermissionViewSet, self).get_queryset()
-
-        # TODO: refactor against django filtering
-        user_uuid = self.request.query_params.get('user', None)
-        if user_uuid is not None:
-            try:
-                uuid.UUID(user_uuid)
-            except ValueError:
-                return queryset.none()
-            queryset = queryset.filter(user__uuid=user_uuid)
-
-        return queryset
 
     def list(self, request, *args, **kwargs):
         """
@@ -848,8 +836,9 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     def perform_create(self, serializer):
         affected_project = serializer.validated_data['project']
         affected_user = serializer.validated_data['user']
+        role = serializer.validated_data['role']
 
-        if not self.can_manage_roles_for(affected_project):
+        if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
@@ -862,7 +851,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         affected_project = instance.group.projectrole.project
         role = instance.group.projectrole.role_type
 
-        if not self.can_manage_roles_for(affected_project):
+        if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_project.remove_user(affected_user, role)
@@ -898,15 +887,6 @@ class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
 
     def get_queryset(self):
         queryset = super(ProjectGroupPermissionViewSet, self).get_queryset()
-
-        # TODO: refactor against django filtering
-        user_uuid = self.request.query_params.get('user', None)
-        if user_uuid is not None:
-            try:
-                uuid.UUID(user_uuid)
-            except ValueError:
-                return queryset.none()
-            queryset = queryset.filter(user__uuid=user_uuid)
 
         # XXX: This should be removed after permissions refactoring
         if not self.request.user.is_staff:
@@ -2031,10 +2011,16 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
     )
     metadata_class = ActionsMetadata
 
+    def initial(self, request, *args, **kwargs):
+        super(ResourceViewMixin, self).initial(request, *args, **kwargs)
+        if 'uuid' in kwargs:
+            self.check_operation(request, self.get_object(), self.action)
+
     def check_operation(self, request, resource, action):
-        func = getattr(self, action)
-        valid_state = getattr(func, 'valid_state', None)
-        return check_operation(request.user, resource, action, valid_state)
+        if action:
+            func = getattr(self, action)
+            valid_state = getattr(func, 'valid_state', None)
+            return check_operation(request.user, resource, action, valid_state)
 
     def log_resource_creation_scheduled(self, resource):
         event_logger.resource.info(
