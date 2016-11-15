@@ -88,3 +88,14 @@ class InvitationViewSet(mixins.CreateModelMixin,
         invitation.accept(request.user)
         return Response({'detail': "Invitation has been successfully accepted."},
                         status=status.HTTP_200_OK)
+
+    @detail_route(methods=['post'], filter_backends=[], permission_classes=[])
+    def check(self, request, uuid=None):
+        invitation = self.get_object()
+
+        if invitation.state != models.Invitation.State.PENDING:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        elif invitation.civil_number:
+            return Response({'civil_number_required': True}, status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_200_OK)
