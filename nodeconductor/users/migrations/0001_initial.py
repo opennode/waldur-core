@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('state', models.CharField(default='pending', max_length=8, choices=[('accepted', 'Accepted'), ('canceled', 'Canceled'), ('pending', 'Pending'), ('expired', 'Expired')])),
                 ('link_template', models.CharField(help_text='The template must include {uuid} parameter e.g. http://example.com/invitation/{uuid}', max_length=255)),
-                ('email', models.EmailField(help_text='Invitation link will be sent to this email.', max_length=254)),
+                ('email', models.EmailField(help_text='Invitation link will be sent to this email. Note that user can accept invitation with different email.', max_length=254)),
                 ('customer', models.ForeignKey(related_name='invitations', to='structure.Customer')),
                 ('customer_role', models.ForeignKey(related_name='invitations', blank=True, to='structure.CustomerRole', null=True)),
                 ('project_role', models.ForeignKey(related_name='invitations', blank=True, to='structure.ProjectRole', null=True)),

@@ -1,12 +1,12 @@
-from datetime import timedelta, datetime
-from ddt import ddt, data
-from nodeconductor.users.tasks import cancel_expired_invitations
+from datetime import timedelta
 
+from ddt import ddt, data
+from django.utils import timezone
 from rest_framework import test, status
 
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
-from nodeconductor.users import models
+from nodeconductor.users import models, tasks
 from nodeconductor.users.tests import factories
 
 
@@ -110,7 +110,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.project_invitation.refresh_from_db()
         self.assertEqual(self.project_invitation.state, models.Invitation.State.CANCELED)
 
-    @data('project_admin', 'project_manager' 'user')
+    @data('project_admin', 'project_manager', 'user')
     def test_user_without_access_cannot_cancel_project_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
         response = self.client.post(factories.ProjectInvitationFactory.get_url(self.project_invitation,
@@ -125,13 +125,6 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.customer_invitation.refresh_from_db()
         self.assertEqual(self.customer_invitation.state, models.Invitation.State.CANCELED)
-
-    @data('project_admin', 'project_manager', 'user')
-    def test_user_without_access_cannot_cancel_project_invitation(self, user):
-        self.client.force_authenticate(user=getattr(self, user))
-        response = self.client.post(factories.CustomerInvitationFactory.get_url(self.customer_invitation,
-                                                                                action='cancel'))
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_authenticated_user_can_accept_project_invitation(self):
         self.client.force_authenticate(user=self.user)
@@ -221,7 +214,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, {'customer_role': ["Customer and its role must be provided."]})
 
-    def test_user_cannot_create_invitation_for_existing_user(self):
+    def test_user_can_create_invitation_for_existing_user(self):
         self.client.force_authenticate(user=self.staff)
         email = 'test@example.com'
         structure_factories.UserFactory(email=email)
@@ -229,13 +222,12 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         payload['email'] = email
 
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, {'email': ["User with provided email already exists."]})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_invitation_is_canceled_after_expiration_date(self):
         with self.settings(NODECONDUCTOR={'INVITATION_LIFETIME': timedelta(weeks=1)}):
-            invitation = factories.ProjectInvitationFactory(created=datetime.now() - timedelta(weeks=1))
-            cancel_expired_invitations()
+            invitation = factories.ProjectInvitationFactory(created=timezone.now() - timedelta(weeks=1))
+            tasks.cancel_expired_invitations()
 
         self.assertEqual(models.Invitation.objects.get(uuid=invitation.uuid).state, models.Invitation.State.EXPIRED)
 

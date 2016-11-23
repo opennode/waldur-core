@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='invitation',
             name='civil_number',
-            field=models.CharField(help_text='Civil number of invited user.', max_length=50, blank=True),
+            field=models.CharField(help_text='Civil number of invited user. If civil number is not defined any user can accept invitation.', max_length=50, blank=True),
         ),
     ]
