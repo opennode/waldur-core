@@ -11,7 +11,7 @@ from django.views.generic import TemplateView
 
 from nodeconductor.core import NodeConductorExtension
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
-from nodeconductor.cost_tracking import urls as cost_tracking_urls, autodiscover as cost_tracking_autodiscover
+from nodeconductor.cost_tracking import urls as cost_tracking_urls, CostTrackingRegister
 from nodeconductor.logging import urls as logging_urls
 from nodeconductor.monitoring import urls as monitoring_urls
 from nodeconductor.quotas import urls as quotas_urls
@@ -21,7 +21,7 @@ from nodeconductor.users import urls as users_urls
 
 admin.autodiscover()
 permission.autodiscover()
-cost_tracking_autodiscover()
+CostTrackingRegister.autodiscover()
 
 router = DefaultRouter()
 cost_tracking_urls.register_in(router)
