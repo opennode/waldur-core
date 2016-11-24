@@ -189,7 +189,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         """ Raise error if price estimate does not have consumption details or
             does not belong to resource
         """
-        if self.consumption_details is None:
+        if not ConsumptionDetails.objects.filter(price_estimate=self).exists():
             raise EstimateUpdateError('Cannot update consumed for price estimate that does not have consumption details.')
         if not self.is_resource_estimate() or not self.scope:
             raise EstimateUpdateError('Cannot update consumed for price estimate that is not related to resource.')

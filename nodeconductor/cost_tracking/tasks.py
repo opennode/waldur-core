@@ -13,6 +13,9 @@ def recalculate_estimate(recalculate_total=False):
         If recalculate_total is True - task also recalculates total estimate
         for current month.
     """
+    # Celery does not import server.urls and does not discover cost tracking modules.
+    # So they should be discovered implicitly.
+    CostTrackingRegister.autodiscover()
     # Step 1. Recalculate resources estimates.
     for resource_model in CostTrackingRegister.registered_resources:
         for resource in resource_model.objects.all():
