@@ -410,7 +410,13 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
 def delete_service_settings_on_service_delete(sender, instance, **kwargs):
     """ Delete not shared service settings without services """
     service = instance
-    if not service.settings.shared:
+    try:
+        service_settings = service.settings
+    except models.ServiceSettings.DoesNotExist:
+        # If this handler works together with delete_service_settings_on_scope_delete
+        # it tries to delete service settings that are already deleted.
+        return
+    if not service_settings.shared:
         service.settings.delete()
 
 
