@@ -1300,8 +1300,6 @@ class PublishableResource(PublishableMixin, Resource):
 
 class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin, NewResource):
     extra_configuration = JSONField(default={}, help_text='Configuration details that are not represented on backend.')
-    dependent_service_settings = GenericRelation(
-        ServiceSettings, help_text='Service settings that are configured based on this private cloud.')
 
     class Meta(object):
         abstract = True
