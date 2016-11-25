@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.encoding import force_text
 from django.core.cache import cache
 
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -213,6 +213,6 @@ class StateExecutorViewSet(mixins.StateMixin,
 class UpdateOnlyStateExecutorViewSet(mixins.StateMixin,
                                      mixins.UpdateExecutorMixin,
                                      mixins.DeleteExecutorMixin,
-                                     ModelViewSet):
+                                     generics.RetrieveUpdateDestroyAPIView):
     """ Update/Delete operations via executors """
     pass
