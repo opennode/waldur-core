@@ -412,7 +412,7 @@ def delete_service_settings_on_service_delete(sender, instance, **kwargs):
     service = instance
     try:
         service_settings = service.settings
-    except models.ServiceSettings.DoesNotExist:
+    except ServiceSettings.DoesNotExist:
         # If this handler works together with delete_service_settings_on_scope_delete
         # it tries to delete service settings that are already deleted.
         return
