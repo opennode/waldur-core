@@ -7,14 +7,14 @@ from django.utils import timezone
 from django.utils.encoding import force_text
 from django.core.cache import cache
 
-from rest_framework import generics, status
+from rest_framework import generics, status, mixins as rf_mixins
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 from nodeconductor import __version__
 from nodeconductor.core import mixins
@@ -210,9 +210,18 @@ class StateExecutorViewSet(mixins.StateMixin,
     pass
 
 
+class UpdateOnlyViewSet(rf_mixins.RetrieveModelMixin,
+                        rf_mixins.UpdateModelMixin,
+                        rf_mixins.DestroyModelMixin,
+                        rf_mixins.ListModelMixin,
+                        GenericViewSet):
+    """ All default operations except create """
+    pass
+
+
 class UpdateOnlyStateExecutorViewSet(mixins.StateMixin,
                                      mixins.UpdateExecutorMixin,
                                      mixins.DeleteExecutorMixin,
-                                     generics.RetrieveUpdateDestroyAPIView):
+                                     UpdateOnlyViewSet):
     """ Update/Delete operations via executors """
     pass
