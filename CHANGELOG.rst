@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Added missing resource events.
+- Fixed lookup and grouping of event groups.
 
 Release 0.110.0
 ---------------
