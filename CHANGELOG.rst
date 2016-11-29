@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Add missed events
+- Fix events grouping
 
 Release 0.110.0
 ---------------
