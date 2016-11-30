@@ -1337,8 +1337,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         read_only=True,
         lookup_field='uuid')
     service_settings_uuid = serializers.ReadOnlyField(source='service_project_link.service.settings.uuid')
-    service_settings_state = serializers.ReadOnlyField(source='service_project_link.service.settings.state')
-    service_settings_error_message = serializers.ReadOnlyField(source='service_project_link.service.settings.error_message')
+    service_settings_state = serializers.ReadOnlyField(
+        source='service_project_link.service.settings.human_readable_state')
+    service_settings_error_message = serializers.ReadOnlyField(
+        source='service_project_link.service.settings.error_message')
 
     customer = serializers.HyperlinkedRelatedField(
         source='service_project_link.project.customer',
