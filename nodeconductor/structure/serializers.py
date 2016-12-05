@@ -584,10 +584,9 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
     def validate(self, data):
         customer = data['customer']
         user = data['user']
-        role = data['role']
 
-        if customer.has_user(user, role):
-            raise serializers.ValidationError('The fields customer, user, role must make a unique set.')
+        if customer.has_user(user):
+            raise serializers.ValidationError('The fields customer and user must make a unique set.')
 
         return data
 
@@ -658,10 +657,9 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
     def validate(self, data):
         project = data['project']
         user = data['user']
-        role = data['role']
 
-        if project.has_user(user, role):
-            raise serializers.ValidationError('The fields project, user, role must make a unique set.')
+        if project.has_user(user):
+            raise serializers.ValidationError('The fields project and user must make a unique set.')
 
         return data
 

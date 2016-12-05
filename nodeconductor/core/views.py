@@ -225,3 +225,11 @@ class UpdateOnlyStateExecutorViewSet(mixins.StateMixin,
                                      UpdateOnlyViewSet):
     """ Update/Delete operations via executors """
     pass
+
+
+class ProtectedViewSet(rf_mixins.CreateModelMixin,
+                       rf_mixins.RetrieveModelMixin,
+                       rf_mixins.ListModelMixin,
+                       GenericViewSet):
+    """ All default operations except update and delete """
+    pass

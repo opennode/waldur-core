@@ -130,15 +130,6 @@ class ProjectAdminForm(ModelForm):
         if not project.pk:
             project.save()
 
-        new_admins = self.cleaned_data['admins']
-        added_admins = new_admins.exclude(pk__in=self.admins)
-        removed_admins = self.admins.exclude(pk__in=new_admins)
-        for user in added_admins:
-            project.add_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
-
-        for user in removed_admins:
-            project.remove_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
-
         new_managers = self.cleaned_data['managers']
         added_managers = new_managers.exclude(pk__in=self.managers)
         removed_managers = self.managers.exclude(pk__in=new_managers)
@@ -147,6 +138,19 @@ class ProjectAdminForm(ModelForm):
 
         for user in removed_managers:
             project.remove_user(user, role_type=models.ProjectRole.MANAGER)
+
+        new_admins = self.cleaned_data['admins']
+        added_admins = new_admins.exclude(pk__in=self.admins)
+
+        # User role within project should be unique
+        added_admins = added_admins.exclude(pk__in=self.managers)
+
+        removed_admins = self.admins.exclude(pk__in=new_admins)
+        for user in added_admins:
+            project.add_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
+
+        for user in removed_admins:
+            project.remove_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
 
         self.save_m2m()
 
