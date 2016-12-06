@@ -155,18 +155,25 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, ['User has an invalid civil number.'])
 
+    def test_user_which_already_has_role_within_customer_cannot_accept_invitation(self):
+        customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role)
+        self.client.force_authenticate(user=self.user)
+        self.customer.add_user(self.user, customer_invitation.customer_role.role_type)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['User already has role within this customer.'])
+
+    def test_user_which_already_has_role_within_project_cannot_accept_invitation(self):
+        project_invitation = factories.ProjectInvitationFactory(project_role=self.project_role)
+        self.client.force_authenticate(user=self.user)
+        self.project.add_user(self.user, project_invitation.project_role.role_type)
+        response = self.client.post(factories.ProjectInvitationFactory.get_url(project_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['User already has role within this project.'])
+
     # API tests
-    def test_invitation_update_is_not_allowed(self):
-        self.client.force_authenticate(user=self.staff)
-        payload = self._get_valid_project_invitation_payload(self.project_invitation)
-        response = self.client.put(factories.ProjectInvitationFactory.get_url(self.project_invitation), data=payload)
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_invitation_deletion_is_not_allowed(self):
-        self.client.force_authenticate(user=self.staff)
-        response = self.client.delete(factories.ProjectInvitationFactory.get_url(self.project_invitation))
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
     def test_user_cannot_create_invitation_with_invalid_link_template(self):
         self.client.force_authenticate(user=self.staff)
         payload = self._get_valid_project_invitation_payload(self.project_invitation)

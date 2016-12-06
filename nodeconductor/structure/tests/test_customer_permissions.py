@@ -158,7 +158,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_customer='first',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
-                'non_field_errors': ['The fields customer, user, role must make a unique set.'],
+                'non_field_errors': ['The fields customer and user must make a unique set.'],
             }
         )
 
@@ -227,7 +227,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_customer='first',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
-                'non_field_errors': ['The fields customer, user, role must make a unique set.'],
+                'non_field_errors': ['The fields customer and user must make a unique set.'],
             }
         )
         self.assert_user_access_to_permission_granting(
@@ -236,7 +236,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_customer='second',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
-                'non_field_errors': ['The fields customer, user, role must make a unique set.'],
+                'non_field_errors': ['The fields customer and user must make a unique set.'],
             }
         )
 
