@@ -61,7 +61,7 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_backends = (filters.GenericUserFilter, filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.CustomerFilter
 
     def list(self, request, *args, **kwargs):
@@ -71,6 +71,8 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
 
         - customers that the user owns
         - customers that have a project where user has a role
+
+        Staff also can filter customers by user UUID, for example /api/customers/?user_uuid=<UUID>
         """
         return super(CustomerViewSet, self).list(request, *args, **kwargs)
 

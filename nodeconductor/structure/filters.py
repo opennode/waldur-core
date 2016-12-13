@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
+import uuid
+
 from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils import six
 import django_filters
 from django_filters.filterset import FilterSetMetaclass
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
 import taggit
 
@@ -69,6 +72,25 @@ class ScopeTypeFilterBackend(DjangoFilterBackend):
 class GenericRoleFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         return filter_queryset_for_user(queryset, request.user)
+
+
+class GenericUserFilter(BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        user_uuid = request.query_params.get('user_uuid')
+        if not user_uuid:
+            return queryset
+
+        try:
+            uuid.UUID(user_uuid)
+        except ValueError:
+            raise ValidationError('Invalid user UUID')
+
+        try:
+            user = User.objects.get(uuid=user_uuid)
+        except User.DoesNotExist:
+            raise ValidationError('Invalid user UUID')
+
+        return filter_queryset_for_user(queryset, user)
 
 
 class CustomerFilter(django_filters.FilterSet):

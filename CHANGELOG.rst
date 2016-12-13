@@ -5,6 +5,7 @@ Release NEXT
 ------------
 - Added missing resource events.
 - Fixed lookup and grouping of event groups.
+- Allow staff to filter customer by user UUID.
 
 Release 0.110.0
 ---------------
