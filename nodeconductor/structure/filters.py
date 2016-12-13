@@ -83,12 +83,12 @@ class GenericUserFilter(BaseFilterBackend):
         try:
             uuid.UUID(user_uuid)
         except ValueError:
-            raise queryset.none()
+            return queryset.none()
 
         try:
             user = User.objects.get(uuid=user_uuid)
         except User.DoesNotExist:
-            raise queryset.none()
+            return queryset.none()
 
         return filter_queryset_for_user(queryset, user)
 
