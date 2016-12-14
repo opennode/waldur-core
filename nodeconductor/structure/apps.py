@@ -177,6 +177,13 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
+            signals.post_save.connect(
+                handlers.log_resource_creation_scheduled,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.log_resource_creation_scheduled_{}_{}'.format(
+                    model.__name__, index),
+            )
+
             fsm_signals.post_transition.connect(
                 handlers.init_resource_start_time,
                 sender=model,

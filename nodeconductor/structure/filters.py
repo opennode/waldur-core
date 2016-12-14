@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
+import uuid
+
 from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils import six
 import django_filters
 from django_filters.filterset import FilterSetMetaclass
+from rest_framework.exceptions import ValidationError
 from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
 import taggit
 
@@ -69,6 +72,25 @@ class ScopeTypeFilterBackend(DjangoFilterBackend):
 class GenericRoleFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         return filter_queryset_for_user(queryset, request.user)
+
+
+class GenericUserFilter(BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        user_uuid = request.query_params.get('user_uuid')
+        if not user_uuid:
+            return queryset
+
+        try:
+            uuid.UUID(user_uuid)
+        except ValueError:
+            return queryset.none()
+
+        try:
+            user = User.objects.get(uuid=user_uuid)
+        except User.DoesNotExist:
+            return queryset.none()
+
+        return filter_queryset_for_user(queryset, user)
 
 
 class CustomerFilter(django_filters.FilterSet):
@@ -328,15 +350,7 @@ class UserFilter(django_filters.FilterSet):
         ]
 
 
-# TODO: cover filtering/ordering with tests
-class ProjectPermissionFilter(django_filters.FilterSet):
-    project = UUIDFilter(
-        name='group__projectrole__project__uuid',
-    )
-    project_url = core_filters.URLFilter(
-        view_name='project-detail',
-        name='group__projectrole__project__uuid',
-    )
+class UserPermissionFilter(django_filters.FilterSet):
     user = core_filters.UUIDFilter(name='user__uuid')
     user_url = core_filters.URLFilter(
         view_name='user-detail',
@@ -353,6 +367,31 @@ class ProjectPermissionFilter(django_filters.FilterSet):
     native_name = django_filters.CharFilter(
         name='user__native_name',
         lookup_type='icontains',
+    )
+
+    class Meta(object):
+        model = User.groups.through
+        order_by = [
+            'user__username',
+            'user__full_name',
+            'user__native_name',
+            # desc
+            '-user__username',
+            '-user__full_name',
+            '-user__native_name',
+        ]
+
+
+class ProjectPermissionFilter(UserPermissionFilter):
+    customer = UUIDFilter(
+        name='group__projectrole__project__customer__uuid',
+    )
+    project = UUIDFilter(
+        name='group__projectrole__project__uuid',
+    )
+    project_url = core_filters.URLFilter(
+        view_name='project-detail',
+        name='group__projectrole__project__uuid',
     )
     role = core_filters.MappedChoiceFilter(
         name='group__projectrole__role_type',
@@ -369,50 +408,14 @@ class ProjectPermissionFilter(django_filters.FilterSet):
         },
     )
 
-    class Meta(object):
-        model = User.groups.through
-        fields = [
-            'role',
-            'project',
-            'username',
-            'full_name',
-            'native_name',
-        ]
-        order_by = [
-            'user__username',
-            'user__full_name',
-            'user__native_name',
-            # desc
-            '-user__username',
-            '-user__full_name',
-            '-user__native_name',
-        ]
 
-
-class ProjectGroupPermissionFilter(django_filters.FilterSet):
+class ProjectGroupPermissionFilter(UserPermissionFilter):
     project_group = UUIDFilter(
         name='group__projectgrouprole__project_group__uuid',
     )
     project_group_url = core_filters.URLFilter(
         view_name='projectgroup-detail',
         name='group__projectgrouprole__project_group__uuid',
-    )
-    user = core_filters.UUIDFilter(name='user__uuid')
-    user_url = core_filters.URLFilter(
-        view_name='user-detail',
-        name='user__uuid',
-    )
-    username = django_filters.CharFilter(
-        name='user__username',
-        lookup_type='exact',
-    )
-    full_name = django_filters.CharFilter(
-        name='user__full_name',
-        lookup_type='icontains',
-    )
-    native_name = django_filters.CharFilter(
-        name='user__native_name',
-        lookup_type='icontains',
     )
     role = core_filters.MappedChoiceFilter(
         name='group__projectgrouprole__role_type',
@@ -426,50 +429,14 @@ class ProjectGroupPermissionFilter(django_filters.FilterSet):
         },
     )
 
-    class Meta(object):
-        model = User.groups.through
-        fields = [
-            'role',
-            'project_group',
-            'username',
-            'full_name',
-            'native_name',
-        ]
-        order_by = [
-            'user__username',
-            'user__full_name',
-            'user__native_name',
-            # desc
-            '-user__username',
-            '-user__full_name',
-            '-user__native_name',
 
-        ]
-
-
-class CustomerPermissionFilter(django_filters.FilterSet):
+class CustomerPermissionFilter(UserPermissionFilter):
     customer = UUIDFilter(
         name='group__customerrole__customer__uuid',
     )
     customer_url = core_filters.URLFilter(
         view_name='customer-detail',
         name='group__customerrole__customer__uuid',
-    )
-    user_url = core_filters.URLFilter(
-        view_name='user-detail',
-        name='user__uuid',
-    )
-    username = django_filters.CharFilter(
-        name='user__username',
-        lookup_type='exact',
-    )
-    full_name = django_filters.CharFilter(
-        name='user__full_name',
-        lookup_type='icontains',
-    )
-    native_name = django_filters.CharFilter(
-        name='user__native_name',
-        lookup_type='icontains',
     )
     role = core_filters.MappedChoiceFilter(
         name='group__customerrole__role_type',
@@ -482,26 +449,6 @@ class CustomerPermissionFilter(django_filters.FilterSet):
             'owner': models.CustomerRole.OWNER,
         },
     )
-
-    class Meta(object):
-        model = User.groups.through
-        fields = [
-            'role',
-            'customer',
-            'username',
-            'full_name',
-            'native_name',
-        ]
-        order_by = [
-            'user__username',
-            'user__full_name',
-            'user__native_name',
-            # desc
-            '-user__username',
-            '-user__full_name',
-            '-user__native_name',
-
-        ]
 
 
 class SshKeyFilter(django_filters.FilterSet):

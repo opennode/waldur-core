@@ -200,7 +200,19 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_project='project11',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
-                'non_field_errors': ['The fields project, user, role must make a unique set.'],
+                'non_field_errors': ['The fields project and user must make a unique set.'],
+            }
+        )
+
+    def test_customer_owner_cannot_grant_role_within_his_project_if_user_already_has_role(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='owner1',
+            affected_user='admin1',
+            role='manager',
+            affected_project='project11',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'non_field_errors': ['The fields project and user must make a unique set.'],
             }
         )
 
@@ -230,7 +242,7 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_project='project11',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
-                'non_field_errors': ['The fields project, user, role must make a unique set.'],
+                'non_field_errors': ['The fields project and user must make a unique set.'],
             }
         )
 
@@ -293,7 +305,7 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_project='project11',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
-                'non_field_errors': ['The fields project, user, role must make a unique set.'],
+                'non_field_errors': ['The fields project and user must make a unique set.'],
             }
         )
 
@@ -336,7 +348,7 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
                 expected_status=status.HTTP_400_BAD_REQUEST,
                 role=role,
                 expected_payload={
-                    'non_field_errors': ['The fields project, user, role must make a unique set.'],
+                    'non_field_errors': ['The fields project and user must make a unique set.'],
                 }
             )
 
@@ -466,6 +478,8 @@ class ProjectPermissionFilterTest(test.APITransactionTestCase):
 
     def setUp(self):
         fixture = fixtures.ProjectFixture()
+        self.staff = fixture.staff
+        self.customer = fixture.customer
         self.admin = fixture.admin
         self.manager = fixture.manager
         self.project = fixture.project
@@ -480,3 +494,13 @@ class ProjectPermissionFilterTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.manager)
         response = self.client.get(self.url, {'user': self.admin.uuid.hex})
         self.assertEqual(len(response.data), 1)
+
+    def test_user_can_filter_permission_by_customer(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url, {'customer': self.customer.uuid.hex})
+        self.assertEqual(len(response.data), 2)
+
+    def test_user_can_filter_permission_by_empty_customer(self):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(self.url, {'customer': factories.CustomerFactory().uuid.hex})
+        self.assertEqual(len(response.data), 0)

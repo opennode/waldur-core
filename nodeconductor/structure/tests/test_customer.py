@@ -724,3 +724,31 @@ class CustomerCountersListTest(test.APITransactionTestCase):
         response = self.client.get(self.url, {'fields': ['users', 'projects', 'services']})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {'users': 3, 'projects': 1, 'services': 1})
+
+
+class UserCustomersFilterTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.staff = factories.UserFactory(is_staff=True)
+        self.user1 = factories.UserFactory()
+        self.user2 = factories.UserFactory()
+
+        self.customer1 = factories.CustomerFactory()
+        self.customer2 = factories.CustomerFactory()
+
+        self.customer1.add_user(self.user1, CustomerRole.OWNER)
+        self.customer2.add_user(self.user1, CustomerRole.OWNER)
+        self.customer2.add_user(self.user2, CustomerRole.OWNER)
+
+    def test_staff_can_filter_customer_by_user(self):
+        self.assert_staff_can_filter_customer_by_user(self.user1, {self.customer1, self.customer2})
+        self.assert_staff_can_filter_customer_by_user(self.user2, {self.customer2})
+
+    def assert_staff_can_filter_customer_by_user(self, user, customers):
+        self.client.force_authenticate(self.staff)
+        response = self.client.get(factories.CustomerFactory.get_list_url(), {
+            'user_uuid': user.uuid.hex,
+            'fields': ['uuid']
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({customer['uuid'] for customer in response.data},
+                         {customer.uuid.hex for customer in customers})

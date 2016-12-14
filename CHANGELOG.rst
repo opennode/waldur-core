@@ -5,6 +5,12 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.111.0
+---------------
+- Added missing resource events.
+- Fixed lookup and grouping of event groups.
+- Allow staff to filter customer by user UUID.
+
 Release 0.110.0
 ---------------
 - Added agreement_date field to User model.

@@ -1,14 +1,9 @@
 from django.apps import AppConfig
 
-from nodeconductor.cost_tracking import CostTrackingRegister, CostTrackingBackend
 from nodeconductor.structure import SupportedServices, ServiceBackend
 
 
 default_app_config = 'nodeconductor.structure.tests.TestConfig'
-
-
-class TestTrackingBackend(CostTrackingBackend):
-    pass
 
 
 class TestBackend(ServiceBackend):
@@ -24,4 +19,3 @@ class TestConfig(AppConfig):
     def ready(self):
         SupportedServices.register_backend(TestBackend)
         SupportedServices.register_service(self.get_model('TestService'))
-        CostTrackingRegister.register(self.label, TestTrackingBackend)

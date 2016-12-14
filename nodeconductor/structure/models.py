@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
@@ -1300,8 +1300,6 @@ class PublishableResource(PublishableMixin, Resource):
 
 class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin, NewResource):
     extra_configuration = JSONField(default={}, help_text='Configuration details that are not represented on backend.')
-    dependent_service_settings = GenericRelation(
-        ServiceSettings, help_text='Service settings that are configured based on this private cloud.')
 
     class Meta(object):
         abstract = True

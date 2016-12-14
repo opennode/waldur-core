@@ -1,21 +1,15 @@
-from rest_framework import filters as rf_filters
-from rest_framework import mixins
-from rest_framework import permissions
-from rest_framework import status
-from rest_framework import viewsets
+from rest_framework import filters as rf_filters, permissions, status
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
+from nodeconductor.core.views import ProtectedViewSet
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
 from nodeconductor.users import models, filters, serializers, tasks
 
 
-class InvitationViewSet(mixins.CreateModelMixin,
-                        mixins.RetrieveModelMixin,
-                        mixins.ListModelMixin,
-                        viewsets.GenericViewSet):
+class InvitationViewSet(ProtectedViewSet):
     queryset = models.Invitation.objects.all()
     serializer_class = serializers.InvitationSerializer
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
@@ -85,6 +79,23 @@ class InvitationViewSet(mixins.CreateModelMixin,
         elif invitation.civil_number and invitation.civil_number != request.user.civil_number:
             raise ValidationError('User has an invalid civil number.')
 
+        if invitation.project_role is not None:
+            if invitation.project_role.project.has_user(request.user):
+                raise ValidationError('User already has role within this project.')
+        elif invitation.customer.has_user(request.user):
+            raise ValidationError('User already has role within this customer.')
+
         invitation.accept(request.user)
         return Response({'detail': "Invitation has been successfully accepted."},
                         status=status.HTTP_200_OK)
+
+    @detail_route(methods=['post'], filter_backends=[], permission_classes=[])
+    def check(self, request, uuid=None):
+        invitation = self.get_object()
+
+        if invitation.state != models.Invitation.State.PENDING:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        elif invitation.civil_number:
+            return Response({'civil_number_required': True}, status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_200_OK)

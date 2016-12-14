@@ -295,6 +295,15 @@ def log_resource_creation_failed(instance):
         event_context={'resource': instance})
 
 
+def log_resource_creation_scheduled(sender, instance, created=False, **kwargs):
+    if created and isinstance(instance, StateMixin) and instance.state == StateMixin.States.CREATION_SCHEDULED:
+        event_logger.resource.info(
+            'Resource {resource_name} creation has been scheduled.',
+            event_type='resource_creation_scheduled',
+            event_context={'resource': instance},
+        )
+
+
 def log_resource_action(sender, instance, name, source, target, **kwargs):
     if isinstance(instance, StateMixin):
         if source == StateMixin.States.CREATING:
@@ -340,6 +349,12 @@ def log_resource_action(sender, instance, name, source, target, **kwargs):
                 'Resource {resource_name} restart has failed.',
                 event_type='resource_restart_failed',
                 event_context={'resource': instance})
+    if isinstance(instance, StateMixin) and target == StateMixin.States.DELETION_SCHEDULED:
+        event_logger.resource.info(
+            'Resource {resource_name} deletion has been scheduled.',
+            event_type='resource_deletion_scheduled',
+            event_context={'resource': instance},
+        )
 
 
 def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
@@ -410,7 +425,13 @@ def connect_service_to_all_projects_if_it_is_available_for_all(sender, instance,
 def delete_service_settings_on_service_delete(sender, instance, **kwargs):
     """ Delete not shared service settings without services """
     service = instance
-    if not service.settings.shared:
+    try:
+        service_settings = service.settings
+    except ServiceSettings.DoesNotExist:
+        # If this handler works together with delete_service_settings_on_scope_delete
+        # it tries to delete service settings that are already deleted.
+        return
+    if not service_settings.shared:
         service.settings.delete()
 
 

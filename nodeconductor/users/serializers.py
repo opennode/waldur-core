@@ -66,12 +66,6 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
 
-    def validate_email(self, email):
-        if User.objects.filter(email=email).exists():
-            raise serializers.ValidationError('User with provided email already exists.')
-
-        return email
-
     def validate(self, attrs):
         link_template = attrs['link_template']
         if '{uuid}' not in link_template:

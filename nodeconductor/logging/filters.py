@@ -27,6 +27,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
           'project_group_name', 'cloud_account_name', 'project_name', 'user_full_name', 'user_native_name'
         - ?scope=<URL> - url of object that is connected to event
         - ?scope_type=<string> - name of scope type of object that is connected to event
+        - ?feature=<feature> (can be list) - include all event with type that belong to given features
         - ?exclude_features=<feature> (can be list) - exclude event from output if
           it's type corresponds to one of listed features
         - ?user_username=<string> - user's username
@@ -41,6 +42,9 @@ class EventFilterBackend(filters.BaseFilterBackend):
         should_terms = {}
         if 'event_type' in request.query_params:
             must_terms['event_type'] = request.query_params.getlist('event_type')
+        if 'feature' in request.query_params:
+            features = request.query_params.getlist('feature')
+            must_terms['event_type'] = expand_event_groups(features)
 
         # Group events by features in order to prevent large HTTP GET request
         if 'exclude_features' in request.query_params:
