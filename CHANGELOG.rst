@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet.
+
+Release 0.111.0
+---------------
 - Added missing resource events.
 - Fixed lookup and grouping of event groups.
 - Allow staff to filter customer by user UUID.
