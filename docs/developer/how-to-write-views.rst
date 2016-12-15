@@ -1,0 +1,24 @@
+How to write views
+==================
+
+View workflow
+-------------
+
+ - **Filtration** - filter objects that are visible to a user based on his request. 
+   Raise error 404 if object is not visible visible.
+
+ - **Permissions check** - make sure that user has right to execute chosen action.
+   Raise error 403 if user has not enough permissions.
+
+ - **Pre-validation check** - check object state and make sure that selected action can be executed.
+   Raise error 409 if action cannot be executed with current object state.
+
+ - **Validation** - check that user's data is valid.
+
+ - **Action logic execution** - save changes to DB / run backend task.
+
+ - **Serialization and response output** - return serialized data as response.
+
+How to implement filtration in views
+------------------------------------
+TODO.
