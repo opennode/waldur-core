@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Drop MySQL and SQLite3 database backend support.
 
 Release 0.111.0
 ---------------
