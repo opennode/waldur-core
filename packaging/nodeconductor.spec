@@ -15,7 +15,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.111.0
-Release: 1.el7
+Release: 2.el7
 License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
@@ -214,6 +214,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Fri Dec 16 2016 Juri Hudolejev <juri@opennodecloud.com> - 0.111.0-2.el7
+- Drop MySQL and SQLite3 database backend support
+
 * Wed Dec 14 2016 Jenkins <jenkins@opennodecloud.com> - 0.111.0-1.el7
 - New upstream release
 
