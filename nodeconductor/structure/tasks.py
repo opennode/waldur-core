@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import logging
 
 from celery import shared_task
+from django.core import exceptions
 from django.db import transaction
 from django.utils import six
 
@@ -15,16 +16,29 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates_batch')
 def detect_vm_coordinates_batch(virtual_machines):
-    for vm in utils.deserialize_instance(virtual_machines):
-        detect_vm_coordinates.delay(utils.serializer_instance(vm))
+    try:
+        virtual_machines_iterable = iter(virtual_machines)
+    except TypeError:
+        virtual_machines_iterable = [virtual_machines]
+
+    for vm in virtual_machines_iterable:
+        detect_vm_coordinates.delay(vm)
 
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates')
 def detect_vm_coordinates(vm_str):
+
+    if not isinstance(vm_str, str):
+        logger.warning("Wrong input parameter. Name: 'vm_str'. Value: %s.", vm_str)
+        return
+
     try:
-        vm = next(utils.deserialize_instance(vm_str))
-    except StopIteration:
+        vm = utils.deserialize_instance(vm_str)
+    except exceptions.ObjectDoesNotExist:
         logger.warning('Missing virtual machine %s.', vm_str)
+        return
+    except exceptions.MultipleObjectsReturned:
+        logger.error('Two virtual machines are registered with the same id. Details: %s.', vm_str)
         return
 
     try:
