@@ -24,7 +24,7 @@ def detect_vm_coordinates_batch(serialized_virtual_machines):
 def detect_vm_coordinates(serialized_virtual_machine):
 
     try:
-        vm = utils.deserialize_instance(serialized_virtual_machine)
+        vm = core_utils.deserialize_instance(serialized_virtual_machine)
     except exceptions.ObjectDoesNotExist:
         logger.warning('Missing virtual machine %s.', serialized_virtual_machine)
         return
