@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Drop MySQL and SQLite3 database backend support.
+- Remove SerializableAbstractMixin for serialization and reuse core.utils instead.
 
 Release 0.111.0
 ---------------

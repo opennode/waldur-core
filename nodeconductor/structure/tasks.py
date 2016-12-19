@@ -15,36 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates_batch')
-def detect_vm_coordinates_batch(virtual_machines):
-    try:
-        virtual_machines_iterable = iter(virtual_machines)
-    except TypeError:
-        virtual_machines_iterable = [virtual_machines]
-
-    for vm in virtual_machines_iterable:
+def detect_vm_coordinates_batch(serialized_virtual_machines):
+    for vm in serialized_virtual_machines:
         detect_vm_coordinates.delay(vm)
 
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates')
-def detect_vm_coordinates(vm_str):
-
-    if not isinstance(vm_str, str):
-        logger.warning("Wrong input parameter. Name: 'vm_str'. Value: %s.", vm_str)
-        return
+def detect_vm_coordinates(serialized_virtual_machine):
 
     try:
-        vm = utils.deserialize_instance(vm_str)
+        vm = utils.deserialize_instance(serialized_virtual_machine)
     except exceptions.ObjectDoesNotExist:
-        logger.warning('Missing virtual machine %s.', vm_str)
-        return
-    except exceptions.MultipleObjectsReturned:
-        logger.error('Two virtual machines are registered with the same id. Details: %s.', vm_str)
+        logger.warning('Missing virtual machine %s.', serialized_virtual_machine)
         return
 
     try:
         coordinates = vm.detect_coordinates()
     except utils.GeoIpException as e:
-        logger.warning('Unable to detect coordinates for virtual machines %s: %s.', vm_str, e)
+        logger.warning('Unable to detect coordinates for virtual machines %s: %s.', serialized_virtual_machine, e)
         return
 
     if coordinates:
