@@ -746,6 +746,10 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     email = serializers.EmailField()
     agree_with_policy = serializers.BooleanField(write_only=True,
                                                  help_text='User must agree with the policy to register.')
+    preferred_language = serializers.ChoiceField(choices=settings.LANGUAGES, allow_blank=True, required=False)
+    competence = serializers.ChoiceField(choices=settings.NODECONDUCTOR.get('USER_COMPETENCE_LIST') or [],
+                                         allow_blank=True,
+                                         required=False)
 
     class Meta(object):
         model = User
@@ -762,6 +766,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'date_joined',
             'agree_with_policy',
             'agreement_date',
+            'preferred_language',
+            'competence'
         )
         read_only_fields = (
             'uuid',

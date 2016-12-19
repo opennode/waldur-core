@@ -159,6 +159,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                            help_text=_('Indicates what registration method were used.'))
     agreement_date = models.DateTimeField(_('agreement date'), blank=True, null=True,
                                           help_text=_('Indicates when the user has agreed with the policy.'))
+    preferred_language = models.CharField(max_length=10, blank=True)
+    competence = models.CharField(max_length=255, blank=True)
 
     objects = UserManager()
 
