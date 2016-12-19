@@ -13,6 +13,7 @@ from django.shortcuts import render
 from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
 from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core import utils
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors
 
@@ -378,7 +379,7 @@ class VirtualMachineAdmin(ResourceAdmin):
     actions = ['detect_coordinates']
 
     def detect_coordinates(self, request, queryset):
-        send_task('structure', 'detect_vm_coordinates_batch')([vm.to_string() for vm in queryset])
+        send_task('structure', 'detect_vm_coordinates_batch')([utils.serialize_instance(vm) for vm in queryset])
 
         tasks_scheduled = queryset.count()
         message = ungettext(

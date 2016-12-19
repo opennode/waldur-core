@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates_batch')
 def detect_vm_coordinates_batch(virtual_machines):
-    for vm in models.ResourceMixin.from_string(virtual_machines):
-        detect_vm_coordinates.delay(vm.to_string())
+    for vm in utils.deserialize_instance(virtual_machines):
+        detect_vm_coordinates.delay(utils.serializer_instance(vm))
 
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates')
 def detect_vm_coordinates(vm_str):
     try:
-        vm = next(models.ResourceMixin.from_string(vm_str))
+        vm = next(utils.deserialize_instance(vm_str))
     except StopIteration:
         logger.warning('Missing virtual machine %s.', vm_str)
         return
