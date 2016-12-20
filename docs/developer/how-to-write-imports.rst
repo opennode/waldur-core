@@ -13,6 +13,7 @@ Grouping
 Example:
 
 .. code-block:: python
+
     from __future__ import unicode_literals
 
     import datetime
@@ -38,12 +39,14 @@ import keyword.
 Wrong:
 
 .. code-block:: python
+
     from os import path
     import datetime
 
 Right:
 
 .. code-block:: python
+
     import datetime
     from os import path
 
@@ -60,11 +63,13 @@ In openstack plugin:
 Wrong:
 
 .. code-block:: python
+
     from nodeconductor_openstack.openstack import models
 
 Right:
 
 .. code-block:: python
+
     from . import models
 
 
@@ -73,12 +78,14 @@ Right:
 Wrong:
 
 .. code-block:: python
+
     from nodeconductor.core import models as core_models
     from nodeconductor.core import exceptions as core_exceptions
 
 Right:
 
 .. code-block:: python
+
     from nodeconductor.core import models as core_models, exceptions as core_exceptions
 
 
@@ -91,9 +98,11 @@ separate classes.
 Wrong:
 
 .. code-block:: python
+
     from nodeconductor.structure.models import Project
 
 Right:
 
 .. code-block:: python
+
     from nodeconductor.structure import models as structure_models
