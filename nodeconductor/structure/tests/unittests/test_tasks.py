@@ -6,7 +6,7 @@ from nodeconductor.structure import tasks
 from nodeconductor.structure.tests import factories
 
 
-class TestDetectVMCoordinatesTasks(TestCase):
+class TestDetectVMCoordinatesTask(TestCase):
 
     @patch('requests.get')
     def test_task_sets_coordinates(self, mock_request_get):
