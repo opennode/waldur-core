@@ -3,10 +3,10 @@
 from mock import patch
 from django.test import TestCase
 
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure import tasks
 from nodeconductor.structure.tests import models
 from nodeconductor.core import utils as core_utils
-from nodeconductor.structure import tasks
+from nodeconductor.structure.tests import factories
 
 
 class TestTasks(TestCase):
