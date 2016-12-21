@@ -21,4 +21,9 @@ class Migration(migrations.Migration):
             name='preferred_language',
             field=models.CharField(max_length=10, blank=True),
         ),
+        migrations.AlterField(
+            model_name='user',
+            name='phone_number',
+            field=models.CharField(max_length=255, verbose_name='phone number', blank=True),
+        ),
     ]

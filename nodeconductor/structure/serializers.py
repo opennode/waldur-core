@@ -747,7 +747,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     agree_with_policy = serializers.BooleanField(write_only=True,
                                                  help_text='User must agree with the policy to register.')
     preferred_language = serializers.ChoiceField(choices=settings.LANGUAGES, allow_blank=True, required=False)
-    competence = serializers.ChoiceField(choices=settings.NODECONDUCTOR.get('USER_COMPETENCE_LIST') or [],
+    competence = serializers.ChoiceField(choices=settings.NODECONDUCTOR.get('USER_COMPETENCE_LIST', []),
                                          allow_blank=True,
                                          required=False)
 

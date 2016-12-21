@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from django import forms
+from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.auth import admin as auth_admin, get_user_model
@@ -15,6 +16,13 @@ from nodeconductor.core import models
 
 def get_admin_url(obj):
     return reverse('admin:%s_%s_change' % (obj._meta.app_label, obj._meta.model_name), args=[obj.id])
+
+
+class OptionalChoiceField(forms.ChoiceField):
+    def __init__(self, choices=(), *args, **kwargs):
+        empty = [('', '---------')]
+        choices = empty + sorted(choices, key=lambda (code, label): label)
+        super(OptionalChoiceField, self).__init__(choices, *args, **kwargs)
 
 
 class UserCreationForm(auth_admin.UserCreationForm):
@@ -42,6 +50,12 @@ class UserChangeForm(auth_admin.UserChangeForm):
         model = get_user_model()
         fields = '__all__'
 
+    def __init__(self, *args, **kwargs):
+        super(UserChangeForm, self).__init__(*args, **kwargs)
+        competences = [(key, key) for key in settings.NODECONDUCTOR.get('USER_COMPETENCE_LIST', [])]
+        self.fields['preferred_language'] = OptionalChoiceField(choices=settings.LANGUAGES, required=False)
+        self.fields['competence'] = OptionalChoiceField(choices=competences, required=False)
+
     def clean_civil_number(self):
         # See http://stackoverflow.com/a/1400046/175349
         # and https://code.djangoproject.com/ticket/9039
@@ -54,7 +68,10 @@ class UserAdmin(auth_admin.UserAdmin):
     list_filter = ('is_active', 'is_staff', 'is_superuser')
     fieldsets = (
         (None, {'fields': ('username', 'password', 'registration_method')}),
-        (_('Personal info'), {'fields': ('civil_number', 'full_name', 'native_name', 'email')}),
+        (_('Personal info'), {'fields': (
+            'civil_number', 'full_name', 'native_name', 'email',
+            'preferred_language', 'competence', 'phone_number'
+        )}),
         (_('Organization'), {'fields': ('organization', 'organization_approved')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined', 'agreement_date')}),

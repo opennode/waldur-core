@@ -184,5 +184,5 @@ DEFAULT_FROM_EMAIL='noreply@example.com'
 NODECONDUCTOR['USER_COMPETENCE_LIST'] = (
     'System administration',
     'Project management',
-    'Software development'
+    'Software development',
 )
