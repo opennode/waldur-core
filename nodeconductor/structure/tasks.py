@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import logging
 
 from celery import shared_task
+from django.core import exceptions
 from django.db import transaction
 from django.utils import six
 
@@ -14,23 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates_batch')
-def detect_vm_coordinates_batch(virtual_machines):
-    for vm in models.ResourceMixin.from_string(virtual_machines):
-        detect_vm_coordinates.delay(vm.to_string())
+def detect_vm_coordinates_batch(serialized_virtual_machines):
+    for vm in serialized_virtual_machines:
+        detect_vm_coordinates.delay(vm)
 
 
 @shared_task(name='nodeconductor.structure.detect_vm_coordinates')
-def detect_vm_coordinates(vm_str):
+def detect_vm_coordinates(serialized_virtual_machine):
+
     try:
-        vm = next(models.ResourceMixin.from_string(vm_str))
-    except StopIteration:
-        logger.warning('Missing virtual machine %s.', vm_str)
+        vm = core_utils.deserialize_instance(serialized_virtual_machine)
+    except exceptions.ObjectDoesNotExist:
+        logger.warning('Missing virtual machine %s.', serialized_virtual_machine)
         return
 
     try:
         coordinates = vm.detect_coordinates()
     except utils.GeoIpException as e:
-        logger.warning('Unable to detect coordinates for virtual machines %s: %s.', vm_str, e)
+        logger.warning('Unable to detect coordinates for virtual machines %s: %s.', serialized_virtual_machine, e)
         return
 
     if coordinates:

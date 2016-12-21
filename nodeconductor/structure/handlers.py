@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group
 from django.db import models, transaction
 from django.utils import timezone
 
+from nodeconductor.core import utils
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
@@ -367,7 +368,7 @@ def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
         return
 
     if target == Resource.States.ONLINE:
-        send_task('structure', 'detect_vm_coordinates')(instance.to_string())
+        send_task('structure', 'detect_vm_coordinates')(utils.serializer_instance(instance))
 
 
 def connect_customer_to_shared_service_settings(sender, instance, created=False, **kwargs):

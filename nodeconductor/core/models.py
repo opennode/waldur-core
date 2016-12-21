@@ -471,26 +471,6 @@ class ReversionMixin(object):
         return super(ReversionMixin, self).save(**kwargs)
 
 
-# XXX: Deprecated. Serialization should be automatically processed in executors
-#                  or use serialize and deserialize_instance methods from utils.
-class SerializableAbstractMixin(object):
-
-    def to_string(self):
-        """ Dump an instance into a string preserving model name and object id """
-        return utils.serialize_instance(self)
-
-    @classmethod
-    def from_string(cls, objects):
-        """ Recover objects from s string """
-        if not isinstance(objects, (list, tuple)):
-            objects = [objects]
-        for obj in objects:
-            try:
-                yield utils.deserialize_instance(obj)
-            except ObjectDoesNotExist:
-                continue
-
-
 # XXX: consider renaming it to AffinityMixin
 class DescendantMixin(object):
     """ Mixin to provide child-parent relationships.
