@@ -180,3 +180,9 @@ NODECONDUCTOR['ENABLE_GEOIP'] = True
 NODECONDUCTOR['SELLER_COUNTRY_CODE'] = 'EE'
 
 DEFAULT_FROM_EMAIL='noreply@example.com'
+
+NODECONDUCTOR['USER_COMPETENCE_LIST'] = (
+    'System administration',
+    'Project management',
+    'Software development',
+)

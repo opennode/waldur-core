@@ -10,7 +10,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from django.core import validators
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.utils import timezone as django_timezone
@@ -22,7 +22,6 @@ from model_utils import FieldTracker
 import reversion
 from reversion.models import Version
 
-from nodeconductor.core import utils
 from nodeconductor.core.fields import CronScheduleField, UUIDField
 from nodeconductor.core.validators import validate_name
 from nodeconductor.logging.loggers import LoggableMixin
@@ -141,7 +140,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     civil_number = models.CharField(_('civil number'), max_length=50, unique=True, blank=True, null=True, default=None)
     full_name = models.CharField(_('full name'), max_length=100, blank=True)
     native_name = models.CharField(_('native name'), max_length=100, blank=True)
-    phone_number = models.CharField(_('phone number'), max_length=40, blank=True)
+    phone_number = models.CharField(_('phone number'), max_length=255, blank=True)
     organization = models.CharField(_('organization'), max_length=80, blank=True)
     organization_approved = models.BooleanField(_('organization approved'), default=False,
                                                 help_text=_('Designates whether user organization was approved.'))
@@ -159,6 +158,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                            help_text=_('Indicates what registration method were used.'))
     agreement_date = models.DateTimeField(_('agreement date'), blank=True, null=True,
                                           help_text=_('Indicates when the user has agreed with the policy.'))
+    preferred_language = models.CharField(max_length=10, blank=True)
+    competence = models.CharField(max_length=255, blank=True)
 
     objects = UserManager()
 
