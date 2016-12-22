@@ -367,8 +367,8 @@ def detect_vm_coordinates(sender, instance, name, source, target, **kwargs):
     if instance.latitude is not None and instance.longitude is not None:
         return
 
-    if target == Resource.States.ONLINE:
-        send_task('structure', 'detect_vm_coordinates')(utils.serializer_instance(instance))
+    if target == StateMixin.States.OK:
+        send_task('structure', 'detect_vm_coordinates')(utils.serialize_instance(instance))
 
 
 def connect_customer_to_shared_service_settings(sender, instance, created=False, **kwargs):
