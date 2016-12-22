@@ -116,3 +116,20 @@ Global count quotas for models
 Global count quota - quota without scope that stores information about count of all model instances.
 To create new global quota - add field GLOBAL_COUNT_QUOTA_NAME = '<quota name>' to model.
 (Please use prefix <nc_global> for global quotas names)
+
+
+Workflow for quota allocation
+-----------------------------
+
+In order to prevent bugs when multiple simultaneous requests are performed, the following workflow is used.
+
+1) As soon as we know what quota will be used we increase its usage.
+   It is performed in serializers' save or update method.
+   If quota usage becomes over limit, validation error is raised.
+   Consider for example InstanceFlavorChangeSerializer in OpenStack plugin.
+
+2) If backend API call for resource provision fails, frontend quota usage is not modified.
+   Instead it is assumed that quota pulling is executed either by user or by cron.
+
+3) Quota usage is decreased only when backend API call for resource deletion succeeds.
+   Consider for example delete_volume backend method in OpenStack plugin.
