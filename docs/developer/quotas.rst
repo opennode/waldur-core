@@ -129,7 +129,7 @@ In order to prevent bugs when multiple simultaneous requests are performed, the 
    Consider for example InstanceFlavorChangeSerializer in OpenStack plugin.
 
 2) If backend API call for resource provision fails, frontend quota usage is not modified.
-   Instead it is assumed that quota pulling is executed either by user or by cron.
+   Instead it is assumed that quota pulling is triggered either by user or by cron.
 
 3) Quota usage is decreased only when backend API call for resource deletion succeeds.
    Consider for example delete_volume backend method in OpenStack plugin.
