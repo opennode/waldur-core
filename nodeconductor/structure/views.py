@@ -193,46 +193,6 @@ class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generi
         raise PermissionDenied()
 
 
-class ActionPermissionsBackend(rf_permissions.BasePermission):
-    """ Allow to define custom permission checks on for all action together and each action separately.
-
-        It is possible to define permissions checks in next way:
-         - view.safe_permissions - list of checks for all safe methods.
-         - view.unsafe_permissions - list of checks for all unsafe methods.
-         - view.action.extra_permissions - list of action extra permissions. Backend will check
-                                           view level permissions and extra_permissions together.
-         - view.action.permissions - list of all view permissions. Backend will not check view level
-                                     permissions if action permissions are defined.
-    """
-
-    def get_permission_checks(self, request, view):
-        """
-        Get permission checks that will be executed for current action.
-        """
-        if view.action is None:
-            return []
-        action = getattr(view, view.action)
-        # if permissions are defined for view directly - use them.
-        if hasattr(action, 'permissions'):
-            return action.permissions
-        # otherwise return view-level permissions + extra view permissions
-        extra_permissions = getattr(action, 'extra_permissions', [])
-        if request.method in rf_permissions.SAFE_METHODS:
-            return getattr(view, 'safe_permissions', []) + extra_permissions
-        else:
-            return getattr(view, 'unsafe_permissions', []) + extra_permissions
-
-    def has_permission(self, request, view):
-        for check in self.get_permission_checks(request, view):
-            check(request, view)
-        return True
-
-    def has_object_permission(self, request, view, obj):
-        for check in self.get_permission_checks(request, view):
-            check(request, view, obj)
-        return True
-
-
 def is_staff(request, view, obj=None):
     if not request.user.is_staff:
         raise PermissionDenied()
@@ -269,24 +229,6 @@ def is_administrator(request, view, obj=None):
     )
     if not is_administrator:
         raise PermissionDenied()
-
-
-class ActionsViewSet(viewsets.GenericViewSet):
-    """ Allow to define separate serializers for all actions """
-
-    def get_serializer_class(self):
-        action = getattr(self, self.action)
-        return getattr(action, 'serializer_class', super(ActionsViewSet, self).get_serializer_class())
-
-    def initial(self, request, *args, **kwargs):
-        super(ActionsViewSet, self).initial(request, *args, **kwargs)
-        # execute pre-validation checks for action
-        action = getattr(self, self.action)
-        if not getattr(action, 'detail', False):
-            return
-        validators = getattr(action, 'validators', [])
-        for validator in validators:
-            validator(self.get_object())
 
 
 def name_validator(project):

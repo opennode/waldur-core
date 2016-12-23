@@ -7,17 +7,15 @@ from django.utils import timezone
 from django.utils.encoding import force_text
 from django.core.cache import cache
 
-from rest_framework import generics, status, mixins as rf_mixins
+from rest_framework import status, mixins as rf_mixins, viewsets, permissions as rf_permissions
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
-from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 from nodeconductor import __version__
-from nodeconductor.core import mixins
+from nodeconductor.core import mixins, permissions
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.serializers import AuthTokenSerializer
 from nodeconductor.logging.loggers import event_logger
@@ -168,7 +166,7 @@ obtain_auth_token = ObtainAuthToken.as_view()
 
 
 @api_view(['GET'])
-@permission_classes((AllowAny, ))
+@permission_classes((rf_permissions.AllowAny, ))
 def version_detail(request):
     """Retrieve version of the application"""
 
@@ -205,7 +203,7 @@ class StateExecutorViewSet(mixins.StateMixin,
                            mixins.CreateExecutorMixin,
                            mixins.UpdateExecutorMixin,
                            mixins.DeleteExecutorMixin,
-                           ModelViewSet):
+                           viewsets.ModelViewSet):
     """ Create/Update/Delete operations via executors """
     pass
 
@@ -214,7 +212,7 @@ class UpdateOnlyViewSet(rf_mixins.RetrieveModelMixin,
                         rf_mixins.UpdateModelMixin,
                         rf_mixins.DestroyModelMixin,
                         rf_mixins.ListModelMixin,
-                        GenericViewSet):
+                        viewsets.GenericViewSet):
     """ All default operations except create """
     pass
 
@@ -230,6 +228,56 @@ class UpdateOnlyStateExecutorViewSet(mixins.StateMixin,
 class ProtectedViewSet(rf_mixins.CreateModelMixin,
                        rf_mixins.RetrieveModelMixin,
                        rf_mixins.ListModelMixin,
-                       GenericViewSet):
+                       viewsets.GenericViewSet):
     """ All default operations except update and delete """
+    pass
+
+
+class ActionsViewSet(viewsets.GenericViewSet):
+    """
+    Threats all endpoint actions in the same way.
+
+    1. Allow to define separate serializers for each action:
+
+        def action(self, request, *args, **kwargs):
+            serializer = self.get_serializer(...)
+            ...
+
+        action.serializer = ActionSerializer
+
+    2. Allow to define validators for detail actions:
+
+        def state_is_ok(obj):
+            if obj.state != 'ok':
+                raise IncorrectStateException('Instance should be in state OK.')
+
+        @decorators.detail_route()
+        def action(self, request, *args, **kwargs):
+            ...
+
+        action.validators = [state_is_ok]
+
+    3. Allow to define permissions checks for all actions or each action
+       separately. Check ActionPermissionsBackend for more details.
+    """
+    permission_classes = (rf_permissions.IsAuthenticated, permissions.ActionPermissionsBackend)
+
+    def get_serializer_class(self):
+        action = getattr(self, self.action)
+        return getattr(action, 'serializer_class', super(ActionsViewSet, self).get_serializer_class())
+
+    def initial(self, request, *args, **kwargs):
+        super(ActionsViewSet, self).initial(request, *args, **kwargs)
+        # execute validation for detailed action
+        action = getattr(self, self.action)
+        if not getattr(action, 'detail', False):
+            return
+        validators = getattr(action, 'validators', [])
+        for validator in validators:
+            validator(self.get_object())
+
+
+# ???
+class ReadOnlyActionViewSet(rf_mixins.ListModelMixin, rf_mixins.RetrieveModelMixin, ActionsViewSet):
+    """ Action view set with list() and retrieve actions """
     pass

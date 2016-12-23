@@ -336,7 +336,7 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
             collaboration_type = self.discriminator_function(obj)
 
             # disallow operation if the type is unknown
-            if not collaboration_type in self.type_to_permission_logic_mapping:
+            if collaboration_type not in self.type_to_permission_logic_mapping:
                 return False
             collaborators_query = self.type_to_permission_logic_mapping[collaboration_type]['query']
             collaborators_filter = self.type_to_permission_logic_mapping[collaboration_type]['filter']
@@ -350,3 +350,43 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
             if obj._meta.model._default_manager.filter(**kwargs).exists():
                 return True
         return False
+
+
+class ActionPermissionsBackend(BasePermission):
+    """ Allow to define custom permission checks on for all action together and each action separately.
+
+        It is possible to define permissions checks in next way:
+         - view.safe_methods_permissions - list of checks for all safe methods.
+         - view.unsafe_methods_permissions - list of checks for all unsafe methods.
+         - view.action.extra_permissions - list of action extra permissions. Backend will check
+                                           view level permissions and extra_permissions together.
+         - view.action.permissions - list of all view permissions. Backend will not check view level
+                                     permissions if action permissions are defined.
+    """
+
+    def get_permission_checks(self, request, view):
+        """
+        Get permission checks that will be executed for current action.
+        """
+        if view.action is None:
+            return []
+        action = getattr(view, view.action)
+        # if permissions are defined for view directly - use them.
+        if hasattr(action, 'permissions'):
+            return action.permissions
+        # otherwise return view-level permissions + extra view permissions
+        extra_permissions = getattr(action, 'extra_permissions', [])
+        if request.method in SAFE_METHODS:
+            return getattr(view, 'safe_methods_permissions', []) + extra_permissions
+        else:
+            return getattr(view, 'unsafe_methods_permissions', []) + extra_permissions
+
+    def has_permission(self, request, view):
+        for check in self.get_permission_checks(request, view):
+            check(request, view)
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        for check in self.get_permission_checks(request, view):
+            check(request, view, obj)
+        return True
