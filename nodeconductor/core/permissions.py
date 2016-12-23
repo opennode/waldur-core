@@ -352,16 +352,52 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
         return False
 
 
-class ActionPermissionsBackend(BasePermission):
-    """ Allow to define custom permission checks on for all action together and each action separately.
+class ActionsPermission(BasePermission):
+    """
+    Allow to define custom permission checks on for all action together and each action separately.
 
-        It is possible to define permissions checks in next way:
-         - view.safe_methods_permissions - list of checks for all safe methods.
-         - view.unsafe_methods_permissions - list of checks for all unsafe methods.
-         - view.action.extra_permissions - list of action extra permissions. Backend will check
-                                           view level permissions and extra_permissions together.
-         - view.action.permissions - list of all view permissions. Backend will not check view level
-                                     permissions if action permissions are defined.
+    It is possible to define permissions checks in next way:
+     - view.safe_methods_permissions - list of checks for all safe methods (GET, OPTIONS, HEAD).
+     - view.unsafe_methods_permissions - list of checks for all unsafe methods (POST, PUT, PATCH, DELETE).
+     - view.action.extra_permissions - list of action extra permissions. Backend will check
+                                       view level permissions and extra_permissions together.
+     - view.action.permissions - list of all view permissions. Backend will not check view level
+                                 permissions if action permissions are defined.
+
+    Example. Define action level permissions:
+
+        def is_staff(request, view, obj=None):
+            if not request.user.is_staff:
+                raise PermissionDenied('User has to be staff to perform this action.')
+
+        class MyView(...):
+            permission_classes = (ActionsPermission,)
+            ...
+            def action(...):
+                ...
+
+            action.permissions = [is_staff]  # action will be available only for staff
+
+    Example. Define view level permissions and additional permissions for
+    action:
+
+        def is_staff(request, view, obj=None):
+            if not request.user.is_staff:
+                raise PermissionDenied('User has to be staff to perform this action.')
+
+        def is_active(request, view, obj=None):
+            if not request.user.is_active:
+                raise PermissionDenied('User has to be active to perform this action.')
+
+        class MyView(...):
+            permission_classes = (ActionsPermission,)
+            unsafe_methods_permissions = [is_active]  # only active user will have access to all unsafe actions
+            ...
+            @decorators.detail_route(method='POST')
+            def action(...):
+                ...
+
+            action.extra_permissions = [is_staff]  # only active staff users will have access to action
     """
 
     def get_permission_checks(self, request, view):
