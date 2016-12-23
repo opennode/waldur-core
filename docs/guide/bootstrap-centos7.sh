@@ -12,15 +12,6 @@ systemctl enable postgresql-9.5
 su - postgres -c "/usr/pgsql-9.5/bin/createdb -EUTF8 nodeconductor"
 su - postgres -c "/usr/pgsql-9.5/bin/createuser nodeconductor"
 
-    # Alternative: set up MySQL
-    #yum -y install mariadb-server
-    #systemctl start mariadb
-    #systemctl enable mariadb
-    #
-    #mysql -e "CREATE DATABASE nodeconductor CHARACTER SET = utf8"
-    #mysql -e "CREATE USER 'nodeconductor'@'localhost' IDENTIFIED BY 'nodeconductor'"
-    #mysql -e "GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'localhost'"
-
 # Set up Redis
 yum -y install redis
 systemctl start redis

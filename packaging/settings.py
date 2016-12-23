@@ -16,7 +16,6 @@ config.read(os.path.join(conf_dir, 'settings.ini'))
 # If these sections and/or options are not set, these values are used as defaults
 config_defaults = {
     'global': {
-        'db_backend': 'sqlite3',
         'debug': 'false',
         'media_root': os.path.join(work_dir, 'media'),
         'owner_can_manage_customer': 'false',
@@ -52,13 +51,6 @@ config_defaults = {
         'log_level': 'INFO',
         'syslog': 'false',
     },
-    'mysql': {
-        'host': 'localhost',
-        'name': 'nodeconductor',
-        'password': 'nodeconductor',
-        'port': '3306',
-        'user': 'nodeconductor',
-    },
     'postgresql': {
         'host': '',  # empty to connect via local UNIX socket
         'name': 'nodeconductor',
@@ -76,9 +68,6 @@ config_defaults = {
     'sentry': {
         'dsn': '',  # raven package is needed for this to work
     },
-    'sqlite3': {
-        'path': os.path.join(work_dir, 'db.sqlite3'),
-    },
 }
 
 for section, options in config_defaults.items():
@@ -91,13 +80,14 @@ for section, options in config_defaults.items():
 redis_url = 'redis://%s:%s' % (config.get('redis', 'host'), config.get('redis', 'port'))
 
 # Handle deprecated settings
-for section in ('billing', 'celery', 'openstack'):
+for section in ('billing', 'celery', 'mysql', 'openstack', 'sqlite3'):
     if config.has_section(section):
         warnings.warn("'%s' section in settings.ini is no longer supported and will be ignored" % section)
 
-if config.has_option('global', 'enable_order_processing'):
-    warnings.warn(
-        "'global.enable_order_processing' property in settings.ini is no longer supported and will be ignored")
+for option in ('db_backend', 'enable_order_processing'):
+    if config.has_option('global', option):
+        warnings.warn(
+            "'global.%s' property in settings.ini is no longer supported and will be ignored" % option)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get('global', 'secret_key')
@@ -121,77 +111,37 @@ ALLOWED_HOSTS = ['*']
 #
 
 # Database
+#
+# Requirements:
+#  - PostgreSQL server is running and accessible on 'HOST':'PORT'
+#  - PostgreSQL user 'USER' created and can access PostgreSQL server using password 'PASSWORD'
+#  - PostgreSQL database 'NAME' created with all privileges granted to user 'USER'
+#  - psycopg2 package is installed: https://pypi.python.org/pypi/psycopg2
+#
+# Note: if PostgreSQL server is running on local host and is accessible via UNIX socket,
+# leave 'HOST' and 'PORT' empty. For password usage details in this setup see
+# https://www.postgresql.org/docs/9.5/static/auth-methods.html
+#
+# Example: create database, user and grant privileges:
+#
+#   CREATE DATABASE nodeconductor ENCODING 'UTF8'
+#   CREATE USER nodeconductor WITH PASSWORD 'nodeconductor'
+#
+# Example: install psycopg2 in CentOS:
+#
+#   yum install python-psycopg2
+#
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#databases
-
 DATABASES = {
-    # MySQL
-    # -----
-    #
-    # Requirements:
-    #  - MySQL server is running and accessible on 'HOST':'PORT'
-    #  - MySQL user 'USER' is created and can login to MySQL server using password 'PASSWORD'
-    #  - MySQL database 'NAME' is created with all privileges granted to user 'USER'
-    #  - MySQL-python package is installed: https://pypi.python.org/pypi/MySQL-python
-    #
-    # Example: create database, user and grant privileges:
-    #
-    #   CREATE DATABASE nodeconductor CHARACTER SET = utf8;
-    #   CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
-    #   GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
-    #
-    # Example: install MySQL-python in CentOS:
-    #
-    #   yum install MySQL-python
-    #
-    #
-    # PostgreSQL
-    # ----------
-    #
-    # Requirements:
-    #  - PostgreSQL server is running and accessible on 'HOST':'PORT'
-    #  - PostgreSQL user 'USER' created and can access PostgreSQL server using password 'PASSWORD'
-    #  - PostgreSQL database 'NAME' created with all privileges granted to user 'USER'
-    #  - psycopg2 package is installed: https://pypi.python.org/pypi/psycopg2
-    #
-    # Note: if PostgreSQL server is running on local host and is accessible via UNIX socket,
-    # leave 'HOST' and 'PORT' empty. For password usage details in this setup see
-    # https://www.postgresql.org/docs/9.5/static/auth-methods.html
-    #
-    # Example: create database, user and grant privileges:
-    #
-    #   CREATE DATABASE nodeconductor ENCODING 'UTF8'
-    #   CREATE USER nodeconductor WITH PASSWORD 'nodeconductor'
-    #
-    # Example: install psycopg2 in CentOS:
-    #
-    #   yum install python-psycopg2
-    #
-    'default': {}
-}
-
-if config.get('global', 'db_backend') == 'mysql':
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config.get('mysql', 'name'),
-        'HOST': config.get('mysql', 'host'),
-        'PORT': config.get('mysql', 'port'),
-        'USER': config.get('mysql', 'user'),
-        'PASSWORD': config.get('mysql', 'password'),
-    }
-elif config.get('global', 'db_backend') == 'postgresql':
-    DATABASES['default'] = {
+    'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': config.get('postgresql', 'name'),
         'HOST': config.get('postgresql', 'host'),
         'PORT': config.get('postgresql', 'port'),
         'USER': config.get('postgresql', 'user'),
         'PASSWORD': config.get('postgresql', 'password'),
-    }
-elif config.has_section('sqlite3'):
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': config.get('sqlite3', 'path'),
-    }
+    },
+}
 
 # Logging
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#logging

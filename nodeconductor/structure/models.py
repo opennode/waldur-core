@@ -713,8 +713,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
 
 
 @python_2_unicode_compatible
-class Service(core_models.SerializableAbstractMixin,
-              core_models.UuidMixin,
+class Service(core_models.UuidMixin,
               core_models.NameMixin,
               core_models.DescendantMixin,
               quotas_models.QuotaModelMixin,
@@ -838,7 +837,6 @@ class GeneralServiceProperty(BaseServiceProperty):
 
 @python_2_unicode_compatible
 class ServiceProjectLink(quotas_models.QuotaModelMixin,
-                         core_models.SerializableAbstractMixin,
                          core_models.DescendantMixin,
                          LoggableMixin,
                          StructureModel):
@@ -1136,7 +1134,6 @@ class ResourceMixin(MonitoringModelMixin,
                     core_models.UuidMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
-                    core_models.SerializableAbstractMixin,
                     core_models.DescendantMixin,
                     LoggableMixin,
                     TagMixin,
