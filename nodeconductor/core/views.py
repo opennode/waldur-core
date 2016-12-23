@@ -284,5 +284,5 @@ class ActionsViewSet(viewsets.ModelViewSet):
             validator(self.get_object())
 
 
-class ReadOnlyActionViewSet(viewsets.ModelViewSet):
+class ReadOnlyActionsViewSet(viewsets.ActionsViewSet):
     disabled_actions = ['create', 'update', 'partial_update', 'destroy']
