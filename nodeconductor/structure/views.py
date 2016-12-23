@@ -193,50 +193,7 @@ class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generi
         raise PermissionDenied()
 
 
-def is_staff(request, view, obj=None):
-    if not request.user.is_staff:
-        raise PermissionDenied()
-
-
-def _get_parent_by_permission_path(obj, permission_path):
-    path = getattr(obj.Permissions, 'project_path', None)
-    if path is None:
-        return
-    if path == 'self':
-        return obj
-    return reduce(getattr, path.split('__'), obj)
-
-
-def _get_project(obj):
-    return _get_parent_by_permission_path(obj, 'project_path')
-
-
-def _get_customer(obj):
-    return _get_parent_by_permission_path(obj, 'customer_path')
-
-
-def is_administrator(request, view, obj=None):
-    if obj is None:
-        return
-    project = _get_project(obj)
-    customer = _get_customer(obj)
-    user = request.user
-    is_administrator = (
-        user.is_staff or
-        customer and customer.has_user(user, models.CustomerRole.OWNER) or
-        project and project.has_user(user, models.ProjectRole.MANAGER) or
-        project and project.has_user(user, models.ProjectRole.ADMINISTRATOR)
-    )
-    if not is_administrator:
-        raise PermissionDenied()
-
-
-def name_validator(project):
-    if project.name == 'WIGO-project':
-        raise core_exceptions.IncorrectStateException('Wrong name.')
-
-
-class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet, ActionsViewSet):
+class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
@@ -244,8 +201,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet, ActionsV
     filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
     filter_class = filters.ProjectFilter
     # permissions
-    permission_classes = (rf_permissions.IsAuthenticated, ActionPermissionsBackend)
-    unsafe_permissions = [is_administrator]  # only user with administrator rights can execute unsafe actions.
+    permission_classes = (rf_permissions.IsAuthenticated,)
 
     def get_serializer_class(self):
         if self.action == 'users':
@@ -385,8 +341,6 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet, ActionsV
         queryset = self.paginate_queryset(project.get_users())
         serializer = self.get_serializer(queryset, many=True)
         return self.get_paginated_response(serializer.data)
-
-    users.validators = [name_validator]
 
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):

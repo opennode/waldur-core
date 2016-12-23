@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.utils.encoding import force_text
 from django.core.cache import cache
 
-from rest_framework import status, mixins as rf_mixins, viewsets, permissions as rf_permissions
+from rest_framework import status, mixins as rf_mixins, viewsets, permissions as rf_permissions, exceptions
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -233,7 +233,7 @@ class ProtectedViewSet(rf_mixins.CreateModelMixin,
     pass
 
 
-class ActionsViewSet(viewsets.GenericViewSet):
+class ActionsViewSet(viewsets.ModelViewSet):
     """
     Threats all endpoint actions in the same way.
 
@@ -243,7 +243,7 @@ class ActionsViewSet(viewsets.GenericViewSet):
             serializer = self.get_serializer(...)
             ...
 
-        action.serializer = ActionSerializer
+        action_serializer_class = ActionSerializer
 
     2. Allow to define validators for detail actions:
 
@@ -255,29 +255,34 @@ class ActionsViewSet(viewsets.GenericViewSet):
         def action(self, request, *args, **kwargs):
             ...
 
-        action.validators = [state_is_ok]
+        action_validators = [state_is_ok]
 
     3. Allow to define permissions checks for all actions or each action
        separately. Check ActionPermissionsBackend for more details.
+
+    4. To avoid dancing around mixins - allow to disable actions:
+
+        class MyView(ActionsViewSet):
+            disabled_actions = ['create']  # error 405 will be returned on POST request
     """
-    permission_classes = (rf_permissions.IsAuthenticated, permissions.ActionPermissionsBackend)
+    permission_classes = (rf_permissions.IsAuthenticated, permissions.ActionsPermission)
 
     def get_serializer_class(self):
-        action = getattr(self, self.action)
-        return getattr(action, 'serializer_class', super(ActionsViewSet, self).get_serializer_class())
+        return getattr(self, self.action + '_serializer_class', super(ActionsViewSet, self).get_serializer_class())
 
     def initial(self, request, *args, **kwargs):
         super(ActionsViewSet, self).initial(request, *args, **kwargs)
+        # check is action allowed
+        if self.action in getattr(self, 'disabled_actions', []):
+            raise exceptions.MethodNotAllowed()
         # execute validation for detailed action
-        action = getattr(self, self.action)
-        if not getattr(action, 'detail', False):
+        action_method = getattr(self, self.action)
+        if not getattr(action_method, 'detail', False):
             return
-        validators = getattr(action, 'validators', [])
+        validators = getattr(self, self.action + '_validators', [])
         for validator in validators:
             validator(self.get_object())
 
 
-# ???
-class ReadOnlyActionViewSet(rf_mixins.ListModelMixin, rf_mixins.RetrieveModelMixin, ActionsViewSet):
-    """ Action view set with list() and retrieve actions """
-    pass
+class ReadOnlyActionViewSet(viewsets.ModelViewSet):
+    disabled_actions = ['create', 'update', 'partial_update', 'destroy']

@@ -376,7 +376,7 @@ class ActionsPermission(BasePermission):
             def action(...):
                 ...
 
-            action.permissions = [is_staff]  # action will be available only for staff
+            action_permissions = [is_staff]  # action will be available only for staff
 
     Example. Define view level permissions and additional permissions for
     action:
@@ -397,7 +397,7 @@ class ActionsPermission(BasePermission):
             def action(...):
                 ...
 
-            action.extra_permissions = [is_staff]  # only active staff users will have access to action
+            action_extra_permissions = [is_staff]  # only active staff users will have access to action
     """
 
     def get_permission_checks(self, request, view):
@@ -406,12 +406,11 @@ class ActionsPermission(BasePermission):
         """
         if view.action is None:
             return []
-        action = getattr(view, view.action)
         # if permissions are defined for view directly - use them.
-        if hasattr(action, 'permissions'):
-            return action.permissions
+        if hasattr(view, view.action + '_permissions'):
+            return getattr(view, view.action + '_permissions')
         # otherwise return view-level permissions + extra view permissions
-        extra_permissions = getattr(action, 'extra_permissions', [])
+        extra_permissions = getattr(view, view.action + 'extra_permissions', [])
         if request.method in SAFE_METHODS:
             return getattr(view, 'safe_methods_permissions', []) + extra_permissions
         else:
