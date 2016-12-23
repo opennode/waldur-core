@@ -10,10 +10,10 @@ View workflow
  - **Permissions check** - make sure that user has right to execute chosen action.
    Raise error 403 if user has not enough permissions.
 
- - **Pre-validation check** - check object state and make sure that selected action can be executed.
+ - **View validation** - check object state and make sure that selected action can be executed.
    Raise error 409 if action cannot be executed with current object state.
 
- - **Validation** - check that user's data is valid.
+ - **Serializer validation** - check that user's data is valid.
 
  - **Action logic execution** - save changes to DB / run backend task.
 
