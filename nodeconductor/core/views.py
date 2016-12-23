@@ -274,7 +274,7 @@ class ActionsViewSet(viewsets.ModelViewSet):
         super(ActionsViewSet, self).initial(request, *args, **kwargs)
         # check is action allowed
         if self.action in getattr(self, 'disabled_actions', []):
-            raise exceptions.MethodNotAllowed()
+            raise exceptions.MethodNotAllowed(method=request.method)
         # execute validation for detailed action
         action_method = getattr(self, self.action)
         if not getattr(action_method, 'detail', False):
