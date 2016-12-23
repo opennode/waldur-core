@@ -197,11 +197,10 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    # filtration
     filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    permission_classes = (rf_permissions.IsAuthenticated,
+                          rf_permissions.DjangoObjectPermissions)
     filter_class = filters.ProjectFilter
-    # permissions
-    permission_classes = (rf_permissions.IsAuthenticated,)
 
     def get_serializer_class(self):
         if self.action == 'users':
