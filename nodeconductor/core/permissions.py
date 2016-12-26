@@ -354,15 +354,15 @@ class TypedCollaboratorsPermissionLogic(PermissionLogic):
 
 class ActionsPermission(BasePermission):
     """
-    Allow to define custom permission checks on for all action together and each action separately.
+    Allow to define custom permission checks for all actions together and each action separately.
 
     It is possible to define permissions checks in next way:
      - view.safe_methods_permissions - list of checks for all safe methods (GET, OPTIONS, HEAD).
      - view.unsafe_methods_permissions - list of checks for all unsafe methods (POST, PUT, PATCH, DELETE).
-     - view.action.extra_permissions - list of action extra permissions. Backend will check
-                                       view level permissions and extra_permissions together.
-     - view.action.permissions - list of all view permissions. Backend will not check view level
-                                 permissions if action permissions are defined.
+     - view.<action>_extra_permissions - list of action extra permissions. Backend will check
+                                         view level permissions and extra_permissions together.
+     - view.<action>_permissions- list of all view permissions. Backend will not check view level
+                                  permissions if action permissions are defined.
 
     Example. Define action level permissions:
 

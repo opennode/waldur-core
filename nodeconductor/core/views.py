@@ -235,7 +235,7 @@ class ProtectedViewSet(rf_mixins.CreateModelMixin,
 
 class ActionsViewSet(viewsets.ModelViewSet):
     """
-    Threats all endpoint actions in the same way.
+    Treats all endpoint actions in the same way.
 
     1. Allow to define separate serializers for each action:
 
@@ -260,7 +260,7 @@ class ActionsViewSet(viewsets.ModelViewSet):
     3. Allow to define permissions checks for all actions or each action
        separately. Check ActionPermissionsBackend for more details.
 
-    4. To avoid dancing around mixins - allow to disable actions:
+    4. To avoid dancing around mixins - allow disabling actions:
 
         class MyView(ActionsViewSet):
             disabled_actions = ['create']  # error 405 will be returned on POST request
@@ -272,7 +272,7 @@ class ActionsViewSet(viewsets.ModelViewSet):
 
     def initial(self, request, *args, **kwargs):
         super(ActionsViewSet, self).initial(request, *args, **kwargs)
-        # check is action allowed
+        # check if action is allowed
         if self.action in getattr(self, 'disabled_actions', []):
             raise exceptions.MethodNotAllowed(method=request.method)
         # execute validation for detailed action

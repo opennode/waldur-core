@@ -4,14 +4,14 @@ How to write views
 View workflow
 -------------
 
- - **Filtration** - filter objects that are visible to a user based on his request. 
-   Raise error 404 if object is not visible visible.
+ - **Filtering** - filter objects that are visible to a user based on his request. 
+   Raise 404 error if object is not visible.
 
  - **Permissions check** - make sure that user has right to execute chosen action.
-   Raise error 403 if user has not enough permissions.
+   Raise 403 error if user has not enough permissions.
 
  - **View validation** - check object state and make sure that selected action can be executed.
-   Raise error 409 if action cannot be executed with current object state.
+   Raise 409 error if action cannot be executed with current object state.
 
  - **Serializer validation** - check that user's data is valid.
 

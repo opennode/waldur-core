@@ -96,7 +96,7 @@ def _has_admin_access(user, project):
 
 
 def _get_parent_by_permission_path(obj, permission_path):
-    path = getattr(obj.Permissions, 'project_path', None)
+    path = getattr(obj.Permissions, permission_path, None)
     if path is None:
         return
     if path == 'self':
