@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
- - Nothing yet.
+ - Implement ActionsViewSet and ActionsPermision.
 
 Release 0.112.0
 ---------------
