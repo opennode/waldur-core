@@ -385,19 +385,20 @@ class ActionsPermission(BasePermission):
             if not request.user.is_staff:
                 raise PermissionDenied('User has to be staff to perform this action.')
 
-        def is_active(request, view, obj=None):
-            if not request.user.is_active:
-                raise PermissionDenied('User has to be active to perform this action.')
+        def has_civil_number(request, view, obj=None):
+            if not request.user.civil_number:
+                raise PermissionDenied('User has to have civil number to perform this action.')
 
         class MyView(...):
             permission_classes = (ActionsPermission,)
-            unsafe_methods_permissions = [is_active]  # only active user will have access to all unsafe actions
+            # only user with civil number will have access to all unsafe actions
+            unsafe_methods_permissions = [has_civil_number]
             ...
             @decorators.detail_route(method='POST')
             def action(...):
                 ...
 
-            action_extra_permissions = [is_staff]  # only active staff users will have access to action
+            action_extra_permissions = [is_staff]  # only staff user with civil numbers will have access to action
     """
 
     def get_permission_checks(self, request, view):
