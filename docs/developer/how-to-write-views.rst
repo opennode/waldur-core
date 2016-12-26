@@ -8,7 +8,7 @@ View workflow
    Raise 404 error if object is not visible.
 
  - **Permissions check** - make sure that user has right to execute chosen action.
-   Raise 403 error if user has not enough permissions.
+   Raise 403 error if user does not have enough permissions.
 
  - **View validation** - check object state and make sure that selected action can be executed.
    Raise 409 error if action cannot be executed with current object state.
