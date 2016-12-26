@@ -2,10 +2,10 @@ import logging
 
 from django.conf import settings
 from django.contrib import auth
+from django.core.cache import cache
 from django.db.models import ProtectedError
 from django.utils import timezone
 from django.utils.encoding import force_text
-from django.core.cache import cache
 
 from rest_framework import status, mixins as rf_mixins, viewsets, permissions as rf_permissions, exceptions
 from rest_framework.authtoken.models import Token
