@@ -15,7 +15,8 @@ View workflow
 
  - **Serializer validation** - check that user's data is valid.
 
- - **Action logic execution** - save changes to DB / run backend task.
+ - **Action logic execution** - do anything that should be done to execute action. 
+   For example: schedule tasks with executors, run backend tasks, save data to DB.
 
  - **Serialization and response output** - return serialized data as response.
 
