@@ -14,15 +14,13 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.110.0
+Version: 0.112.0
 Release: 1.el7
 License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
-# MySQL-python is needed to use MySQL as database backend
 # python-psycopg2 is needed to use PostgreSQL as database backend
 Requires: logrotate
-Requires: MySQL-python
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.8, python-django < 1.9
@@ -173,21 +171,15 @@ NodeConductor installed successfully.
 Next steps:
 
 1. Configure database server connection in %{__conf_file}.
-   Database server (default: PostgreSQL) must be running already.
+   Database server (PostgreSQL) must be running already.
 
 2. Configure task queue backend connection in %{__conf_file}.
-   Key-value store (default: Redis) must be running already.
+   Key-value store (Redis) must be running already.
 
 3. Review and modify other settings in %{__conf_file}.
 
 4. Create database (if not yet done):
 
-     -- MySQL
-     CREATE DATABASE nodeconductor CHARACTER SET = utf8;
-     CREATE USER 'nodeconductor'@'%' IDENTIFIED BY 'nodeconductor';
-     GRANT ALL PRIVILEGES ON nodeconductor.* to 'nodeconductor'@'%';
-
-     -- PostgreSQL
      CREATE DATABASE nodeconductor ENCODING 'UTF8';
      CREATE USER nodeconductor WITH PASSWORD 'nodeconductor';
 
@@ -222,6 +214,15 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Fri Dec 23 2016 Jenkins <jenkins@opennodecloud.com> - 0.112.0-1.el7
+- New upstream release
+
+* Fri Dec 16 2016 Juri Hudolejev <juri@opennodecloud.com> - 0.111.0-2.el7
+- Drop MySQL and SQLite3 database backend support
+
+* Wed Dec 14 2016 Jenkins <jenkins@opennodecloud.com> - 0.111.0-1.el7
+- New upstream release
+
 * Fri Nov 11 2016 Jenkins <jenkins@opennodecloud.com> - 0.110.0-1.el7
 - New upstream release
 

@@ -2078,8 +2078,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         except ServiceBackendError as e:
             raise APIException(e)
 
-        self.log_resource_creation_scheduled(serializer.instance)
-
     def perform_update(self, serializer):
         old_name = serializer.instance.name
         resource = serializer.save()
@@ -2186,7 +2184,6 @@ class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
 
     def perform_create(self, serializer):
         super(BaseResourceExecutorViewSet, self).perform_create(serializer)
-        self.log_resource_creation_scheduled(serializer.instance)
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
