@@ -120,10 +120,6 @@ class CustomerRoleTest(TransactionTestCase):
     def test_get_owners_returns_empty_list(self):
         self.assertEqual(0, self.customer.get_owners().count())
 
-    def test_owner_customer_role_is_created_upon_customer_creation(self):
-        self.assertTrue(self.customer.roles.filter(role=CustomerRole.OWNER).exists(),
-                        'Owner role should have been created')
-
 
 class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
