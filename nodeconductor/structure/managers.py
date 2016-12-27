@@ -25,11 +25,11 @@ def filter_queryset_for_user(queryset, user):
             prefix = path + '__'
 
         kwargs = {
-            prefix + 'roles__permission_group__user': user,
+            prefix + 'permissions__user': user,
         }
 
         if role:
-            kwargs[prefix + 'roles__role_type'] = role
+            kwargs[prefix + 'permissions__role_type'] = role
 
         return models.Q(**kwargs)
 

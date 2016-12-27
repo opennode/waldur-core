@@ -310,7 +310,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         if can_admin is not None:
             queryset = queryset.filter(
                 permissions__user=user,
-                permissions__type=models.ProjectRole.ADMINISTRATOR,
+                permissions__role_type=models.ProjectRole.ADMINISTRATOR,
                 permissions__is_active=True
             )
 
@@ -385,7 +385,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 Q(customerpermission__customer__in=connected_customers,
                   customerpermission__is_active=True) |
                 Q(projectpermission__project__customer__in=connected_customers,
-                  projectpermission__project__customer__is_active=True) |
+                  projectpermission__is_active=True) |
                 # users with no role
                 Q(
                     customerpermission=None,
@@ -709,7 +709,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     def perform_create(self, serializer):
         affected_project = serializer.validated_data['project']
         affected_user = serializer.validated_data['user']
-        role = serializer.validated_data['role']
+        role = serializer.validated_data['role_type']
 
         if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')

@@ -10,7 +10,7 @@ from rest_framework import test
 
 from nodeconductor.structure import serializers
 from nodeconductor.structure import views
-from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectGroupRole
+from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectPermission
 from nodeconductor.structure.tests import factories, fixtures
 
 User = get_user_model()
@@ -71,22 +71,12 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             'customer2': factories.CustomerFactory(),
         }
 
-        project_groups = {
-            'group11': factories.ProjectGroupFactory(customer=customers['customer1']),
-            'group12': factories.ProjectGroupFactory(customer=customers['customer1']),
-            'group21': factories.ProjectGroupFactory(customer=customers['customer2']),
-        }
-
         self.projects = {
             'project11': factories.ProjectFactory(customer=customers['customer1']),
             'project12': factories.ProjectFactory(customer=customers['customer1']),
             'project13': factories.ProjectFactory(customer=customers['customer1']),
             'project21': factories.ProjectFactory(customer=customers['customer2']),
         }
-
-        project_groups['group11'].projects.add(self.projects['project11'], self.projects['project12'])
-        project_groups['group12'].projects.add(self.projects['project13'], self.projects['project12'])
-        project_groups['group21'].projects.add(self.projects['project21'])
 
         self.users = {
             'owner1': factories.UserFactory(),
@@ -111,12 +101,7 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
         customers['customer1'].add_user(self.users['owner1'], CustomerRole.OWNER)
         customers['customer2'].add_user(self.users['owner2'], CustomerRole.OWNER)
 
-        project_groups['group11'].add_user(self.users['manager1'], ProjectGroupRole.MANAGER)
-        project_groups['group12'].add_user(self.users['manager2'], ProjectGroupRole.MANAGER)
-        project_groups['group21'].add_user(self.users['manager3'], ProjectGroupRole.MANAGER)
-
         for user, project, role in self.all_roles:
-            role = ProjectRole.ADMINISTRATOR if role == 'admin' else ProjectRole.MANAGER
             self.projects[project].add_user(self.users[user], role)
 
     # List filtration tests
@@ -135,14 +120,6 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
 
     def test_customer_owner_cannot_list_roles_of_another_customers_project(self):
         self.assert_user_access_to_permission_list(user='owner1', project='project21', should_see=False)
-
-    def test_project_group_manager_can_list_roles_of_his_project_groups_project(self):
-        self.assert_user_access_to_permission_list(user='manager2', project='project12', should_see=True)
-        self.assert_user_access_to_permission_list(user='manager2', project='project13', should_see=True)
-
-    def test_project_group_manager_cannot_list_roles_of_another_project_groups_project(self):
-        self.assert_user_access_to_permission_list(user='manager1', project='project13', should_see=False)
-        self.assert_user_access_to_permission_list(user='manager1', project='project21', should_see=False)
 
     def test_project_admin_can_list_roles_of_his_project(self):
         self.assert_user_access_to_permission_list(user='admin1', project='project11', should_see=True)
@@ -221,36 +198,6 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             login_user='owner1',
             affected_user='no_role',
             affected_project='project21',
-            expected_status=status.HTTP_400_BAD_REQUEST,
-            expected_payload={
-                'project': ['Invalid hyperlink - Object does not exist.'],
-            }
-        )
-
-    def test_project_group_manager_can_grant_new_role_within_his_project_groups_project(self):
-        self.assert_user_access_to_permission_granting(
-            login_user='manager1',
-            affected_user='no_role',
-            affected_project='project11',
-            expected_status=status.HTTP_201_CREATED,
-        )
-
-    def test_project_group_manager_cannot_grant_existing_role_within_his_project_groups_project(self):
-        self.assert_user_access_to_permission_granting(
-            login_user='manager1',
-            affected_user='admin1',
-            affected_project='project11',
-            expected_status=status.HTTP_400_BAD_REQUEST,
-            expected_payload={
-                'non_field_errors': ['The fields project and user must make a unique set.'],
-            }
-        )
-
-    def test_project_group_manager_cannot_grant_role_within_another_project_groups_project(self):
-        self.assert_user_access_to_permission_granting(
-            login_user='manager1',
-            affected_user='no_role',
-            affected_project='project13',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
                 'project': ['Invalid hyperlink - Object does not exist.'],
@@ -384,22 +331,6 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             expected_status=status.HTTP_404_NOT_FOUND,
         )
 
-    def test_project_group_manager_can_revoke_role_within_his_project_groups_project(self):
-        self.assert_user_access_to_permission_revocation(
-            login_user='manager1',
-            affected_user='admin1',
-            affected_project='project11',
-            expected_status=status.HTTP_204_NO_CONTENT,
-        )
-
-    def test_project_group_manager_cannot_revoke_role_within_another_project_groups_project(self):
-        self.assert_user_access_to_permission_revocation(
-            login_user='manager1',
-            affected_user='admin5',
-            affected_project='project21',
-            expected_status=status.HTTP_404_NOT_FOUND,
-        )
-
     def test_project_manager_can_revoke_admin_role_within_his_project(self):
         self.assert_user_access_to_permission_revocation(
             login_user='project_manager1',
@@ -466,10 +397,10 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
 
     # Helper methods
     def _get_permission_url(self, user, project, role):
-        permission = User.groups.through.objects.get(
+        permission = ProjectPermission.objects.get(
             user=self.users[user],
-            group__projectrole__role_type=self.role_map[role],
-            group__projectrole__project=self.projects[project],
+            role_type=self.role_map[role],
+            project=self.projects[project],
         )
         return 'http://testserver' + reverse('project_permission-detail', kwargs={'pk': permission.pk})
 

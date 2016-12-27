@@ -10,7 +10,8 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
-from nodeconductor.structure.models import Project, Customer, ServiceSettings, Service, Resource, NewResource
+from nodeconductor.structure.models import (Customer, CustomerPermission, Project, ProjectPermission,
+                                            Service, ServiceSettings, Resource, NewResource)
 
 
 logger = logging.getLogger(__name__)
@@ -114,7 +115,7 @@ def log_customer_role_granted(sender, structure, user, role, **kwargs):
             'customer': structure,
             'affected_user': user,
             'structure_type': 'customer',
-            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+            'role_name': CustomerPermission(role_type=role).get_role_type_display(),
         })
 
 
@@ -126,7 +127,7 @@ def log_customer_role_revoked(sender, structure, user, role, **kwargs):
             'customer': structure,
             'affected_user': user,
             'structure_type': 'customer',
-            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+            'role_name': CustomerPermission(role_type=role).get_role_type_display(),
         })
 
 
@@ -138,7 +139,7 @@ def log_project_role_granted(sender, structure, user, role, **kwargs):
             'project': structure,
             'affected_user': user,
             'structure_type': 'project',
-            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+            'role_name': ProjectPermission(role_type=role).get_role_type_display(),
         })
 
 
@@ -150,7 +151,7 @@ def log_project_role_revoked(sender, structure, user, role, **kwargs):
             'project': structure,
             'affected_user': user,
             'structure_type': 'project',
-            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
+            'role_name': ProjectPermission(role_type=role).get_role_type_display()
         })
 
 

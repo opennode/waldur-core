@@ -333,7 +333,8 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
 
 class NestedProjectPermissionSerializer(serializers.ModelSerializer):
     url = serializers.HyperlinkedRelatedField(
-        source='project.uuid',
+        source='project',
+        lookup_field='uuid',
         view_name='project-detail',
         queryset=models.Project.objects.all(),
     )
@@ -369,34 +370,37 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, user):
         customer = self.context['customer']
-        permission = models.CustomerPermission.objects.first(customer=customer, user=user, is_active=True)
-        projects = models.ProjectPermission.objects.filter(project__customer=customer, user=user, is_active=True)
+        permission = models.CustomerPermission.objects.filter(
+            customer=customer, user=user, is_active=True).first()
+        projects = models.ProjectPermission.objects.filter(
+            project__customer=customer, user=user, is_active=True)
         setattr(user, 'perm', permission)
-        setattr(user, 'role', permission.role_type)
+        setattr(user, 'role', permission and permission.role_type)
         setattr(user, 'projects', projects)
         return super(CustomerUserSerializer, self).to_representation(user)
 
 
 class ProjectUserSerializer(serializers.ModelSerializer):
     role = serializers.ReadOnlyField()
+    permission = serializers.HyperlinkedRelatedField(
+        source='perm.pk',
+        view_name='project_permission-detail',
+        queryset=models.ProjectPermission.objects.all(),
+    )
 
     class Meta:
         model = User
         fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
-            'permission': {
-                'source': 'perm.pk',
-                'view_name': 'project_permission-detail',
-                'queryset': models.ProjectPermission.objects.filter(is_active=True),
-            }
         }
 
     def to_representation(self, user):
         project = self.context['project']
-        permission = models.ProjectPermission.objects.first(project=project, user=user, is_active=True)
+        permission = models.ProjectPermission.objects.filter(
+            project=project, user=user, is_active=True).first()
         setattr(user, 'perm', permission)
-        setattr(user, 'role', permission.role_type)
+        setattr(user, 'role', permission and permission.role_type)
         return super(ProjectUserSerializer, self).to_representation(user)
 
 
@@ -415,16 +419,6 @@ STRUCTURE_PERMISSION_USER_FIELDS = {
 class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                                    core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
-    role = MappedChoiceField(
-        source='role_type',
-        choices=(
-            ('owner', 'Owner'),
-        ),
-        choice_mappings={
-            'owner': models.CustomerRole.OWNER,
-        },
-    )
-
     class Meta(object):
         model = models.CustomerPermission
         fields = (
@@ -454,7 +448,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
     def create(self, validated_data):
         customer = validated_data['customer']
         user = validated_data['user']
-        role = validated_data['role']
+        role = validated_data['role_type']
 
         permission, _ = customer.add_user(user, role)
         return permission
@@ -475,17 +469,8 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
 class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                                   core_serializers.AugmentedSerializerMixin,
                                   serializers.HyperlinkedModelSerializer):
-    role = MappedChoiceField(
-        source='role_type',
-        choices=(
-            ('admin', 'Administrator'),
-            ('manager', 'Manager'),
-        ),
-        choice_mappings={
-            'admin': models.ProjectRole.ADMINISTRATOR,
-            'manager': models.ProjectRole.MANAGER,
-        },
-    )
+
+    role = serializers.CharField(source='role_type')
 
     class Meta(object):
         model = models.ProjectPermission
@@ -516,19 +501,11 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
     def create(self, validated_data):
         project = validated_data['project']
         user = validated_data['user']
-        role = validated_data['role']
+        role = validated_data['role_type']
 
         permission, _ = project.add_user(user, role)
 
         return permission
-
-    def to_internal_value(self, data):
-        value = super(ProjectPermissionSerializer, self).to_internal_value(data)
-        return {
-            'user': value['user'],
-            'project': value['project'],
-            'role': value['role_type'],
-        }
 
     def validate(self, data):
         project = data['project']

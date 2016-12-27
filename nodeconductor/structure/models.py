@@ -215,10 +215,10 @@ class PermissionMixin(object):
         if role_type is not None:
             permissions = permissions.filter(role_type=role_type)
 
-        permissions.update(is_active=False, expiration_time=timezone.now())
-
         for permission in permissions.iterator():
             self.log_role_revoked(permission)
+
+        permissions.update(is_active=False, expiration_time=timezone.now())
 
     @transaction.atomic()
     def remove_all_users(self):
@@ -359,7 +359,7 @@ class Customer(core_models.UuidMixin,
             Q(customerpermission__customer=self,
               customerpermission__is_active=True) |
             Q(projectpermission__project__customer=self,
-              projectpermission__project__is_active=True)
+              projectpermission__is_active=True)
         ).distinct()
 
     def can_user_update_quotas(self, user):
@@ -410,6 +410,7 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
         unique_together = ('project', 'role_type', 'user', 'is_active')
 
     class Permissions(object):
+        customer_path = 'project__customer'
         project_path = 'project'
 
     project = models.ForeignKey('structure.Project', related_name='permissions')

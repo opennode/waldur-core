@@ -9,7 +9,7 @@ from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
 from nodeconductor.structure import signals
-from nodeconductor.structure.models import CustomerRole, Project, ProjectGroupRole, ProjectRole
+from nodeconductor.structure.models import CustomerRole, Project, ProjectRole
 from nodeconductor.structure.tests import factories, fixtures
 
 
@@ -33,7 +33,7 @@ class ProjectTest(TransactionTestCase):
         membership, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         self.assertEqual(membership.user, self.user)
-        self.assertEqual(membership.group.projectrole.project, self.project)
+        self.assertEqual(membership.project, self.project)
 
     def test_add_user_returns_same_membership_for_consequent_calls_with_same_arguments(self):
         membership1, _ = self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -138,7 +138,6 @@ class ProjectFilterTest(test.APITransactionTestCase):
         for filter_name in [
             'name', 'description',
             'customer',
-            'project_group', 'project_group_name',
             'backup',
         ]:
             data = {filter_name: 0}
@@ -148,7 +147,6 @@ class ProjectFilterTest(test.APITransactionTestCase):
     def test_project_ordering_does_not_raise_errors(self):
         for ordering in [
             'name',
-            'project_group_name',
         ]:
             data = {'o': ordering}
             response = self.client.get(factories.ProjectFactory.get_list_url(), data)
@@ -166,13 +164,7 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.owner = factories.UserFactory()
         self.customer.add_user(self.owner, CustomerRole.OWNER)
 
-        self.group_manager = factories.UserFactory()
-        self.project_group = factories.ProjectGroupFactory(customer=self.customer)
-        self.project_group.add_user(self.group_manager, ProjectGroupRole.MANAGER)
-
         self.project = factories.ProjectFactory(customer=self.customer)
-        self.project_group.projects.add(self.project)
-
         self.admin = factories.UserFactory()
         self.project.add_user(self.admin, ProjectRole.ADMINISTRATOR)
 
@@ -207,43 +199,6 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Project.objects.filter(name=data['name']).exists())
 
-    def test_group_manager_can_create_project_belonging_to_project_group_he_manages(self):
-        self.client.force_authenticate(self.group_manager)
-
-        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
-        data['name'] = 'unique project name'
-        data['project_groups'] = [
-            {"url": factories.ProjectGroupFactory.get_url(self.project_group)}
-        ]
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Project.objects.filter(name=data['name']).exists())
-        self.assertItemsEqual(
-            Project.objects.get(name=data['name']).project_groups.all(), [self.project_group])
-
-    def test_group_manager_cannot_create_project_belonging_to_project_group_he_doesnt_manage(self):
-        self.client.force_authenticate(self.group_manager)
-
-        data = _get_valid_project_payload(factories.ProjectFactory.build(customer=self.customer))
-
-        accessible_project_group = factories.ProjectGroupFactory(customer=self.customer)
-        admined_project = factories.ProjectFactory(customer=self.customer)
-        admined_project.add_user(self.group_manager, ProjectRole.ADMINISTRATOR)
-        accessible_project_group.projects.add(admined_project)
-
-        # group_manager now can see accessible_project_group because he admins
-        # a project that is within accessible_project_group;
-        # though he doesn't manage accessible_project_group
-
-        data['project_groups'] = [
-            {"url": factories.ProjectGroupFactory.get_url(accessible_project_group)}
-        ]
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertDictContainsSubset(
-            {'detail': 'You do not have permission to perform this action.'}, response.data)
-        self.assertFalse(Project.objects.filter(name=data['name']).exists())
-
     def test_owner_cannot_create_project_if_customer_quota_were_exceeded(self):
         self.customer.set_quota_limit('nc_project_count', 0)
         data = _get_valid_project_payload(factories.ProjectFactory.build(customer=self.customer))
@@ -262,20 +217,6 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('New project name', response.data['name'])
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
-
-    def test_customer_owner_can_update_project_groups_of_project_from_his_customer(self):
-        self.client.force_authenticate(self.owner)
-        url = factories.ProjectFactory.get_url(self.project)
-        project_group = factories.ProjectGroupFactory(customer=self.customer)
-        data = {
-            'project_groups': [{"url": factories.ProjectGroupFactory.get_url(project_group)}]
-        }
-
-        response = self.client.patch(url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        reread_project = Project.objects.get(pk=self.project.pk)
-        self.assertItemsEqual(reread_project.project_groups.all(), [project_group])
 
     # Delete tests:
     def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
@@ -322,10 +263,6 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
         self.projects['admin'].add_user(self.users['multirole'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['multirole'], ProjectRole.MANAGER)
-        self.project_group = factories.ProjectGroupFactory()
-        self.project_group.add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
-        self.project_group.projects.add(self.projects['group_manager'])
-
         self.projects['owner'].customer.add_user(self.users['owner'], CustomerRole.OWNER)
 
     # TODO: Test for customer owners
@@ -376,19 +313,6 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
         response = self.client.post(reverse('project-list'), self._get_valid_payload(project))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    def test_user_can_create_project_within_project_group_he_is_manager_of(self):
-        self.client.force_authenticate(user=self.users['group_manager'])
-
-        customer = self.project_group.customer
-
-        project = factories.ProjectFactory(customer=customer)
-        payload = self._get_valid_payload(project)
-        payload['project_groups'] = [
-            {'url': factories.ProjectGroupFactory.get_url(self.project_group)},
-        ]
-        response = self.client.post(reverse('project-list'), payload)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
     def test_staff_user_can_create_project(self):
         staff = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff)
@@ -412,9 +336,6 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
     def test_user_can_list_projects_he_is_manager_of(self):
         self._ensure_list_access_allowed('manager')
-
-    def test_user_can_list_projects_he_is_group_manager_of(self):
-        self._ensure_list_access_allowed('group_manager')
 
     def test_user_cannot_list_projects_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:
@@ -445,9 +366,6 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
 
     def test_user_can_access_project_he_is_manager_of(self):
         self._ensure_direct_access_allowed('manager')
-
-    def test_user_can_access_project_he_is_group_manager_of(self):
-        self._ensure_direct_access_allowed('group_manager')
 
     def test_user_cannot_access_project_he_has_no_role_in(self):
         for user_role, project in self.forbidden_combinations:

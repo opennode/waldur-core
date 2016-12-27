@@ -11,7 +11,7 @@ from permission.utils.logics import add_permission_logic, remove_permission_logi
 from rest_framework import status, test
 
 from nodeconductor.structure import signals
-from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole, ProjectGroupRole
+from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole
 from nodeconductor.structure.perms import OWNER_CAN_MANAGE_CUSTOMER_LOGICS
 from nodeconductor.structure.tests import factories, fixtures
 
@@ -22,9 +22,6 @@ class UrlResolverMixin(object):
 
     def _get_project_url(self, project):
         return 'http://testserver' + reverse('project-detail', kwargs={'uuid': project.uuid})
-
-    def _get_project_group_url(self, project_group):
-        return 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': project_group.uuid})
 
     def _get_user_url(self, user):
         return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
@@ -50,7 +47,7 @@ class CustomerTest(TransactionTestCase):
         membership, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
 
         self.assertEqual(membership.user, self.user)
-        self.assertEqual(membership.group.customerrole.customer, self.customer)
+        self.assertEqual(membership.customer, self.customer)
 
     def test_add_user_returns_same_membership_for_consequent_calls_with_same_arguments(self):
         membership1, _ = self.customer.add_user(self.user, CustomerRole.OWNER)
@@ -137,7 +134,6 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'admin': factories.UserFactory(),
             'admin_other': factories.UserFactory(),
             'manager': factories.UserFactory(),
-            'group_manager': factories.UserFactory(),
         }
 
         self.customers = {
@@ -145,7 +141,6 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             'inaccessible': factories.CustomerFactory.create_batch(2),
             'admin': factories.CustomerFactory(),
             'manager': factories.CustomerFactory(),
-            'group_manager': factories.CustomerFactory(),
         }
 
         for customer in self.customers['owned']:
@@ -154,22 +149,10 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.projects = {
             'admin': factories.ProjectFactory(customer=self.customers['admin']),
             'manager': factories.ProjectFactory(customer=self.customers['manager']),
-            'group_manager': factories.ProjectFactory(customer=self.customers['group_manager']),
         }
 
         self.projects['admin'].add_user(self.users['admin'], ProjectRole.ADMINISTRATOR)
         self.projects['manager'].add_user(self.users['manager'], ProjectRole.MANAGER)
-
-        self.project_groups = {
-            'admin': factories.ProjectGroupFactory(customer=self.customers['admin']),
-            'manager': factories.ProjectGroupFactory(customer=self.customers['manager']),
-            'group_manager': factories.ProjectGroupFactory(customer=self.customers['group_manager']),
-        }
-
-        self.project_groups['admin'].projects.add(self.projects['admin'])
-        self.project_groups['manager'].projects.add(self.projects['manager'])
-        self.project_groups['group_manager'].projects.add(self.projects['group_manager'])
-        self.project_groups['group_manager'].add_user(self.users['group_manager'], ProjectGroupRole.MANAGER)
 
     # List filtration tests
     def test_user_can_list_customers_he_is_owner_of(self):
@@ -197,10 +180,6 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['manager'])
         self._check_customer_in_list(self.customers['manager'])
 
-    def test_user_can_list_customer_if_he_is_group_manager_in_a_project_group_owned_by_a_customer(self):
-        self.client.force_authenticate(user=self.users['group_manager'])
-        self._check_customer_in_list(self.customers['group_manager'])
-
     def test_user_cannot_list_customer_if_he_is_admin_in_a_project_not_owned_by_a_customer(self):
         self.client.force_authenticate(user=self.users['admin'])
         self._check_customer_in_list(self.customers['manager'], False)
@@ -209,13 +188,9 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['manager'])
         self._check_customer_in_list(self.customers['admin'], False)
 
-    def test_user_cannot_list_customer_if_he_is_group_manager_in_a_project_group_not_owned_by_a_customer(self):
-        self.client.force_authenticate(user=self.users['group_manager'])
-        self._check_customer_in_list(self.customers['manager'], False)
-
     # Nested objects filtration tests
     def test_user_can_see_project_he_has_a_role_in_within_customer(self):
-        for user_role in ('admin', 'manager', 'group_manager'):
+        for user_role in ('admin', 'manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -231,57 +206,8 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
                 'User should see project',
             )
 
-    def test_user_can_see_project_group_he_has_a_role_in_within_customer(self):
-        for user_role in ('admin', 'manager', 'group_manager'):
-            self.client.force_authenticate(user=self.users[user_role])
-
-            customer = self.customers[user_role]
-
-            seen_project_group = self.project_groups[user_role]
-
-            response = self.client.get(self._get_customer_url(customer))
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-            project_group_urls = set([pgrp['url'] for pgrp in response.data['project_groups']])
-            self.assertIn(
-                self._get_project_group_url(seen_project_group), project_group_urls,
-                'User should see project group',
-            )
-
-    def test_user_cannot_see_project_groups_from_different_customer(self):
-        # setUp
-        project_group_1_1 = self.project_groups['admin']
-        project_group_1_2 = factories.ProjectGroupFactory(customer=self.customers['admin'])
-
-        project_group_2_1 = self.project_groups['manager']
-        project_group_2_2 = factories.ProjectGroupFactory(customer=self.customers['manager'])
-
-        self.projects['manager'].add_user(self.users['admin'], ProjectRole.MANAGER)
-
-        # test body
-        self.client.force_authenticate(user=self.users['admin'])
-        response = self.client.get(self._get_customer_url(self.customers['admin']))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        project_group_urls = set([project_group['url'] for project_group in response.data['project_groups']])
-
-        self.assertIn(
-            self._get_project_group_url(project_group_1_1), project_group_urls,
-            'User should see project group {0}'.format(project_group_1_1),
-        )
-
-        for project_group in (
-                project_group_1_2,
-                project_group_2_1,
-                project_group_2_2,
-        ):
-            self.assertNotIn(
-                self._get_project_group_url(project_group), project_group_urls,
-                'User should not see project group {0}'.format(project_group),
-            )
-
     def test_user_cannot_see_project_he_has_no_role_in_within_customer(self):
-        for user_role in ('admin', 'manager', 'group_manager'):
+        for user_role in ('admin', 'manager'):
             self.client.force_authenticate(user=self.users[user_role])
 
             customer = self.customers[user_role]
@@ -295,25 +221,6 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
             self.assertNotIn(
                 self._get_project_url(non_seen_project), project_urls,
                 'User should not see project',
-            )
-
-    def test_user_cannot_see_project_group_he_has_no_role_in_within_customer(self):
-        for user_role in ('admin', 'manager', 'group_manager'):
-            self.client.force_authenticate(user=self.users[user_role])
-
-            customer = self.customers[user_role]
-
-            non_seen_project = factories.ProjectFactory(customer=customer)
-            non_seen_project_group = factories.ProjectGroupFactory(customer=customer)
-            non_seen_project_group.projects.add(non_seen_project)
-
-            response = self.client.get(self._get_customer_url(customer))
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-            project_group_urls = set([pgrp['url'] for pgrp in response.data['project_groups']])
-            self.assertNotIn(
-                self._get_project_group_url(non_seen_project_group), project_group_urls,
-                'User should not see project group',
             )
 
     # Direct instance access tests
@@ -400,27 +307,6 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
         response = self.client.delete(self._get_customer_url(self.customers['owner']))
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_user_can_delete_customer_without_associated_project_groups_and_projects_if_he_is_staff(self):
-        self.client.force_authenticate(user=self.users['staff'])
-
-        response = self.client.delete(self._get_customer_url(self.customers['owner']))
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-        response = self.client.delete(self._get_customer_url(self.customers['inaccessible']))
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    def test_user_cannot_delete_customer_with_associated_project_groups_if_he_is_staff(self):
-        self.client.force_authenticate(user=self.users['staff'])
-
-        for customer in self.customers.values():
-            factories.ProjectGroupFactory(customer=customer)
-
-            response = self.client.delete(self._get_customer_url(customer))
-
-            self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-            self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing project groups'},
-                                          response.data)
 
     def test_user_cannot_delete_customer_with_associated_projects_if_he_is_staff(self):
         self.client.force_authenticate(user=self.users['staff'])
@@ -528,27 +414,6 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
             self.assertEqual(response.status_code, status_code)
 
 
-class CustomerListTest(test.APITransactionTestCase):
-
-    def setUp(self):
-        self.customer = factories.CustomerFactory()
-        self.project_group = factories.ProjectGroupFactory(customer=self.customer)
-        self.staff = factories.UserFactory(is_staff=True)
-
-    def get_list_response(self, user):
-        self.client.force_authenticate(user)
-        return self.client.get(factories.CustomerFactory.get_list_url())
-
-    def test_customer_list_returns_project_group_uuids(self):
-        # when
-        response = self.get_list_response(self.staff)
-        # then
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.data[0]['project_groups'][0]['uuid'], self.project_group.uuid.hex,
-            'Customer list response should contain related project groups uuid')
-
-
 class CustomerQuotasTest(test.APITransactionTestCase):
 
     def setUp(self):
@@ -617,19 +482,6 @@ class CustomerQuotasTest(test.APITransactionTestCase):
         user = factories.UserFactory()
         project.add_user(user, ProjectRole.ADMINISTRATOR)
         project.remove_user(user)
-        self.assert_quota_usage('nc_user_count', 0)
-
-    def test_customer_users_quota_increases_on_adding_manager(self):
-        project_group = factories.ProjectGroupFactory(customer=self.customer)
-        user = factories.UserFactory()
-        project_group.add_user(user, ProjectGroupRole.MANAGER)
-        self.assert_quota_usage('nc_user_count', 1)
-
-    def test_customer_users_quota_decreases_on_removing_manager(self):
-        project_group = factories.ProjectGroupFactory(customer=self.customer)
-        user = factories.UserFactory()
-        project_group.add_user(user, ProjectGroupRole.MANAGER)
-        project_group.remove_user(user)
         self.assert_quota_usage('nc_user_count', 0)
 
     def test_customer_quota_is_not_increased_on_adding_owner_as_administrator(self):

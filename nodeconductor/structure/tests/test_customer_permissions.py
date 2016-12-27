@@ -10,7 +10,7 @@ from rest_framework.reverse import reverse
 
 from nodeconductor.structure import serializers
 from nodeconductor.structure import views
-from nodeconductor.structure.models import CustomerRole, ProjectRole, ProjectGroupRole
+from nodeconductor.structure.models import CustomerRole, ProjectRole, CustomerPermission, ProjectPermission
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
@@ -74,13 +74,10 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
 
         customer = self.customers['first']
         project = factories.ProjectFactory(customer=customer)
-        project_group = factories.ProjectGroupFactory(customer=customer)
-        project_group.projects.add(project)
 
         for user, customer, role in self.all_roles:
             self.customers[customer].add_user(self.users[user], self.role_map[role])
 
-        project_group.add_user(self.users['first_manager'], ProjectGroupRole.MANAGER)
         project.add_user(self.users['first_admin'], ProjectRole.ADMINISTRATOR)
 
     # List filtration tests
@@ -95,9 +92,6 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
     def test_customer_owner_can_list_roles_of_his_customer(self):
         self.assert_user_access_to_permission_list(user='first', customer='first', should_see=True)
 
-    def test_project_group_manager_can_list_roles_of_his_customer(self):
-        self.assert_user_access_to_permission_list(user='first_manager', customer='first', should_see=True)
-
     def test_project_admin_can_list_roles_of_his_customer(self):
         self.assert_user_access_to_permission_list(user='first_admin', customer='first', should_see=True)
 
@@ -107,9 +101,6 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
 
     def test_customer_owner_cannot_list_roles_of_another_customer(self):
         self.assert_user_access_to_permission_list(user='first', customer='second', should_see=False)
-
-    def test_project_group_manager_cannot_list_roles_of_another_customer(self):
-        self.assert_user_access_to_permission_list(user='first_manager', customer='second', should_see=False)
 
     def test_project_admin_cannot_list_roles_of_another_customer(self):
         self.assert_user_access_to_permission_list(user='first_admin', customer='second', should_see=False)
@@ -170,17 +161,6 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
                 'customer': ['Invalid hyperlink - Object does not exist.'],
-            }
-        )
-
-    def test_project_group_manager_cannot_grant_role_within_his_customer(self):
-        self.assert_user_access_to_permission_granting(
-            login_user='first_manager',
-            affected_user='no_role',
-            affected_customer='first',
-            expected_status=status.HTTP_403_FORBIDDEN,
-            expected_payload={
-                'detail': 'You do not have permission to perform this action.',
             }
         )
 
@@ -272,17 +252,6 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             expected_status=status.HTTP_404_NOT_FOUND,
         )
 
-    def test_project_group_manager_cannot_revoke_role_within_his_customer(self):
-        self.assert_user_access_to_permission_revocation(
-            login_user='first_manager',
-            affected_user='first',
-            affected_customer='first',
-            expected_status=status.HTTP_403_FORBIDDEN,
-            expected_payload={
-                'detail': 'You do not have permission to perform this action.',
-            }
-        )
-
     def test_project_admin_cannot_revoke_role_within_his_customer(self):
         self.assert_user_access_to_permission_revocation(
             login_user='first_admin',
@@ -321,10 +290,10 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
 
     # Helper methods
     def _get_permission_url(self, user, customer, role):
-        permission = User.groups.through.objects.get(
+        permission = CustomerPermission.objects.get(
             user=self.users[user],
-            group__customerrole__role_type=self.role_map[role],
-            group__customerrole__customer=self.customers[customer],
+            role_type=self.role_map[role],
+            customer=self.customers[customer],
         )
         return 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
 

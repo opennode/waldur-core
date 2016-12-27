@@ -8,7 +8,6 @@ from django.db.models import Q
 from django.utils import six
 import django_filters
 from django_filters.filterset import FilterSetMetaclass
-from rest_framework.exceptions import ValidationError
 from rest_framework.filters import BaseFilterBackend, DjangoFilterBackend
 import taggit
 
@@ -190,7 +189,7 @@ class ProjectFilter(django_filters.FilterSet):
 
 class UserFilter(django_filters.FilterSet):
     project = django_filters.CharFilter(
-        name='groups__projectrole__project__name',
+        name='projectpermission__project__name',
         distinct=True,
         lookup_type='icontains',
     )
@@ -264,9 +263,10 @@ class UserPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
+    role = django_filters.ChoiceFilter(name='role_type')
 
     class Meta(object):
-        model = User.groups.through
+        model = models.BasePermission
         order_by = [
             'user__username',
             'user__full_name',
@@ -280,49 +280,24 @@ class UserPermissionFilter(django_filters.FilterSet):
 
 class ProjectPermissionFilter(UserPermissionFilter):
     customer = UUIDFilter(
-        name='group__projectrole__project__customer__uuid',
+        name='project__customer__uuid',
     )
     project = UUIDFilter(
-        name='group__projectrole__project__uuid',
+        name='project__uuid',
     )
     project_url = core_filters.URLFilter(
         view_name='project-detail',
-        name='group__projectrole__project__uuid',
-    )
-    role = core_filters.MappedChoiceFilter(
-        name='group__projectrole__role_type',
-        choices=(
-            ('admin', 'Administrator'),
-            ('manager', 'Manager'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (models.ProjectRole.ADMINISTRATOR, 'Administrator'),
-            (models.ProjectRole.MANAGER, 'Manager'),
-        ),
-        choice_mappings={
-            'admin': models.ProjectRole.ADMINISTRATOR,
-            'manager': models.ProjectRole.MANAGER,
-        },
+        name='project__uuid',
     )
 
 
 class CustomerPermissionFilter(UserPermissionFilter):
     customer = UUIDFilter(
-        name='group__customerrole__customer__uuid',
+        name='customer__uuid',
     )
     customer_url = core_filters.URLFilter(
         view_name='customer-detail',
-        name='group__customerrole__customer__uuid',
-    )
-    role = core_filters.MappedChoiceFilter(
-        name='group__customerrole__role_type',
-        choices=(
-            ('owner', 'Owner'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (models.CustomerRole.OWNER, 'Owner'),
-        ),
-        choice_mappings={
-            'owner': models.CustomerRole.OWNER,
-        },
+        name='customer__uuid',
     )
 
 
