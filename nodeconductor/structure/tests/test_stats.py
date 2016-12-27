@@ -70,15 +70,6 @@ class CreationTimeStatsTest(test.APITransactionTestCase):
         self.assertEqual(response.data[1]['value'], 0, 'Second datapoint has to contain 0 projects')
         self.assertEqual(response.data[2]['value'], 3, 'Third datapoint has to contain 3 projects (new)')
 
-    def test_user_with_no_permissions_receive_only_zero_stats(self):
-        # when
-        response = self.execute_request_with_data(self.all_projects_admin, {'type': 'project'})
-        # then
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2, 'Response has to contain 2 datapoints')
-        self.assertEqual(response.data[0]['value'], 0, 'First datapoint has to contain 0 project_groups')
-        self.assertEqual(response.data[1]['value'], 0, 'Second datapoint has to contain 0 project_groups')
-
 
 class BaseQuotaAggregationTest(test.APITransactionTestCase):
     def setUp(self):

@@ -23,8 +23,10 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
         CHOICES = ((ACCEPTED, 'Accepted'), (CANCELED, 'Canceled'), (PENDING, 'Pending'), (EXPIRED, 'Expired'))
 
     customer = models.ForeignKey(structure_models.Customer, related_name='invitations')
-    project_role = models.ForeignKey(structure_models.ProjectPermission, related_name='invitations', blank=True, null=True)
-    customer_role = models.ForeignKey(structure_models.CustomerPermission, related_name='invitations', blank=True, null=True)
+    project = models.ForeignKey(structure_models.Project, related_name='invitations', blank=True, null=True)
+    project_role = models.CharField(choices=structure_models.ProjectRole.TYPE_CHOICES, db_index=True, max_length=30)
+    customer = models.ForeignKey(structure_models.Customer, related_name='invitations', blank=True, null=True)
+    customer_role = models.CharField(choices=structure_models.CustomerRole.TYPE_CHOICES, db_index=True, max_length=30)
     state = models.CharField(max_length=8, choices=State.CHOICES, default=State.PENDING)
     link_template = models.CharField(max_length=255, help_text='The template must include {uuid} parameter '
                                                                'e.g. http://example.com/invitation/{uuid}')

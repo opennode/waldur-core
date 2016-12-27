@@ -352,6 +352,7 @@ class NestedProjectPermissionSerializer(serializers.ModelSerializer):
 
 
 class CustomerUserSerializer(serializers.ModelSerializer):
+    role = serializers.ReadOnlyField()
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='customer_permission-detail',
