@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import json
 import logging
 
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 import pyvat
 from django.conf import settings
@@ -331,14 +331,34 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
         return attrs
 
 
+class NestedProjectPermissionSerializer(serializers.ModelSerializer):
+    url = serializers.HyperlinkedRelatedField(
+        source='project.uuid',
+        view_name='project-detail',
+        queryset=models.Project.objects.all(),
+    )
+    uuid = serializers.ReadOnlyField(source='project.uuid')
+    name = serializers.ReadOnlyField(source='project.name')
+    role = serializers.ReadOnlyField(source='role_type')
+    permission = serializers.HyperlinkedRelatedField(
+        source='pk',
+        view_name='project_permission-detail',
+        queryset=models.ProjectPermission.objects.all(),
+    )
+
+    class Meta:
+        model = models.ProjectPermission
+        fields = ['url', 'uuid', 'name', 'role', 'permission']
+
+
 class CustomerUserSerializer(serializers.ModelSerializer):
     role = serializers.ReadOnlyField()
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='customer_permission-detail',
-        queryset=models.CustomerPermission.objects.filter(is_active=True),
+        queryset=models.CustomerPermission.objects.all(),
     )
-    projects = serializers.SerializerMethodField()
+    projects = NestedProjectPermissionSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -349,39 +369,12 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, user):
         customer = self.context['customer']
-        try:
-            group = user.groups.get(customerrole__customer=customer)
-        except user.groups.model.DoesNotExist:
-            group = None
-            perm = None
-        else:
-            perm = User.groups.through.objects.get(user=user, group=group)
-
-        role = 'owner' if group else None
-        setattr(user, 'role', role)
-        setattr(user, 'perm', perm)
+        permission = models.CustomerPermission.objects.first(customer=customer, user=user, is_active=True)
+        projects = models.ProjectPermission.objects.filter(project__customer=customer, user=user, is_active=True)
+        setattr(user, 'perm', permission)
+        setattr(user, 'role', permission.role_type)
+        setattr(user, 'projects', projects)
         return super(CustomerUserSerializer, self).to_representation(user)
-
-    def get_projects(self, user):
-        request = self.context['request']
-        customer = self.context['customer']
-        projectrole = {
-            g.projectrole.project_id: (g.projectrole.role_type,
-                                       User.groups.through.objects.get(user=user, group=g).pk)
-            for g in user.groups.exclude(projectrole=None)
-        }
-        projects = filter_queryset_for_user(
-            models.Project.objects.filter(customer=customer).filter(id__in=projectrole.keys()), request.user)
-
-        return [OrderedDict([
-            ('url', reverse('project-detail', kwargs={'uuid': proj.uuid}, request=request)),
-            ('uuid', proj.uuid),
-            ('name', proj.name),
-            ('role', 'admin' if projectrole[proj.id][0] == models.ProjectRole.ADMINISTRATOR else 'manager'),
-            ('permission', reverse('project_permission-detail',
-                                   kwargs={'pk': projectrole[proj.id][1]},
-                                   request=request))
-        ]) for proj in projects]
 
 
 class ProjectUserSerializer(serializers.ModelSerializer):
@@ -401,20 +394,9 @@ class ProjectUserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, user):
         project = self.context['project']
-        try:
-            group = user.groups.get(projectrole__project=project)
-        except user.groups.model.DoesNotExist:
-            group = None
-            perm = None
-        else:
-            perm = User.groups.through.objects.get(user=user, group=group)
-
-        if group:
-            role = 'admin' if group.projectrole.role_type == models.ProjectRole.ADMINISTRATOR else 'manager'
-        else:
-            role = None
-        setattr(user, 'role', role)
-        setattr(user, 'perm', perm)
+        permission = models.ProjectPermission.objects.first(project=project, user=user, is_active=True)
+        setattr(user, 'perm', permission)
+        setattr(user, 'role', permission.role_type)
         return super(ProjectUserSerializer, self).to_representation(user)
 
 

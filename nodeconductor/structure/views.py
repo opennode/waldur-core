@@ -328,7 +328,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
 
     @detail_route()
     def users(self, request, uuid=None):
-        """ A list of users connected to the customer """
+        """ A list of users connected to the project """
         project = self.get_object()
         queryset = self.paginate_queryset(project.get_users())
         serializer = self.get_serializer(queryset, many=True)
@@ -387,11 +387,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 Q(projectpermission__project__customer__in=connected_customers,
                   projectpermission__project__customer__is_active=True) |
                 # users with no role
-                # TODO: Update queries
                 Q(
-                    groups__customerrole=None,
-                    groups__projectrole=None,
-                    groups__projectgrouprole=None,
+                    customerpermission=None,
+                    projectpermission=None,
                     organization_approved=True,
                     organization__in=potential_organizations,
                 )
@@ -668,13 +666,13 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 
     def list(self, request, *args, **kwargs):
         """
-        Project permissions expresses connection of users to a project. Each project has two associated user groups that
-        represent project managers and administrators. The link is maintained
-        through */api/project-permissions/* endpoint.
+        Project permissions expresses connection of user to a project.
+        User may have either project manager or system administrator permission in the project.
+        Use */api/project-permissions/* endpoint to maintain project permissions.
 
-        Note that project membership can be viewed and modified only by customer owners and staff users.
+        Note that project permissions can be viewed and modified only by customer owners and staff users.
 
-        To list all visible links, run a **GET** query against a list.
+        To list all visible permissions, run a **GET** query against a list.
         Response will contain a list of project users and their brief data.
 
         To add a new user to the project, **POST** a new relationship to */api/project-permissions/* endpoint specifying
