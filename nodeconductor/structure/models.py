@@ -182,19 +182,19 @@ class PermissionMixin(object):
     Provides method to grant, revoke and check object permissions.
     """
 
-    def has_user(self, user, role_type=None):
+    def has_user(self, user, role=None):
         permissions = self.permissions.filter(user=user, is_active=True)
 
-        if role_type is not None:
-            permissions = permissions.filter(role_type=role_type)
+        if role is not None:
+            permissions = permissions.filter(role=role)
 
         return permissions.exists()
 
     @transaction.atomic()
-    def add_user(self, user, role_type):
+    def add_user(self, user, role):
         permission, created = self.permissions.get_or_create(
             user=user,
-            role_type=role_type,
+            role=role,
             is_active=True,
         )
 
@@ -203,17 +203,17 @@ class PermissionMixin(object):
                 sender=self.__class__,
                 structure=self,
                 user=user,
-                role=role_type,
+                role=role,
             )
 
         return permission, created
 
     @transaction.atomic()
-    def remove_user(self, user, role_type=None):
+    def remove_user(self, user, role=None):
         permissions = self.permissions.filter(user=user, is_active=True)
 
-        if role_type is not None:
-            permissions = permissions.filter(role_type=role_type)
+        if role is not None:
+            permissions = permissions.filter(role=role)
 
         for permission in permissions.iterator():
             self.log_role_revoked(permission)
@@ -231,7 +231,7 @@ class PermissionMixin(object):
             sender=self.__class__,
             structure=self,
             user=permission.user,
-            role=permission.role_type,
+            role=permission.role,
         )
 
 
@@ -246,16 +246,16 @@ class CustomerRole(object):
 @python_2_unicode_compatible
 class CustomerPermission(BasePermission):
     class Meta(object):
-        unique_together = ('customer', 'role_type', 'user', 'is_active')
+        unique_together = ('customer', 'role', 'user', 'is_active')
 
     class Permissions(object):
         customer_path = 'customer'
 
     customer = models.ForeignKey('structure.Customer', related_name='permissions')
-    role_type = models.CharField(choices=CustomerRole.TYPE_CHOICES, db_index=True, max_length=30)
+    role = models.CharField(choices=CustomerRole.TYPE_CHOICES, db_index=True, max_length=30)
 
     def __str__(self):
-        return '%s | %s' % (self.customer.name, self.get_role_type_display())
+        return '%s | %s' % (self.customer.name, self.get_role_display())
 
 
 @python_2_unicode_compatible
@@ -350,7 +350,7 @@ class Customer(core_models.UuidMixin,
         return get_user_model().objects.filter(
             customerpermission__customer=self,
             customerpermission__is_active=True,
-            customerpermission__role_type=CustomerRole.OWNER
+            customerpermission__role=CustomerRole.OWNER
         )
 
     def get_users(self):
@@ -376,7 +376,7 @@ class Customer(core_models.UuidMixin,
         else:
             customer_queryset = cls.objects.filter(
                 permissions__user=user,
-                permissions__role_type=CustomerRole.OWNER,
+                permissions__role=CustomerRole.OWNER,
                 permissions__is_active=True
             )
         return {'customer_uuid': filter_queryset_for_user(customer_queryset, user).values_list('uuid', flat=True)}
@@ -407,17 +407,17 @@ class ProjectRole(object):
 @python_2_unicode_compatible
 class ProjectPermission(core_models.UuidMixin, BasePermission):
     class Meta(object):
-        unique_together = ('project', 'role_type', 'user', 'is_active')
+        unique_together = ('project', 'role', 'user', 'is_active')
 
     class Permissions(object):
         customer_path = 'project__customer'
         project_path = 'project'
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
-    role_type = models.CharField(choices=ProjectRole.TYPE_CHOICES, db_index=True, max_length=30)
+    role = models.CharField(choices=ProjectRole.TYPE_CHOICES, db_index=True, max_length=30)
 
     def __str__(self):
-        return '%s | %s' % (self.project.name, self.get_role_type_display())
+        return '%s | %s' % (self.project.name, self.get_role_display())
 
 
 @python_2_unicode_compatible

@@ -292,7 +292,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
     def _get_permission_url(self, user, customer, role):
         permission = CustomerPermission.objects.get(
             user=self.users[user],
-            role_type=self.role_map[role],
+            role=self.role_map[role],
             customer=self.customers[customer],
         )
         return 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
@@ -355,7 +355,7 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
             self._ensure_matching_entries_in('full_name', self.users[user].full_name)
             self._ensure_non_matching_entries_not_in('full_name', self.users[user].full_name)
 
-    def test_staff_user_can_filter_roles_within_customer_by_role_type_name(self):
+    def test_staff_user_can_filter_roles_within_customer_by_role_name(self):
         response = self.client.get(reverse('customer_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -366,7 +366,7 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
         for permission in response.data:
             self.assertEqual('owner', permission['role'])
 
-    def test_staff_user_cannot_filter_roles_within_customer_by_role_type_pk(self):
+    def test_staff_user_cannot_filter_roles_within_customer_by_role_pk(self):
         response = self.client.get(reverse('customer_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

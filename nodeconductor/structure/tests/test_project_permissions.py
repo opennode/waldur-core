@@ -399,7 +399,7 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
     def _get_permission_url(self, user, project, role):
         permission = ProjectPermission.objects.get(
             user=self.users[user],
-            role_type=self.role_map[role],
+            role=self.role_map[role],
             project=self.projects[project],
         )
         return 'http://testserver' + reverse('project_permission-detail', kwargs={'pk': permission.pk})

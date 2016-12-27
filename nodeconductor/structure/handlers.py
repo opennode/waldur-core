@@ -115,7 +115,7 @@ def log_customer_role_granted(sender, structure, user, role, **kwargs):
             'customer': structure,
             'affected_user': user,
             'structure_type': 'customer',
-            'role_name': CustomerPermission(role_type=role).get_role_type_display(),
+            'role_name': CustomerPermission(role=role).get_role_display(),
         })
 
 
@@ -127,7 +127,7 @@ def log_customer_role_revoked(sender, structure, user, role, **kwargs):
             'customer': structure,
             'affected_user': user,
             'structure_type': 'customer',
-            'role_name': CustomerPermission(role_type=role).get_role_type_display(),
+            'role_name': CustomerPermission(role=role).get_role_display(),
         })
 
 
@@ -139,7 +139,7 @@ def log_project_role_granted(sender, structure, user, role, **kwargs):
             'project': structure,
             'affected_user': user,
             'structure_type': 'project',
-            'role_name': ProjectPermission(role_type=role).get_role_type_display(),
+            'role_name': ProjectPermission(role=role).get_role_display(),
         })
 
 
@@ -151,7 +151,7 @@ def log_project_role_revoked(sender, structure, user, role, **kwargs):
             'project': structure,
             'affected_user': user,
             'structure_type': 'project',
-            'role_name': ProjectPermission(role_type=role).get_role_type_display()
+            'role_name': ProjectPermission(role=role).get_role_display()
         })
 
 

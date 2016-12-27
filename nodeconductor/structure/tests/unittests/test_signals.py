@@ -11,11 +11,11 @@ class ProjectSignalsTest(TestCase):
         self.project = factories.ProjectFactory()
 
     def test_admin_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.permissions.filter(role_type=models.ProjectRole.ADMINISTRATOR).exists(),
+        self.assertTrue(self.project.permissions.filter(role=models.ProjectRole.ADMINISTRATOR).exists(),
                         'Administrator role should have been created')
 
     def test_manager_project_role_is_created_upon_project_creation(self):
-        self.assertTrue(self.project.permissions.filter(role_type=models.ProjectRole.MANAGER).exists(),
+        self.assertTrue(self.project.permissions.filter(role=models.ProjectRole.MANAGER).exists(),
                         'Manager role should have been created')
 
 

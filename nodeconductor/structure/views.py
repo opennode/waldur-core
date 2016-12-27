@@ -298,10 +298,10 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         if can_manage is not None:
             queryset = queryset.filter(
                 Q(customer__permissions__user=user,
-                  customer__permissions__role_type=models.CustomerRole.OWNER,
+                  customer__permissions__role=models.CustomerRole.OWNER,
                   customer__permissions__is_active=True) |
                 Q(permissions__user=user,
-                  permissions__role_type=models.ProjectRole.MANAGER,
+                  permissions__role=models.ProjectRole.MANAGER,
                   permissions__is_active=True)
             ).distinct()
 
@@ -310,7 +310,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         if can_admin is not None:
             queryset = queryset.filter(
                 permissions__user=user,
-                permissions__role_type=models.ProjectRole.ADMINISTRATOR,
+                permissions__role=models.ProjectRole.ADMINISTRATOR,
                 permissions__is_active=True
             )
 
@@ -709,7 +709,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     def perform_create(self, serializer):
         affected_project = serializer.validated_data['project']
         affected_user = serializer.validated_data['user']
-        role = serializer.validated_data['role_type']
+        role = serializer.validated_data['role']
 
         if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')
@@ -722,7 +722,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     def perform_destroy(self, instance):
         affected_user = instance.user
         affected_project = instance.project
-        role = instance.role_type
+        role = instance.role
 
         if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')
@@ -834,7 +834,7 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
     def perform_destroy(self, instance):
         affected_user = instance.user
         affected_customer = instance.customer
-        role = instance.role_type
+        role = instance.role
 
         if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')

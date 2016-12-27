@@ -13,7 +13,7 @@ PERMISSION_LOGICS = (
     ('structure.Project', FilteredCollaboratorsPermissionLogic(
         collaborators_query='customer__permissions__user',
         collaborators_filter={
-            'customer__permissions__role_type': CustomerRole.OWNER,
+            'customer__permissions__role': CustomerRole.OWNER,
             'customer__permissions__is_active': True,
         },
         any_permission=True,
@@ -24,8 +24,8 @@ PERMISSION_LOGICS = (
             'project__customer__permissions__user',
         ],
         collaborators_filter=[
-            {'role_type': ProjectRole.MANAGER, 'is_active': True},
-            {'project__customer__permissions__role_type': CustomerRole.OWNER,
+            {'role': ProjectRole.MANAGER, 'is_active': True},
+            {'project__customer__permissions__role': CustomerRole.OWNER,
              'project__customer__permissions__is_active': True},
         ],
         any_permission=True,
@@ -35,14 +35,14 @@ PERMISSION_LOGICS = (
             'user',
         ],
         collaborators_filter=[
-            {'role_type': CustomerRole.OWNER, 'is_active': True},
+            {'role': CustomerRole.OWNER, 'is_active': True},
         ],
         any_permission=True,
     )),
     ('structure.ServiceSettings', FilteredCollaboratorsPermissionLogic(
         collaborators_query='customer__permissions__user',
         collaborators_filter={
-            'customer__permissions__role_type': CustomerRole.OWNER,
+            'customer__permissions__role': CustomerRole.OWNER,
             'customer__permissions__is_active': True,
         },
         any_permission=True,
@@ -56,9 +56,9 @@ resource_permission_logic = FilteredCollaboratorsPermissionLogic(
         'service_project_link__project__customer__permissions__user',
     ],
     collaborators_filter=[
-        {'service_project_link__project__permissions__role_type': ProjectRole.ADMINISTRATOR},
-        {'service_project_link__project__permissions__role_type': ProjectRole.MANAGER},
-        {'service_project_link__project__customer__permissions__role_type': CustomerRole.OWNER},
+        {'service_project_link__project__permissions__role': ProjectRole.ADMINISTRATOR},
+        {'service_project_link__project__permissions__role': ProjectRole.MANAGER},
+        {'service_project_link__project__customer__permissions__role': CustomerRole.OWNER},
     ],
     any_permission=True,
 )
@@ -66,7 +66,7 @@ resource_permission_logic = FilteredCollaboratorsPermissionLogic(
 service_permission_logic = FilteredCollaboratorsPermissionLogic(
     collaborators_query='customer__permissions__user',
     collaborators_filter={
-        'customer__permissions__role_type': CustomerRole.OWNER,
+        'customer__permissions__role': CustomerRole.OWNER,
     },
     any_permission=True,
 )
@@ -76,7 +76,7 @@ service_project_link_permission_logic = FilteredCollaboratorsPermissionLogic(
         'service__customer__permissions__user',
     ],
     collaborators_filter=[
-        {'service__customer__permissions__role_type': CustomerRole.OWNER},
+        {'service__customer__permissions__role': CustomerRole.OWNER},
     ],
 
     any_permission=True,
@@ -90,8 +90,8 @@ def property_permission_logic(prefix, user_field=None):
             '%s__service_project_link__project__customer__permissions__user' % prefix,
         ],
         collaborators_filter=[
-            {'%s__service_project_link__project__permissions__role_type' % prefix: ProjectRole.ADMINISTRATOR},
-            {'%s__service_project_link__project__customer__permissions__role_type' % prefix: CustomerRole.OWNER},
+            {'%s__service_project_link__project__permissions__role' % prefix: ProjectRole.ADMINISTRATOR},
+            {'%s__service_project_link__project__customer__permissions__role' % prefix: CustomerRole.OWNER},
         ],
         user_field=user_field,
         any_permission=True,
@@ -101,7 +101,7 @@ def property_permission_logic(prefix, user_field=None):
 OWNER_CAN_MANAGE_CUSTOMER_LOGICS = FilteredCollaboratorsPermissionLogic(
     collaborators_query='permissions__user',
     collaborators_filter={
-        'roles__role_type': CustomerRole.OWNER,
+        'roles__role': CustomerRole.OWNER,
     },
     any_permission=True
 )
