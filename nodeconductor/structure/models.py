@@ -169,9 +169,9 @@ class BasePermission(models.Model):
         abstract = True
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True)
-    created_at = AutoCreatedField()
-    expires_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name='+')
+    created = AutoCreatedField()
+    expiration_time = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
 
 
@@ -181,6 +181,14 @@ class PermissionMixin(object):
     It is expected that reverse `permissions` relation is created for this model.
     Provides method to grant, revoke and check object permissions.
     """
+
+    def has_user(self, user, role_type=None):
+        permissions = self.permissions.filter(user=user, is_active=True)
+
+        if role_type is not None:
+            permissions = permissions.filter(role_type=role_type)
+
+        return permissions.exists()
 
     @transaction.atomic()
     def add_user(self, user, role_type):
@@ -207,27 +215,28 @@ class PermissionMixin(object):
         if role_type is not None:
             permissions = permissions.filter(role_type=role_type)
 
-        permissions.update(is_active=False, expires_at=timezone.now())
+        permissions.update(is_active=False, expiration_time=timezone.now())
 
         for permission in permissions.iterator():
-            structure_role_revoked.send(
-                sender=self.__class__,
-                structure=self,
-                user=permission.user,
-                role=permission.role_type,
-            )
+            self.log_role_revoked(permission)
 
-    def has_user(self, user, role_type=None):
-        permissions = self.permissions.filter(user=user, is_active=True)
+    @transaction.atomic()
+    def remove_all_users(self):
+        for permission in self.permissions.all().iterator():
+            permission.delete()
+            self.log_role_revoked(permission)
 
-        if role_type is not None:
-            permissions = permissions.filter(role_type=role_type)
-
-        return permissions.exists()
+    def log_role_revoked(self, permission):
+        structure_role_revoked.send(
+            sender=self.__class__,
+            structure=self,
+            user=permission.user,
+            role=permission.role_type,
+        )
 
 
 class CustomerRole(object):
-    OWNER = 0
+    OWNER = 'owner'
 
     TYPE_CHOICES = (
         (OWNER, 'Owner'),
@@ -243,7 +252,7 @@ class CustomerPermission(BasePermission):
         customer_path = 'customer'
 
     customer = models.ForeignKey('structure.Customer', related_name='permissions')
-    role_type = models.SmallIntegerField(choices=CustomerRole.TYPE_CHOICES)
+    role_type = models.CharField(choices=CustomerRole.TYPE_CHOICES, db_index=True, max_length=30)
 
     def __str__(self):
         return '%s | %s' % (self.customer.name, self.get_role_type_display())
@@ -339,18 +348,18 @@ class Customer(core_models.UuidMixin,
 
     def get_owners(self):
         return get_user_model().objects.filter(
-            customerpermissions__customer=self,
-            customerpermissions__is_active=True,
-            customerpermissions__role_type=CustomerRole.OWNER
+            customerpermission__customer=self,
+            customerpermission__is_active=True,
+            customerpermission__role_type=CustomerRole.OWNER
         )
 
     def get_users(self):
         """ Return all connected to customer users """
         return get_user_model().objects.filter(
-            Q(customerpermissions__customer=self,
-              customerpermissions__is_active=True) |
-            Q(projectpermissions__project__customer=self,
-              projectpermissions__project__is_active=True)
+            Q(customerpermission__customer=self,
+              customerpermission__is_active=True) |
+            Q(projectpermission__project__customer=self,
+              projectpermission__project__is_active=True)
         ).distinct()
 
     def can_user_update_quotas(self, user):
@@ -386,8 +395,8 @@ class BalanceHistory(models.Model):
 
 
 class ProjectRole(object):
-    ADMINISTRATOR = 0
-    MANAGER = 1
+    ADMINISTRATOR = 'admin'
+    MANAGER = 'manager'
 
     TYPE_CHOICES = (
         (ADMINISTRATOR, 'Administrator'),
@@ -404,7 +413,7 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
         project_path = 'project'
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
-    role_type = models.SmallIntegerField(choices=ProjectRole.TYPE_CHOICES)
+    role_type = models.CharField(choices=ProjectRole.TYPE_CHOICES, db_index=True, max_length=30)
 
     def __str__(self):
         return '%s | %s' % (self.project.name, self.get_role_type_display())
@@ -459,27 +468,10 @@ class Project(core_models.DescribableMixin,
     def full_name(self):
         return self.name
 
-    @transaction.atomic()
-    def remove_all_users(self):
-        """
-        When project is deleted, all project permissions are cascade deleted
-        by Django without emitting structure_role_revoked signal.
-        So in order to invalidate nc_user_count quota we need to emit it manually.
-        """
-        for permission in self.permissions.all().iterator():
-            permission.delete()
-
-            structure_role_revoked.send(
-                sender=Project,
-                structure=self,
-                user=permission.user,
-                role=permission.role_type,
-            )
-
     def get_users(self):
         return get_user_model().objects.filter(
-            projectpermissions__project=self,
-            projectpermissions__is_active=True,
+            projectpermission__project=self,
+            projectpermission__is_active=True,
         )
 
     def __str__(self):

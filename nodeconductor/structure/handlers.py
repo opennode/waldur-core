@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 def revoke_roles_on_project_deletion(sender, instance=None, **kwargs):
+    """
+    When project is deleted, all project permissions are cascade deleted
+    by Django without emitting structure_role_revoked signal.
+    So in order to invalidate nc_user_count quota we need to emit it manually.
+    """
     instance.remove_all_users()
 
 

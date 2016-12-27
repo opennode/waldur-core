@@ -382,10 +382,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
             queryset = queryset.filter(is_staff=False).filter(
                 # customer users
-                Q(customerpermissions__customer__in=connected_customers,
-                  customerpermissions__is_active=True) |
-                Q(projectpermissions__project__customer__in=connected_customers,
-                  projectpermissions__project__customer__is_active=True) |
+                Q(customerpermission__customer__in=connected_customers,
+                  customerpermission__is_active=True) |
+                Q(projectpermission__project__customer__in=connected_customers,
+                  projectpermission__project__customer__is_active=True) |
                 # users with no role
                 # TODO: Update queries
                 Q(
