@@ -6,7 +6,7 @@ from nodeconductor.core.managers import GenericKeyMixin, SummaryQuerySet
 
 
 def filter_queryset_for_user(queryset, user):
-    filtered_relations = ('customer', 'project', 'project_group')
+    filtered_relations = ('customer', 'project')
 
     if user is None or user.is_staff:
         return queryset

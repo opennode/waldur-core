@@ -155,17 +155,6 @@ class ProjectFilter(django_filters.FilterSet):
         lookup_type='icontains'
     )
 
-    project_group = UUIDFilter(
-        name='project_groups__uuid',
-        distinct=True,
-    )
-
-    project_group_name = django_filters.CharFilter(
-        name='project_groups__name',
-        distinct=True,
-        lookup_type='icontains'
-    )
-
     name = django_filters.CharFilter(lookup_type='icontains')
 
     description = django_filters.CharFilter(lookup_type='icontains')
@@ -173,8 +162,6 @@ class ProjectFilter(django_filters.FilterSet):
     class Meta(object):
         model = models.Project
         fields = [
-            'project_group',
-            'project_group_name',
             'name',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'description',
@@ -185,8 +172,6 @@ class ProjectFilter(django_filters.FilterSet):
             '-name',
             'created',
             '-created',
-            'project_groups__name',
-            '-project_groups__name',
             'customer__native_name',
             '-customer__native_name',
             'customer__name',
@@ -197,101 +182,13 @@ class ProjectFilter(django_filters.FilterSet):
 
         order_by_mapping = {
             # Proper field naming
-            'project_group_name': 'project_groups__name',
-            'customer_name': 'customer__name',
-            'customer_abbreviation': 'customer__abbreviation',
-            'customer_native_name': 'customer__native_name',
-
-            # Backwards compatibility
-            'project_groups__name': 'project_groups__name',
-        }
-
-
-class ProjectGroupFilter(django_filters.FilterSet):
-    customer = UUIDFilter(
-        name='customer__uuid',
-        distinct=True,
-    )
-    customer_name = django_filters.CharFilter(
-        name='customer__name',
-        distinct=True,
-        lookup_type='icontains',
-    )
-    customer_native_name = django_filters.CharFilter(
-        name='customer__native_name',
-        distinct=True,
-        lookup_type='icontains',
-    )
-
-    customer_abbreviation = django_filters.CharFilter(
-        name='customer__abbreviation',
-        distinct=True,
-        lookup_type='icontains',
-    )
-
-    name = django_filters.CharFilter(lookup_type='icontains')
-
-    class Meta(object):
-        model = models.ProjectGroup
-        fields = [
-            'name',
-            'customer',
-            'customer_name',
-            'customer_native_name',
-            'customer_abbreviation',
-        ]
-        order_by = [
-            'name',
-            '-name',
-            'customer__name',
-            '-customer__name',
-            'customer__native_name',
-            '-customer__native_name',
-            'customer__abbreviation',
-            '-customer__abbreviation',
-        ]
-        order_by_mapping = {
             'customer_name': 'customer__name',
             'customer_abbreviation': 'customer__abbreviation',
             'customer_native_name': 'customer__native_name',
         }
-
-
-class ProjectGroupMembershipFilter(django_filters.FilterSet):
-    project_group = UUIDFilter(
-        name='projectgroup__uuid',
-    )
-
-    project_group_name = django_filters.CharFilter(
-        name='projectgroup__name',
-        lookup_type='icontains',
-    )
-
-    project = UUIDFilter(
-        name='project__uuid',
-    )
-
-    project_name = django_filters.CharFilter(
-        name='project__name',
-        lookup_type='icontains',
-    )
-
-    class Meta(object):
-        model = models.ProjectGroup.projects.through
-        fields = [
-            'project_group',
-            'project_group_name',
-            'project',
-            'project_name',
-        ]
 
 
 class UserFilter(django_filters.FilterSet):
-    project_group = django_filters.CharFilter(
-        name='groups__projectrole__project__project_groups__name',
-        distinct=True,
-        lookup_type='icontains',
-    )
     project = django_filters.CharFilter(
         name='groups__projectrole__project__name',
         distinct=True,
@@ -317,7 +214,6 @@ class UserFilter(django_filters.FilterSet):
             'description',
             'job_title',
             'project',
-            'project_group',
             'username',
             'civil_number',
             'is_active',
@@ -405,27 +301,6 @@ class ProjectPermissionFilter(UserPermissionFilter):
         choice_mappings={
             'admin': models.ProjectRole.ADMINISTRATOR,
             'manager': models.ProjectRole.MANAGER,
-        },
-    )
-
-
-class ProjectGroupPermissionFilter(UserPermissionFilter):
-    project_group = UUIDFilter(
-        name='group__projectgrouprole__project_group__uuid',
-    )
-    project_group_url = core_filters.URLFilter(
-        view_name='projectgroup-detail',
-        name='group__projectgrouprole__project_group__uuid',
-    )
-    role = core_filters.MappedChoiceFilter(
-        name='group__projectgrouprole__role_type',
-        choices=(
-            ('manager', 'Manager'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (models.ProjectGroupRole.MANAGER, 'Manager'),
-        ),
-        choice_mappings={
-            'manager': models.ProjectGroupRole.MANAGER,
         },
     )
 
@@ -570,11 +445,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     project = UUIDFilter(name='service_project_link__project__uuid')
     project_uuid = UUIDFilter(name='service_project_link__project__uuid')
     project_name = django_filters.CharFilter(name='service_project_link__project__name', lookup_type='icontains')
-    # project group
-    project_group = UUIDFilter(name='service_project_link__project__project_groups__uuid')
-    project_group_uuid = UUIDFilter(name='service_project_link__project__project_groups__uuid')
-    project_group_name = django_filters.CharFilter(
-        name='service_project_link__project__project_groups__name', lookup_type='icontains')
     # service
     service_uuid = UUIDFilter(name='service_project_link__service__uuid')
     service_name = django_filters.CharFilter(name='service_project_link__service__name', lookup_type='icontains')
@@ -612,8 +482,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             # project
             'project', 'project_uuid', 'project_name',
-            # project group
-            'project_group', 'project_group_uuid', 'project_group_name',
             # service
             'service_uuid', 'service_name',
             # service settings
@@ -634,8 +502,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             '-service_project_link__project__customer__abbreviation',
             'service_project_link__project__name',
             '-service_project_link__project__name',
-            'service_project_link__project__project_groups__name',
-            '-service_project_link__project__project_groups__name',
             'created',
             '-created',
         ]
@@ -644,7 +510,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             'customer_native_name': 'service_project_link__project__customer__native_name',
             'customer_abbreviation': 'service_project_link__project__customer__abbreviation',
             'project_name': 'service_project_link__project__name',
-            'project_group_name': 'service_project_link__project__project_groups__name',
         }
 
 

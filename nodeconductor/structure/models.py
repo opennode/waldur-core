@@ -8,13 +8,13 @@ from django.apps import apps
 from django.core.cache import cache
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
 from django.db import models, transaction
 from django.db.models import Q, F
+from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
@@ -164,11 +164,97 @@ class VATMixin(models.Model):
         )
 
 
+class BasePermission(models.Model):
+    class Meta(object):
+        abstract = True
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, db_index=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True)
+    created_at = AutoCreatedField()
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+
+class PermissionMixin(object):
+    """
+    Base permission management mixin for customer and project.
+    It is expected that reverse `permissions` relation is created for this model.
+    Provides method to grant, revoke and check object permissions.
+    """
+
+    @transaction.atomic()
+    def add_user(self, user, role_type):
+        permission, created = self.permissions.get_or_create(
+            user=user,
+            role_type=role_type,
+            is_active=True,
+        )
+
+        if created:
+            structure_role_granted.send(
+                sender=self.__class__,
+                structure=self,
+                user=user,
+                role=role_type,
+            )
+
+        return permission, created
+
+    @transaction.atomic()
+    def remove_user(self, user, role_type=None):
+        permissions = self.permissions.filter(user=user, is_active=True)
+
+        if role_type is not None:
+            permissions = permissions.filter(role_type=role_type)
+
+        permissions.update(is_active=False, expires_at=timezone.now())
+
+        for permission in permissions.iterator():
+            structure_role_revoked.send(
+                sender=self.__class__,
+                structure=self,
+                user=permission.user,
+                role=permission.role_type,
+            )
+
+    def has_user(self, user, role_type=None):
+        permissions = self.permissions.filter(user=user, is_active=True)
+
+        if role_type is not None:
+            permissions = permissions.filter(role_type=role_type)
+
+        return permissions.exists()
+
+
+class CustomerRole(object):
+    OWNER = 0
+
+    TYPE_CHOICES = (
+        (OWNER, 'Owner'),
+    )
+
+
+@python_2_unicode_compatible
+class CustomerPermission(BasePermission):
+    class Meta(object):
+        unique_together = ('customer', 'role_type', 'user', 'is_active')
+
+    class Permissions(object):
+        customer_path = 'customer'
+
+    customer = models.ForeignKey('structure.Customer', related_name='permissions')
+    role_type = models.SmallIntegerField(choices=CustomerRole.TYPE_CHOICES)
+
+    def __str__(self):
+        return '%s | %s' % (self.customer.name, self.get_role_type_display())
+
+
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                core_models.DescendantMixin,
                quotas_models.QuotaModelMixin,
+               PermissionMixin,
                VATMixin,
                LoggableMixin,
                ImageModelMixin,
@@ -177,7 +263,6 @@ class Customer(core_models.UuidMixin,
     class Permissions(object):
         customer_path = 'self'
         project_path = 'projects'
-        project_group_path = 'project_groups'
 
     native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=8, blank=True)
@@ -252,70 +337,21 @@ class Customer(core_models.UuidMixin,
         if new_balance <= 0:
             send_task('structure', 'stop_customer_resources')(self.uuid.hex)
 
-    def add_user(self, user, role_type):
-        UserGroup = get_user_model().groups.through
-
-        with transaction.atomic():
-            role = self.roles.get(role_type=role_type)
-
-            membership, created = UserGroup.objects.get_or_create(
-                user=user,
-                group=role.permission_group,
-            )
-
-            if created:
-                structure_role_granted.send(
-                    sender=Customer,
-                    structure=self,
-                    user=user,
-                    role=role_type,
-                )
-
-            return membership, created
-
-    def remove_user(self, user, role_type=None):
-        UserGroup = get_user_model().groups.through
-
-        with transaction.atomic():
-            memberships = UserGroup.objects.filter(
-                group__customerrole__customer=self,
-                user=user,
-            )
-
-            if role_type is not None:
-                memberships = memberships.filter(group__customerrole__role_type=role_type)
-
-            for membership in memberships.iterator():
-                role = membership.group.customerrole
-                membership.delete()
-
-                structure_role_revoked.send(
-                    sender=Customer,
-                    structure=self,
-                    user=membership.user,
-                    role=role.role_type,
-                )
-
-    def has_user(self, user, role_type=None):
-        queryset = self.roles.filter(permission_group__user=user)
-
-        if role_type is not None:
-            queryset = queryset.filter(role_type=role_type)
-
-        return queryset.exists()
-
     def get_owners(self):
         return get_user_model().objects.filter(
-            groups__customerrole__customer=self,
-            groups__customerrole__role_type=CustomerRole.OWNER
+            customerpermissions__customer=self,
+            customerpermissions__is_active=True,
+            customerpermissions__role_type=CustomerRole.OWNER
         )
 
     def get_users(self):
         """ Return all connected to customer users """
         return get_user_model().objects.filter(
-            Q(groups__customerrole__customer=self) |
-            Q(groups__projectrole__project__customer=self) |
-            Q(groups__projectgrouprole__project_group__customer=self)).distinct()
+            Q(customerpermissions__customer=self,
+              customerpermissions__is_active=True) |
+            Q(projectpermissions__project__customer=self,
+              projectpermissions__project__is_active=True)
+        ).distinct()
 
     def can_user_update_quotas(self, user):
         return user.is_staff
@@ -330,7 +366,10 @@ class Customer(core_models.UuidMixin,
             customer_queryset = cls.objects.all()
         else:
             customer_queryset = cls.objects.filter(
-                roles__permission_group__user=user, roles__role_type=CustomerRole.OWNER)
+                permissions__user=user,
+                permissions__role_type=CustomerRole.OWNER,
+                permissions__is_active=True
+            )
         return {'customer_uuid': filter_queryset_for_user(customer_queryset, user).values_list('uuid', flat=True)}
 
     def __str__(self):
@@ -346,36 +385,7 @@ class BalanceHistory(models.Model):
     amount = models.DecimalField(max_digits=9, decimal_places=3)
 
 
-@python_2_unicode_compatible
-class CustomerRole(models.Model):
-    class Meta(object):
-        unique_together = ('customer', 'role_type')
-
-    OWNER = 0
-
-    TYPE_CHOICES = (
-        (OWNER, 'Owner'),
-    )
-
-    ROLE_TO_NAME = {
-        OWNER: 'owner',
-    }
-
-    NAME_TO_ROLE = dict((v, k) for k, v in ROLE_TO_NAME.items())
-
-    customer = models.ForeignKey(Customer, related_name='roles')
-    role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
-    permission_group = models.OneToOneField(Group)
-
-    def __str__(self):
-        return '%s | %s' % (self.customer.name, self.get_role_type_display())
-
-
-@python_2_unicode_compatible
-class ProjectRole(core_models.UuidMixin, models.Model):
-    class Meta(object):
-        unique_together = ('project', 'role_type')
-
+class ProjectRole(object):
     ADMINISTRATOR = 0
     MANAGER = 1
 
@@ -384,9 +394,17 @@ class ProjectRole(core_models.UuidMixin, models.Model):
         (MANAGER, 'Manager'),
     )
 
-    project = models.ForeignKey('structure.Project', related_name='roles')
-    role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
-    permission_group = models.OneToOneField(Group)
+
+@python_2_unicode_compatible
+class ProjectPermission(core_models.UuidMixin, BasePermission):
+    class Meta(object):
+        unique_together = ('project', 'role_type', 'user', 'is_active')
+
+    class Permissions(object):
+        project_path = 'project'
+
+    project = models.ForeignKey('structure.Project', related_name='permissions')
+    role_type = models.SmallIntegerField(choices=ProjectRole.TYPE_CHOICES)
 
     def __str__(self):
         return '%s | %s' % (self.project.name, self.get_role_type_display())
@@ -398,13 +416,13 @@ class Project(core_models.DescribableMixin,
               core_models.NameMixin,
               core_models.DescendantMixin,
               quotas_models.QuotaModelMixin,
+              PermissionMixin,
               StructureLoggableMixin,
               TimeStampedModel,
               StructureModel):
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'self'
-        project_group_path = 'project_groups'
 
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
 
@@ -437,82 +455,32 @@ class Project(core_models.DescribableMixin,
     customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()
 
-    # XXX: Hack for  itacloud and logging
-    @property
-    def project_group(self):
-        return self.project_groups.first()
-
     @property
     def full_name(self):
-        project_group = self.project_group
-        name = (project_group.name + ' / ' if project_group else '') + self.name
-        return name
+        return self.name
 
-    def add_user(self, user, role_type):
-        UserGroup = get_user_model().groups.through
-
-        with transaction.atomic():
-
-            role = self.roles.get(role_type=role_type)
-
-            membership, created = UserGroup.objects.get_or_create(
-                user=user,
-                group=role.permission_group,
-            )
-
-            if created:
-                structure_role_granted.send(
-                    sender=Project,
-                    structure=self,
-                    user=user,
-                    role=role_type,
-                )
-
-            return membership, created
-
-    def remove_user(self, user, role_type=None):
-        UserGroup = get_user_model().groups.through
-
-        with transaction.atomic():
-            memberships = UserGroup.objects.filter(
-                group__projectrole__project=self,
-                user=user,
-            )
-
-            if role_type is not None:
-                memberships = memberships.filter(group__projectrole__role_type=role_type)
-
-            self.remove_memberships(memberships)
-
+    @transaction.atomic()
     def remove_all_users(self):
-        UserGroup = get_user_model().groups.through
-
-        with transaction.atomic():
-            memberships = UserGroup.objects.filter(group__projectrole__project=self)
-            self.remove_memberships(memberships)
-
-    def remove_memberships(self, memberships):
-        for membership in memberships.iterator():
-            role = membership.group.projectrole
-            membership.delete()
+        """
+        When project is deleted, all project permissions are cascade deleted
+        by Django without emitting structure_role_revoked signal.
+        So in order to invalidate nc_user_count quota we need to emit it manually.
+        """
+        for permission in self.permissions.all().iterator():
+            permission.delete()
 
             structure_role_revoked.send(
                 sender=Project,
                 structure=self,
-                user=membership.user,
-                role=role.role_type,
+                user=permission.user,
+                role=permission.role_type,
             )
 
-    def has_user(self, user, role_type=None):
-        queryset = self.roles.filter(permission_group__user=user)
-
-        if role_type is not None:
-            queryset = queryset.filter(role_type=role_type)
-
-        return queryset.exists()
-
     def get_users(self):
-        return get_user_model().objects.filter(groups__projectrole__project=self)
+        return get_user_model().objects.filter(
+            projectpermissions__project=self,
+            projectpermissions__is_active=True,
+        )
 
     def __str__(self):
         return '%(name)s | %(customer)s' % {
@@ -524,7 +492,7 @@ class Project(core_models.DescribableMixin,
         return user.is_staff
 
     def get_log_fields(self):
-        return ('uuid', 'customer', 'name', 'project_group')
+        return ('uuid', 'customer', 'name')
 
     def get_parents(self):
         return [self.customer]
@@ -535,111 +503,6 @@ class Project(core_models.DescribableMixin,
         """
         return itertools.chain.from_iterable(
             m.objects.filter(project=self) for m in ServiceProjectLink.get_all_models())
-
-
-@python_2_unicode_compatible
-class ProjectGroupRole(core_models.UuidMixin, models.Model):
-    class Meta(object):
-        unique_together = ('project_group', 'role_type')
-
-    MANAGER = 0
-
-    TYPE_CHOICES = (
-        (MANAGER, 'Group Manager'),
-    )
-
-    project_group = models.ForeignKey('structure.ProjectGroup', related_name='roles')
-    role_type = models.SmallIntegerField(choices=TYPE_CHOICES)
-    permission_group = models.OneToOneField(Group)
-
-    def __str__(self):
-        return self.get_role_type_display()
-
-
-@python_2_unicode_compatible
-class ProjectGroup(core_models.UuidMixin,
-                   core_models.DescribableMixin,
-                   core_models.NameMixin,
-                   core_models.DescendantMixin,
-                   quotas_models.QuotaModelMixin,
-                   StructureLoggableMixin,
-                   TimeStampedModel):
-    """
-    Project groups are means to organize customer's projects into arbitrary sets.
-    """
-    class Permissions(object):
-        customer_path = 'customer'
-        project_path = 'projects'
-        project_group_path = 'self'
-
-    customer = models.ForeignKey(Customer, related_name='project_groups', on_delete=models.PROTECT)
-    projects = models.ManyToManyField(Project,
-                                      related_name='project_groups')
-
-    tracker = FieldTracker()
-
-    GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_group_count'
-
-    def __str__(self):
-        return self.name
-
-    def add_user(self, user, role_type):
-        UserGroup = get_user_model().groups.through
-
-        with transaction.atomic():
-            role = self.roles.get(role_type=role_type)
-
-            membership, created = UserGroup.objects.get_or_create(
-                user=user,
-                group=role.permission_group,
-            )
-
-            if created:
-                structure_role_granted.send(
-                    sender=ProjectGroup,
-                    structure=self,
-                    user=user,
-                    role=role_type,
-                )
-
-            return membership, created
-
-    def remove_user(self, user, role_type=None):
-        UserGroup = get_user_model().groups.through
-
-        with transaction.atomic():
-            memberships = UserGroup.objects.filter(
-                group__projectgrouprole__project_group=self,
-                user=user,
-            )
-
-            if role_type is not None:
-                memberships = memberships.filter(group__projectgrouprole__role_type=role_type)
-
-            for membership in memberships.iterator():
-                role = membership.group.projectgrouprole
-                membership.delete()
-
-                structure_role_revoked.send(
-                    sender=ProjectGroup,
-                    structure=self,
-                    user=membership.user,
-                    role=role.role_type,
-                )
-
-    def has_user(self, user, role_type=None):
-        queryset = self.roles.filter(permission_group__user=user)
-
-        if role_type is not None:
-            queryset = queryset.filter(role_type=role_type)
-
-        return queryset.exists()
-
-    def get_log_fields(self):
-        return ('uuid', 'customer', 'name')
-
-    def get_parents(self):
-        return [self.customer]
 
 
 @python_2_unicode_compatible
@@ -728,7 +591,6 @@ class Service(core_models.UuidMixin,
     class Permissions(object):
         customer_path = 'customer'
         project_path = 'projects'
-        project_group_path = 'customer__projects__project_groups'
 
     settings = models.ForeignKey(ServiceSettings)
     customer = models.ForeignKey(Customer)
@@ -849,7 +711,6 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
     class Permissions(object):
         customer_path = 'service__customer'
         project_path = 'project'
-        project_group_path = 'project__project_groups'
 
     service = NotImplemented
     project = models.ForeignKey(Project)
@@ -1150,7 +1011,6 @@ class ResourceMixin(MonitoringModelMixin,
     class Permissions(object):
         customer_path = 'service_project_link__project__customer'
         project_path = 'service_project_link__project'
-        project_group_path = 'service_project_link__project__project_groups'
         service_path = 'service_project_link__service'
 
     service_project_link = NotImplemented

@@ -28,11 +28,10 @@ class BalanceEventLogger(EventLogger):
 
 class ProjectEventLogger(EventLogger):
     project = models.Project
-    project_group = models.ProjectGroup
     project_previous_name = six.text_type
 
     class Meta:
-        nullable_fields = ['project_group', 'project_previous_name']
+        nullable_fields = ['project_previous_name']
         event_types = ('project_deletion_succeeded',
                        'project_update_succeeded',
                        'project_creation_succeeded',
@@ -40,15 +39,6 @@ class ProjectEventLogger(EventLogger):
         event_groups = {
             'projects': event_types,
         }
-
-
-class ProjectGroupEventLogger(EventLogger):
-    project_group = models.ProjectGroup
-
-    class Meta:
-        event_types = ('project_group_deletion_succeeded',
-                       'project_group_update_succeeded',
-                       'project_group_creation_succeeded')
 
 
 class CustomerRoleEventLogger(EventLogger):
@@ -67,36 +57,16 @@ class CustomerRoleEventLogger(EventLogger):
 
 class ProjectRoleEventLogger(EventLogger):
     project = models.Project
-    project_group = models.ProjectGroup
     affected_user = User
     structure_type = six.text_type
     role_name = six.text_type
 
     class Meta:
-        nullable_fields = ['project_group']
         event_types = 'role_granted', 'role_revoked'
         event_groups = {
             'projects': event_types,
             'users': event_types,
         }
-
-
-class ProjectGroupRoleEventLogger(EventLogger):
-    project_group = models.ProjectGroup
-    affected_user = User
-    structure_type = six.text_type
-    role_name = six.text_type
-
-    class Meta:
-        event_types = 'role_granted', 'role_revoked'
-
-
-class ProjectGroupMembershipEventLogger(EventLogger):
-    project = models.Project
-    project_group = models.ProjectGroup
-
-    class Meta:
-        event_types = 'project_added_to_project_group', 'project_removed_from_project_group'
 
 
 class UserOrganizationEventLogger(EventLogger):
@@ -145,11 +115,8 @@ class ResourceEventLogger(EventLogger):
 
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
-event_logger.register('project_group_role', ProjectGroupRoleEventLogger)
-event_logger.register('project_group_membership', ProjectGroupMembershipEventLogger)
 event_logger.register('user_organization', UserOrganizationEventLogger)
 event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
-event_logger.register('project_group', ProjectGroupEventLogger)
 event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)

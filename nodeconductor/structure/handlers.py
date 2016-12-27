@@ -3,8 +3,6 @@ from __future__ import unicode_literals
 import logging
 
 from django.conf import settings
-from django.contrib.auth.models import Group
-from django.db import models, transaction
 from django.utils import timezone
 
 from nodeconductor.core import utils
@@ -12,8 +10,7 @@ from nodeconductor.core.tasks import send_task
 from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
-from nodeconductor.structure.models import (CustomerRole, Project, ProjectRole, ProjectGroupRole,
-                                            Customer, ProjectGroup, ServiceSettings, Service, Resource, NewResource)
+from nodeconductor.structure.models import Project, Customer, ServiceSettings, Service, Resource, NewResource
 
 
 logger = logging.getLogger(__name__)
@@ -21,48 +18,6 @@ logger = logging.getLogger(__name__)
 
 def revoke_roles_on_project_deletion(sender, instance=None, **kwargs):
     instance.remove_all_users()
-
-
-def prevent_non_empty_project_group_deletion(sender, instance, **kwargs):
-    related_projects = Project.objects.filter(project_groups=instance)
-
-    if related_projects.exists():
-        raise models.ProtectedError(
-            "Cannot delete some instances of model 'ProjectGroup' because "
-            "they have connected 'Projects'",
-            related_projects
-        )
-
-
-def create_project_roles(sender, instance, created, **kwargs):
-    if not created:
-        return
-
-    with transaction.atomic():
-        admin_group = Group.objects.create(name='Role: {0} admin'.format(instance.uuid))
-        mgr_group = Group.objects.create(name='Role: {0} mgr'.format(instance.uuid))
-
-        instance.roles.create(role_type=ProjectRole.ADMINISTRATOR, permission_group=admin_group)
-        instance.roles.create(role_type=ProjectRole.MANAGER, permission_group=mgr_group)
-
-
-def create_customer_roles(sender, instance, created, **kwargs):
-    if not created:
-        return
-
-    with transaction.atomic():
-        owner_group = Group.objects.create(name='Role: {0} owner'.format(instance.uuid))
-
-        instance.roles.create(role_type=CustomerRole.OWNER, permission_group=owner_group)
-
-
-def create_project_group_roles(sender, instance, created, **kwargs):
-    if not created:
-        return
-
-    with transaction.atomic():
-        mgr_group = Group.objects.create(name='Role: {0} group mgr'.format(instance.uuid))
-        instance.roles.create(role_type=ProjectGroupRole.MANAGER, permission_group=mgr_group)
 
 
 def log_customer_save(sender, instance, created=False, **kwargs):
@@ -111,32 +66,6 @@ def log_customer_account_debited(sender, instance, amount, **kwargs):
         })
 
 
-def log_project_group_save(sender, instance, created=False, **kwargs):
-    if created:
-        event_logger.project_group.info(
-            'Project group {project_group_name} has been created.',
-            event_type='project_group_creation_succeeded',
-            event_context={
-                'project_group': instance,
-            })
-    else:
-        event_logger.project_group.info(
-            'Project group {project_group_name} has been updated.',
-            event_type='project_group_update_succeeded',
-            event_context={
-                'project_group': instance,
-            })
-
-
-def log_project_group_delete(sender, instance, **kwargs):
-    event_logger.project_group.info(
-        'Project group {project_group_name} has been deleted.',
-        event_type='project_group_deletion_succeeded',
-        event_context={
-            'project_group': instance,
-        })
-
-
 def log_project_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.project.info(
@@ -144,7 +73,6 @@ def log_project_save(sender, instance, created=False, **kwargs):
             event_type='project_creation_succeeded',
             event_context={
                 'project': instance,
-                'project_group': instance.project_groups.first(),
             })
     else:
         if instance.tracker.has_changed('name'):
@@ -153,7 +81,6 @@ def log_project_save(sender, instance, created=False, **kwargs):
                 event_type='project_name_update_succeeded',
                 event_context={
                     'project': instance,
-                    'project_group': instance.project_groups.first(),
                     'project_previous_name': instance.tracker.previous('name')
                 })
         else:
@@ -162,7 +89,6 @@ def log_project_save(sender, instance, created=False, **kwargs):
                 event_type='project_update_succeeded',
                 event_context={
                     'project': instance,
-                    'project_group': instance.project_groups.first()
                 })
 
 
@@ -172,7 +98,6 @@ def log_project_delete(sender, instance, **kwargs):
         event_type='project_deletion_succeeded',
         event_context={
             'project': instance,
-            'project_group': instance.project_groups.first(),
         })
 
 
@@ -206,7 +131,6 @@ def log_project_role_granted(sender, structure, user, role, **kwargs):
         event_type='role_granted',
         event_context={
             'project': structure,
-            'project_group': structure.project_groups.first(),
             'affected_user': user,
             'structure_type': 'project',
             'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
@@ -219,35 +143,8 @@ def log_project_role_revoked(sender, structure, user, role, **kwargs):
         event_type='role_revoked',
         event_context={
             'project': structure,
-            'project_group': structure.project_groups.first(),
             'affected_user': user,
             'structure_type': 'project',
-            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
-        })
-
-
-def log_project_group_role_granted(sender, structure, user, role, **kwargs):
-    event_logger.project_group_role.info(
-        'User {affected_user_username} has gained role of {role_name}'
-        ' in project group {project_group_name}.',
-        event_type='role_granted',
-        event_context={
-            'project_group': structure,
-            'affected_user': user,
-            'structure_type': 'project_group',
-            'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
-        })
-
-
-def log_project_group_role_revoked(sender, structure, user, role, **kwargs):
-    event_logger.project_group_role.info(
-        'User {affected_user_username} has gained role of {role_name}'
-        ' in project group {project_group_name}.',
-        event_type='role_revoked',
-        event_context={
-            'project_group': structure,
-            'affected_user': user,
-            'structure_type': 'project_group',
             'role_name': structure.roles.get(role_type=role).get_role_type_display().lower(),
         })
 
@@ -256,12 +153,12 @@ def change_customer_nc_users_quota(sender, structure, user, role, signal, **kwar
     """ Modify nc_user_count quota usage on structure role grant or revoke """
     assert signal in (signals.structure_role_granted, signals.structure_role_revoked), \
         'Handler "change_customer_nc_users_quota" has to be used only with structure_role signals'
-    assert sender in (Customer, Project, ProjectGroup), \
-        'Handler "change_customer_nc_users_quota" works only with Project, Customer and ProjectGroup models'
+    assert sender in (Customer, Project), \
+        'Handler "change_customer_nc_users_quota" works only with Project and Customer models'
 
     if sender == Customer:
         customer = structure
-    elif sender in (Project, ProjectGroup):
+    elif sender == Project:
         customer = structure.customer
 
     customer_users = customer.get_users()

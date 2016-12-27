@@ -79,12 +79,12 @@ class PermissionListSerializer(serializers.ListSerializer):
 
     In order to use it set Meta.list_serializer_class. Example:
 
-    >>> class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
-    >>>     class Meta(BasicProjectGroupSerializer.Meta):
+    >>> class PermissionProjectSerializer(BasicProjectSerializer):
+    >>>     class Meta(BasicProjectSerializer.Meta):
     >>>         list_serializer_class = PermissionListSerializer
     >>>
     >>> class CustomerSerializer(serializers.HyperlinkedModelSerializer):
-    >>>     project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
+    >>>     projects = PermissionProjectSerializer(many=True, read_only=True)
     """
     def to_representation(self, data):
         try:
@@ -116,26 +116,6 @@ class BasicProjectSerializer(core_serializers.BasicInfoSerializer):
 class PermissionProjectSerializer(BasicProjectSerializer):
     class Meta(BasicProjectSerializer.Meta):
         list_serializer_class = PermissionListSerializer
-
-
-class BasicProjectGroupSerializer(core_serializers.BasicInfoSerializer):
-    class Meta(core_serializers.BasicInfoSerializer.Meta):
-        model = models.ProjectGroup
-
-
-class PermissionProjectGroupSerializer(BasicProjectGroupSerializer):
-    class Meta(BasicProjectGroupSerializer.Meta):
-        list_serializer_class = PermissionListSerializer
-
-
-class NestedProjectGroupSerializer(core_serializers.HyperlinkedRelatedModelSerializer):
-    class Meta(object):
-        model = models.ProjectGroup
-        fields = ('url', 'name', 'uuid')
-        read_only_fields = ('name', 'uuid')
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
 
 
 class NestedServiceProjectLinkSerializer(serializers.Serializer):
@@ -194,13 +174,6 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
                         PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
-    project_groups = NestedProjectGroupSerializer(
-        queryset=models.ProjectGroup.objects.all(),
-        many=True,
-        required=False,
-        default=(),
-    )
-
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
 
@@ -210,7 +183,6 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'url', 'uuid',
             'name',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'project_groups',
             'description',
             'quotas',
             'services',
@@ -237,12 +209,10 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'customer__abbreviation'
         )
         return queryset.select_related('customer').only(*related_fields) \
-            .prefetch_related('quotas', 'project_groups')
+            .prefetch_related('quotas')
 
     def create(self, validated_data):
-        project_groups = validated_data.pop('project_groups')
         project = super(ProjectSerializer, self).create(validated_data)
-        project.project_groups.add(*project_groups)
 
         return project
 
@@ -284,13 +254,6 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
                 services[link.project_id].append(link)
         return services
 
-    def update(self, instance, validated_data):
-        if 'project_groups' in validated_data:
-            project_groups = validated_data.pop('project_groups')
-            instance.project_groups.clear()
-            instance.project_groups.add(*project_groups)
-        return super(ProjectSerializer, self).update(instance, validated_data)
-
 
 class CustomerImageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField()
@@ -304,7 +267,6 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
                          core_serializers.AugmentedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
     projects = PermissionProjectSerializer(many=True, read_only=True)
-    project_groups = PermissionProjectGroupSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     image = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
@@ -315,7 +277,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'url',
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
-            'projects', 'project_groups',
+            'projects',
             'owners', 'balance',
             'registration_code',
             'quotas',
@@ -335,7 +297,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
 
     @staticmethod
     def eager_load(queryset):
-        return queryset.prefetch_related('quotas', 'projects', 'project_groups')
+        return queryset.prefetch_related('quotas', 'projects')
 
     def validate(self, attrs):
         country = attrs.get('country')
@@ -374,7 +336,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='customer_permission-detail',
-        queryset=User.groups.through.objects.all(),
+        queryset=models.CustomerPermission.objects.filter(is_active=True),
     )
     projects = serializers.SerializerMethodField()
 
@@ -424,17 +386,17 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
 class ProjectUserSerializer(serializers.ModelSerializer):
     role = serializers.ReadOnlyField()
-    permission = serializers.HyperlinkedRelatedField(
-        source='perm.pk',
-        view_name='project_permission-detail',
-        queryset=User.groups.through.objects.all(),
-    )
 
     class Meta:
         model = User
         fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
+            'permission': {
+                'source': 'perm.pk',
+                'view_name': 'project_permission-detail',
+                'queryset': models.ProjectPermission.objects.filter(is_active=True),
+            }
         }
 
     def to_representation(self, user):
@@ -462,63 +424,6 @@ class BalanceHistorySerializer(serializers.ModelSerializer):
         fields = ['created', 'amount']
 
 
-class ProjectGroupSerializer(PermissionFieldFilteringMixin,
-                             core_serializers.AugmentedSerializerMixin,
-                             serializers.HyperlinkedModelSerializer):
-    projects = PermissionProjectSerializer(many=True, read_only=True)
-
-    class Meta(object):
-        model = models.ProjectGroup
-        fields = (
-            'url',
-            'uuid',
-            'name',
-            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'projects',
-            'description',
-        )
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-            'customer': {'lookup_field': 'uuid'},
-        }
-        related_paths = {
-            'customer': ('uuid', 'name', 'native_name', 'abbreviation')
-        }
-        protected_fields = ('customer',)
-
-    def get_filtered_field_names(self):
-        return 'customer',
-
-
-class ProjectGroupMembershipSerializer(PermissionFieldFilteringMixin,
-                                       serializers.HyperlinkedModelSerializer):
-    project_group = serializers.HyperlinkedRelatedField(
-        source='projectgroup',
-        view_name='projectgroup-detail',
-        lookup_field='uuid',
-        queryset=models.ProjectGroup.objects.all(),
-    )
-    project_group_name = serializers.ReadOnlyField(source='projectgroup.name')
-    project = serializers.HyperlinkedRelatedField(
-        view_name='project-detail',
-        lookup_field='uuid',
-        queryset=models.Project.objects.all(),
-    )
-    project_name = serializers.ReadOnlyField(source='project.name')
-
-    class Meta(object):
-        model = models.ProjectGroup.projects.through
-        fields = (
-            'url',
-            'project_group', 'project_group_name',
-            'project', 'project_name',
-        )
-        view_name = 'projectgroup_membership-detail'
-
-    def get_filtered_field_names(self):
-        return 'project', 'project_group'
-
-
 STRUCTURE_PERMISSION_USER_FIELDS = {
     'fields': ('user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email'),
     'path': ('username', 'full_name', 'native_name', 'uuid', 'email')
@@ -528,15 +433,8 @@ STRUCTURE_PERMISSION_USER_FIELDS = {
 class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                                    core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
-    customer = serializers.HyperlinkedRelatedField(
-        source='group.customerrole.customer',
-        view_name='customer-detail',
-        lookup_field='uuid',
-        queryset=models.Customer.objects.all(),
-    )
-
     role = MappedChoiceField(
-        source='group.customerrole.role_type',
+        source='role_type',
         choices=(
             ('owner', 'Owner'),
         ),
@@ -546,23 +444,30 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
     )
 
     class Meta(object):
-        model = User.groups.through
+        model = models.CustomerPermission
         fields = (
             'url', 'pk', 'role',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
         ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
         related_paths = {
             'user': STRUCTURE_PERMISSION_USER_FIELDS['path'],
-            'group.customerrole.customer': ('name', 'native_name', 'abbreviation', 'uuid')
+            'customer': ('name', 'native_name', 'abbreviation', 'uuid')
         }
         extra_kwargs = {
+            'url': {
+                'view_name': 'customer_permission-detail'
+            },
             'user': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
                 'queryset': User.objects.all(),
             },
+            'customer': {
+                'view_name': 'customer-detail',
+                'lookup_field': 'uuid',
+                'queryset': models.Customer.objects.all(),
+            }
         }
-        view_name = 'customer_permission-detail'
 
     def create(self, validated_data):
         customer = validated_data['customer']
@@ -570,16 +475,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         role = validated_data['role']
 
         permission, _ = customer.add_user(user, role)
-
         return permission
-
-    def to_internal_value(self, data):
-        value = super(CustomerPermissionSerializer, self).to_internal_value(data)
-        return {
-            'user': value['user'],
-            'customer': value['group']['customerrole']['customer'],
-            'role': value['group']['customerrole']['role_type'],
-        }
 
     def validate(self, data):
         customer = data['customer']
@@ -597,15 +493,8 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
 class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                                   core_serializers.AugmentedSerializerMixin,
                                   serializers.HyperlinkedModelSerializer):
-    project = serializers.HyperlinkedRelatedField(
-        source='group.projectrole.project',
-        view_name='project-detail',
-        lookup_field='uuid',
-        queryset=models.Project.objects.all(),
-    )
-
     role = MappedChoiceField(
-        source='group.projectrole.role_type',
+        source='role_type',
         choices=(
             ('admin', 'Administrator'),
             ('manager', 'Manager'),
@@ -617,7 +506,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
     )
 
     class Meta(object):
-        model = User.groups.through
+        model = models.ProjectPermission
         fields = (
             'url', 'pk',
             'role',
@@ -625,7 +514,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
 
         related_paths = {
-            'group.projectrole.project': ('name', 'uuid'),
+            'project': ('name', 'uuid'),
             'user': STRUCTURE_PERMISSION_USER_FIELDS['path']
         }
         extra_kwargs = {
@@ -634,6 +523,11 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                 'lookup_field': 'uuid',
                 'queryset': User.objects.all(),
             },
+            'project': {
+                'view_name': 'project-detail',
+                'lookup_field': 'uuid',
+                'queryset': models.Project.objects.all(),
+            }
         }
         view_name = 'project_permission-detail'
 
@@ -650,8 +544,8 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         value = super(ProjectPermissionSerializer, self).to_internal_value(data)
         return {
             'user': value['user'],
-            'project': value['group']['projectrole']['project'],
-            'role': value['group']['projectrole']['role_type'],
+            'project': value['project'],
+            'role': value['role_type'],
         }
 
     def validate(self, data):
@@ -665,77 +559,6 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'project',
-
-
-class ProjectGroupPermissionSerializer(PermissionFieldFilteringMixin,
-                                       core_serializers.AugmentedSerializerMixin,
-                                       serializers.HyperlinkedModelSerializer):
-    project_group = serializers.HyperlinkedRelatedField(
-        source='group.projectgrouprole.project_group',
-        view_name='projectgroup-detail',
-        lookup_field='uuid',
-        queryset=models.ProjectGroup.objects.all(),
-    )
-
-    role = MappedChoiceField(
-        source='group.projectgrouprole.role_type',
-        choices=(
-            ('manager', 'Manager'),
-        ),
-        choice_mappings={
-            'manager': models.ProjectGroupRole.MANAGER,
-        },
-    )
-
-    class Meta(object):
-        model = User.groups.through
-        fields = (
-            'url', 'pk',
-            'role',
-            'project_group', 'project_group_uuid', 'project_group_name',
-        ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
-        related_paths = {
-            'user': STRUCTURE_PERMISSION_USER_FIELDS['path'],
-            'group.projectgrouprole.project_group': ('name', 'uuid'),
-        }
-        extra_kwargs = {
-            'user': {
-                'view_name': 'user-detail',
-                'lookup_field': 'uuid',
-                'queryset': User.objects.all(),
-            },
-        }
-        view_name = 'projectgroup_permission-detail'
-
-    def create(self, validated_data):
-        project_group = validated_data['project_group']
-        user = validated_data['user']
-        role = validated_data['role']
-
-        permission, _ = project_group.add_user(user, role)
-
-        return permission
-
-    def to_internal_value(self, data):
-        value = super(ProjectGroupPermissionSerializer, self).to_internal_value(data)
-        return {
-            'user': value['user'],
-            'project_group': value['group']['projectgrouprole']['project_group'],
-            'role': value['group']['projectgrouprole']['role_type'],
-        }
-
-    def validate(self, data):
-        project_group = data['project_group']
-        user = data['user']
-        role = data['role']
-
-        if project_group.has_user(user, role):
-            raise serializers.ValidationError('The fields project_group, user, role must make a unique set.')
-
-        return data
-
-    def get_filtered_field_names(self):
-        return 'project_group',
 
 
 class UserOrganizationSerializer(serializers.Serializer):
@@ -811,8 +634,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class CreationTimeStatsSerializer(serializers.Serializer):
-    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'), ('project_group', 'project_group'))
-    MODEL_CLASSES = {'project': models.Project, 'customer': models.Customer, 'project_group': models.ProjectGroup}
+    MODEL_NAME_CHOICES = (('project', 'project'), ('customer', 'customer'),)
+    MODEL_CLASSES = {'project': models.Project, 'customer': models.Customer}
 
     model_name = serializers.ChoiceField(choices=MODEL_NAME_CHOICES)
     start_timestamp = serializers.IntegerField(min_value=0)
@@ -1310,8 +1133,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                              serializers.HyperlinkedModelSerializer)):
 
     state = serializers.ReadOnlyField(source='get_state_display')
-    project_groups = BasicProjectGroupSerializer(
-        source='service_project_link.project.project_groups', many=True, read_only=True)
 
     project = serializers.HyperlinkedRelatedField(
         source='service_project_link.project',
@@ -1373,7 +1194,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'service_settings_state', 'service_settings_error_message',
             'project', 'project_name', 'project_uuid',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-            'project_groups', 'tags', 'error_message',
+            'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
             'access_url', 'related_resources'
         )
@@ -1413,9 +1234,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                 'service_project_link__service',
                 'service_project_link__project',
                 'service_project_link__project__customer',
-            )
-            .prefetch_related(
-                'project__project_groups',
             )
         )
 
@@ -1573,12 +1391,10 @@ class AggregateSerializer(serializers.Serializer):
     MODEL_NAME_CHOICES = (
         ('project', 'project'),
         ('customer', 'customer'),
-        ('project_group', 'project_group')
     )
     MODEL_CLASSES = {
         'project': models.Project,
         'customer': models.Customer,
-        'project_group': models.ProjectGroup,
     }
 
     aggregate = serializers.ChoiceField(choices=MODEL_NAME_CHOICES, default='customer')
@@ -1597,9 +1413,6 @@ class AggregateSerializer(serializers.Serializer):
 
         if self.data['aggregate'] == 'project':
             return queryset.all()
-        elif self.data['aggregate'] == 'project_group':
-            queryset = models.Project.objects.filter(project_groups__in=list(queryset))
-            return filter_queryset_for_user(queryset, user)
         else:
             queryset = models.Project.objects.filter(customer__in=list(queryset))
             return filter_queryset_for_user(queryset, user)

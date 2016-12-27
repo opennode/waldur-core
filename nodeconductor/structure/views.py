@@ -115,7 +115,7 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """
         Deletion of a customer is done through sending a **DELETE** request to the customer instance URI. Please note,
-        that if a customer has connected projects or project groups, deletion request will fail with 409 response code.
+        that if a customer has connected projects, deletion request will fail with 409 response code.
 
         Valid request example (token is user specific):
 
@@ -225,7 +225,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
 
         Supported logic filters:
 
-        - ?can_manage - return a list of projects where current user is manager, group manager or a customer owner;
+        - ?can_manage - return a list of projects where current user is manager or a customer owner;
         - ?can_admin - return a list of projects where current user is admin;
         """
         return super(ProjectViewSet, self).list(request, *args, **kwargs)
@@ -260,9 +260,6 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
             {
                 "name": "Project A",
                 "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-                "project_groups": [
-                    { "url": "http://localhost:8000/api/project-groups/b04f53e72e9b46949fa7c3a0ef52cd91/"}
-                ]
             }
         """
         return super(ProjectViewSet, self).create(request, *args, **kwargs)
@@ -282,19 +279,13 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         """
         return super(ProjectViewSet, self).destroy(request, *args, **kwargs)
 
-    def can_create_project_with(self, customer, project_groups):
+    def can_create_project_with(self, customer):
         user = self.request.user
 
         if user.is_staff:
             return True
 
         if customer.has_user(user, models.CustomerRole.OWNER):
-            return True
-
-        if project_groups and all(
-                project_group.has_user(user, models.ProjectGroupRole.MANAGER)
-                for project_group in project_groups
-        ):
             return True
 
         return False
@@ -306,27 +297,29 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         can_manage = self.request.query_params.get('can_manage', None)
         if can_manage is not None:
             queryset = queryset.filter(
-                Q(customer__roles__permission_group__user=user,
-                  customer__roles__role_type=models.CustomerRole.OWNER) |
-                Q(roles__permission_group__user=user,
-                  roles__role_type=models.ProjectRole.MANAGER)
+                Q(customer__permissions__user=user,
+                  customer__permissions__role_type=models.CustomerRole.OWNER,
+                  customer__permissions__is_active=True) |
+                Q(permissions__user=user,
+                  permissions__role_type=models.ProjectRole.MANAGER,
+                  permissions__is_active=True)
             ).distinct()
 
         can_admin = self.request.query_params.get('can_admin', None)
 
         if can_admin is not None:
             queryset = queryset.filter(
-                roles__permission_group__user=user,
-                roles__role_type=models.ProjectRole.ADMINISTRATOR,
+                permissions__user=user,
+                permissions__type=models.ProjectRole.ADMINISTRATOR,
+                permissions__is_active=True
             )
 
         return queryset
 
     def perform_create(self, serializer):
         customer = serializer.validated_data['customer']
-        project_groups = serializer.validated_data['project_groups']
 
-        if not self.can_create_project_with(customer, project_groups):
+        if not self.can_create_project_with(customer):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         customer.validate_quota_change({'nc_project_count': 1}, raise_exception=True)
@@ -340,120 +333,6 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         queryset = self.paginate_queryset(project.get_users())
         serializer = self.get_serializer(queryset, many=True)
         return self.get_paginated_response(serializer.data)
-
-
-class ProjectGroupViewSet(viewsets.ModelViewSet):
-    queryset = models.ProjectGroup.objects.all()
-    serializer_class = serializers.ProjectGroupSerializer
-    lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
-    # permission_classes = (permissions.IsAuthenticated,)  # TODO: Add permissions for Create/Update
-    filter_class = filters.ProjectGroupFilter
-
-    def list(self, request, *args, **kwargs):
-        """
-        To get a list of projects groups, run **GET** against */api/project-groups/* as authenticated user.
-        Note that a user can only see connected project groups:
-
-        - project groups that the user owns as a customer;
-        - project groups with projects where user has a role.
-
-        A new project group can be created by users with staff privilege (is_staff=True) or customer owners.
-        Project group resource quota is optional. Example of a valid request:
-
-        .. code-block:: http
-
-            POST /api/project-groups/ HTTP/1.1
-            Content-Type: application/json
-            Accept: application/json
-            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-            Host: example.com
-
-            {
-                "name": "Project group A",
-                "customer": "http://example.com/api/customers/6c9b01c251c24174a6691a1f894fae31/",
-            }
-        """
-        return super(ProjectGroupViewSet, self).list(request, *args, **kwargs)
-
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Deletion of a project group is done through sending a **DELETE** request to the project group instance URI.
-        Please note, that if a project group has connected projects, deletion request will fail with 409 response code.
-
-        Valid request example (token is user specific):
-
-        .. code-block:: http
-
-            DELETE /api/project-groups/6c9b01c251c24174a6691a1f894fae31/ HTTP/1.1
-            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-            Host: example.com
-        """
-        return super(ProjectGroupViewSet, self).retrieve(request, *args, **kwargs)
-
-
-class ProjectGroupMembershipViewSet(mixins.CreateModelMixin,
-                                    mixins.RetrieveModelMixin,
-                                    mixins.DestroyModelMixin,
-                                    mixins.ListModelMixin,
-                                    viewsets.GenericViewSet):
-    queryset = models.ProjectGroup.projects.through.objects.all()
-    serializer_class = serializers.ProjectGroupMembershipSerializer
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
-    filter_class = filters.ProjectGroupMembershipFilter
-
-    def perform_create(self, serializer):
-        super(ProjectGroupMembershipViewSet, self).perform_create(serializer)
-
-        project = serializer.validated_data['project']
-        project_group = serializer.validated_data['projectgroup']
-
-        event_logger.project_group_membership.info(
-            'Project {project_name} has been added to project group {project_group_name}.',
-            event_type='project_added_to_project_group',
-            event_context={
-                'project': project,
-                'project_group': project_group,
-            })
-
-    def perform_destroy(self, instance):
-        super(ProjectGroupMembershipViewSet, self).perform_destroy(instance)
-
-        project = instance.project
-        project_group = instance.projectgroup
-        event_logger.project_group_membership.info(
-            'Project {project_name} has been removed from project group {project_group_name}.',
-            event_type='project_removed_from_project_group',
-            event_context={
-                'project': project,
-                'project_group': project_group,
-            })
-
-    def list(self, request, *args, **kwargs):
-        """
-        To get a list of connections between project and a project group,
-        run **GET** against */api/project-group-memberships/* as authenticated user.
-        Note that a user can only see connections of a project or a project group where a user has a role.
-
-        In order to link project to a project group, **POST** a connection between them to
-        */api/project-group-memberships/*.
-        Note that project and a project group must be from the same customer.
-        For example,
-
-        .. code-block:: http
-
-            POST /api/project-group-memberships/ HTTP/1.1
-            Content-Type: application/json
-            Accept: application/json
-            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-            Host: example.com
-
-            {
-                "project_group": "http://example.com/api/project-groups/736038dc5cac47309111916eb6fe802d/",
-                "project": "http://example.com/api/projects/661ee58978d9487c8ac26c56836585e0/",
-            }
-        """
-        return super(ProjectGroupMembershipViewSet, self).list(request, *args, **kwargs)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -484,9 +363,8 @@ class UserViewSet(viewsets.ModelViewSet):
             if not user.is_staff:
                 # XXX: Let the DB cry...
                 connected_customers_query = connected_customers_query.filter(
-                    Q(roles__permission_group__user=user) |
-                    Q(projects__roles__permission_group__user=user) |
-                    Q(project_groups__roles__permission_group__user=user)
+                    Q(permissions__user=user, permissions__is_active=True) |
+                    Q(projects__permissions__user=user, projects__permissions__is_active=True)
                 ).distinct()
 
             # check if we need to filter potential users by a customer
@@ -504,10 +382,12 @@ class UserViewSet(viewsets.ModelViewSet):
 
             queryset = queryset.filter(is_staff=False).filter(
                 # customer users
-                Q(groups__customerrole__customer__in=connected_customers) |
-                Q(groups__projectrole__project__customer__in=connected_customers) |
-                Q(groups__projectgrouprole__project_group__customer__in=connected_customers) |
+                Q(customerpermissions__customer__in=connected_customers,
+                  customerpermissions__is_active=True) |
+                Q(projectpermissions__project__customer__in=connected_customers,
+                  projectpermissions__project__customer__is_active=True) |
                 # users with no role
+                # TODO: Update queries
                 Q(
                     groups__customerrole=None,
                     groups__projectrole=None,
@@ -757,8 +637,6 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     - Projects are connected to customers, whereas the project may belong to one customer only,
       and the customer may have
       multiple projects.
-    - Projects are connected to project groups, whereas the project may belong to multiple project groups,
-      and the project group may contain multiple projects.
     - Projects are connected to services, whereas the project may contain multiple services,
       and the service may belong to multiple projects.
     - Staff members can list all available projects of any customer and create new projects.
@@ -769,7 +647,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
     """
     # See CustomerPermissionViewSet for implementation details.
 
-    queryset = User.groups.through.objects.exclude(group__projectrole=None)
+    queryset = models.ProjectPermission.objects.filter(is_active=True)
     serializer_class = serializers.ProjectPermissionSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
@@ -783,10 +661,6 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         if project.customer.has_user(user, models.CustomerRole.OWNER):
             return True
 
-        for project_group in project.project_groups.iterator():
-            if project_group.has_user(user, models.ProjectGroupRole.MANAGER):
-                return True
-
         if role == models.ProjectRole.ADMINISTRATOR and project.has_user(user, models.ProjectRole.MANAGER):
             return True
 
@@ -798,8 +672,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         represent project managers and administrators. The link is maintained
         through */api/project-permissions/* endpoint.
 
-        Note that project membership can be viewed and modified only by customer owners, corresponding project group
-        managers and staff users.
+        Note that project membership can be viewed and modified only by customer owners and staff users.
 
         To list all visible links, run a **GET** query against a list.
         Response will contain a list of project users and their brief data.
@@ -822,9 +695,9 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         """
         return super(ProjectPermissionViewSet, self).list(request, *args, **kwargs)
 
-    def retrieve(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs):
         """
-        To remove a user from a project group, delete corresponding connection (**url** field). Successful deletion
+        To remove a user from a project, delete corresponding connection (**url** field). Successful deletion
         will return status code 204.
 
         .. code-block:: http
@@ -833,7 +706,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
             Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
             Host: example.com
         """
-        return super(ProjectPermissionViewSet, self).retrieve(request, *args, **kwargs)
+        return super(ProjectPermissionViewSet, self).destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         affected_project = serializer.validated_data['project']
@@ -850,116 +723,13 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 
     def perform_destroy(self, instance):
         affected_user = instance.user
-        affected_project = instance.group.projectrole.project
-        role = instance.group.projectrole.role_type
+        affected_project = instance.project
+        role = instance.role_type
 
         if not self.can_manage_roles_for(affected_project, role):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_project.remove_user(affected_user, role)
-
-
-class ProjectGroupPermissionViewSet(mixins.CreateModelMixin,
-                                    mixins.RetrieveModelMixin,
-                                    mixins.ListModelMixin,
-                                    mixins.DestroyModelMixin,
-                                    viewsets.GenericViewSet):
-    """
-    Project group permissions expresses connection of users to project groups.
-    A single role is supported - Project Group manager.
-
-    Management is done through */api/project-group-permissions/* endpoint.
-    """
-    # See CustomerPermissionViewSet for implementation details.
-    queryset = User.groups.through.objects.exclude(group__projectgrouprole=None)
-    serializer_class = serializers.ProjectGroupPermissionSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,)
-    filter_backends = (rf_filters.DjangoFilterBackend,)
-    filter_class = filters.ProjectGroupPermissionFilter
-
-    def can_manage_roles_for(self, project_group):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        if project_group.customer.has_user(user, models.CustomerRole.OWNER):
-            return True
-
-        return False
-
-    def get_queryset(self):
-        queryset = super(ProjectGroupPermissionViewSet, self).get_queryset()
-
-        # XXX: This should be removed after permissions refactoring
-        if not self.request.user.is_staff:
-            queryset = queryset.filter(
-                Q(group__projectgrouprole__project_group__customer__roles__permission_group__user=self.request.user,
-                  group__projectgrouprole__project_group__customer__roles__role_type=models.CustomerRole.OWNER) |
-                Q(group__projectgrouprole__project_group__projects__roles__permission_group__user=self.request.user) |
-                Q(group__projectgrouprole__project_group__roles__permission_group__user=self.request.user)
-            ).distinct()
-
-        return queryset
-
-    def list(self, request, *args, **kwargs):
-        """
-        To list all visible permissions, run a **GET** query against a list.
-        Response will contain a list of project groups' users and their brief data.
-
-        To add a new user to the project group, **POST** a new relationship
-        to **api/project-permissions** endpoint specifying project, user
-        and the role of the user (currently the only role is '1' - project group manager):
-
-        .. code-block:: http
-
-            POST /api/project-permissions/ HTTP/1.1
-            Accept: application/json
-            Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-            Host: example.com
-
-            {
-                "project": "http://example.com/api/projects-groups/6c9b01c251c24174a6691a1f894fae31/",
-                "role": "manager",
-                "user": "http://example.com/api/users/82cec6c8e0484e0ab1429412fe4194b7/"
-            }
-        """
-        return super(ProjectGroupPermissionViewSet, self).list(request, *args, **kwargs)
-
-    def retrieve(self, request, *args, **kwargs):
-        """
-        To remove a user from a project group, delete corresponding connection (**url** field). Successful deletion
-        will return status code 204.
-
-        .. code-block:: http
-
-            DELETE /api/project-group-permissions/42/ HTTP/1.1
-            Authorization: Token 95a688962bf68678fd4c8cec4d138ddd9493c93b
-            Host: example.com
-        """
-
-        return super(ProjectGroupPermissionViewSet, self).retrieve(request, *args, **kwargs)
-
-    def perform_create(self, serializer):
-        affected_project_group = serializer.validated_data['project_group']
-        affected_user = serializer.validated_data['user']
-
-        if not self.can_manage_roles_for(affected_project_group):
-            raise PermissionDenied('You do not have permission to perform this action.')
-
-        if not affected_project_group.customer.get_users().filter(pk=affected_user.pk).exists():
-            affected_project_group.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
-
-        super(ProjectGroupPermissionViewSet, self).perform_create(serializer)
-
-    def perform_destroy(self, instance):
-        affected_user = instance.user
-        affected_project_group = instance.group.projectgrouprole.project_group
-        role = instance.group.projectgrouprole.role_type
-
-        if not self.can_manage_roles_for(affected_project_group):
-            raise PermissionDenied('You do not have permission to perform this action.')
-
-        affected_project_group.remove_user(affected_user, role)
 
 
 class CustomerPermissionViewSet(mixins.CreateModelMixin,
@@ -971,11 +741,11 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
     - Customers are connected to users through roles, whereas user may have role "customer owner".
     - Each customer may have multiple owners, and each user may own multiple customers.
     - Staff members can list all available customers and create new customers.
-      Customer owners can list all customers they own. Customer owners can also create new customers.
+    - Customer owners can list all customers they own. Customer owners can also create new customers.
     - Project administrators can list all the customers that own any of the projects they are administrators in.
     - Project managers can list all the customers that own any of the projects they are managers in.
     """
-    queryset = User.groups.through.objects.exclude(group__customerrole=None)
+    queryset = models.CustomerPermission.objects.filter(is_active=True)
     serializer_class = serializers.CustomerPermissionSerializer
     permission_classes = (
         rf_permissions.IsAuthenticated,
@@ -1000,10 +770,8 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
 
         if not self.request.user.is_staff:
             queryset = queryset.filter(
-                Q(group__customerrole__customer__roles__permission_group__user=self.request.user,
-                  group__customerrole__customer__roles__role_type=models.CustomerRole.OWNER) |
-                Q(group__customerrole__customer__projects__roles__permission_group__user=self.request.user) |
-                Q(group__customerrole__customer__project_groups__roles__permission_group__user=self.request.user)
+                Q(user=self.request.user, is_active=True) |
+                Q(customer__projects__permissions__user=self.request.user, is_active=True)
             ).distinct()
 
         return queryset
@@ -1067,8 +835,8 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
 
     def perform_destroy(self, instance):
         affected_user = instance.user
-        affected_customer = instance.group.customerrole.customer
-        role = instance.group.customerrole.role_type
+        affected_customer = instance.customer
+        role = instance.role_type
 
         if not self.can_manage_roles_for(affected_customer):
             raise PermissionDenied('You do not have permission to perform this action.')
@@ -1078,7 +846,7 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
 
 class CreationTimeStatsView(views.APIView):
     """
-    Historical information about creation time of projects, project groups and customers.
+    Historical information about creation time of projects and customers.
     """
     def get(self, request, format=None):
         month = 60 * 60 * 24 * 30
@@ -1099,7 +867,7 @@ class CreationTimeStatsView(views.APIView):
         """
         Available request parameters:
 
-        - ?type=type_of_statistics_objects (required. Have to be from the list: 'customer', 'project', 'project_group')
+        - ?type=type_of_statistics_objects (required. Have to be from the list: 'customer', 'project')
         - ?from=timestamp (default: now - 30 days, for example: 1415910025)
         - ?to=timestamp (default: now, for example: 1415912625)
         - ?datapoints=how many data points have to be in answer (default: 6)
@@ -2254,11 +2022,11 @@ class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorV
 
 class AggregatedStatsView(views.APIView):
     """
-    Quotas and quotas usage aggregated by projects/project_groups/customers.
+    Quotas and quotas usage aggregated by projects/customers.
 
     Available request parameters:
         - ?aggregate=aggregate_model_name (default: 'customer'.
-          Have to be from list: 'customer', 'project', 'project_group')
+          Have to be from list: 'customer', 'project')
         - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined -
           result will contain only object with given uuid)
         - ?quota_name - optional list of quota names, for example ram, vcpu, storage
@@ -2279,7 +2047,7 @@ class AggregatedStatsView(views.APIView):
 
 class QuotaTimelineStatsView(views.APIView):
     """
-    Historical data of quotas and quotas usage aggregated by projects/project_groups/customers.
+    Historical data of quotas and quotas usage aggregated by projects/customers.
 
     Available request parameters:
 
@@ -2287,7 +2055,7 @@ class QuotaTimelineStatsView(views.APIView):
     - ?to=timestamp (default: now, for example: 1415912625)
     - ?interval (default: day. Has to be from list: hour, day, week, month)
     - ?item=<quota_name>. If this parameter is not defined - endpoint will return data for all items.
-    - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project', 'project_group')
+    - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', 'project')
     - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter is defined, result will contain only object with given uuid)
 
     Answer will be list of dictionaries with fields, determining time frame. It's size is equal to interval parameter.

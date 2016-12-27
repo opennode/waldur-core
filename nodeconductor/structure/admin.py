@@ -169,48 +169,6 @@ class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonly
     inlines = [QuotaInline]
 
 
-class ProjectGroupAdminForm(ModelForm):
-    managers = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                        widget=FilteredSelectMultiple(verbose_name='Managers', is_stacked=False))
-
-    def __init__(self, *args, **kwargs):
-        super(ProjectGroupAdminForm, self).__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            self.managers = self.instance.roles.get(
-                role_type=models.ProjectGroupRole.MANAGER).permission_group.user_set.all()
-            self.fields['managers'].initial = self.managers
-        else:
-            self.managers = User.objects.none()
-
-    def save(self, commit=True):
-        group = super(ProjectGroupAdminForm, self).save(commit=False)
-
-        if not group.pk:
-            group.save()
-
-        new_managers = self.cleaned_data['managers']
-        added_managers = new_managers.exclude(pk__in=self.managers)
-        removed_managers = self.managers.exclude(pk__in=new_managers)
-        for user in added_managers:
-            group.add_user(user, role_type=models.ProjectGroupRole.MANAGER)
-
-        for user in removed_managers:
-            group.remove_user(user, role_type=models.ProjectGroupRole.MANAGER)
-
-        self.save_m2m()
-
-        return group
-
-
-class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
-    form = ProjectGroupAdminForm
-    fields = ('name', 'description', 'customer', 'managers')
-
-    list_display = ['name', 'uuid', 'customer', 'created']
-    search_fields = ['name', 'uuid']
-    change_readonly_fields = ['customer']
-
-
 class ServiceSettingsAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
@@ -396,5 +354,4 @@ class VirtualMachineAdmin(ResourceAdmin):
 
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)
