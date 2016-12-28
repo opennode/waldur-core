@@ -26,6 +26,7 @@ def filter_queryset_for_user(queryset, user):
 
         kwargs = {
             prefix + 'permissions__user': user,
+            prefix + 'permissions__is_active': True
         }
 
         if role:

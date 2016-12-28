@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from unittest import TestCase
-
 from ddt import data, ddt
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase

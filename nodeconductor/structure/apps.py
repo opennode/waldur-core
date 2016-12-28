@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from django.apps import AppConfig
-from django.contrib.auth import get_user_model
 from django.db.models import signals
 from django_fsm import signals as fsm_signals
 
@@ -12,12 +11,10 @@ class StructureConfig(AppConfig):
 
     def ready(self):
         from nodeconductor.core.models import CoordinatesMixin
-        from nodeconductor.structure.models import ResourceMixin, \
-            Service, set_permissions_for_model, TagMixin
+        from nodeconductor.structure.models import ResourceMixin, Service, TagMixin
         from nodeconductor.structure import handlers
         from nodeconductor.structure import signals as structure_signals
 
-        User = get_user_model()
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')
 
