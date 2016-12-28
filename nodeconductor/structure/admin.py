@@ -71,11 +71,7 @@ class CustomerAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(CustomerAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.owners = User.objects.filter(
-                customerpermission__role=models.CustomerRole.OWNER,
-                customerpermission__customer=self.instance,
-                customerpermission__is_active=True,
-            )
+            self.owners = self.instance.get_owners()
             self.fields['owners'].initial = self.owners
         else:
             self.owners = User.objects.none()
@@ -119,16 +115,8 @@ class ProjectAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ProjectAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.admins = User.objects.filter(
-                projectpermission__role=models.ProjectRole.ADMINISTRATOR,
-                projectpermission__project=self.instance,
-                projectpermission__is_active=True,
-            )
-            self.managers = User.objects.filter(
-                projectpermission__role=models.ProjectRole.MANAGER,
-                projectpermission__project=self.instance,
-                projectpermission__is_active=True,
-            )
+            self.admins = self.instance.get_users(models.ProjectRole.ADMINISTRATOR)
+            self.managers = self.instance.get_managers(models.ProjectRole.MANAGER)
             self.fields['admins'].initial = self.admins
             self.fields['managers'].initial = self.managers
         else:

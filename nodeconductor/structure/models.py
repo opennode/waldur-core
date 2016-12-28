@@ -480,11 +480,14 @@ class Project(core_models.DescribableMixin,
     def full_name(self):
         return self.name
 
-    def get_users(self):
-        return get_user_model().objects.filter(
+    def get_users(self, role=None):
+        users = get_user_model().objects.filter(
             projectpermission__project=self,
             projectpermission__is_active=True,
         )
+        if role:
+            users = users.filter(projectpermission__role=role)
+        return users
 
     def __str__(self):
         return '%(name)s | %(customer)s' % {
