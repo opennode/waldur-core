@@ -49,15 +49,6 @@ def validate_service_type(service_type):
         raise ValidationError('Invalid service type')
 
 
-def set_permissions_for_model(model, **kwargs):
-    class Permissions(object):
-        pass
-    for key, value in kwargs.items():
-        setattr(Permissions, key, value)
-
-    setattr(model, 'Permissions', Permissions)
-
-
 class StructureModel(models.Model):
     """ Generic structure model.
         Provides transparent interaction with base entities and relations like customer.
