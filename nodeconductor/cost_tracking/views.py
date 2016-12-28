@@ -157,7 +157,8 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
-        return models.PriceListItem.objects.filtered_for_user(self.request.user)
+        qs = models.PriceListItem.objects.filtered_for_user(self.request.user)
+        return qs
 
     def list(self, request, *args, **kwargs):
         """

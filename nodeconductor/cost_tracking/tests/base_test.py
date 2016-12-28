@@ -18,6 +18,7 @@ class BaseCostTrackingTest(test.APITransactionTestCase):
         self.customer.add_user(self.users['owner'], structure_models.CustomerRole.OWNER)
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.project.add_user(self.users['administrator'], structure_models.ProjectRole.ADMINISTRATOR)
+        self.project.add_user(self.users['manager'], structure_models.ProjectRole.MANAGER)
 
         self.service = structure_factories.TestServiceFactory(customer=self.customer)
         self.service_project_link = structure_factories.TestServiceProjectLinkFactory(

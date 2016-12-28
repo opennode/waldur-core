@@ -71,8 +71,11 @@ class CustomerAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(CustomerAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.owners = self.instance.roles.get(
-                role_type=models.CustomerRole.OWNER).permission_group.user_set.all()
+            self.owners = User.objects.filter(
+                customerpermission__role=models.CustomerRole.OWNER,
+                customerpermission__customer=self.instance,
+                customerpermission__is_active=True,
+            )
             self.fields['owners'].initial = self.owners
         else:
             self.owners = User.objects.none()
@@ -87,10 +90,10 @@ class CustomerAdminForm(ModelForm):
         added_owners = new_owners.exclude(pk__in=self.owners)
         removed_owners = self.owners.exclude(pk__in=new_owners)
         for user in added_owners:
-            customer.add_user(user, role_type=models.CustomerRole.OWNER)
+            customer.add_user(user, models.CustomerRole.OWNER)
 
         for user in removed_owners:
-            customer.remove_user(user, role_type=models.CustomerRole.OWNER)
+            customer.remove_user(user, models.CustomerRole.OWNER)
 
         self.save_m2m()
 
@@ -116,10 +119,16 @@ class ProjectAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ProjectAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.admins = self.instance.roles.get(
-                role_type=models.ProjectRole.ADMINISTRATOR).permission_group.user_set.all()
-            self.managers = self.instance.roles.get(
-                role_type=models.ProjectRole.MANAGER).permission_group.user_set.all()
+            self.admins = User.objects.filter(
+                projectpermission__role=models.ProjectRole.ADMINISTRATOR,
+                projectpermission__project=self.instance,
+                projectpermission__is_active=True,
+            )
+            self.managers = User.objects.filter(
+                projectpermission__role=models.ProjectRole.MANAGER,
+                projectpermission__project=self.instance,
+                projectpermission__is_active=True,
+            )
             self.fields['admins'].initial = self.admins
             self.fields['managers'].initial = self.managers
         else:
@@ -135,10 +144,10 @@ class ProjectAdminForm(ModelForm):
         added_managers = new_managers.exclude(pk__in=self.managers)
         removed_managers = self.managers.exclude(pk__in=new_managers)
         for user in added_managers:
-            project.add_user(user, role_type=models.ProjectRole.MANAGER)
+            project.add_user(user, models.ProjectRole.MANAGER)
 
         for user in removed_managers:
-            project.remove_user(user, role_type=models.ProjectRole.MANAGER)
+            project.remove_user(user, models.ProjectRole.MANAGER)
 
         new_admins = self.cleaned_data['admins']
         added_admins = new_admins.exclude(pk__in=self.admins)
@@ -148,10 +157,10 @@ class ProjectAdminForm(ModelForm):
 
         removed_admins = self.admins.exclude(pk__in=new_admins)
         for user in added_admins:
-            project.add_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
+            project.add_user(user, models.ProjectRole.ADMINISTRATOR)
 
         for user in removed_admins:
-            project.remove_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
+            project.remove_user(user, models.ProjectRole.ADMINISTRATOR)
 
         self.save_m2m()
 
