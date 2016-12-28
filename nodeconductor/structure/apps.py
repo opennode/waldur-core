@@ -57,7 +57,7 @@ class StructureConfig(AppConfig):
 
         # decrease nc_user_count quota usage on removing user from customer
         for model in structure_models_with_roles:
-            name = 'decrease_customer_nc_users_quota_on_adding_user_to_%s' % model.__name__
+            name = 'decrease_customer_nc_users_quota_on_removing_user_from_%s' % model.__name__
             structure_signals.structure_role_revoked.connect(
                 handlers.change_customer_nc_users_quota,
                 sender=model,

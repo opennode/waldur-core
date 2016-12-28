@@ -210,15 +210,16 @@ class PermissionMixin(object):
 
     @transaction.atomic()
     def remove_user(self, user, role=None):
-        permissions = self.permissions.filter(user=user, is_active=True)
+        permissions = self.permissions.all().filter(user=user, is_active=True)
 
         if role is not None:
             permissions = permissions.filter(role=role)
 
-        for permission in permissions.iterator():
-            self.log_role_revoked(permission)
-
+        affected_permissions = list(permissions)
         permissions.update(is_active=False, expiration_time=timezone.now())
+
+        for permission in affected_permissions:
+            self.log_role_revoked(permission)
 
     @transaction.atomic()
     def remove_all_users(self):
@@ -243,8 +244,9 @@ class CustomerRole(models.CharField):
     )
 
     def __init__(self, *args, **kwargs):
-        super(CustomerRole, self).__init__(
-            choices=self.CHOICES, db_index=True, max_length=30, *args, **kwargs)
+        kwargs['max_length'] = 30
+        kwargs['choices'] = self.CHOICES
+        super(CustomerRole, self).__init__(*args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -256,7 +258,7 @@ class CustomerPermission(BasePermission):
         customer_path = 'customer'
 
     customer = models.ForeignKey('structure.Customer', related_name='permissions')
-    role = CustomerRole()
+    role = CustomerRole(db_index=True)
 
     def __str__(self):
         return '%s | %s' % (self.customer.name, self.get_role_display())
@@ -408,8 +410,9 @@ class ProjectRole(models.CharField):
     )
 
     def __init__(self, *args, **kwargs):
-        super(ProjectRole, self).__init__(
-            choices=self.CHOICES, db_index=True, max_length=30, *args, **kwargs)
+        kwargs['max_length'] = 30
+        kwargs['choices'] = self.CHOICES
+        super(ProjectRole, self).__init__(*args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -422,7 +425,7 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
         project_path = 'project'
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
-    role = ProjectRole()
+    role = ProjectRole(db_index=True)
 
     def __str__(self):
         return '%s | %s' % (self.project.name, self.get_role_display())

@@ -4,14 +4,13 @@ from __future__ import unicode_literals
 from django.db import migrations, models
 import model_utils.fields
 import nodeconductor.core.fields
+import nodeconductor.structure.models
 import django.utils.timezone
-from django.conf import settings
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('structure', '0037_remove_customer_billing_backend_id'),
     ]
 
@@ -23,10 +22,7 @@ class Migration(migrations.Migration):
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False)),
                 ('expiration_time', models.DateTimeField(null=True, blank=True)),
                 ('is_active', models.BooleanField(default=True, db_index=True)),
-                ('role', models.CharField(db_index=True, max_length=30, choices=[('owner', 'Owner')])),
-                ('created_by', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
-                ('customer', models.ForeignKey(related_name='permissions', to='structure.Customer')),
-                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
+                ('role', nodeconductor.structure.models.CustomerRole(db_index=True, max_length=30, choices=[('owner', 'Owner')])),
             ],
         ),
         migrations.CreateModel(
@@ -37,18 +33,51 @@ class Migration(migrations.Migration):
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False)),
                 ('expiration_time', models.DateTimeField(null=True, blank=True)),
                 ('is_active', models.BooleanField(default=True, db_index=True)),
-                ('role', models.CharField(db_index=True, max_length=30, choices=[('admin', 'Administrator'), ('manager', 'Manager')])),
-                ('created_by', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
-                ('project', models.ForeignKey(related_name='permissions', to='structure.Project')),
-                ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
+                ('role', nodeconductor.structure.models.ProjectRole(db_index=True, max_length=30, choices=[('admin', 'Administrator'), ('manager', 'Manager')])),
             ],
         ),
         migrations.AlterUniqueTogether(
-            name='projectpermission',
-            unique_together=set([('project', 'role', 'user', 'is_active')]),
+            name='customerrole',
+            unique_together=set([]),
+        ),
+        migrations.RemoveField(
+            model_name='customerrole',
+            name='customer',
+        ),
+        migrations.RemoveField(
+            model_name='customerrole',
+            name='permission_group',
+        ),
+        migrations.RemoveField(
+            model_name='projectgroup',
+            name='customer',
+        ),
+        migrations.RemoveField(
+            model_name='projectgroup',
+            name='projects',
         ),
         migrations.AlterUniqueTogether(
-            name='customerpermission',
-            unique_together=set([('customer', 'role', 'user', 'is_active')]),
+            name='projectgrouprole',
+            unique_together=set([]),
+        ),
+        migrations.RemoveField(
+            model_name='projectgrouprole',
+            name='permission_group',
+        ),
+        migrations.RemoveField(
+            model_name='projectgrouprole',
+            name='project_group',
+        ),
+        migrations.AlterUniqueTogether(
+            name='projectrole',
+            unique_together=set([]),
+        ),
+        migrations.RemoveField(
+            model_name='projectrole',
+            name='permission_group',
+        ),
+        migrations.RemoveField(
+            model_name='projectrole',
+            name='project',
         ),
     ]
