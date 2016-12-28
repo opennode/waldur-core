@@ -235,12 +235,16 @@ class PermissionMixin(object):
         )
 
 
-class CustomerRole(object):
+class CustomerRole(models.CharField):
     OWNER = 'owner'
 
-    TYPE_CHOICES = (
+    CHOICES = (
         (OWNER, 'Owner'),
     )
+
+    def __init__(self, *args, **kwargs):
+        super(CustomerRole, self).__init__(
+            choices=self.CHOICES, db_index=True, max_length=30, *args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -252,7 +256,7 @@ class CustomerPermission(BasePermission):
         customer_path = 'customer'
 
     customer = models.ForeignKey('structure.Customer', related_name='permissions')
-    role = models.CharField(choices=CustomerRole.TYPE_CHOICES, db_index=True, max_length=30)
+    role = CustomerRole()
 
     def __str__(self):
         return '%s | %s' % (self.customer.name, self.get_role_display())
@@ -394,14 +398,18 @@ class BalanceHistory(models.Model):
     amount = models.DecimalField(max_digits=9, decimal_places=3)
 
 
-class ProjectRole(object):
+class ProjectRole(models.CharField):
     ADMINISTRATOR = 'admin'
     MANAGER = 'manager'
 
-    TYPE_CHOICES = (
+    CHOICES = (
         (ADMINISTRATOR, 'Administrator'),
         (MANAGER, 'Manager'),
     )
+
+    def __init__(self, *args, **kwargs):
+        super(ProjectRole, self).__init__(
+            choices=self.CHOICES, db_index=True, max_length=30, *args, **kwargs)
 
 
 @python_2_unicode_compatible
@@ -414,7 +422,7 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
         project_path = 'project'
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
-    role = models.CharField(choices=ProjectRole.TYPE_CHOICES, db_index=True, max_length=30)
+    role = ProjectRole()
 
     def __str__(self):
         return '%s | %s' % (self.project.name, self.get_role_display())

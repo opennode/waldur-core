@@ -3,18 +3,9 @@ import factory.fuzzy
 
 from rest_framework.reverse import reverse
 
+from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.users import models
-
-
-def get_project_role():
-    project = structure_factories.ProjectFactory()
-    return project.roles.first()
-
-
-def get_customer_role():
-    customer = structure_factories.CustomerFactory()
-    return customer.roles.first()
 
 
 class InvitationBaseFactory(factory.DjangoModelFactory):
@@ -32,8 +23,9 @@ class ProjectInvitationFactory(InvitationBaseFactory):
     class Meta(object):
         model = models.Invitation
 
-    customer = factory.SelfAttribute('project_role.project.customer')
-    project_role = factory.fuzzy.FuzzyAttribute(get_project_role)
+    customer = factory.SelfAttribute('project.customer')
+    project = factory.SubFactory(structure_factories.ProjectFactory)
+    project_role = structure_models.ProjectRole.MANAGER
     link_template = factory.Sequence(lambda n: 'http://testinvitation%1.com/project/{uuid}' % n)
     email = factory.Sequence(lambda n: 'test%s@invitation.com' % n)
 
@@ -48,8 +40,8 @@ class CustomerInvitationFactory(InvitationBaseFactory):
     class Meta(object):
         model = models.Invitation
 
-    customer = factory.SelfAttribute('customer_role.customer')
-    customer_role = factory.fuzzy.FuzzyAttribute(get_customer_role)
+    customer = factory.SubFactory(structure_factories.CustomerFactory)
+    customer_role = structure_models.CustomerRole.OWNER
     link_template = factory.Sequence(lambda n: 'http://testinvitation%1.com/customer/{uuid}' % n)
     email = factory.Sequence(lambda n: 'test%s@invitation.com' % n)
 

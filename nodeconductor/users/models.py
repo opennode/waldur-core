@@ -23,10 +23,11 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
         CHOICES = ((ACCEPTED, 'Accepted'), (CANCELED, 'Canceled'), (PENDING, 'Pending'), (EXPIRED, 'Expired'))
 
     customer = models.ForeignKey(structure_models.Customer, related_name='invitations')
+    customer_role = structure_models.CustomerRole(null=True, blank=True)
+
     project = models.ForeignKey(structure_models.Project, related_name='invitations', blank=True, null=True)
-    project_role = models.CharField(choices=structure_models.ProjectRole.TYPE_CHOICES, db_index=True, max_length=30)
-    customer = models.ForeignKey(structure_models.Customer, related_name='invitations', blank=True, null=True)
-    customer_role = models.CharField(choices=structure_models.CustomerRole.TYPE_CHOICES, db_index=True, max_length=30)
+    project_role = structure_models.ProjectRole(null=True, blank=True)
+
     state = models.CharField(max_length=8, choices=State.CHOICES, default=State.PENDING)
     link_template = models.CharField(max_length=255, help_text='The template must include {uuid} parameter '
                                                                'e.g. http://example.com/invitation/{uuid}')
@@ -41,9 +42,9 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
 
     def accept(self, user):
         if self.project_role is not None:
-            self.project_role.project.add_user(user, self.project_role.role_type)
+            self.project.add_user(user, self.project_role)
         else:
-            self.customer.add_user(user, self.customer_role.role_type)
+            self.customer.add_user(user, self.customer_role)
 
         self.state = self.State.ACCEPTED
         self.save(update_fields=['state'])
