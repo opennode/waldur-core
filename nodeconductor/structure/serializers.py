@@ -432,9 +432,6 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
             'customer', 'role', 'user', 'created_by', 'created'
         )
         extra_kwargs = {
-            'url': {
-                'view_name': 'customer_permission-detail'
-            },
             'user': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
@@ -451,6 +448,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                 'queryset': models.Customer.objects.all(),
             }
         }
+        view_name = 'customer_permission-detail'
 
     def create(self, validated_data):
         customer = validated_data['customer']
@@ -477,6 +475,11 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'customer',
+
+
+class CustomerPermissionLogSerializer(CustomerPermissionSerializer):
+    class Meta(CustomerPermissionSerializer.Meta):
+        view_name = 'customer_permission_log-detail'
 
 
 class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
@@ -542,6 +545,11 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
 
     def get_filtered_field_names(self):
         return 'project',
+
+
+class ProjectPermissionLogSerializer(ProjectPermissionSerializer):
+    class Meta(ProjectPermissionSerializer.Meta):
+        view_name = 'project_permission_log-detail'
 
 
 class UserOrganizationSerializer(serializers.Serializer):

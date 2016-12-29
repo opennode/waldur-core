@@ -741,7 +741,7 @@ class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
                                   mixins.ListModelMixin,
                                   viewsets.GenericViewSet):
     queryset = models.ProjectPermission.objects.filter(is_active=False)
-    serializer_class = serializers.ProjectPermissionSerializer
+    serializer_class = serializers.ProjectPermissionLogSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
@@ -869,7 +869,7 @@ class CustomerPermissionLogViewSet(mixins.RetrieveModelMixin,
                                    mixins.ListModelMixin,
                                    viewsets.GenericViewSet):
     queryset = models.CustomerPermission.objects.filter(is_active=False)
-    serializer_class = serializers.CustomerPermissionSerializer
+    serializer_class = serializers.CustomerPermissionLogSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
     filter_class = filters.CustomerPermissionFilter
