@@ -97,6 +97,21 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    @data('staff', 'customer_owner')
+    def test_user_which_created_invitation_is_stored_in_inviatation(self, user):
+        self.client.force_authenticate(user=getattr(self, user))
+        payload = self._get_valid_customer_invitation_payload(self.customer_invitation)
+        response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
+        invitation = models.Invitation.objects.get(uuid=response.data['uuid'])
+        self.assertEqual(invitation.created_by, getattr(self, user))
+
+    def test_user_which_created_invitation_is_stored_in_permission(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner)
+        self.client.force_authenticate(user=self.user)
+        self.client.post(factories.CustomerInvitationFactory.get_url(invitation, action='accept'))
+        permission = structure_models.CustomerPermission.objects.get(user=self.user, customer=invitation.customer)
+        self.assertEqual(permission.created_by, self.customer_owner)
+
     @data('project_admin', 'project_manager', 'user')
     def test_user_without_access_cannot_create_customer_owner_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))

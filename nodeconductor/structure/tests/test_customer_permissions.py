@@ -10,7 +10,7 @@ from rest_framework.reverse import reverse
 
 from nodeconductor.structure import serializers
 from nodeconductor.structure import views
-from nodeconductor.structure.models import CustomerRole, ProjectRole, CustomerPermission, ProjectPermission
+from nodeconductor.structure.models import CustomerRole, ProjectRole, CustomerPermission
 from nodeconductor.structure.tests import factories
 
 User = get_user_model()
@@ -414,3 +414,24 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
 
     def _get_customer_url(self, customer):
         return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
+
+
+class CustomerPermissionCreatedByTest(test.APISimpleTestCase):
+    def test_user_which_granted_permission_is_stored(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        user = factories.UserFactory()
+        customer = factories.CustomerFactory()
+
+        data = {
+            'customer': factories.CustomerFactory.get_url(customer),
+            'user': factories.UserFactory.get_url(user),
+            'role': CustomerRole.OWNER,
+        }
+
+        response = self.client.post(reverse('customer_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        permission = CustomerPermission.objects.get(pk=response.data['pk'])
+        self.assertEqual(permission.created_by, staff_user)

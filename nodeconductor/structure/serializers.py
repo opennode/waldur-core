@@ -421,7 +421,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.CustomerPermission
         fields = (
-            'url', 'pk', 'role',
+            'url', 'pk', 'role', 'created', 'expiration_time', 'created_by',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
         ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
         related_paths = {
@@ -437,6 +437,11 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                 'lookup_field': 'uuid',
                 'queryset': User.objects.all(),
             },
+            'created_by': {
+                'view_name': 'user-detail',
+                'lookup_field': 'uuid',
+                'queryset': User.objects.all(),
+            },
             'customer': {
                 'view_name': 'customer-detail',
                 'lookup_field': 'uuid',
@@ -448,8 +453,9 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         customer = validated_data['customer']
         user = validated_data['user']
         role = validated_data['role']
+        created_by = self.context['user']
 
-        permission, _ = customer.add_user(user, role)
+        permission, _ = customer.add_user(user, role, created_by)
         return permission
 
     def validate(self, data):
@@ -499,8 +505,9 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         project = validated_data['project']
         user = validated_data['user']
         role = validated_data['role']
+        created_by = self.context['user']
 
-        permission, _ = project.add_user(user, role)
+        permission, _ = project.add_user(user, role, created_by)
 
         return permission
 

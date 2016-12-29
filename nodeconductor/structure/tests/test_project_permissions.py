@@ -435,3 +435,24 @@ class ProjectPermissionFilterTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.staff)
         response = self.client.get(self.url, {'customer': factories.CustomerFactory().uuid.hex})
         self.assertEqual(len(response.data), 0)
+
+
+class ProjectPermissionCreatedByTest(test.APISimpleTestCase):
+    def test_user_which_granted_permission_is_stored(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        user = factories.UserFactory()
+        project = factories.ProjectFactory()
+
+        data = {
+            'project': factories.ProjectFactory.get_url(project),
+            'user': factories.UserFactory.get_url(user),
+            'role': ProjectRole.ADMINISTRATOR,
+        }
+
+        response = self.client.post(reverse('project_permission-list'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        permission = ProjectPermission.objects.get(pk=response.data['pk'])
+        self.assertEqual(permission.created_by, staff_user)

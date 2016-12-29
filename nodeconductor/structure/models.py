@@ -182,22 +182,26 @@ class PermissionMixin(object):
         return permissions.exists()
 
     @transaction.atomic()
-    def add_user(self, user, role):
-        permission, created = self.permissions.get_or_create(
+    def add_user(self, user, role, created_by=None):
+        permission = self.permissions.filter(user=user, role=role, is_active=True).first()
+        if permission:
+            return permission, False
+
+        permission = self.permissions.create(
             user=user,
             role=role,
             is_active=True,
+            created_by=created_by,
         )
 
-        if created:
-            structure_role_granted.send(
-                sender=self.__class__,
-                structure=self,
-                user=user,
-                role=role,
-            )
+        structure_role_granted.send(
+            sender=self.__class__,
+            structure=self,
+            user=user,
+            role=role,
+        )
 
-        return permission, created
+        return permission, True
 
     @transaction.atomic()
     def remove_user(self, user, role=None):

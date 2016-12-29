@@ -22,6 +22,8 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
 
         CHOICES = ((ACCEPTED, 'Accepted'), (CANCELED, 'Canceled'), (PENDING, 'Pending'), (EXPIRED, 'Expired'))
 
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True)
+
     customer = models.ForeignKey(structure_models.Customer, related_name='invitations')
     customer_role = structure_models.CustomerRole(null=True, blank=True)
 
@@ -42,9 +44,9 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
 
     def accept(self, user):
         if self.project_role is not None:
-            self.project.add_user(user, self.project_role)
+            self.project.add_user(user, self.project_role, self.created_by)
         else:
-            self.customer.add_user(user, self.customer_role)
+            self.customer.add_user(user, self.customer_role, self.created_by)
 
         self.state = self.State.ACCEPTED
         self.save(update_fields=['state'])

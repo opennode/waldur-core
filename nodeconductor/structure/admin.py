@@ -18,6 +18,13 @@ from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors
 
 
+class FormRequestAdminMixin(object):
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(FormRequestAdminMixin, self).get_form(request, obj=obj, **kwargs)
+        form.request = request
+        return form
+
+
 class ChangeReadonlyMixin(object):
 
     add_readonly_fields = ()
@@ -86,7 +93,7 @@ class CustomerAdminForm(ModelForm):
         added_owners = new_owners.exclude(pk__in=self.owners)
         removed_owners = self.owners.exclude(pk__in=new_owners)
         for user in added_owners:
-            customer.add_user(user, models.CustomerRole.OWNER)
+            customer.add_user(user, models.CustomerRole.OWNER, self.request.user)
 
         for user in removed_owners:
             customer.remove_user(user, models.CustomerRole.OWNER)
@@ -96,7 +103,10 @@ class CustomerAdminForm(ModelForm):
         return customer
 
 
-class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAdmin):
+class CustomerAdmin(FormRequestAdminMixin,
+                    ResourceCounterFormMixin,
+                    ProtectedModelMixin,
+                    admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'country', 'vat_code', 'is_company', 'balance', 'owners')
@@ -132,7 +142,7 @@ class ProjectAdminForm(ModelForm):
         added_managers = new_managers.exclude(pk__in=self.managers)
         removed_managers = self.managers.exclude(pk__in=new_managers)
         for user in added_managers:
-            project.add_user(user, models.ProjectRole.MANAGER)
+            project.add_user(user, models.ProjectRole.MANAGER, self.request.user)
 
         for user in removed_managers:
             project.remove_user(user, models.ProjectRole.MANAGER)
@@ -145,7 +155,7 @@ class ProjectAdminForm(ModelForm):
 
         removed_admins = self.admins.exclude(pk__in=new_admins)
         for user in added_admins:
-            project.add_user(user, models.ProjectRole.ADMINISTRATOR)
+            project.add_user(user, models.ProjectRole.ADMINISTRATOR, self.request.user)
 
         for user in removed_admins:
             project.remove_user(user, models.ProjectRole.ADMINISTRATOR)
@@ -155,7 +165,11 @@ class ProjectAdminForm(ModelForm):
         return project
 
 
-class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdmin(FormRequestAdminMixin,
+                   ResourceCounterFormMixin,
+                   ProtectedModelMixin,
+                   ChangeReadonlyMixin,
+                   admin.ModelAdmin):
     form = ProjectAdminForm
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')

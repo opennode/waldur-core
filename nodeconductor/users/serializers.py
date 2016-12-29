@@ -72,6 +72,7 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        validated_data['created_by'] = self.context['user']
         project = validated_data.get('project')
         if project:
             validated_data['customer'] = project.customer

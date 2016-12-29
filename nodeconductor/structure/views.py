@@ -141,7 +141,7 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         customer = serializer.save()
         if not self.request.user.is_staff:
-            customer.add_user(self.request.user, models.CustomerRole.OWNER)
+            customer.add_user(self.request.user, models.CustomerRole.OWNER, self.request.user)
 
     @detail_route()
     def balance_history(self, request, uuid=None):
@@ -630,6 +630,7 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
                                mixins.RetrieveModelMixin,
                                mixins.ListModelMixin,
                                mixins.DestroyModelMixin,
+                               core_mixins.UserContextMixin,
                                viewsets.GenericViewSet):
     """
     - Projects are connected to customers, whereas the project may belong to one customer only,
@@ -730,10 +731,21 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
         affected_project.remove_user(affected_user, role)
 
 
+class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
+                                  mixins.ListModelMixin,
+                                  viewsets.GenericViewSet):
+    queryset = models.ProjectPermission.objects.filter(is_active=False)
+    serializer_class = serializers.ProjectPermissionSerializer
+    permission_classes = (rf_permissions.IsAuthenticated,)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_class = filters.ProjectPermissionFilter
+
+
 class CustomerPermissionViewSet(mixins.CreateModelMixin,
                                 mixins.RetrieveModelMixin,
                                 mixins.ListModelMixin,
                                 mixins.DestroyModelMixin,
+                                core_mixins.UserContextMixin,
                                 viewsets.GenericViewSet):
     """
     - Customers are connected to users through roles, whereas user may have role "customer owner".
@@ -840,6 +852,16 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_customer.remove_user(affected_user, role)
+
+
+class CustomerPermissionLogViewSet(mixins.RetrieveModelMixin,
+                                   mixins.ListModelMixin,
+                                   viewsets.GenericViewSet):
+    queryset = models.CustomerPermission.objects.filter(is_active=False)
+    serializer_class = serializers.CustomerPermissionSerializer
+    permission_classes = (rf_permissions.IsAuthenticated,)
+    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_class = filters.CustomerPermissionFilter
 
 
 class CreationTimeStatsView(views.APIView):
