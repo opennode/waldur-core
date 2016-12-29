@@ -7,7 +7,6 @@ from django.db.models import Q
 from rest_framework.filters import DjangoFilterBackend
 
 from nodeconductor.core import filters as core_filters
-from nodeconductor.structure import models as structure_models
 from nodeconductor.users import models
 
 

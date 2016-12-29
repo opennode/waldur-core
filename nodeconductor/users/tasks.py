@@ -35,15 +35,15 @@ def send_invitation(invitation_uuid, sender_name):
     invitation = models.Invitation.objects.get(uuid=invitation_uuid)
 
     if invitation.project_role is not None:
-        context = dict(type='project', name=invitation.project_role.project.name)
-        role_prefix = 'project' if invitation.project_role.role_type == ProjectRole.MANAGER else 'system'
-        context['role'] = '%s %s' % (role_prefix, invitation.project_role.get_role_type_display())
+        context = dict(type='project', name=invitation.project.name)
+        role_prefix = 'project' if invitation.project_role == ProjectRole.MANAGER else 'system'
+        context['role'] = '%s %s' % (role_prefix, invitation.get_project_role_display())
 
     else:
         context = dict(
             type='organization',
-            name=invitation.customer_role.customer.name,
-            role=invitation.customer_role.get_role_type_display()
+            name=invitation.customer.name,
+            role=invitation.get_customer_role_display()
         )
 
     context['sender'] = sender_name

@@ -263,10 +263,10 @@ class UserPermissionFilter(django_filters.FilterSet):
         name='user__native_name',
         lookup_type='icontains',
     )
-    role = django_filters.ChoiceFilter(name='role_type')
 
     class Meta(object):
         model = models.BasePermission
+        fields = ['role']
         order_by = [
             'user__username',
             'user__full_name',
@@ -279,6 +279,9 @@ class UserPermissionFilter(django_filters.FilterSet):
 
 
 class ProjectPermissionFilter(UserPermissionFilter):
+    class Meta(UserPermissionFilter.Meta):
+        model = models.ProjectPermission
+
     customer = UUIDFilter(
         name='project__customer__uuid',
     )
@@ -292,6 +295,9 @@ class ProjectPermissionFilter(UserPermissionFilter):
 
 
 class CustomerPermissionFilter(UserPermissionFilter):
+    class Meta(UserPermissionFilter.Meta):
+        model = models.CustomerPermission
+
     customer = UUIDFilter(
         name='customer__uuid',
     )
