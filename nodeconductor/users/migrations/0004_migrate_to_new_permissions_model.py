@@ -8,7 +8,7 @@ import nodeconductor.structure.models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0038_auto_20161228_1048'),
+        ('structure', '0038_add_project_and_customer_permissions'),
         ('users', '0003_invitation_civil_number'),
     ]
 

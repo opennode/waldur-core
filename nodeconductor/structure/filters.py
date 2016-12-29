@@ -266,7 +266,6 @@ class UserPermissionFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.BasePermission
-        fields = ['role']
         order_by = [
             'user__username',
             'user__full_name',
@@ -280,6 +279,7 @@ class UserPermissionFilter(django_filters.FilterSet):
 
 class ProjectPermissionFilter(UserPermissionFilter):
     class Meta(UserPermissionFilter.Meta):
+        fields = ['role']
         model = models.ProjectPermission
 
     customer = UUIDFilter(
@@ -296,6 +296,7 @@ class ProjectPermissionFilter(UserPermissionFilter):
 
 class CustomerPermissionFilter(UserPermissionFilter):
     class Meta(UserPermissionFilter.Meta):
+        fields = ['role']
         model = models.CustomerPermission
 
     customer = UUIDFilter(
