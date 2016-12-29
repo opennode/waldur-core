@@ -5,7 +5,7 @@ import logging
 from celery import shared_task
 from django.core import exceptions
 from django.db import transaction
-from django.utils import six
+from django.utils import six, timezone
 
 from nodeconductor.core import utils as core_utils, tasks as core_tasks
 from nodeconductor.structure import SupportedServices, models, utils, ServiceBackendError
@@ -39,6 +39,13 @@ def detect_vm_coordinates(serialized_virtual_machine):
         vm.latitude = coordinates.latitude
         vm.longitude = coordinates.longitude
         vm.save(update_fields=['latitude', 'longitude'])
+
+
+@shared_task(name='nodeconductor.structure.check_expired_permissions')
+def check_expired_permissions():
+    for cls in models.BasePermission.get_all_models():
+        for permission in cls.get_expired():
+            permission.revoke()
 
 
 class ConnectSharedSettingsTask(core_tasks.Task):

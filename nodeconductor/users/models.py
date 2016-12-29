@@ -22,7 +22,7 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
 
         CHOICES = ((ACCEPTED, 'Accepted'), (CANCELED, 'Canceled'), (PENDING, 'Pending'), (EXPIRED, 'Expired'))
 
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', blank=True, null=True)
 
     customer = models.ForeignKey(structure_models.Customer, related_name='invitations')
     customer_role = structure_models.CustomerRole(null=True, blank=True)

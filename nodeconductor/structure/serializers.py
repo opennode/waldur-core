@@ -428,6 +428,9 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
             'user': STRUCTURE_PERMISSION_USER_FIELDS['path'],
             'customer': ('name', 'native_name', 'abbreviation', 'uuid')
         }
+        protected_fields = (
+            'customer', 'role', 'user', 'created_by', 'created'
+        )
         extra_kwargs = {
             'url': {
                 'view_name': 'customer_permission-detail'
@@ -459,13 +462,18 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         return permission
 
     def validate(self, data):
-        customer = data['customer']
-        user = data['user']
+        if not self.instance:
+            customer = data['customer']
+            user = data['user']
 
-        if customer.has_user(user):
-            raise serializers.ValidationError('The fields customer and user must make a unique set.')
+            if customer.has_user(user):
+                raise serializers.ValidationError('The fields customer and user must make a unique set.')
 
         return data
+
+    def validate_expiration_time(self, value):
+        if value < timezone.now():
+            raise serializers.ValidationError('Expiration time should be greater than current time')
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -478,8 +486,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
     class Meta(object):
         model = models.ProjectPermission
         fields = (
-            'url', 'pk',
-            'role',
+            'url', 'pk', 'role', 'created', 'expiration_time', 'created_by',
             'project', 'project_uuid', 'project_name',
         ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
 
@@ -487,8 +494,16 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
             'project': ('name', 'uuid'),
             'user': STRUCTURE_PERMISSION_USER_FIELDS['path']
         }
+        protected_fields = (
+            'project', 'role', 'user', 'created_by', 'created'
+        )
         extra_kwargs = {
             'user': {
+                'view_name': 'user-detail',
+                'lookup_field': 'uuid',
+                'queryset': User.objects.all(),
+            },
+            'created_by': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
                 'queryset': User.objects.all(),
@@ -512,13 +527,18 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         return permission
 
     def validate(self, data):
-        project = data['project']
-        user = data['user']
+        if not self.instance:
+            project = data['project']
+            user = data['user']
 
-        if project.has_user(user):
-            raise serializers.ValidationError('The fields project and user must make a unique set.')
+            if project.has_user(user):
+                raise serializers.ValidationError('The fields project and user must make a unique set.')
 
         return data
+
+    def validate_expiration_time(self, value):
+        if value < timezone.now():
+            raise serializers.ValidationError('Expiration time should be greater than current time')
 
     def get_filtered_field_names(self):
         return 'project',

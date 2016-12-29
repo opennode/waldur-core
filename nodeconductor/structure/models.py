@@ -165,6 +165,18 @@ class BasePermission(models.Model):
     expiration_time = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
 
+    @classmethod
+    def get_expired(cls):
+        return cls.objects.filter(expiration_time__lt=timezone.now(), is_active=True)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    def revoke(self):
+        raise NotImplementedError
+
 
 class PermissionMixin(object):
     """
@@ -254,6 +266,9 @@ class CustomerPermission(BasePermission):
 
     customer = models.ForeignKey('structure.Customer', related_name='permissions')
     role = CustomerRole(db_index=True)
+
+    def revoke(self):
+        self.customer.remove_user(self.user, self.role)
 
     def __str__(self):
         return '%s | %s' % (self.customer.name, self.get_role_display())
@@ -421,6 +436,9 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
     role = ProjectRole(db_index=True)
+
+    def revoke(self):
+        self.project.remove_user(self.user, self.role)
 
     def __str__(self):
         return '%s | %s' % (self.project.name, self.get_role_display())

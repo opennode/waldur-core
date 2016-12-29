@@ -3,13 +3,14 @@ from __future__ import unicode_literals
 import collections
 import unittest
 
+import datetime
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework import test
 
-from nodeconductor.structure import serializers
-from nodeconductor.structure import views
+from nodeconductor.structure import serializers, tasks, views
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectPermission
 from nodeconductor.structure.tests import factories, fixtures
 
@@ -40,6 +41,7 @@ class ProjectPermissionSerializerTest(unittest.TestCase):
     def test_payload_has_required_fields(self):
         expected_fields = [
             'url', 'role', 'project', 'project_name', 'pk', 'project_uuid',
+            'created', 'expiration_time', 'created_by',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email'
         ]
         self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
@@ -435,6 +437,54 @@ class ProjectPermissionFilterTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.staff)
         response = self.client.get(self.url, {'customer': factories.CustomerFactory().uuid.hex})
         self.assertEqual(len(response.data), 0)
+
+
+class ProjectPermissionExpirationTest(test.APISimpleTestCase):
+    def setUp(self):
+        permission = factories.ProjectPermissionFactory()
+        self.user = permission.user
+        self.url = reverse('project_permission-detail', kwargs={'pk': permission.pk})
+
+    def test_user_can_not_update_permission_expiration_time(self):
+        self.client.force_authenticate(user=self.user)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.put(self.url, {
+            'expiration_time': expiration_time
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_can_update_permission_expiration_time(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.put(self.url, {
+            'expiration_time': expiration_time
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_user_can_set_permission_expiration_time_lower_than_current(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        expiration_time = timezone.now() - datetime.timedelta(days=100)
+        response = self.client.put(self.url, {
+            'expiration_time': expiration_time
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_task_revokes_expired_permissions(self):
+        expired_permission = factories.ProjectPermissionFactory(
+            expiration_time=timezone.now() - datetime.timedelta(days=100))
+        not_expired_permission = factories.ProjectPermissionFactory(
+            expiration_time=timezone.now() + datetime.timedelta(days=100))
+        tasks.check_expired_permissions()
+
+        self.assertFalse(expired_permission.project.has_user(
+            expired_permission.user, expired_permission.role))
+        self.assertTrue(not_expired_permission.project.has_user(
+            not_expired_permission.user, not_expired_permission.role))
 
 
 class ProjectPermissionCreatedByTest(test.APISimpleTestCase):

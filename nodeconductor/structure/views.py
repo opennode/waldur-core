@@ -626,12 +626,8 @@ class UserViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
 
-class ProjectPermissionViewSet(mixins.CreateModelMixin,
-                               mixins.RetrieveModelMixin,
-                               mixins.ListModelMixin,
-                               mixins.DestroyModelMixin,
-                               core_mixins.UserContextMixin,
-                               viewsets.GenericViewSet):
+class ProjectPermissionViewSet(core_mixins.UserContextMixin,
+                               viewsets.ModelViewSet):
     """
     - Projects are connected to customers, whereas the project may belong to one customer only,
       and the customer may have
@@ -720,6 +716,16 @@ class ProjectPermissionViewSet(mixins.CreateModelMixin,
 
         super(ProjectPermissionViewSet, self).perform_create(serializer)
 
+    def perform_update(self, serializer):
+        affected_project = serializer.instance.project
+        role = serializer.instance.role
+
+        if not self.can_manage_roles_for(affected_project, role)\
+                or serializer.instance.user == self.request.user:
+            raise PermissionDenied('You do not have permission to perform this action.')
+
+        serializer.save()
+
     def perform_destroy(self, instance):
         affected_user = instance.user
         affected_project = instance.project
@@ -741,12 +747,8 @@ class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
     filter_class = filters.ProjectPermissionFilter
 
 
-class CustomerPermissionViewSet(mixins.CreateModelMixin,
-                                mixins.RetrieveModelMixin,
-                                mixins.ListModelMixin,
-                                mixins.DestroyModelMixin,
-                                core_mixins.UserContextMixin,
-                                viewsets.GenericViewSet):
+class CustomerPermissionViewSet(core_mixins.UserContextMixin,
+                                viewsets.ModelViewSet):
     """
     - Customers are connected to users through roles, whereas user may have role "customer owner".
     - Each customer may have multiple owners, and each user may own multiple customers.
@@ -842,6 +844,15 @@ class CustomerPermissionViewSet(mixins.CreateModelMixin,
         # But it is pushed down to serializer.create() because otherwise
         # no url will be rendered in response.
         super(CustomerPermissionViewSet, self).perform_create(serializer)
+
+    def perform_update(self, serializer):
+        affected_customer = serializer.instance.customer
+
+        if not self.can_manage_roles_for(affected_customer) \
+                or serializer.instance.user == self.request.user:
+            raise PermissionDenied('You do not have permission to perform this action.')
+
+        serializer.save()
 
     def perform_destroy(self, instance):
         affected_user = instance.user
