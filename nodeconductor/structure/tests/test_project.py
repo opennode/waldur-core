@@ -245,7 +245,6 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'owner': factories.UserFactory(),
             'admin': factories.UserFactory(),
             'manager': factories.UserFactory(),
-            'group_manager': factories.UserFactory(),
             'no_role': factories.UserFactory(),
             'multirole': factories.UserFactory(),
         }
@@ -254,7 +253,6 @@ class ProjectApiPermissionTest(test.APITransactionTestCase):
             'owner': factories.ProjectFactory(),
             'admin': factories.ProjectFactory(),
             'manager': factories.ProjectFactory(),
-            'group_manager': factories.ProjectFactory(),
             'inaccessible': factories.ProjectFactory(),
         }
 

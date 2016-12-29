@@ -26,7 +26,7 @@ class ProjectPermissionViewSetTest(unittest.TestCase):
         self.assertNotIn('PUT', self.view_set.allowed_methods)
         self.assertNotIn('PATCH', self.view_set.allowed_methods)
 
-    def test_project_group_permission_serializer_is_used(self):
+    def test_project_permission_serializer_is_used(self):
         self.assertIs(
             serializers.ProjectPermissionSerializer,
             self.view_set.get_serializer_class(),
