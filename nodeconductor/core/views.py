@@ -277,7 +277,10 @@ class ActionsViewSet(viewsets.ModelViewSet):
         # check if action is allowed
         if self.action in getattr(self, 'disabled_actions', []):
             raise exceptions.MethodNotAllowed(method=request.method)
-        # execute validation for detailed action
+        self.validate_object_action()
+
+    def validate_object_action(self):
+        """ Execute validation for actions that are related to particular object """
         action_method = getattr(self, self.action)
         if not getattr(action_method, 'detail', False) and self.action not in ('update', 'partial_update', 'destroy'):
             # DRF does not add flag 'detail' to update and delete actions, however they execute operation with
