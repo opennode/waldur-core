@@ -30,21 +30,15 @@ from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFou
 from rest_framework.response import Response
 import reversion
 
-from nodeconductor.core import filters as core_filters
-from nodeconductor.core import mixins as core_mixins
-from nodeconductor.core import models as core_models
-from nodeconductor.core import exceptions as core_exceptions
-from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core.views import StateExecutorViewSet
+from nodeconductor.core import (
+    filters as core_filters, mixins as core_mixins, models as core_models, exceptions as core_exceptions,
+    serializers as core_serializers, views as core_views, validators as core_validators)
 from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
 from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
-from nodeconductor.structure import SupportedServices, ServiceBackendError, ServiceBackendNotImplemented
-from nodeconductor.structure import filters
-from nodeconductor.structure import permissions
-from nodeconductor.structure import models
-from nodeconductor.structure import serializers
-from nodeconductor.structure import managers
+from nodeconductor.structure import (
+    SupportedServices, ServiceBackendError, ServiceBackendNotImplemented, filters, permissions, models, serializers,
+    managers)
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.signals import resource_imported
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -1283,8 +1277,7 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
         return Response(SupportedServices.get_services_with_resources(request))
 
 
-class ResourceViewSet(mixins.ListModelMixin,
-                      viewsets.GenericViewSet):
+class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     Use */api/resources/* to get a list of all the resources of any type that a user can see.
     """
@@ -1422,7 +1415,7 @@ class ResourceViewSet(mixins.ListModelMixin,
          - ?o=tag__license-os - order by tag with particular prefix. Instances without given tag will not be returned.
         """
 
-        return super(ResourceViewSet, self).list(request, *args, **kwargs)
+        return super(ResourceSummaryViewSet, self).list(request, *args, **kwargs)
 
     @list_route()
     def count(self, request):
@@ -2175,7 +2168,7 @@ class BaseOnlineResourceViewSet(_BaseResourceViewSet):
 
 
 class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                                     StateExecutorViewSet,
+                                                     core_views.StateExecutorViewSet,
                                                      ResourceViewMixin,
                                                      core_mixins.UserContextMixin,
                                                      viewsets.ModelViewSet)):
@@ -2425,3 +2418,21 @@ class QuotaTimelineCollector(object):
                 row['%s_usage' % item] = self.usages[key]
             table.append(row)
         return table
+
+
+class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
+    """ Basic view set for all resource view sets. """
+    lookup_field = 'uuid'
+    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend, filters.StartTimeFilter)
+    metadata_class = ActionsMetadata
+    unsafe_methods_permissions = [permissions.is_administrator]
+    update_validators = partial_update_validators = [core_validators.StateValidator(models.NewResource.States.OK)]
+    destroy_validators = [core_validators.StateValidator(models.NewResource.States.OK, models.NewResource.States.ERRED)]
+
+    @detail_route(methods=['post'])
+    def pull(self, request, uuid=None):
+        self.pull_executor.execute(self.get_object())
+        return Response({'detail': 'Pull operation was successfully scheduled'}, status=status.HTTP_201_CREATED)
+
+    pull_executor = NotImplemented
+    pull_validators = [core_validators.StateValidator(models.NewResource.States.OK, models.NewResource.States.ERRED)]

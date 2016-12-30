@@ -265,6 +265,7 @@ class ActionsViewSet(viewsets.ModelViewSet):
         class MyView(ActionsViewSet):
             disabled_actions = ['create']  # error 405 will be returned on POST request
     """
+    DEFAULT_DETAIL_ACTIONS = ('create', 'update', 'partial_update', 'destroy')
     permission_classes = (rf_permissions.IsAuthenticated, permissions.ActionsPermission)
 
     def get_serializer_class(self):
@@ -272,12 +273,14 @@ class ActionsViewSet(viewsets.ModelViewSet):
 
     def initial(self, request, *args, **kwargs):
         super(ActionsViewSet, self).initial(request, *args, **kwargs)
+        if self.action is None:  # disable all checks if user tries to reach unsupported action
+            return
         # check if action is allowed
         if self.action in getattr(self, 'disabled_actions', []):
             raise exceptions.MethodNotAllowed(method=request.method)
         # execute validation for detailed action
         action_method = getattr(self, self.action)
-        if not getattr(action_method, 'detail', False):
+        if not getattr(action_method, 'detail', False) and self.action not in self.DEFAULT_DETAIL_ACTIONS:
             return
         validators = getattr(self, self.action + '_validators', [])
         for validator in validators:
