@@ -19,6 +19,11 @@ from nodeconductor.structure import models, SupportedServices, executors
 
 
 class FormRequestAdminMixin(object):
+    """
+    This mixin allows you to get current request user in the model admin form,
+    which then passed to add_user method, so that user which granted role,
+    is stored in the permission model.
+    """
     def get_form(self, request, obj=None, **kwargs):
         form = super(FormRequestAdminMixin, self).get_form(request, obj=obj, **kwargs)
         form.request = request
