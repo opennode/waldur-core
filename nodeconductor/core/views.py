@@ -280,9 +280,9 @@ class ActionsViewSet(viewsets.ModelViewSet):
         # check if action is allowed
         if self.action in getattr(self, 'disabled_actions', []):
             raise exceptions.MethodNotAllowed(method=request.method)
-        self.validate_object_action(self.get_object(), self.action)
+        self.validate_object_action(self.action)
 
-    def validate_object_action(self, obj, action_name):
+    def validate_object_action(self, action_name, obj=None):
         """ Execute validation for actions that are related to particular object """
         action_method = getattr(self, action_name)
         if not getattr(action_method, 'detail', False) and action_name not in ('update', 'partial_update', 'destroy'):
@@ -291,7 +291,7 @@ class ActionsViewSet(viewsets.ModelViewSet):
             return
         validators = getattr(self, action_name + '_validators', [])
         for validator in validators:
-            validator(obj)
+            validator(obj or self.get_object())
 
 
 class ReadOnlyActionsViewSet(ActionsViewSet):
