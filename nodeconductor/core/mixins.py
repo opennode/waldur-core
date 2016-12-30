@@ -115,6 +115,11 @@ class DeleteExecutorMixin(AsyncExecutor):
             {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
 
 
+class ExecutorMixin(CreateExecutorMixin, UpdateExecutorMixin, DeleteExecutorMixin):
+    """ Executer create/update/delete operation with executor """
+    pass
+
+
 class EagerLoadMixin(object):
     """ Reduce number of requests to DB.
 

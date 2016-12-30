@@ -272,12 +272,19 @@ class ActionsViewSet(viewsets.ModelViewSet):
 
     def initial(self, request, *args, **kwargs):
         super(ActionsViewSet, self).initial(request, *args, **kwargs)
+        if self.action is None:  # disable all checks if user tries to reach unsupported action
+            return
         # check if action is allowed
         if self.action in getattr(self, 'disabled_actions', []):
             raise exceptions.MethodNotAllowed(method=request.method)
-        # execute validation for detailed action
+        self.validate_object_action()
+
+    def validate_object_action(self):
+        """ Execute validation for actions that are related to particular object """
         action_method = getattr(self, self.action)
-        if not getattr(action_method, 'detail', False):
+        if not getattr(action_method, 'detail', False) and self.action not in ('update', 'partial_update', 'destroy'):
+            # DRF does not add flag 'detail' to update and delete actions, however they execute operation with
+            # particular object. We need to enable validation for them too.
             return
         validators = getattr(self, self.action + '_validators', [])
         for validator in validators:
