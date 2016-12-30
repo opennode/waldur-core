@@ -268,7 +268,10 @@ class ActionsViewSet(viewsets.ModelViewSet):
     permission_classes = (rf_permissions.IsAuthenticated, permissions.ActionsPermission)
 
     def get_serializer_class(self):
-        return getattr(self, self.action + '_serializer_class', super(ActionsViewSet, self).get_serializer_class())
+        default_serializer_class = super(ActionsViewSet, self).get_serializer_class()
+        if self.action is None:
+            return default_serializer_class
+        return getattr(self, self.action + '_serializer_class', default_serializer_class)
 
     def initial(self, request, *args, **kwargs):
         super(ActionsViewSet, self).initial(request, *args, **kwargs)
@@ -277,18 +280,18 @@ class ActionsViewSet(viewsets.ModelViewSet):
         # check if action is allowed
         if self.action in getattr(self, 'disabled_actions', []):
             raise exceptions.MethodNotAllowed(method=request.method)
-        self.validate_object_action()
+        self.validate_object_action(self.action)
 
-    def validate_object_action(self):
+    def validate_object_action(self, action_name, obj=None):
         """ Execute validation for actions that are related to particular object """
-        action_method = getattr(self, self.action)
-        if not getattr(action_method, 'detail', False) and self.action not in ('update', 'partial_update', 'destroy'):
+        action_method = getattr(self, action_name)
+        if not getattr(action_method, 'detail', False) and action_name not in ('update', 'partial_update', 'destroy'):
             # DRF does not add flag 'detail' to update and delete actions, however they execute operation with
             # particular object. We need to enable validation for them too.
             return
-        validators = getattr(self, self.action + '_validators', [])
+        validators = getattr(self, action_name + '_validators', [])
         for validator in validators:
-            validator(self.get_object())
+            validator(obj or self.get_object())
 
 
 class ReadOnlyActionsViewSet(ActionsViewSet):
