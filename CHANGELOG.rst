@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.113.1
+---------------
+- Fix ActionsMetadata.
+
 Release 0.113.0
 ---------------
 - Fix ActionsViewSet.

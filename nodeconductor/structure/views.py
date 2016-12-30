@@ -2432,7 +2432,7 @@ class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
     @detail_route(methods=['post'])
     def pull(self, request, uuid=None):
         self.pull_executor.execute(self.get_object())
-        return Response({'detail': 'Pull operation was successfully scheduled'}, status=status.HTTP_201_CREATED)
+        return Response({'detail': 'Pull operation was successfully scheduled'}, status=status.HTTP_202_ACCEPTED)
 
     pull_executor = NotImplemented
     pull_validators = [core_validators.StateValidator(models.NewResource.States.OK, models.NewResource.States.ERRED)]
