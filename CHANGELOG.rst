@@ -5,6 +5,11 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.112.2
+---------------
+- Fix ActionsViewSet.
+- Implement ResourceViewSet.
+
 Release 0.112.1
 ---------------
 - Implement ActionsViewSet and ActionsPermision.
