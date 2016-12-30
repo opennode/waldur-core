@@ -265,7 +265,6 @@ class ActionsViewSet(viewsets.ModelViewSet):
         class MyView(ActionsViewSet):
             disabled_actions = ['create']  # error 405 will be returned on POST request
     """
-    DEFAULT_ACTIONS = ('create', 'update', 'partial_update', 'destroy')
     permission_classes = (rf_permissions.IsAuthenticated, permissions.ActionsPermission)
 
     def get_serializer_class(self):
@@ -280,7 +279,9 @@ class ActionsViewSet(viewsets.ModelViewSet):
             raise exceptions.MethodNotAllowed(method=request.method)
         # execute validation for detailed action
         action_method = getattr(self, self.action)
-        if not getattr(action_method, 'detail', False) and self.action not in self.DEFAULT_ACTIONS:
+        if not getattr(action_method, 'detail', False) and self.action not in ('update', 'partial_update', 'destroy'):
+            # DRF does not add flag 'detail' to update and delete actions, however they execute operation with
+            # particular object. We need to enable validation for them too.
             return
         validators = getattr(self, self.action + '_validators', [])
         for validator in validators:
