@@ -42,10 +42,16 @@ class ActionSerializer(object):
             return self.name.replace('_', ' ').title()
 
     def get_reason(self):
-        try:
-            self.view.check_operation(self.request, self.resource, self.name)
-        except exceptions.APIException as e:
-            return force_text(e)
+        if hasattr(self.view, 'check_operation'):
+            try:
+                self.view.check_operation(self.request, self.resource, self.name)
+            except exceptions.APIException as e:
+                return force_text(e)
+        else:
+            try:
+                self.view.validate_object_action(obj=self.resource, action_name=self.name)
+            except exceptions.APIException as e:
+                return force_text(e)
 
     def get_method(self):
         if self.name == 'destroy':
