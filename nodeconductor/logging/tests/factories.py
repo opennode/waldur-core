@@ -43,8 +43,6 @@ class EventFactory(object):
             'levelname': 'WARNING',
             'logger': 'nodeconductor.test',
             'message': 'Test message',
-            'project_group_name': 'test_group_name',
-            'project_group_uuid': 'test_group_uuid',
             'project_name': 'test_project',
             'project_uuid': 'test_project_uuid',
             'tags': ['_jsonparsefailure'],

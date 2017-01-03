@@ -18,6 +18,18 @@ from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors
 
 
+class FormRequestAdminMixin(object):
+    """
+    This mixin allows you to get current request user in the model admin form,
+    which then passed to add_user method, so that user which granted role,
+    is stored in the permission model.
+    """
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(FormRequestAdminMixin, self).get_form(request, obj=obj, **kwargs)
+        form.request = request
+        return form
+
+
 class ChangeReadonlyMixin(object):
 
     add_readonly_fields = ()
@@ -71,8 +83,7 @@ class CustomerAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(CustomerAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.owners = self.instance.roles.get(
-                role_type=models.CustomerRole.OWNER).permission_group.user_set.all()
+            self.owners = self.instance.get_owners()
             self.fields['owners'].initial = self.owners
         else:
             self.owners = User.objects.none()
@@ -87,17 +98,20 @@ class CustomerAdminForm(ModelForm):
         added_owners = new_owners.exclude(pk__in=self.owners)
         removed_owners = self.owners.exclude(pk__in=new_owners)
         for user in added_owners:
-            customer.add_user(user, role_type=models.CustomerRole.OWNER)
+            customer.add_user(user, models.CustomerRole.OWNER, self.request.user)
 
         for user in removed_owners:
-            customer.remove_user(user, role_type=models.CustomerRole.OWNER)
+            customer.remove_user(user, models.CustomerRole.OWNER)
 
         self.save_m2m()
 
         return customer
 
 
-class CustomerAdmin(ResourceCounterFormMixin, ProtectedModelMixin, admin.ModelAdmin):
+class CustomerAdmin(FormRequestAdminMixin,
+                    ResourceCounterFormMixin,
+                    ProtectedModelMixin,
+                    admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'country', 'vat_code', 'is_company', 'balance', 'owners')
@@ -116,10 +130,8 @@ class ProjectAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ProjectAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.admins = self.instance.roles.get(
-                role_type=models.ProjectRole.ADMINISTRATOR).permission_group.user_set.all()
-            self.managers = self.instance.roles.get(
-                role_type=models.ProjectRole.MANAGER).permission_group.user_set.all()
+            self.admins = self.instance.get_users(models.ProjectRole.ADMINISTRATOR)
+            self.managers = self.instance.get_managers(models.ProjectRole.MANAGER)
             self.fields['admins'].initial = self.admins
             self.fields['managers'].initial = self.managers
         else:
@@ -135,10 +147,10 @@ class ProjectAdminForm(ModelForm):
         added_managers = new_managers.exclude(pk__in=self.managers)
         removed_managers = self.managers.exclude(pk__in=new_managers)
         for user in added_managers:
-            project.add_user(user, role_type=models.ProjectRole.MANAGER)
+            project.add_user(user, models.ProjectRole.MANAGER, self.request.user)
 
         for user in removed_managers:
-            project.remove_user(user, role_type=models.ProjectRole.MANAGER)
+            project.remove_user(user, models.ProjectRole.MANAGER)
 
         new_admins = self.cleaned_data['admins']
         added_admins = new_admins.exclude(pk__in=self.admins)
@@ -148,17 +160,21 @@ class ProjectAdminForm(ModelForm):
 
         removed_admins = self.admins.exclude(pk__in=new_admins)
         for user in added_admins:
-            project.add_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
+            project.add_user(user, models.ProjectRole.ADMINISTRATOR, self.request.user)
 
         for user in removed_admins:
-            project.remove_user(user, role_type=models.ProjectRole.ADMINISTRATOR)
+            project.remove_user(user, models.ProjectRole.ADMINISTRATOR)
 
         self.save_m2m()
 
         return project
 
 
-class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
+class ProjectAdmin(FormRequestAdminMixin,
+                   ResourceCounterFormMixin,
+                   ProtectedModelMixin,
+                   ChangeReadonlyMixin,
+                   admin.ModelAdmin):
     form = ProjectAdminForm
 
     fields = ('name', 'description', 'customer', 'admins', 'managers')
@@ -167,48 +183,6 @@ class ProjectAdmin(ResourceCounterFormMixin, ProtectedModelMixin, ChangeReadonly
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
-
-
-class ProjectGroupAdminForm(ModelForm):
-    managers = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                        widget=FilteredSelectMultiple(verbose_name='Managers', is_stacked=False))
-
-    def __init__(self, *args, **kwargs):
-        super(ProjectGroupAdminForm, self).__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            self.managers = self.instance.roles.get(
-                role_type=models.ProjectGroupRole.MANAGER).permission_group.user_set.all()
-            self.fields['managers'].initial = self.managers
-        else:
-            self.managers = User.objects.none()
-
-    def save(self, commit=True):
-        group = super(ProjectGroupAdminForm, self).save(commit=False)
-
-        if not group.pk:
-            group.save()
-
-        new_managers = self.cleaned_data['managers']
-        added_managers = new_managers.exclude(pk__in=self.managers)
-        removed_managers = self.managers.exclude(pk__in=new_managers)
-        for user in added_managers:
-            group.add_user(user, role_type=models.ProjectGroupRole.MANAGER)
-
-        for user in removed_managers:
-            group.remove_user(user, role_type=models.ProjectGroupRole.MANAGER)
-
-        self.save_m2m()
-
-        return group
-
-
-class ProjectGroupAdmin(ProtectedModelMixin, ChangeReadonlyMixin, admin.ModelAdmin):
-    form = ProjectGroupAdminForm
-    fields = ('name', 'description', 'customer', 'managers')
-
-    list_display = ['name', 'uuid', 'customer', 'created']
-    search_fields = ['name', 'uuid']
-    change_readonly_fields = ['customer']
 
 
 class ServiceSettingsAdminForm(ModelForm):
@@ -396,5 +370,4 @@ class VirtualMachineAdmin(ResourceAdmin):
 
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.ProjectGroup, ProjectGroupAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)

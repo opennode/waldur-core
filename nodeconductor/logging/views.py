@@ -180,7 +180,7 @@ class AlertViewSet(mixins.CreateModelMixin,
          - ?to=<timestamp> - filter alerts that was active to given date
          - ?opened - if this argument is in GET request endpoint will return only alerts that are not closed
          - ?closed - if this argument is in GET request endpoint will return only alerts that are closed
-         - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', project', 'project_group')
+         - ?aggregate=aggregate_model_name (default: 'customer'. Have to be from list: 'customer', project')
          - ?uuid=uuid_of_aggregate_model_object (not required. If this parameter will be defined - result ill contain only
            object with given uuid)
          - ?acknowledged=True|False - show only acknowledged (non-acknowledged) alerts

@@ -22,15 +22,17 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
 
-        self.customer_role = self.customer.roles.get(role_type=structure_models.CustomerRole.OWNER)
-        self.customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role)
+        self.customer_role = structure_models.CustomerRole.OWNER
+        self.customer_invitation = factories.CustomerInvitationFactory(
+            customer=self.customer, customer_role=self.customer_role)
 
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.project.add_user(self.project_admin, structure_models.ProjectRole.ADMINISTRATOR)
         self.project.add_user(self.project_manager, structure_models.ProjectRole.MANAGER)
 
-        self.project_role = self.project.roles.get(role_type=structure_models.ProjectRole.ADMINISTRATOR)
-        self.project_invitation = factories.ProjectInvitationFactory(project_role=self.project_role)
+        self.project_role = structure_models.ProjectRole.ADMINISTRATOR
+        self.project_invitation = factories.ProjectInvitationFactory(
+            project=self.project, project_role=self.project_role)
 
     # List tests
     def test_user_can_list_invitations(self):
@@ -67,14 +69,16 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
     @data('staff', 'customer_owner')
     def test_user_with_access_can_create_project_admin_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
-        payload = self._get_valid_project_invitation_payload(self.project_invitation, project_role='admin')
+        payload = self._get_valid_project_invitation_payload(
+            self.project_invitation, project_role=structure_models.ProjectRole.ADMINISTRATOR)
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     @data('staff', 'customer_owner')
     def test_user_with_access_can_create_project_manager_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
-        payload = self._get_valid_project_invitation_payload(self.project_invitation, project_role='manager')
+        payload = self._get_valid_project_invitation_payload(
+            self.project_invitation, project_role=structure_models.ProjectRole.MANAGER)
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -92,6 +96,21 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         payload = self._get_valid_customer_invitation_payload(self.customer_invitation)
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    @data('staff', 'customer_owner')
+    def test_user_which_created_invitation_is_stored_in_inviatation(self, user):
+        self.client.force_authenticate(user=getattr(self, user))
+        payload = self._get_valid_customer_invitation_payload(self.customer_invitation)
+        response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
+        invitation = models.Invitation.objects.get(uuid=response.data['uuid'])
+        self.assertEqual(invitation.created_by, getattr(self, user))
+
+    def test_user_which_created_invitation_is_stored_in_permission(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner)
+        self.client.force_authenticate(user=self.user)
+        self.client.post(factories.CustomerInvitationFactory.get_url(invitation, action='accept'))
+        permission = structure_models.CustomerPermission.objects.get(user=self.user, customer=invitation.customer)
+        self.assertEqual(permission.created_by, self.customer_owner)
 
     @data('project_admin', 'project_manager', 'user')
     def test_user_without_access_cannot_create_customer_owner_invitation(self, user):
@@ -134,7 +153,7 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.project_invitation.refresh_from_db()
         self.assertEqual(self.project_invitation.state, models.Invitation.State.ACCEPTED)
-        self.assertTrue(self.project.has_user(self.user, self.project_invitation.project_role.role_type))
+        self.assertTrue(self.project.has_user(self.user, self.project_invitation.project_role))
 
     def test_authenticated_user_can_accept_customer_invitation(self):
         self.client.force_authenticate(user=self.user)
@@ -144,11 +163,11 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.customer_invitation.refresh_from_db()
         self.assertEqual(self.customer_invitation.state, models.Invitation.State.ACCEPTED)
-        self.assertTrue(self.customer.has_user(self.user, self.customer_invitation.customer_role.role_type))
+        self.assertTrue(self.customer.has_user(self.user, self.customer_invitation.customer_role))
 
     def test_user_with_invalid_civil_number_cannot_accept_invitation(self):
-        customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role,
-                                                                  civil_number='123456789')
+        customer_invitation = factories.CustomerInvitationFactory(
+            customer=self.customer, customer_role=self.customer_role, civil_number='123456789')
         self.client.force_authenticate(user=self.user)
         response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
 
@@ -156,18 +175,20 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.data, ['User has an invalid civil number.'])
 
     def test_user_which_already_has_role_within_customer_cannot_accept_invitation(self):
-        customer_invitation = factories.CustomerInvitationFactory(customer_role=self.customer_role)
+        customer_invitation = factories.CustomerInvitationFactory(
+            customer=self.customer, customer_role=self.customer_role)
         self.client.force_authenticate(user=self.user)
-        self.customer.add_user(self.user, customer_invitation.customer_role.role_type)
+        self.customer.add_user(self.user, customer_invitation.customer_role)
         response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, ['User already has role within this customer.'])
 
     def test_user_which_already_has_role_within_project_cannot_accept_invitation(self):
-        project_invitation = factories.ProjectInvitationFactory(project_role=self.project_role)
+        project_invitation = factories.ProjectInvitationFactory(
+            project=self.project, project_role=self.project_role)
         self.client.force_authenticate(user=self.user)
-        self.project.add_user(self.user, project_invitation.project_role.role_type)
+        self.project.add_user(self.user, project_invitation.project_role)
         response = self.client.post(factories.ProjectInvitationFactory.get_url(project_invitation, action='accept'))
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -269,8 +290,8 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         return {
             'email': invitation.email,
             'link_template': invitation.link_template,
-            'project': structure_factories.ProjectFactory.get_url(invitation.project_role.project),
-            'project_role': project_role or 'admin',
+            'project': structure_factories.ProjectFactory.get_url(invitation.project),
+            'project_role': project_role or structure_models.ProjectRole.ADMINISTRATOR,
         }
 
     def _get_valid_customer_invitation_payload(self, invitation=None, customer_role=None):
@@ -279,5 +300,5 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
             'email': invitation.email,
             'link_template': invitation.link_template,
             'customer': structure_factories.CustomerFactory.get_url(invitation.customer),
-            'customer_role': customer_role or 'owner',
+            'customer_role': customer_role or structure_models.CustomerRole.OWNER,
         }

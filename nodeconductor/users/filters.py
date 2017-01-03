@@ -7,42 +7,16 @@ from django.db.models import Q
 from rest_framework.filters import DjangoFilterBackend
 
 from nodeconductor.core import filters as core_filters
-from nodeconductor.structure import models as structure_models
 from nodeconductor.users import models
 
 
 class InvitationFilter(django_filters.FilterSet):
     project = core_filters.UUIDFilter(
-        name='project_role__project__uuid',
+        name='project__uuid',
     )
     project_url = core_filters.URLFilter(
         view_name='project-detail',
-        name='project_role__project__uuid',
-    )
-    project_role = core_filters.MappedChoiceFilter(
-        name='project_role__role_type',
-        choices=(
-            ('admin', 'Administrator'),
-            ('manager', 'Manager'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (structure_models.ProjectRole.ADMINISTRATOR, 'Administrator'),
-            (structure_models.ProjectRole.MANAGER, 'Manager'),
-        ),
-        choice_mappings={
-            'admin': structure_models.ProjectRole.ADMINISTRATOR,
-            'manager': structure_models.ProjectRole.MANAGER,
-        },
-    )
-    customer_role = core_filters.MappedChoiceFilter(
-        name='customer_role__role_type',
-        choices=(
-            ('owner', 'Owner'),
-            # TODO: Removing this drops support of filtering by numeric codes
-            (structure_models.CustomerRole.OWNER, 'Owner'),
-        ),
-        choice_mappings={
-            'owner': structure_models.CustomerRole.OWNER,
-        },
+        name='project__uuid',
     )
     state = django_filters.MultipleChoiceFilter(choices=models.Invitation.State.CHOICES)
 
@@ -51,10 +25,7 @@ class InvitationFilter(django_filters.FilterSet):
         fields = [
             'email',
             'civil_number',
-            'state',
             'customer_role',
-            'project',
-            'project_url',
             'project_role',
         ]
         order_by = [
@@ -71,7 +42,7 @@ class InvitationFilter(django_filters.FilterSet):
 class InvitationCustomerFilterBackend(DjangoFilterBackend):
     url_filter = core_filters.URLFilter(
         view_name='customer-detail',
-        name='customer_role__customer__uuid',
+        name='customer__uuid',
     )
 
     def filter_queryset(self, request, queryset, view):
@@ -84,8 +55,8 @@ class InvitationCustomerFilterBackend(DjangoFilterBackend):
         except ValueError:
             return queryset.none()
 
-        query = Q(customer_role__customer__uuid=customer_uuid)
-        query |= Q(project_role__project__customer__uuid=customer_uuid)
+        query = Q(customer__uuid=customer_uuid)
+        query |= Q(project__customer__uuid=customer_uuid)
         return queryset.filter(query)
 
     def extract_customer_uuid(self, request):

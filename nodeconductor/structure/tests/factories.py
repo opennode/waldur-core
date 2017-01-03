@@ -121,22 +121,44 @@ class ProjectFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('project-list')
 
 
-class ProjectGroupFactory(factory.DjangoModelFactory):
+class ProjectPermissionFactory(factory.DjangoModelFactory):
     class Meta(object):
-        model = models.ProjectGroup
+        model = models.ProjectPermission
 
-    name = factory.Sequence(lambda n: 'Proj Grp %s' % n)
+    project = factory.SubFactory(ProjectFactory)
+    user = factory.SubFactory(UserFactory)
+    role = models.ProjectRole.ADMINISTRATOR
+
+    @classmethod
+    def get_url(cls, permission=None, action=None):
+        if permission is None:
+            permission = ProjectPermissionFactory()
+        url = 'http://testserver' + reverse('project_permission-detail', kwargs={'uuid': permission.uuid})
+        return url if action is None else url + action + '/'
+
+    @classmethod
+    def get_list_url(self):
+        return 'http://testserver' + reverse('project_permission-list')
+
+
+class CustomerPermissionFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.CustomerPermission
+
     customer = factory.SubFactory(CustomerFactory)
+    user = factory.SubFactory(UserFactory)
+    role = models.CustomerRole.OWNER
 
     @classmethod
-    def get_url(cls, project_group=None):
-        if project_group is None:
-            project_group = ProjectGroupFactory()
-        return 'http://testserver' + reverse('projectgroup-detail', kwargs={'uuid': project_group.uuid})
+    def get_url(cls, permission=None, action=None):
+        if permission is None:
+            permission = CustomerPermissionFactory()
+        url = 'http://testserver' + reverse('customer_permission-detail', kwargs={'uuid': permission.uuid})
+        return url if action is None else url + action + '/'
 
     @classmethod
-    def get_list_url(cls):
-        return 'http://testserver' + reverse('projectgroup-list')
+    def get_list_url(self):
+        return 'http://testserver' + reverse('customer_permission-list')
 
 
 class ServiceSettingsFactory(factory.DjangoModelFactory):

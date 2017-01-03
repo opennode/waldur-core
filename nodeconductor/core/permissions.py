@@ -297,16 +297,6 @@ class StaffPermissionLogic(PermissionLogic):
         return False
 
 
-def detect_group_type(permission_group):
-    perm_group = permission_group.group
-    if hasattr(perm_group, 'projectrole'):
-        return 'project'
-    elif hasattr(perm_group, 'customerrole'):
-        return 'customer'
-    elif hasattr(perm_group, 'projectgrouprole'):
-        return 'project_group'
-
-
 class TypedCollaboratorsPermissionLogic(PermissionLogic):
     """
     Permission logic that supports definition of several user groups based on the type of the
