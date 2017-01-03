@@ -3,13 +3,14 @@ from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
+from nodeconductor.core.mixins import UserContextMixin
 from nodeconductor.core.views import ProtectedViewSet
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
 from nodeconductor.users import models, filters, serializers, tasks
 
 
-class InvitationViewSet(ProtectedViewSet):
+class InvitationViewSet(UserContextMixin, ProtectedViewSet):
     queryset = models.Invitation.objects.all()
     serializer_class = serializers.InvitationSerializer
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
@@ -30,13 +31,11 @@ class InvitationViewSet(ProtectedViewSet):
         return customer.has_user(user, structure_models.CustomerRole.OWNER)
 
     def perform_create(self, serializer):
-        project_role = serializer.validated_data.get('project_role', {})
-        project = project_role.get('project')
-        if project is not None:
-            customer = project_role['project'].customer
+        project = serializer.validated_data.get('project')
+        if project:
+            customer = project.customer
         else:
-            customer_role = serializer.validated_data.get('customer_role', {})
-            customer = customer_role['customer']
+            customer = serializer.validated_data.get('customer')
 
         if not self.can_manage_invitation_with(customer):
             raise PermissionDenied('You do not have permission to perform this action.')
@@ -79,8 +78,8 @@ class InvitationViewSet(ProtectedViewSet):
         elif invitation.civil_number and invitation.civil_number != request.user.civil_number:
             raise ValidationError('User has an invalid civil number.')
 
-        if invitation.project_role is not None:
-            if invitation.project_role.project.has_user(request.user):
+        if invitation.project:
+            if invitation.project.has_user(request.user):
                 raise ValidationError('User already has role within this project.')
         elif invitation.customer.has_user(request.user):
             raise ValidationError('User already has role within this customer.')

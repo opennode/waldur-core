@@ -13,7 +13,6 @@ class PriceListItemListTest(BaseCostTrackingTest):
 
     def setUp(self):
         super(PriceListItemListTest, self).setUp()
-        self.service_project_link.delete()
         self.price_list_item = factories.PriceListItemFactory(service=self.service)
 
     @data('staff', 'owner', 'manager')
@@ -26,6 +25,7 @@ class PriceListItemListTest(BaseCostTrackingTest):
 
     @data('administrator')
     def test_user_without_access_to_service_cannot_see_services_price_list(self, user):
+        self.service_project_link.delete()
         self.client.force_authenticate(self.users[user])
         response = self.client.get(factories.PriceListItemFactory.get_list_url())
 

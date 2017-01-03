@@ -173,6 +173,11 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=30),
         'args': (),
     },
+    'check-expired-permissions': {
+        'task': 'nodeconductor.structure.check_expired_permissions',
+        'schedule': timedelta(hours=24),
+        'args': (),
+    },
     'recalculate-price-estimates': {
         'task': 'nodeconductor.cost_tracking.recalculate_estimate',
         # To avoid bugs and unexpected behavior - do not re-calculate estimates

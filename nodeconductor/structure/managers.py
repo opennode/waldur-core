@@ -6,7 +6,7 @@ from nodeconductor.core.managers import GenericKeyMixin, SummaryQuerySet
 
 
 def filter_queryset_for_user(queryset, user):
-    filtered_relations = ('customer', 'project', 'project_group')
+    filtered_relations = ('customer', 'project')
 
     if user is None or user.is_staff:
         return queryset
@@ -25,11 +25,12 @@ def filter_queryset_for_user(queryset, user):
             prefix = path + '__'
 
         kwargs = {
-            prefix + 'roles__permission_group__user': user,
+            prefix + 'permissions__user': user,
+            prefix + 'permissions__is_active': True
         }
 
         if role:
-            kwargs[prefix + 'roles__role_type'] = role
+            kwargs[prefix + 'permissions__role'] = role
 
         return models.Q(**kwargs)
 
