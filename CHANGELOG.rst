@@ -5,8 +5,8 @@ Release NEXT
 ------------
 - Nothing yet.
 
-Release 0.114
--------------
+Release 0.114.0
+---------------
 - Drop project groups.
 - Implement permission mixin, project and customer permissions.
 - Implement ability to set role deprecation time.
