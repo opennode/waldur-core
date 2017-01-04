@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
- - Nothing yet.
+ - Fix ProjectAdminForm.
 
 Release 0.115.0
 ---------------

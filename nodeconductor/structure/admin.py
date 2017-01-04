@@ -131,7 +131,7 @@ class ProjectAdminForm(ModelForm):
         super(ProjectAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.admins = self.instance.get_users(models.ProjectRole.ADMINISTRATOR)
-            self.managers = self.instance.get_managers(models.ProjectRole.MANAGER)
+            self.managers = self.instance.get_users(models.ProjectRole.MANAGER)
             self.fields['admins'].initial = self.admins
             self.fields['managers'].initial = self.managers
         else:
