@@ -3,7 +3,12 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+ - Fix ProjectAdminForm.
+
+Release 0.115.0
+---------------
+- Add RuntimeStateValidator
+- Fix access permissions.
 
 Release 0.114.0
 ---------------

@@ -32,3 +32,10 @@ class StateValidator(object):
             states_names = dict(models.StateMixin.States.CHOICES)
             valid_states_names = [str(states_names[state]) for state in self.valid_states]
             raise exceptions.IncorrectStateException('Valid states for operation: %s' % ', '.join(valid_states_names))
+
+
+class RuntimeStateValidator(StateValidator):
+
+    def __call__(self, resource):
+        if resource.runtime_state not in self.valid_states:
+            raise exceptions.IncorrectStateException('Valid runtime states for operation: %s' % ', '.join(self.valid_states))
