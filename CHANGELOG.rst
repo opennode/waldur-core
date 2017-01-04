@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Add RuntimeStateValidator
+- Fix access permissions.
 
 Release 0.114.0
 ---------------
