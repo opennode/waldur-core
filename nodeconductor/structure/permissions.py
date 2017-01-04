@@ -88,11 +88,11 @@ def _has_owner_access(user, customer):
 
 
 def _has_manager_access(user, project):
-    return _has_owner_access(user, project.customer) or project.has_user(user, models.CustomerRole.MANAGER)
+    return _has_owner_access(user, project.customer) or project.has_user(user, models.ProjectRole.MANAGER)
 
 
 def _has_admin_access(user, project):
-    return _has_manager_access(user, project) or project.has_user(user, models.CustomerRole.ADMINISTRATOR)
+    return _has_manager_access(user, project) or project.has_user(user, models.ProjectRole.ADMINISTRATOR)
 
 
 def _get_parent_by_permission_path(obj, permission_path):
