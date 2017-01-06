@@ -268,6 +268,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
                          serializers.HyperlinkedModelSerializer,):
     projects = PermissionProjectSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
+    support_users = BasicUserSerializer(source='get_support_users', many=True, read_only=True)
     image = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
@@ -278,7 +279,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects',
-            'owners', 'balance',
+            'owners', 'support_users', 'balance',
             'registration_code',
             'quotas',
             'image',
@@ -470,7 +471,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         return data
 
     def validate_expiration_time(self, value):
-        if value < timezone.now():
+        if value is not None and value < timezone.now():
             raise serializers.ValidationError('Expiration time should be greater than current time')
 
     def get_filtered_field_names(self):
@@ -542,7 +543,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         return data
 
     def validate_expiration_time(self, value):
-        if value < timezone.now():
+        if value is not None and value < timezone.now():
             raise serializers.ValidationError('Expiration time should be greater than current time')
 
     def get_filtered_field_names(self):
@@ -577,7 +578,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'organization', 'organization_approved',
             'civil_number',
             'description',
-            'is_staff', 'is_active',
+            'is_staff', 'is_active', 'is_support',
             'registration_method',
             'date_joined',
             'agree_with_policy',

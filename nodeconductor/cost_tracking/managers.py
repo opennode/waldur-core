@@ -19,7 +19,7 @@ class UserFilterMixin(object):
         if queryset is None:
             queryset = self.get_queryset()
 
-        if user.is_staff:
+        if user.is_staff or user.is_support:
             return queryset
 
         query = Q()

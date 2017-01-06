@@ -153,6 +153,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     is_active = models.BooleanField(_('active'), default=True,
                                     help_text=_('Designates whether this user should be treated as '
                                                 'active. Unselect this instead of deleting accounts.'))
+    is_support = models.BooleanField(_('support status'), default=False,
+                                     help_text=_('Designates whether the user is a global support user.'))
     date_joined = models.DateTimeField(_('date joined'), default=django_timezone.now)
     registration_method = models.CharField(_('registration method'), max_length=50, default='default', blank=True,
                                            help_text=_('Indicates what registration method were used.'))
@@ -171,7 +173,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         verbose_name_plural = _('users')
 
     def get_log_fields(self):
-        return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD, 'is_staff')
+        return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD, 'is_staff', 'is_support')
 
     def get_full_name(self):
         # This method is used in django-reversion as name of revision creator.
@@ -189,7 +191,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):
-        if user.is_staff:
+        if user.is_staff or user.is_support:
             return {'user_uuid': cls.objects.values_list('uuid', flat=True)}
         else:
             return {'user_uuid': [user.uuid]}

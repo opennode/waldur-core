@@ -350,11 +350,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
-        if (not django_settings.NODECONDUCTOR.get('SHOW_ALL_USERS', True) and not user.is_staff) or \
-                'potential' in self.request.query_params:
+        if (not django_settings.NODECONDUCTOR.get('SHOW_ALL_USERS', True) and
+                not (user.is_staff or user.is_support)) or 'potential' in self.request.query_params:
             connected_customers_query = models.Customer.objects.all()
             # is user is not staff, allow only connected customers
-            if not user.is_staff:
+            if not (user.is_staff or user.is_support):
                 # XXX: Let the DB cry...
                 connected_customers_query = connected_customers_query.filter(
                     Q(permissions__user=user, permissions__is_active=True) |
@@ -393,7 +393,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if organization_claimed is not None:
             queryset = queryset.exclude(organization__isnull=True).exclude(organization__exact='')
 
-        if not user.is_staff:
+        if not (user.is_staff or user.is_support):
             queryset = queryset.filter(is_active=True)
             # non-staff users cannot see staff through rest
             queryset = queryset.filter(is_staff=False)
@@ -772,7 +772,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
 
-        if not self.request.user.is_staff:
+        if not (self.request.user.is_staff or self.request.user.is_support):
             queryset = queryset.filter(
                 Q(user=self.request.user, is_active=True) |
                 Q(customer__projects__permissions__user=self.request.user, is_active=True)

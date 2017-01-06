@@ -6,6 +6,8 @@ Release NEXT
 - Fix ProjectAdminForm.
 - Drop UpdateOnlyStableMixin and UserContextMixin.
 - Fix projects' get_users method.
+- Add is_support field to User model.
+- Add Support role to project and customer roles.
 
 Release 0.115.0
 ---------------

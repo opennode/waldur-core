@@ -245,9 +245,11 @@ class PermissionMixin(object):
 
 class CustomerRole(models.CharField):
     OWNER = 'owner'
+    SUPPORT = 'support'
 
     CHOICES = (
         (OWNER, 'Owner'),
+        (SUPPORT, 'Support'),
     )
 
     def __init__(self, *args, **kwargs):
@@ -366,7 +368,14 @@ class Customer(core_models.UuidMixin,
         return get_user_model().objects.filter(
             customerpermission__customer=self,
             customerpermission__is_active=True,
-            customerpermission__role=CustomerRole.OWNER
+            customerpermission__role=CustomerRole.OWNER,
+        )
+
+    def get_support_users(self):
+        return get_user_model().objects.filter(
+            customerpermission__customer=self,
+            customerpermission__is_active=True,
+            customerpermission__role=CustomerRole.SUPPORT,
         )
 
     def get_users(self):
@@ -413,10 +422,12 @@ class BalanceHistory(models.Model):
 class ProjectRole(models.CharField):
     ADMINISTRATOR = 'admin'
     MANAGER = 'manager'
+    SUPPORT = 'support'
 
     CHOICES = (
         (ADMINISTRATOR, 'Administrator'),
         (MANAGER, 'Manager'),
+        (SUPPORT, 'Support'),
     )
 
     def __init__(self, *args, **kwargs):
