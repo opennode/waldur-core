@@ -486,11 +486,13 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                                   core_serializers.AugmentedSerializerMixin,
                                   serializers.HyperlinkedModelSerializer):
 
+    customer_name = serializers.ReadOnlyField(source='project.customer.name')
+
     class Meta(object):
         model = models.ProjectPermission
         fields = (
             'url', 'pk', 'role', 'created', 'expiration_time', 'created_by',
-            'project', 'project_uuid', 'project_name',
+            'project', 'project_uuid', 'project_name', 'customer_name'
         ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
 
         related_paths = {
