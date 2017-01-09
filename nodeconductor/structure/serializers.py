@@ -454,7 +454,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
         customer = validated_data['customer']
         user = validated_data['user']
         role = validated_data['role']
-        created_by = self.context['user']
+        created_by = self.context['request'].user
 
         permission, _ = customer.add_user(user, role, created_by)
         return permission
@@ -523,7 +523,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
         project = validated_data['project']
         user = validated_data['user']
         role = validated_data['role']
-        created_by = self.context['user']
+        created_by = self.context['request'].user
 
         permission, _ = project.add_user(user, role, created_by)
 
@@ -928,7 +928,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return super(BaseServiceSerializer, self).validate_empty_values(data)
 
     def validate(self, attrs):
-        user = self.context['user']
+        user = self.context['request'].user
         customer = attrs.get('customer') or self.instance.customer
         project = attrs.get('project')
         if project and project.customer != customer:

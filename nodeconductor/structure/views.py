@@ -620,8 +620,7 @@ class UserViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
 
-class ProjectPermissionViewSet(core_mixins.UserContextMixin,
-                               viewsets.ModelViewSet):
+class ProjectPermissionViewSet(viewsets.ModelViewSet):
     """
     - Projects are connected to customers, whereas the project may belong to one customer only,
       and the customer may have
@@ -741,8 +740,7 @@ class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
     filter_class = filters.ProjectPermissionFilter
 
 
-class CustomerPermissionViewSet(core_mixins.UserContextMixin,
-                                viewsets.ModelViewSet):
+class CustomerPermissionViewSet(viewsets.ModelViewSet):
     """
     - Customers are connected to users through roles, whereas user may have role "customer owner".
     - Each customer may have multiple owners, and each user may own multiple customers.
@@ -1497,7 +1495,6 @@ class UpdateOnlyByPaidCustomerMixin(object):
 
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.EagerLoadMixin,
-                         core_mixins.UserContextMixin,
                          viewsets.ModelViewSet):
     class PaidControl:
         customer_path = 'customer'
@@ -1685,7 +1682,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
-                                    core_mixins.UpdateOnlyStableMixin,
                                     mixins.CreateModelMixin,
                                     mixins.RetrieveModelMixin,
                                     mixins.DestroyModelMixin,
@@ -1825,7 +1821,6 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
 
 class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
                                               ResourceViewMixin,
-                                              core_mixins.UserContextMixin,
                                               viewsets.ModelViewSet)):
     filter_class = filters.BaseResourceFilter
 
@@ -1969,7 +1964,6 @@ class BaseOnlineResourceViewSet(_BaseResourceViewSet):
 class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
                                                      core_views.StateExecutorViewSet,
                                                      ResourceViewMixin,
-                                                     core_mixins.UserContextMixin,
                                                      viewsets.ModelViewSet)):
 
     filter_class = filters.BaseResourceStateFilter
