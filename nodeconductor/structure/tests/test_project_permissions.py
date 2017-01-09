@@ -40,7 +40,7 @@ class ProjectPermissionSerializerTest(unittest.TestCase):
 
     def test_payload_has_required_fields(self):
         expected_fields = [
-            'url', 'role', 'project', 'project_name', 'pk', 'project_uuid',
+            'url', 'role', 'project', 'project_name', 'pk', 'project_uuid', 'customer_name',
             'created', 'expiration_time', 'created_by',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email'
         ]
