@@ -10,6 +10,8 @@ from nodeconductor.structure.models import CustomerRole
 from nodeconductor.structure.serializers import PasswordSerializer
 from nodeconductor.structure.tests import factories
 
+from . import fixtures
+
 
 class UserPermissionApiTest(test.APITransactionTestCase):
     def setUp(self):
@@ -543,3 +545,39 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
         candidate_user = User.objects.get(username=self.users['user_with_request_to_a_customer'].username)
         self.assertTrue(candidate_user.organization == "")
         self.assertFalse(candidate_user.organization_approved, 'Organization is not approved')
+
+
+class CustomUsersFilterTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        fixture = fixtures.ProjectFixture()
+        self.customer1 = fixture.customer
+        self.project1 = fixture.project
+        self.staff = fixture.staff
+        self.owner1 = fixture.owner
+        self.manager1 = fixture.manager
+
+        fixture2 = fixtures.ProjectFixture()
+        self.customer2 = fixture2.customer
+        self.project2 = fixture2.project
+        self.owner2 = fixture2.owner
+        self.manager2 = fixture2.manager
+
+        self.client.force_authenticate(self.staff)
+        self.url = factories.UserFactory.get_list_url()
+
+    def test_filter_user_by_customer(self):
+        response = self.client.get(self.url, {'customer_uuid': self.customer1.uuid.hex})
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        actual = [user['uuid'] for user in response.data]
+        expected = [self.owner1.uuid.hex, self.manager1.uuid.hex]
+        self.assertEquals(actual, expected)
+
+    def test_filter_user_by_project(self):
+        response = self.client.get(self.url, {'project_uuid': self.project1.uuid.hex})
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        actual = [user['uuid'] for user in response.data]
+        expected = [self.manager1.uuid.hex]
+        self.assertEquals(actual, expected)

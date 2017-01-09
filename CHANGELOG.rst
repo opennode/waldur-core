@@ -8,6 +8,7 @@ Release NEXT
 - Fix projects' get_users method.
 - Add is_support field to User model.
 - Add Support role to project and customer roles.
+- Enable filtering user by customer and project UUID.
 
 Release 0.115.0
 ---------------

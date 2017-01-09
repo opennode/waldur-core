@@ -337,6 +337,11 @@ class UserViewSet(viewsets.ModelViewSet):
         rf_permissions.IsAuthenticated,
         permissions.IsAdminOrOwnerOrOrganizationManager,
     )
+    filter_backends = (
+        filters.CustomerUserFilter,
+        filters.ProjectUserFilter,
+        rf_filters.DjangoFilterBackend,
+    )
     filter_class = filters.UserFilter
 
     def get_queryset(self):
