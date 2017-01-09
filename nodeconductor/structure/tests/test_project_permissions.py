@@ -506,3 +506,24 @@ class ProjectPermissionCreatedByTest(test.APISimpleTestCase):
 
         permission = ProjectPermission.objects.get(pk=response.data['pk'])
         self.assertEqual(permission.created_by, staff_user)
+
+
+class GetProjectUsersTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        fixture = fixtures.ProjectFixture()
+        self.project = fixture.project
+        self.admin = fixture.admin
+        self.manager = fixture.manager
+
+    def test_get_users_by_default_returns_both_managers_and_admins(self):
+        users = list(self.project.get_users())
+        self.assertListEqual(users, [self.admin, self.manager])
+
+    def test_get_users_by_returns_admins(self):
+        users = list(self.project.get_users(ProjectRole.ADMINISTRATOR))
+        self.assertListEqual(users, [self.admin])
+
+    def test_get_users_by_returns_managers(self):
+        users = list(self.project.get_users(ProjectRole.MANAGER))
+        self.assertListEqual(users, [self.manager])

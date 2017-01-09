@@ -5,6 +5,7 @@ Release NEXT
 ------------
 - Fix ProjectAdminForm.
 - Drop UpdateOnlyStableMixin and UserContextMixin.
+- Fix projects' get_users method.
 
 Release 0.115.0
 ---------------
