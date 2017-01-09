@@ -116,7 +116,7 @@ class CustomerAdminForm(ModelForm):
         added_users = new_users.exclude(pk__in=field)
         for user in added_users:
             # User role within customer must be unique.
-            if customer.has_user(user):
+            if not customer.has_user(user):
                 customer.add_user(user, role, self.request.user)
 
         self.save_m2m()
@@ -180,7 +180,7 @@ class ProjectAdminForm(ModelForm):
         added_users = new_users.exclude(pk__in=field)
         for user in added_users:
             # User role within project must be unique.
-            if project.has_user(user):
+            if not project.has_user(user):
                 project.add_user(user, role, self.request.user)
         self.save_m2m()
 
