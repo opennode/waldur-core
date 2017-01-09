@@ -6,36 +6,6 @@ from nodeconductor.core import models
 from nodeconductor.core.exceptions import IncorrectStateException
 
 
-class UpdateOnlyStableMixin(object):
-    """
-    Allow modification of entities in stable state only.
-    """
-
-    def initial(self, request, *args, **kwargs):
-        acceptable_states = {
-            'update': models.SynchronizationStates.STABLE_STATES,
-            'partial_update': models.SynchronizationStates.STABLE_STATES,
-            'destroy': models.SynchronizationStates.STABLE_STATES | {models.SynchronizationStates.NEW},
-        }
-        if self.action in acceptable_states.keys():
-            obj = self.get_object()
-            if obj and isinstance(obj, models.SynchronizableMixin):
-                if obj.state not in acceptable_states[self.action]:
-                    raise IncorrectStateException(
-                        'Modification allowed in stable states only.')
-
-        return super(UpdateOnlyStableMixin, self).initial(request, *args, **kwargs)
-
-
-class UserContextMixin(object):
-    """ Pass current user to serializer context """
-
-    def get_serializer_context(self):
-        context = super(UserContextMixin, self).get_serializer_context()
-        context['user'] = self.request.user
-        return context
-
-
 class StateMixin(object):
     """ Raise exception if object is not in correct state for action """
 

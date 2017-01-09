@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
- - Fix ProjectAdminForm.
+- Fix ProjectAdminForm.
+- Drop UpdateOnlyStableMixin and UserContextMixin.
 
 Release 0.115.0
 ---------------
