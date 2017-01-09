@@ -57,16 +57,16 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         project = attrs.get('project')
         customer = attrs.get('customer')
 
-        project_role = attrs.get('project_role')
-        customer_role = attrs.get('customer_role')
+        project_role = attrs.get('project_role', '')
+        customer_role = attrs.get('customer_role', '')
 
         if customer and project:
             raise serializers.ValidationError('Cannot create invitation to project and customer simultaneously.')
         elif not (customer or project):
             raise serializers.ValidationError('Customer or project must be provided.')
-        elif (customer and customer_role is None) or (customer_role is not None and not customer):
+        elif (customer and not customer_role) or (customer_role and not customer):
             raise serializers.ValidationError({'customer_role': 'Customer and its role must be provided.'})
-        elif (project and project_role is None) or (project_role is not None and not project):
+        elif (project and not project_role) or (project_role and not project):
             raise serializers.ValidationError({'project_role': 'Project and its role must be provided.'})
 
         return attrs

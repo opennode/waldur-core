@@ -79,14 +79,20 @@ class ResourceCounterFormMixin(object):
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                       widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
+    support_users = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                             widget=FilteredSelectMultiple(verbose_name='Support users',
+                                                                           is_stacked=False))
 
     def __init__(self, *args, **kwargs):
         super(CustomerAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.owners = self.instance.get_owners()
+            self.support_users = self.instance.get_support_users()
             self.fields['owners'].initial = self.owners
+            self.fields['support_users'].initial = self.support_users
         else:
             self.owners = User.objects.none()
+            self.support_users = User.objects.none()
 
     def save(self, commit=True):
         customer = super(CustomerAdminForm, self).save(commit=False)
@@ -94,18 +100,26 @@ class CustomerAdminForm(ModelForm):
         if not customer.pk:
             customer.save()
 
-        new_owners = self.cleaned_data['owners']
-        added_owners = new_owners.exclude(pk__in=self.owners)
-        removed_owners = self.owners.exclude(pk__in=new_owners)
-        for user in added_owners:
-            customer.add_user(user, models.CustomerRole.OWNER, self.request.user)
-
-        for user in removed_owners:
-            customer.remove_user(user, models.CustomerRole.OWNER)
-
-        self.save_m2m()
+        self.populate_users('owners', customer, models.CustomerRole.OWNER)
+        self.populate_users('support_users', customer, models.CustomerRole.SUPPORT)
 
         return customer
+
+    def populate_users(self, field_name, customer, role):
+        field = getattr(self, field_name)
+        new_users = self.cleaned_data[field_name]
+
+        removed_users = field.exclude(pk__in=new_users)
+        for user in removed_users:
+            customer.remove_user(user, role)
+
+        added_users = new_users.exclude(pk__in=field)
+        for user in added_users:
+            # User role within customer must be unique.
+            if not customer.has_user(user):
+                customer.add_user(user, role, self.request.user)
+
+        self.save_m2m()
 
 
 class CustomerAdmin(FormRequestAdminMixin,
@@ -114,7 +128,7 @@ class CustomerAdmin(FormRequestAdminMixin,
                     admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
-              'country', 'vat_code', 'is_company', 'balance', 'owners')
+              'country', 'vat_code', 'is_company', 'balance', 'owners', 'support_users')
     readonly_fields = ['balance']
     list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
                     'get_private_cloud_count']
@@ -126,16 +140,22 @@ class ProjectAdminForm(ModelForm):
                                       widget=FilteredSelectMultiple(verbose_name='Admins', is_stacked=False))
     managers = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                         widget=FilteredSelectMultiple(verbose_name='Managers', is_stacked=False))
+    support_users = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
+                                             widget=FilteredSelectMultiple(verbose_name='Support users',
+                                                                           is_stacked=False))
 
     def __init__(self, *args, **kwargs):
         super(ProjectAdminForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.admins = self.instance.get_users(models.ProjectRole.ADMINISTRATOR)
             self.managers = self.instance.get_users(models.ProjectRole.MANAGER)
+            self.support_users = self.instance.get_users(models.ProjectRole.SUPPORT)
             self.fields['admins'].initial = self.admins
             self.fields['managers'].initial = self.managers
+            self.fields['support_users'].initial = self.support_users
         else:
-            self.admins, self.managers = User.objects.none(), User.objects.none()
+            for field_name in ('admins', 'managers', 'support_users'):
+                setattr(self, field_name, User.objects.none())
 
     def save(self, commit=True):
         project = super(ProjectAdminForm, self).save(commit=False)
@@ -143,31 +163,26 @@ class ProjectAdminForm(ModelForm):
         if not project.pk:
             project.save()
 
-        new_managers = self.cleaned_data['managers']
-        added_managers = new_managers.exclude(pk__in=self.managers)
-        removed_managers = self.managers.exclude(pk__in=new_managers)
-        for user in added_managers:
-            project.add_user(user, models.ProjectRole.MANAGER, self.request.user)
-
-        for user in removed_managers:
-            project.remove_user(user, models.ProjectRole.MANAGER)
-
-        new_admins = self.cleaned_data['admins']
-        added_admins = new_admins.exclude(pk__in=self.admins)
-
-        # User role within project should be unique
-        added_admins = added_admins.exclude(pk__in=self.managers)
-
-        removed_admins = self.admins.exclude(pk__in=new_admins)
-        for user in added_admins:
-            project.add_user(user, models.ProjectRole.ADMINISTRATOR, self.request.user)
-
-        for user in removed_admins:
-            project.remove_user(user, models.ProjectRole.ADMINISTRATOR)
-
-        self.save_m2m()
+        self.populate_users('admins', project, models.ProjectRole.ADMINISTRATOR)
+        self.populate_users('managers', project, models.ProjectRole.MANAGER)
+        self.populate_users('support_users', project, models.ProjectRole.SUPPORT)
 
         return project
+
+    def populate_users(self, field_name, project, role):
+        field = getattr(self, field_name)
+        new_users = self.cleaned_data[field_name]
+
+        removed_users = field.exclude(pk__in=new_users)
+        for user in removed_users:
+            project.remove_user(user, role)
+
+        added_users = new_users.exclude(pk__in=field)
+        for user in added_users:
+            # User role within project must be unique.
+            if not project.has_user(user):
+                project.add_user(user, role, self.request.user)
+        self.save_m2m()
 
 
 class ProjectAdmin(FormRequestAdminMixin,
@@ -177,7 +192,7 @@ class ProjectAdmin(FormRequestAdminMixin,
                    admin.ModelAdmin):
     form = ProjectAdminForm
 
-    fields = ('name', 'description', 'customer', 'admins', 'managers')
+    fields = ('name', 'description', 'customer', 'admins', 'managers', 'support_users')
 
     list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     search_fields = ['name', 'uuid']
