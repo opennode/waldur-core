@@ -10,7 +10,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
     """
     Custom index dashboard for admin site.
     """
-    title = 'NodeConductor administration'
+    title = 'Waldur administration'
 
     def _get_installed_plugin_info(self):
         result = [
