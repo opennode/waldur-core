@@ -547,17 +547,19 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
         self.assertFalse(candidate_user.organization_approved, 'Organization is not approved')
 
 
-class CustomerUsersFilterTest(test.APITransactionTestCase):
+class CustomUsersFilterTest(test.APITransactionTestCase):
 
     def setUp(self):
         fixture = fixtures.ProjectFixture()
         self.customer1 = fixture.customer
+        self.project1 = fixture.project
         self.staff = fixture.staff
         self.owner1 = fixture.owner
         self.manager1 = fixture.manager
 
         fixture2 = fixtures.ProjectFixture()
         self.customer2 = fixture2.customer
+        self.project2 = fixture2.project
         self.owner2 = fixture2.owner
         self.manager2 = fixture2.manager
 
@@ -570,4 +572,12 @@ class CustomerUsersFilterTest(test.APITransactionTestCase):
 
         actual = [user['uuid'] for user in response.data]
         expected = [self.owner1.uuid.hex, self.manager1.uuid.hex]
+        self.assertEquals(actual, expected)
+
+    def test_filter_user_by_project(self):
+        response = self.client.get(self.url, {'project_uuid': self.project1.uuid.hex})
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        actual = [user['uuid'] for user in response.data]
+        expected = [self.manager1.uuid.hex]
         self.assertEquals(actual, expected)
