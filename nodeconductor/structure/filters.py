@@ -203,7 +203,7 @@ class CustomerUserFilter(DjangoFilterBackend):
               customerpermission__is_active=True) |
             Q(projectpermission__project__customer__uuid=customer_uuid,
               projectpermission__is_active=True)
-        )
+        ).distinct()
 
 
 class ProjectUserFilter(DjangoFilterBackend):
@@ -220,7 +220,7 @@ class ProjectUserFilter(DjangoFilterBackend):
         return queryset.filter(
             projectpermission__project__uuid=project_uuid,
             projectpermission__is_active=True
-        )
+        ).distinct()
 
 
 class UserFilter(django_filters.FilterSet):
