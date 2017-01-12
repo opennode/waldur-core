@@ -1700,6 +1700,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceProjectLinkFilter
     unsafe_methods_permissions = [permissions.is_owner]
+    disabled_actions = ['update', 'partial_update']
 
     def list(self, request, *args, **kwargs):
         """
