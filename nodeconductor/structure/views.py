@@ -1512,6 +1512,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
     metadata_class = ActionsMetadata
+    unsafe_methods_permissions = [permissions.is_owner]
 
     def list(self, request, *args, **kwargs):
         """
@@ -1644,9 +1645,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer.is_valid(raise_exception=True)
 
             customer = serializer.validated_data['project'].customer
-            if not request.user.is_staff and not customer.has_user(request.user):
-                raise PermissionDenied(
-                    "Only customer owner or staff are allowed to perform this action.")
 
             try:
                 resource = serializer.save()
@@ -1688,7 +1686,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    unlink_permissions = [permissions.is_owner]
     unlink.destructive = True
 
 
