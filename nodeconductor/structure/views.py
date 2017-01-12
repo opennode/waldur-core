@@ -1500,7 +1500,7 @@ class UpdateOnlyByPaidCustomerMixin(object):
 
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.EagerLoadMixin,
-                         viewsets.ModelViewSet):
+                         core_views.ActionsViewSet):
     class PaidControl:
         customer_path = 'customer'
         settings_path = 'settings'
@@ -1508,11 +1508,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     queryset = NotImplemented
     serializer_class = NotImplemented
     import_serializer_class = NotImplemented
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
     metadata_class = ActionsMetadata
+    unsafe_methods_permissions = [permissions.is_owner]
 
     def list(self, request, *args, **kwargs):
         """
@@ -1592,6 +1592,17 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.ManagedResourceSerializer(resources, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def _has_import_serializer_permission(request, view, obj=None):
+        if not view._can_import():
+            raise MethodNotAllowed(view.action)
+
+    def _shared_settings_owner_permission(request, view, obj=None):
+        if obj is None:
+            return
+
+        if obj.settings.shared and not request.user.is_staff:
+            raise PermissionDenied("Only staff users are allowed to import resources from shared services.")
+
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
         """
@@ -1614,12 +1625,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 "project": "http://example.com/api/projects/e5f973af2eb14d2d8c38d62bcbaccb33/"
             }
         """
-        if not self._can_import():
-            raise MethodNotAllowed('link')
 
         service = self.get_object()
-        if service.settings.shared and not request.user.is_staff:
-            raise PermissionDenied("Only staff users are allowed to import resources from shared services.")
 
         if self.request.method == 'GET':
             try:
@@ -1638,9 +1645,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer.is_valid(raise_exception=True)
 
             customer = serializer.validated_data['project'].customer
-            if not request.user.is_staff and not customer.has_user(request.user):
-                raise PermissionDenied(
-                    "Only customer owner or staff are allowed to perform this action.")
 
             try:
                 resource = serializer.save()
@@ -1653,6 +1657,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             )
 
             return Response(serializer.data, status=status.HTTP_200_OK)
+
+    link_permissions = [_has_import_serializer_permission, _shared_settings_owner_permission]
 
     def get_backend(self, service):
         # project_uuid can be supplied in order to get a list of resources
@@ -1675,32 +1681,26 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         Unlink all related resources, service project link and service itself.
         """
         service = self.get_object()
-        if not request.user.is_staff and not service.customer.has_user(request.user):
-            raise PermissionDenied(
-                "Only customer owner or staff are allowed to perform this action.")
-
         service.unlink_descendants()
         self.perform_destroy(service)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
     unlink.destructive = True
 
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
-                                    mixins.CreateModelMixin,
-                                    mixins.RetrieveModelMixin,
-                                    mixins.DestroyModelMixin,
-                                    mixins.ListModelMixin,
-                                    viewsets.GenericViewSet):
+                                    core_views.ActionsViewSet):
     class PaidControl:
         customer_path = 'service__customer'
         settings_path = 'service__settings'
 
     queryset = NotImplemented
     serializer_class = NotImplemented
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceProjectLinkFilter
+    unsafe_methods_permissions = [permissions.is_owner]
+    disabled_actions = ['update', 'partial_update']
 
     def list(self, request, *args, **kwargs):
         """
