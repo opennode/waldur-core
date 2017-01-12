@@ -1808,7 +1808,7 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
 
     def initial(self, request, *args, **kwargs):
         super(ResourceViewMixin, self).initial(request, *args, **kwargs)
-        if 'uuid' in kwargs:
+        if 'uuid' in kwargs and self.action != 'metadata':
             self.check_operation(request, self.get_object(), self.action)
 
     def check_operation(self, request, resource, action):

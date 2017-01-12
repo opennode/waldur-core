@@ -4,6 +4,7 @@ import json
 import logging
 
 from collections import defaultdict
+from copy import deepcopy
 
 import pyvat
 from django.conf import settings
@@ -434,6 +435,9 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
             'customer', 'role', 'user', 'created_by', 'created'
         )
         extra_kwargs = {
+            'url': {
+                'view_name': 'customer_permission-detail',
+            },
             'user': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
@@ -450,7 +454,6 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                 'queryset': models.Customer.objects.all(),
             }
         }
-        view_name = 'customer_permission-detail'
 
     def create(self, validated_data):
         customer = validated_data['customer']
@@ -481,7 +484,8 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
 
 class CustomerPermissionLogSerializer(CustomerPermissionSerializer):
     class Meta(CustomerPermissionSerializer.Meta):
-        view_name = 'customer_permission_log-detail'
+        extra_kwargs = deepcopy(CustomerPermissionSerializer.Meta.extra_kwargs)
+        extra_kwargs['url']['view_name'] = 'customer_permission_log-detail'
 
 
 class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
@@ -505,6 +509,9 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
             'project', 'role', 'user', 'created_by', 'created'
         )
         extra_kwargs = {
+            'url': {
+                'view_name': 'project_permission-detail',
+            },
             'user': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
@@ -521,7 +528,6 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                 'queryset': models.Project.objects.all(),
             }
         }
-        view_name = 'project_permission-detail'
 
     def create(self, validated_data):
         project = validated_data['project']
@@ -553,7 +559,8 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
 
 class ProjectPermissionLogSerializer(ProjectPermissionSerializer):
     class Meta(ProjectPermissionSerializer.Meta):
-        view_name = 'project_permission_log-detail'
+        extra_kwargs = deepcopy(ProjectPermissionSerializer.Meta.extra_kwargs)
+        extra_kwargs['url']['view_name'] = 'project_permission_log-detail'
 
 
 class UserOrganizationSerializer(serializers.Serializer):
@@ -734,12 +741,15 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
-        write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
         }
+        write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
+        for field in write_only_fields:
+            field_params = extra_kwargs.setdefault(field, {})
+            field_params['write_only'] = True
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -844,7 +854,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = (
             'uuid',
             'url',
@@ -859,7 +868,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         protected_fields = ('customer', 'settings', 'project') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
+            'url': {'lookup_field': 'uuid', 'view_name': NotImplemented},
             'customer': {'lookup_field': 'uuid'},
             'settings': {'lookup_field': 'uuid'},
         }
@@ -1060,7 +1069,6 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
@@ -1068,6 +1076,7 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         )
         related_paths = ('project', 'service')
         extra_kwargs = {
+            'url': {'view_name': NotImplemented},
             'service': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }
 
@@ -1189,7 +1198,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = MonitoringSerializerMixin.Meta.fields + (
             'url', 'uuid', 'name', 'description', 'start_time',
             'service', 'service_name', 'service_uuid',
@@ -1204,7 +1212,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
         extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
+            'url': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }
 
     def get_filtered_field_names(self):
@@ -1292,14 +1300,13 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = (
             'url', 'uuid', 'name', 'state', 'created',
             'backend_id', 'project', 'import_history'
         )
         read_only_fields = ('name',)
         extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
+            'url': {'lookup_field': 'uuid', 'view_name': NotImplemented},
         }
 
     def get_filtered_field_names(self):
