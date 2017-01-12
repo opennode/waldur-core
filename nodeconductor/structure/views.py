@@ -1688,7 +1688,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    unlink_permissions = [permissions.is_staff, permissions.is_owner]
+    unlink_permissions = [permissions.is_owner]
     unlink.destructive = True
 
 
@@ -1702,6 +1702,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
     serializer_class = NotImplemented
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceProjectLinkFilter
+    unsafe_methods_permissions = [permissions.is_owner]
 
     def list(self, request, *args, **kwargs):
         """
