@@ -22,7 +22,8 @@ Release 0.116.0
 - Add Support role to project and customer roles.
 - Enable filtering user by customer and project UUID.
 - Fix token authentication according to DRF 3.3.
-- Drop JSONField and IPAddressField during migration to DRF 3.3.
+- Replace IPAddressField serializer with DRF serializer.
+- Add ViewNameMixin to modify extra_kwargs in View Meta class.
 
 Release 0.115.0
 ---------------

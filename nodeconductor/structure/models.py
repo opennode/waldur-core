@@ -166,6 +166,11 @@ class BasePermission(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
 
     @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        raise NotImplementedError
+
+    @classmethod
     def get_expired(cls):
         return cls.objects.filter(expiration_time__lt=timezone.now(), is_active=True)
 
@@ -268,6 +273,11 @@ class CustomerPermission(BasePermission):
 
     customer = models.ForeignKey('structure.Customer', related_name='permissions')
     role = CustomerRole(db_index=True)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        return 'customer_permission'
 
     def revoke(self):
         self.customer.remove_user(self.user, self.role)
@@ -447,6 +457,11 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
     role = ProjectRole(db_index=True)
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_url_name(cls):
+        return 'project_permission'
 
     def revoke(self):
         self.project.remove_user(self.user, self.role)

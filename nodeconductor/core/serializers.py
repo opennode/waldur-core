@@ -26,6 +26,15 @@ class AuthTokenSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 
+# XXX: use JSONField from DRF when upgraded to 3.3+
+class JSONField(serializers.Field):
+    def to_internal_value(self, data):
+        return data
+
+    def to_representation(self, value):
+        return value
+
+
 class Base64Field(serializers.CharField):
     def to_internal_value(self, data):
         value = super(Base64Field, self).to_internal_value(data)
