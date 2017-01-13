@@ -30,7 +30,7 @@ install_requires = [
     'django-redis-cache>=1.6.5',
     'django-reversion>=1.8.7,<=1.9.3',
     'django-taggit>=0.20.2',
-    'djangorestframework>=3.2.0,<3.3.0',
+    'djangorestframework>=3.3.0,<3.4.0',
     'elasticsearch>=1.0.0,<2.0.0',
     'hiredis>=0.2.0',
     'iptools>=0.6.1',
