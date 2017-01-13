@@ -3,14 +3,13 @@ from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 
-from nodeconductor.core.mixins import UserContextMixin
 from nodeconductor.core.views import ProtectedViewSet
 from nodeconductor.structure import filters as structure_filters
 from nodeconductor.structure import models as structure_models
 from nodeconductor.users import models, filters, serializers, tasks
 
 
-class InvitationViewSet(UserContextMixin, ProtectedViewSet):
+class InvitationViewSet(ProtectedViewSet):
     queryset = models.Invitation.objects.all()
     serializer_class = serializers.InvitationSerializer
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)

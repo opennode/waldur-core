@@ -14,6 +14,10 @@ class UserFixture(object):
     def user(self):
         return factories.UserFactory()
 
+    @cached_property
+    def global_support(self):
+        return factories.UserFactory(is_support=True)
+
 
 class CustomerFixture(UserFixture):
 
@@ -26,6 +30,12 @@ class CustomerFixture(UserFixture):
         owner = factories.UserFactory()
         self.customer.add_user(owner, models.CustomerRole.OWNER)
         return owner
+
+    @cached_property
+    def customer_support(self):
+        support = factories.UserFactory()
+        self.customer.add_user(support, models.CustomerRole.SUPPORT)
+        return support
 
 
 class ProjectFixture(CustomerFixture):
@@ -45,6 +55,12 @@ class ProjectFixture(CustomerFixture):
         manager = factories.UserFactory()
         self.project.add_user(manager, models.ProjectRole.MANAGER)
         return manager
+
+    @cached_property
+    def project_support(self):
+        support = factories.UserFactory()
+        self.project.add_user(support, models.ProjectRole.SUPPORT)
+        return support
 
 
 class ServiceFixture(ProjectFixture):

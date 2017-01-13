@@ -8,7 +8,7 @@ from nodeconductor.core.managers import GenericKeyMixin, SummaryQuerySet
 def filter_queryset_for_user(queryset, user):
     filtered_relations = ('customer', 'project')
 
-    if user is None or user.is_staff:
+    if user is None or user.is_staff or user.is_support:
         return queryset
 
     def create_q(entity):

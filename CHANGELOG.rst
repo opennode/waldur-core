@@ -3,7 +3,16 @@ CHANGELOG
 
 Release NEXT
 ------------
- - Fix ProjectAdminForm.
+- Nothing yet
+
+Release 0.116.0
+---------------
+- Fix ProjectAdminForm.
+- Drop UpdateOnlyStableMixin and UserContextMixin.
+- Fix projects' get_users method.
+- Add is_support field to User model.
+- Add Support role to project and customer roles.
+- Enable filtering user by customer and project UUID.
 
 Release 0.115.0
 ---------------

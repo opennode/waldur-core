@@ -162,7 +162,9 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
 
         self.customer = factories.CustomerFactory()
         self.owner = factories.UserFactory()
+        self.customer_support = factories.UserFactory()
         self.customer.add_user(self.owner, CustomerRole.OWNER)
+        self.customer.add_user(self.customer_support, CustomerRole.SUPPORT)
 
         self.project = factories.ProjectFactory(customer=self.customer)
         self.admin = factories.UserFactory()
@@ -207,6 +209,14 @@ class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_customer_support_cannot_create_project(self):
+        self.client.force_authenticate(self.customer_support)
+
+        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
     # Update tests:
     def test_user_can_change_single_project_field(self):

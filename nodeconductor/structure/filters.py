@@ -187,13 +187,43 @@ class ProjectFilter(django_filters.FilterSet):
         }
 
 
-class UserFilter(django_filters.FilterSet):
-    project = django_filters.CharFilter(
-        name='projectpermission__project__name',
-        distinct=True,
-        lookup_type='icontains',
-    )
+class CustomerUserFilter(DjangoFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        customer_uuid = request.query_params.get('customer_uuid')
+        if not customer_uuid:
+            return queryset
 
+        try:
+            uuid.UUID(customer_uuid)
+        except ValueError:
+            return queryset.none()
+
+        return queryset.filter(
+            Q(customerpermission__customer__uuid=customer_uuid,
+              customerpermission__is_active=True) |
+            Q(projectpermission__project__customer__uuid=customer_uuid,
+              projectpermission__is_active=True)
+        ).distinct()
+
+
+class ProjectUserFilter(DjangoFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        project_uuid = request.query_params.get('project_uuid')
+        if not project_uuid:
+            return queryset
+
+        try:
+            uuid.UUID(project_uuid)
+        except ValueError:
+            return queryset.none()
+
+        return queryset.filter(
+            projectpermission__project__uuid=project_uuid,
+            projectpermission__is_active=True
+        ).distinct()
+
+
+class UserFilter(django_filters.FilterSet):
     full_name = django_filters.CharFilter(lookup_type='icontains')
     username = django_filters.CharFilter()
     native_name = django_filters.CharFilter(lookup_type='icontains')
@@ -212,7 +242,6 @@ class UserFilter(django_filters.FilterSet):
             'phone_number',
             'description',
             'job_title',
-            'project',
             'username',
             'civil_number',
             'is_active',

@@ -337,6 +337,11 @@ class UserViewSet(viewsets.ModelViewSet):
         rf_permissions.IsAuthenticated,
         permissions.IsAdminOrOwnerOrOrganizationManager,
     )
+    filter_backends = (
+        filters.CustomerUserFilter,
+        filters.ProjectUserFilter,
+        rf_filters.DjangoFilterBackend,
+    )
     filter_class = filters.UserFilter
 
     def get_queryset(self):
@@ -350,11 +355,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # TODO: refactor to a separate endpoint or structure
         # a special query for all users with assigned privileges that the current user can remove privileges from
-        if (not django_settings.NODECONDUCTOR.get('SHOW_ALL_USERS', True) and not user.is_staff) or \
-                'potential' in self.request.query_params:
+        if (not django_settings.NODECONDUCTOR.get('SHOW_ALL_USERS', True) and
+                not (user.is_staff or user.is_support)) or 'potential' in self.request.query_params:
             connected_customers_query = models.Customer.objects.all()
             # is user is not staff, allow only connected customers
-            if not user.is_staff:
+            if not (user.is_staff or user.is_support):
                 # XXX: Let the DB cry...
                 connected_customers_query = connected_customers_query.filter(
                     Q(permissions__user=user, permissions__is_active=True) |
@@ -393,7 +398,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if organization_claimed is not None:
             queryset = queryset.exclude(organization__isnull=True).exclude(organization__exact='')
 
-        if not user.is_staff:
+        if not (user.is_staff or user.is_support):
             queryset = queryset.filter(is_active=True)
             # non-staff users cannot see staff through rest
             queryset = queryset.filter(is_staff=False)
@@ -620,8 +625,7 @@ class UserViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
 
-class ProjectPermissionViewSet(core_mixins.UserContextMixin,
-                               viewsets.ModelViewSet):
+class ProjectPermissionViewSet(viewsets.ModelViewSet):
     """
     - Projects are connected to customers, whereas the project may belong to one customer only,
       and the customer may have
@@ -741,8 +745,7 @@ class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
     filter_class = filters.ProjectPermissionFilter
 
 
-class CustomerPermissionViewSet(core_mixins.UserContextMixin,
-                                viewsets.ModelViewSet):
+class CustomerPermissionViewSet(viewsets.ModelViewSet):
     """
     - Customers are connected to users through roles, whereas user may have role "customer owner".
     - Each customer may have multiple owners, and each user may own multiple customers.
@@ -774,7 +777,7 @@ class CustomerPermissionViewSet(core_mixins.UserContextMixin,
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
 
-        if not self.request.user.is_staff:
+        if not (self.request.user.is_staff or self.request.user.is_support):
             queryset = queryset.filter(
                 Q(user=self.request.user, is_active=True) |
                 Q(customer__projects__permissions__user=self.request.user, is_active=True)
@@ -1497,8 +1500,7 @@ class UpdateOnlyByPaidCustomerMixin(object):
 
 class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                          core_mixins.EagerLoadMixin,
-                         core_mixins.UserContextMixin,
-                         viewsets.ModelViewSet):
+                         core_views.ActionsViewSet):
     class PaidControl:
         customer_path = 'customer'
         settings_path = 'settings'
@@ -1506,11 +1508,11 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     queryset = NotImplemented
     serializer_class = NotImplemented
     import_serializer_class = NotImplemented
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
     metadata_class = ActionsMetadata
+    unsafe_methods_permissions = [permissions.is_owner]
 
     def list(self, request, *args, **kwargs):
         """
@@ -1590,6 +1592,17 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         serializer = serializers.ManagedResourceSerializer(resources, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def _has_import_serializer_permission(request, view, obj=None):
+        if not view._can_import():
+            raise MethodNotAllowed(view.action)
+
+    def _shared_settings_owner_permission(request, view, obj=None):
+        if obj is None:
+            return
+
+        if obj.settings.shared and not request.user.is_staff:
+            raise PermissionDenied("Only staff users are allowed to import resources from shared services.")
+
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
         """
@@ -1612,12 +1625,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
                 "project": "http://example.com/api/projects/e5f973af2eb14d2d8c38d62bcbaccb33/"
             }
         """
-        if not self._can_import():
-            raise MethodNotAllowed('link')
 
         service = self.get_object()
-        if service.settings.shared and not request.user.is_staff:
-            raise PermissionDenied("Only staff users are allowed to import resources from shared services.")
 
         if self.request.method == 'GET':
             try:
@@ -1636,9 +1645,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer.is_valid(raise_exception=True)
 
             customer = serializer.validated_data['project'].customer
-            if not request.user.is_staff and not customer.has_user(request.user):
-                raise PermissionDenied(
-                    "Only customer owner or staff are allowed to perform this action.")
 
             try:
                 resource = serializer.save()
@@ -1651,6 +1657,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             )
 
             return Response(serializer.data, status=status.HTTP_200_OK)
+
+    link_permissions = [_has_import_serializer_permission, _shared_settings_owner_permission]
 
     def get_backend(self, service):
         # project_uuid can be supplied in order to get a list of resources
@@ -1673,33 +1681,26 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         Unlink all related resources, service project link and service itself.
         """
         service = self.get_object()
-        if not request.user.is_staff and not service.customer.has_user(request.user):
-            raise PermissionDenied(
-                "Only customer owner or staff are allowed to perform this action.")
-
         service.unlink_descendants()
         self.perform_destroy(service)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
     unlink.destructive = True
 
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
-                                    core_mixins.UpdateOnlyStableMixin,
-                                    mixins.CreateModelMixin,
-                                    mixins.RetrieveModelMixin,
-                                    mixins.DestroyModelMixin,
-                                    mixins.ListModelMixin,
-                                    viewsets.GenericViewSet):
+                                    core_views.ActionsViewSet):
     class PaidControl:
         customer_path = 'service__customer'
         settings_path = 'service__settings'
 
     queryset = NotImplemented
     serializer_class = NotImplemented
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
     filter_class = filters.BaseServiceProjectLinkFilter
+    unsafe_methods_permissions = [permissions.is_owner]
+    disabled_actions = ['update', 'partial_update']
 
     def list(self, request, *args, **kwargs):
         """
@@ -1825,7 +1826,6 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
 
 class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
                                               ResourceViewMixin,
-                                              core_mixins.UserContextMixin,
                                               viewsets.ModelViewSet)):
     filter_class = filters.BaseResourceFilter
 
@@ -1969,7 +1969,6 @@ class BaseOnlineResourceViewSet(_BaseResourceViewSet):
 class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
                                                      core_views.StateExecutorViewSet,
                                                      ResourceViewMixin,
-                                                     core_mixins.UserContextMixin,
                                                      viewsets.ModelViewSet)):
 
     filter_class = filters.BaseResourceStateFilter
