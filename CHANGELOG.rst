@@ -3,6 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet
 
 Release 0.116.0
 ---------------
