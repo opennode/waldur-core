@@ -3,6 +3,9 @@ CHANGELOG
 
 Release NEXT
 ------------
+
+Release 0.116.0
+---------------
 - Fix ProjectAdminForm.
 - Drop UpdateOnlyStableMixin and UserContextMixin.
 - Fix projects' get_users method.
