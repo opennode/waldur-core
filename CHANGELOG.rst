@@ -21,7 +21,8 @@ Release 0.116.0
 - Add is_support field to User model.
 - Add Support role to project and customer roles.
 - Enable filtering user by customer and project UUID.
-- Fix token authentication according to DRF 3.3
+- Fix token authentication according to DRF 3.3.
+- Drop JSONField and IPAddressField during migration to DRF 3.3.
 
 Release 0.115.0
 ---------------

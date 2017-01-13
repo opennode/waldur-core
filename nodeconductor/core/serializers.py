@@ -3,7 +3,6 @@ from collections import OrderedDict
 from datetime import timedelta
 import logging
 
-from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
 from django.core.urlresolvers import reverse, Resolver404
 from rest_framework import serializers
@@ -27,15 +26,6 @@ class AuthTokenSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 
-# XXX: use JSONField from DRF when upgraded to 3.3+
-class JSONField(serializers.Field):
-    def to_internal_value(self, data):
-        return data
-
-    def to_representation(self, value):
-        return value
-
-
 class Base64Field(serializers.CharField):
     def to_internal_value(self, data):
         value = super(Base64Field, self).to_internal_value(data)
@@ -48,16 +38,6 @@ class Base64Field(serializers.CharField):
     def to_representation(self, value):
         value = super(Base64Field, self).to_representation(value)
         return base64.b64encode(value)
-
-
-# XXX: this field has to be replaced with default DRF IPAddressField after it implementation:
-# https://github.com/tomchristie/django-rest-framework/issues/1853
-
-class IPAddressField(serializers.CharField):
-    def __init__(self, **kwargs):
-        super(IPAddressField, self).__init__(**kwargs)
-        ip_validators, _ = validators.ip_address_validators(protocol='ipv4', unpack_ipv4=False)
-        self.validators += ip_validators
 
 
 class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
