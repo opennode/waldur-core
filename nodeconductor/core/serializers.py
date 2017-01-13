@@ -211,9 +211,8 @@ class AugmentedSerializerMixin(object):
                     fields = ('url', 'uuid', 'name', 'customer')
                     protected_fields = ('customer',)
 
-    4. Starting from Django 3.2 "view_name" in Meta class is deprecated
-    and must reside in extra_kwargs of the Meta class. This mixin overrides "get_extra_kwargs" method and puts
-    "view_name" to extra_kwargs or uses URL name specified in a model of serialized object.
+    4. This mixin overrides "get_extra_kwargs" method and puts "view_name" to extra_kwargs
+    or uses URL name specified in a model of serialized object.
     """
 
     def get_fields(self):
