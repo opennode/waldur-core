@@ -197,7 +197,7 @@ def get_detail_view_name(model):
     if hasattr(model, 'get_url_name') and callable(model.get_url_name):
         return '%s-detail' % model.get_url_name()
 
-    return '%s-detail' % model.__class__.__name__.lower()
+    return '%s-detail' % model.__name__.lower()
 
 
 def get_fake_context():

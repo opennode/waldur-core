@@ -73,20 +73,6 @@ class PermissionFieldFilteringMixin(object):
             'to return list of filtered fields')
 
 
-class ViewNameMixin(object):
-    """
-    Adds view_name to extra_kwargs "url" parameter.
-    """
-    def get_extra_kwargs(self):
-        extra_kwargs = super(ViewNameMixin, self).get_extra_kwargs()
-        if 'url' in extra_kwargs:
-            extra_kwargs['url']['view_name'] = core_utils.get_detail_view_name(self.Meta.model)
-        else:
-            extra_kwargs['url'] = {'view_name': core_utils.get_detail_view_name(self.Meta.model)}
-
-        return extra_kwargs
-
-
 class PermissionListSerializer(serializers.ListSerializer):
     """
     Allows to filter related queryset by user.
@@ -826,7 +812,6 @@ class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
 
 
 class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
-                            ViewNameMixin,
                             PermissionFieldFilteringMixin,
                             core_serializers.RestrictedSerializerMixin,
                             core_serializers.AugmentedSerializerMixin,
@@ -1067,8 +1052,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return service
 
 
-class BaseServiceProjectLinkSerializer(ViewNameMixin,
-                                       PermissionFieldFilteringMixin,
+class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
                                        core_serializers.AugmentedSerializerMixin,
                                        serializers.HyperlinkedModelSerializer):
 
@@ -1152,7 +1136,6 @@ class RelatedResourceSerializer(BasicResourceSerializer):
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
-                             ViewNameMixin,
                              core_serializers.RestrictedSerializerMixin,
                              MonitoringSerializerMixin,
                              PermissionFieldFilteringMixin,
@@ -1298,8 +1281,8 @@ class SummaryServiceSerializer(core_serializers.BaseSummarySerializer):
         return SupportedServices.get_service_serializer(model)
 
 
-class BaseResourceImportSerializer(ViewNameMixin,
-                                   PermissionFieldFilteringMixin,
+class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
+                                   core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
 
     backend_id = serializers.CharField(write_only=True)
@@ -1407,8 +1390,8 @@ class PropertySerializerMetaclass(serializers.SerializerMetaclass):
 
 
 class BasePropertySerializer(six.with_metaclass(PropertySerializerMetaclass,
-                             ViewNameMixin,
-                             serializers.HyperlinkedModelSerializer)):
+                                                core_serializers.AugmentedSerializerMixin,
+                                                serializers.HyperlinkedModelSerializer)):
 
     class Meta(object):
         model = NotImplemented

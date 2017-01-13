@@ -166,7 +166,6 @@ class BasePermission(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         raise NotImplementedError
 
@@ -275,7 +274,6 @@ class CustomerPermission(BasePermission):
     role = CustomerRole(db_index=True)
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         return 'customer_permission'
 
@@ -459,7 +457,6 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
     role = ProjectRole(db_index=True)
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         return 'project_permission'
 
@@ -667,7 +664,6 @@ class Service(core_models.UuidMixin,
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label
@@ -709,7 +705,6 @@ class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.M
         abstract = True
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
@@ -771,7 +766,6 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label + '-spl'
@@ -1124,7 +1118,6 @@ class ResourceMixin(MonitoringModelMixin,
                 if isinstance(field, GenericForeignKey)]
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())

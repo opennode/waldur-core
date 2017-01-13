@@ -23,7 +23,7 @@ Release 0.116.0
 - Enable filtering user by customer and project UUID.
 - Fix token authentication according to DRF 3.3.
 - Replace IPAddressField serializer with DRF serializer.
-- Add ViewNameMixin to modify extra_kwargs in View Meta class.
+- Add get_extra_kwargs method to AugmentedSerializerMixin.
 
 Release 0.115.0
 ---------------

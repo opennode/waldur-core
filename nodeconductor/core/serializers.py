@@ -210,6 +210,8 @@ class AugmentedSerializerMixin(object):
                     model = models.Project
                     fields = ('url', 'uuid', 'name', 'customer')
                     protected_fields = ('customer',)
+
+    4. Adds view_name to extra_kwargs "url" parameter in viewset Meta class.
     """
 
     def get_fields(self):
@@ -271,6 +273,15 @@ class AugmentedSerializerMixin(object):
             return serializers.ReadOnlyField, {'source': related_field_source_map[field_name]}
         except KeyError:
             return super(AugmentedSerializerMixin, self).build_unknown_field(field_name, model_class)
+
+    def get_extra_kwargs(self):
+        extra_kwargs = super(AugmentedSerializerMixin, self).get_extra_kwargs()
+        if 'url' in extra_kwargs:
+            extra_kwargs['url']['view_name'] = core_utils.get_detail_view_name(self.Meta.model)
+        else:
+            extra_kwargs['url'] = {'view_name': core_utils.get_detail_view_name(self.Meta.model)}
+
+        return extra_kwargs
 
 
 class RestrictedSerializerMixin(object):
