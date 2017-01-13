@@ -422,7 +422,6 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                                    serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.CustomerPermission
-        view_name = core_utils.get_detail_view_name(model)
         fields = (
             'url', 'pk', 'role', 'created', 'expiration_time', 'created_by',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
@@ -435,9 +434,6 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
             'customer', 'role', 'user', 'created_by', 'created'
         )
         extra_kwargs = {
-            'url': {
-                'view_name': view_name,
-            },
             'user': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
@@ -495,7 +491,6 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = models.ProjectPermission
-        view_name = core_utils.get_detail_view_name(model)
         fields = (
             'url', 'pk', 'role', 'created', 'expiration_time', 'created_by',
             'project', 'project_uuid', 'project_name', 'customer_name'
@@ -509,9 +504,6 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
             'project', 'role', 'user', 'created_by', 'created'
         )
         extra_kwargs = {
-            'url': {
-                'view_name': view_name,
-            },
             'user': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
