@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet
 
+Release 0.117.0
+---------------
+- Show user description only to staff users.
+
 Release 0.116.0
 ---------------
 - Fix ProjectAdminForm.
