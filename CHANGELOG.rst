@@ -3,7 +3,11 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Fix token authentication according to DRF 3.3.
+- Replace IPAddressField serializer with DRF serializer.
+- Add get_extra_kwargs method to AugmentedSerializerMixin.
+- Migrate to DRF 3.5.3 and django_filter 0.15.3.
+- Drop DjangoMappingFilterBackend and UUIDFilter.
 
 Release 0.118.0
 ---------------
@@ -21,11 +25,6 @@ Release 0.116.0
 - Add is_support field to User model.
 - Add Support role to project and customer roles.
 - Enable filtering user by customer and project UUID.
-- Fix token authentication according to DRF 3.3.
-- Replace IPAddressField serializer with DRF serializer.
-- Add get_extra_kwargs method to AugmentedSerializerMixin.
-- Migrate to DRF 3.5.3 and django_filter 0.15.3.
-- Drop DjangoMappingFilterBackend and UUIDFilter.
 
 Release 0.115.0
 ---------------
