@@ -3,137 +3,16 @@ import uuid
 import six
 from urlparse import urlparse
 
-from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import resolve
 import django_filters
-from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import BaseFilterBackend
 
 from nodeconductor.core import serializers as core_serializers, fields as core_fields, models as core_models
 
 
-class UUIDFilter(django_filters.Filter):
-    """
-    Back-ported from django_filters (0.13)
-    """
-    field_class = forms.UUIDField
-
-
-class DjangoMappingFilterBackend(filters.DjangoFilterBackend):
-    """ ..drfdocs-ignore
-
-        A filter backend that uses django-filter that fixes order_by.
-
-        This backend supports additional attribute of a FilterSet named `order_by_mapping`.
-        It maps ordering fields from user friendly ones to the ones that depend on
-        the model relation innards.
-
-        See https://github.com/alex/django-filter/issues/178#issuecomment-62129586
-
-        Example usage:
-
-        # models.py
-
-        class Project(models.Model):
-          name = models.CharField(max_length=10)
-
-
-        class Instance(models.Model):
-          name = models.CharField(max_length=10)
-          instance = models.ForeignKey(Project)
-
-        # filters.py
-
-        class InstanceFilter(django_filters.FilterSet):
-          class Meta(object):
-              model = models.Instance
-
-              # Filter fields go here
-              order_by = [
-                  'name',
-                  '-name',
-                  'project__name',
-                  '-project__name',
-              ]
-              order_by_mapping = {
-                  # Fix order by parameters
-                  'project_name': 'project__name',
-                  # '-project_name' mapping is handled automatically
-              }
-    """
-
-    def filter_queryset(self, request, queryset, view):
-        filter_class = self.get_filter_class(view, queryset)
-        if filter_class:
-            # XXX: The proper way would be to redefine FilterSetOptions,
-            # but it's too much of a boilerplate
-            mapping = getattr(filter_class.Meta, 'order_by_mapping', None)
-            order_by_field = getattr(filter_class, 'order_by_field')
-
-            if mapping:
-                transform = lambda o: self._transform_ordering(mapping, o)
-
-                params = request.query_params.copy()
-                ordering = map(transform, params.getlist(order_by_field))
-                params.setlist(order_by_field, ordering)
-            else:
-                params = request.query_params
-            return filter_class(params, queryset=queryset).qs
-        return queryset
-
-    # noinspection PyMethodMayBeStatic
-    def _transform_ordering(self, mapping, ordering):
-        if ordering.startswith('-'):
-            ordering = ordering[1:]
-            reverse = True
-        else:
-            reverse = False
-
-        try:
-            ordering = mapping[ordering]
-        except KeyError:
-            pass
-
-        if reverse:
-            return '-' + ordering
-
-        return ordering
-
-    def get_valid_ordering(self, request, filter_class):
-        """
-        Return valid ordering accepted by filter class or None.
-        """
-        order_by_field = getattr(filter_class, 'order_by_field', None)
-        if not order_by_field:
-            # Ordering is not accepted
-            return
-
-        ordering = request.query_params.get(order_by_field)
-        if not ordering:
-            # Ordering is not specified
-            return
-
-        if ordering not in self.get_ordering_choices(filter_class):
-            # Ordering is invalid
-            return
-
-        mapping = getattr(filter_class.Meta, 'order_by_mapping', None)
-        if not mapping:
-            return ordering
-
-        return self._transform_ordering(mapping, ordering)
-
-    def get_ordering_choices(self, filter_class):
-        """
-        Get all ordering choices accepted by filter class for validation.
-        """
-        order_by = getattr(filter_class.Meta, 'order_by', [])
-        order_by_mapping = getattr(filter_class.Meta, 'order_by_mapping', {})
-        order_by_mapping = {v: k for k, v in order_by_mapping.items()}
-        return [self._transform_ordering(order_by_mapping, ordering) for ordering in order_by]
-
-
-class GenericKeyFilterBackend(filters.DjangoFilterBackend):
+class GenericKeyFilterBackend(DjangoFilterBackend):
     """
     Backend for filtering by backend field.
 
@@ -356,7 +235,7 @@ class BaseExternalFilter(object):
         raise NotImplementedError
 
 
-class ExternalFilterBackend(filters.BaseFilterBackend):
+class ExternalFilterBackend(BaseFilterBackend):
     """
     Support external filters registered in other apps
     """
@@ -379,12 +258,11 @@ class ExternalFilterBackend(filters.BaseFilterBackend):
         return queryset
 
 
-class SummaryFilter(DjangoMappingFilterBackend):
+class SummaryFilter(DjangoFilterBackend):
     """ Base filter for summary querysets """
 
     def filter_queryset(self, request, queryset, view):
         queryset = self.filter(request, queryset, view)
-        queryset = self.order(request, queryset, view)
         return queryset
 
     def get_queryset_filter(self, queryset):
@@ -412,11 +290,3 @@ class SummaryFilter(DjangoMappingFilterBackend):
 
         summary_queryset.querysets = filtered_querysets
         return summary_queryset
-
-    def order(self, request, queryset, view):
-        """ Order all resources together using BaseResourceFilter """
-        base_filter = self.get_base_filter()
-        ordering = self.get_valid_ordering(request, base_filter)
-        if ordering:
-            queryset = queryset.order_by(ordering)
-        return queryset

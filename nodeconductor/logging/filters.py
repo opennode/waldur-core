@@ -7,7 +7,7 @@ from rest_framework import settings, filters
 from rest_framework.serializers import ValidationError
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters
-from nodeconductor.core.filters import ExternalFilterBackend, UUIDFilter
+from nodeconductor.core.filters import ExternalFilterBackend
 from nodeconductor.core.utils import camel_case_to_underscore
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.elasticsearch_client import EmptyQueryset
@@ -127,6 +127,13 @@ class AlertFilter(django_filters.FilterSet):
     content_type = core_filters.ContentTypeFilter()
     message = django_filters.CharFilter(lookup_type='icontains')
 
+    o = django_filters.OrderingFilter(
+        fields=(
+            ('severity', 'severity'),
+            ('created', 'created'),
+        )
+    )
+
     class Meta:
         model = models.Alert
         fields = [
@@ -137,12 +144,6 @@ class AlertFilter(django_filters.FilterSet):
             'created_to',
             'content_type',
             'message'
-        ]
-        order_by = [
-            'severity',
-            '-severity',
-            'created',
-            '-created',
         ]
 
 
@@ -219,10 +220,19 @@ class ExternalAlertFilterBackend(ExternalFilterBackend):
 
 
 class BaseHookFilter(django_filters.FilterSet):
-    author_uuid = UUIDFilter(name='user__uuid')
+    author_uuid = django_filters.UUIDFilter(name='user__uuid')
+    is_active = django_filters.BooleanFilter()
+    last_published = django_filters.DateTimeFilter()
 
+
+class WebHookFilter(BaseHookFilter):
     class Meta(object):
-        model = models.BaseHook
+        model = models.WebHook
+
+
+class EmailHookFilter(BaseHookFilter):
+    class Meta(object):
+        model = models.EmailHook
 
 
 class HookSummaryFilterBackend(core_filters.SummaryFilter):

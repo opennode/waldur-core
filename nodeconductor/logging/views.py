@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import response, viewsets, permissions, status, decorators, mixins
-from rest_framework import filters as rf_filters
 
 from nodeconductor.core import serializers as core_serializers, filters as core_filters, permissions as core_permissions
 from nodeconductor.core.managers import SummaryQuerySet
@@ -148,7 +148,7 @@ class AlertViewSet(mixins.CreateModelMixin,
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (
-        core_filters.DjangoMappingFilterBackend,
+        DjangoFilterBackend,
         filters.AdditionalAlertFilterBackend,
         filters.ExternalAlertFilterBackend,
         filters.AlertScopeFilterBackend,
@@ -345,14 +345,14 @@ class BaseHookViewSet(viewsets.ModelViewSet):
     To get a list of all your hooks, run **GET** against */api/hooks/* as an authenticated user.
     """
     permission_classes = (permissions.IsAuthenticated,)
-    filter_backends = (core_filters.StaffOrUserFilter, rf_filters.DjangoFilterBackend)
-    filter_class = filters.BaseHookFilter
+    filter_backends = (core_filters.StaffOrUserFilter, DjangoFilterBackend)
     lookup_field = 'uuid'
 
 
 class WebHookViewSet(BaseHookViewSet):
     queryset = models.WebHook.objects.all()
     serializer_class = serializers.WebHookSerializer
+    filter_class = filters.WebHookFilter
 
     def create(self, request, *args, **kwargs):
         """
@@ -405,6 +405,7 @@ class WebHookViewSet(BaseHookViewSet):
 class EmailHookViewSet(BaseHookViewSet):
     queryset = models.EmailHook.objects.all()
     serializer_class = serializers.EmailHookSerializer
+    filter_class = filters.EmailHookFilter
 
     def create(self, request, *args, **kwargs):
         """

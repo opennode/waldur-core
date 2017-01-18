@@ -15,9 +15,9 @@ from django.http import Http404
 from django.utils import six, timezone
 from django.utils.functional import cached_property
 from django.views.static import serve
+from django_filters.rest_framework import DjangoFilterBackend
 from django_fsm import TransitionNotAllowed
 
-from rest_framework import filters as rf_filters
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import serializers as rf_serializers
@@ -55,7 +55,7 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericUserFilter, filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (filters.GenericUserFilter, filters.GenericRoleFilter, DjangoFilterBackend)
     filter_class = filters.CustomerFilter
 
     def list(self, request, *args, **kwargs):
@@ -191,7 +191,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
     permission_classes = (rf_permissions.IsAuthenticated,
                           rf_permissions.DjangoObjectPermissions)
     filter_class = filters.ProjectFilter
@@ -340,7 +340,7 @@ class UserViewSet(viewsets.ModelViewSet):
     filter_backends = (
         filters.CustomerUserFilter,
         filters.ProjectUserFilter,
-        rf_filters.DjangoFilterBackend,
+        DjangoFilterBackend,
     )
     filter_class = filters.UserFilter
 
@@ -643,7 +643,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
     queryset = models.ProjectPermission.objects.filter(is_active=True)
     serializer_class = serializers.ProjectPermissionSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
     def can_manage_roles_for(self, project, role):
@@ -741,7 +741,7 @@ class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
     queryset = models.ProjectPermission.objects.filter(is_active=False)
     serializer_class = serializers.ProjectPermissionLogSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
 
@@ -761,7 +761,6 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         # DjangoObjectPermissions not used on purpose, see below.
         # rf_permissions.DjangoObjectPermissions,
     )
-    filter_backends = (rf_filters.DjangoFilterBackend,)
     filter_class = filters.CustomerPermissionFilter
 
     def can_manage_roles_for(self, customer):
@@ -868,7 +867,7 @@ class CustomerPermissionLogViewSet(mixins.RetrieveModelMixin,
     queryset = models.CustomerPermission.objects.filter(is_active=False)
     serializer_class = serializers.CustomerPermissionLogSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.CustomerPermissionFilter
 
 
@@ -934,7 +933,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
-    filter_backends = (rf_filters.DjangoFilterBackend, core_filters.StaffOrUserFilter)
+    filter_backends = (DjangoFilterBackend, core_filters.StaffOrUserFilter)
     filter_class = filters.SshKeyFilter
 
     def list(self, request, *args, **kwargs):
@@ -987,7 +986,7 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
     queryset = models.ServiceSettings.objects.filter()
     serializer_class = serializers.ServiceSettingsSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend,
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,
                        filters.ServiceSettingsScopeFilterBackend)
     filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
@@ -1508,7 +1507,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     queryset = NotImplemented
     serializer_class = NotImplemented
     import_serializer_class = NotImplemented
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
     metadata_class = ActionsMetadata
@@ -1697,7 +1696,7 @@ class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
 
     queryset = NotImplemented
     serializer_class = NotImplemented
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
     filter_class = filters.BaseServiceProjectLinkFilter
     unsafe_methods_permissions = [permissions.is_owner]
     disabled_actions = ['update', 'partial_update']
@@ -1798,7 +1797,7 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
     )
     filter_backends = (
         filters.GenericRoleFilter,
-        core_filters.DjangoMappingFilterBackend,
+        DjangoFilterBackend,
         SlaFilter,
         MonitoringItemFilter,
         filters.TagsFilter,
@@ -1989,7 +1988,7 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
     serializer_class = NotImplemented
     lookup_field = 'uuid'
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, rf_filters.DjangoFilterBackend)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
 
 
 class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
@@ -2221,7 +2220,7 @@ class QuotaTimelineCollector(object):
 class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
     """ Basic view set for all resource view sets. """
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, core_filters.DjangoMappingFilterBackend, filters.StartTimeFilter)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend, filters.StartTimeFilter)
     metadata_class = ActionsMetadata
     unsafe_methods_permissions = [permissions.is_administrator]
     update_validators = partial_update_validators = [core_validators.StateValidator(models.NewResource.States.OK)]
