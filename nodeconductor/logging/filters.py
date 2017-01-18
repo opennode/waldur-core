@@ -225,16 +225,6 @@ class BaseHookFilter(django_filters.FilterSet):
     last_published = django_filters.DateTimeFilter()
 
 
-class WebHookFilter(BaseHookFilter):
-    class Meta(object):
-        model = models.WebHook
-
-
-class EmailHookFilter(BaseHookFilter):
-    class Meta(object):
-        model = models.EmailHook
-
-
 class HookSummaryFilterBackend(core_filters.SummaryFilter):
 
     def get_base_filter(self):
