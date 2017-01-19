@@ -280,7 +280,8 @@ class ActionsViewSet(viewsets.ModelViewSet):
         # check if action is allowed
         if self.action in getattr(self, 'disabled_actions', []):
             raise exceptions.MethodNotAllowed(method=request.method)
-        self.validate_object_action(self.action)
+        if self.action != 'metadata':
+            self.validate_object_action(self.action)
 
     def validate_object_action(self, action_name, obj=None):
         """ Execute validation for actions that are related to particular object """

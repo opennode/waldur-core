@@ -127,12 +127,7 @@ class AlertFilter(django_filters.FilterSet):
     content_type = core_filters.ContentTypeFilter()
     message = django_filters.CharFilter(lookup_type='icontains')
 
-    o = django_filters.OrderingFilter(
-        fields=(
-            ('severity', 'severity'),
-            ('created', 'created'),
-        )
-    )
+    o = django_filters.OrderingFilter(fields=('severity', 'created'))
 
     class Meta:
         model = models.Alert

@@ -318,6 +318,8 @@ class SshKeyFilter(django_filters.FilterSet):
     user_uuid = django_filters.UUIDFilter(name='user__uuid')
     name = django_filters.CharFilter(lookup_type='icontains')
 
+    o = django_filters.OrderingFilter(fields=('name',))
+
     class Meta(object):
         model = core_models.SshPublicKey
         fields = [
@@ -325,10 +327,6 @@ class SshKeyFilter(django_filters.FilterSet):
             'fingerprint',
             'uuid',
             'user_uuid'
-        ]
-        order_by = [
-            'name',
-            '-name',
         ]
 
 

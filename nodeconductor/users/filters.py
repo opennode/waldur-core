@@ -20,13 +20,7 @@ class InvitationFilter(django_filters.FilterSet):
     )
     state = django_filters.MultipleChoiceFilter(choices=models.Invitation.State.CHOICES)
 
-    o = django_filters.OrderingFilter(
-        fields=(
-            ('email', 'email'),
-            ('state', 'state'),
-            ('created', 'created'),
-        )
-    )
+    o = django_filters.OrderingFilter(fields=('email', 'state', 'created'))
 
     class Meta(object):
         model = models.Invitation
