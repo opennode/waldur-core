@@ -346,12 +346,12 @@ class BaseHookViewSet(viewsets.ModelViewSet):
     """
     permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (core_filters.StaffOrUserFilter, DjangoFilterBackend)
-    filter_class = filters.BaseHookFilter
     lookup_field = 'uuid'
 
 
 class WebHookViewSet(BaseHookViewSet):
     queryset = models.WebHook.objects.all()
+    filter_class = filters.WebHookFilter
     serializer_class = serializers.WebHookSerializer
 
     def create(self, request, *args, **kwargs):
@@ -404,6 +404,7 @@ class WebHookViewSet(BaseHookViewSet):
 
 class EmailHookViewSet(BaseHookViewSet):
     queryset = models.EmailHook.objects.all()
+    filter_class = filters.EmailHookFilter
     serializer_class = serializers.EmailHookSerializer
 
     def create(self, request, *args, **kwargs):
