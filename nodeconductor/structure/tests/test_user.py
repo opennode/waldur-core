@@ -581,7 +581,7 @@ class CustomUsersFilterTest(test.APITransactionTestCase):
 
 
 @freeze_time('2017-01-19 00:00:00')
-class PolicyAgreementTest(test.APITransactionTestCase):
+class UserUpdateTest(test.APITransactionTestCase):
     def setUp(self):
         fixture = fixtures.UserFixture()
         self.user = fixture.user
