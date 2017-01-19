@@ -618,8 +618,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
     def validate(self, attrs):
+        agree_with_policy = attrs.pop('agree_with_policy', False)
         if self.instance and not self.instance.agreement_date:
-            if not attrs.pop('agree_with_policy', False):
+            if not agree_with_policy:
                 raise serializers.ValidationError({'agree_with_policy': 'User must agree with the policy.'})
             else:
                 attrs['agreement_date'] = timezone.now()
