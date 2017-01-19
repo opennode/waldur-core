@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import unittest
 
+from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework import status
 from rest_framework import test
 
@@ -16,9 +18,9 @@ from . import fixtures
 class UserPermissionApiTest(test.APITransactionTestCase):
     def setUp(self):
         self.users = {
-            'staff': factories.UserFactory(is_staff=True),
-            'owner': factories.UserFactory(),
-            'not_owner': factories.UserFactory(),
+            'staff': factories.UserFactory(is_staff=True, agreement_date=timezone.now()),
+            'owner': factories.UserFactory(agreement_date=timezone.now()),
+            'not_owner': factories.UserFactory(agreement_date=timezone.now()),
         }
 
     # List filtration tests
@@ -80,7 +82,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
     def test_user_can_change_his_account_email(self):
         data = {
             'email': 'example@example.com',
-            'agree_with_policy': True,
         }
 
         self._ensure_user_can_change_field(self.users['owner'], 'email', data)
@@ -88,7 +89,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
     def test_user_cannot_change_other_account_email(self):
         data = {
             'email': 'example@example.com',
-            'agree_with_policy': True,
         }
 
         self._ensure_user_cannot_change_field(self.users['owner'], 'email', data)
@@ -112,7 +112,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         data = {
             'organization': 'test',
             'email': 'example@example.com',
-            'agree_with_policy': True,
         }
 
         self._ensure_user_can_change_field(self.users['owner'], 'organization', data)
@@ -121,7 +120,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         data = {
             'organization': 'test',
             'email': 'example@example.com',
-            'agree_with_policy': True,
         }
 
         self._ensure_user_cannot_change_field(self.users['owner'], 'organization', data)
@@ -195,7 +193,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
             'is_staff': account.is_staff,
             'is_active': account.is_active,
             'is_superuser': account.is_superuser,
-            'agree_with_policy': True,
         }
 
     def _get_null_payload(self, account=None):
@@ -581,3 +578,43 @@ class CustomUsersFilterTest(test.APITransactionTestCase):
         actual = [user['uuid'] for user in response.data]
         expected = [self.manager1.uuid.hex]
         self.assertEquals(actual, expected)
+
+
+@freeze_time('2017-01-19 00:00:00')
+class UserUpdateTest(test.APITransactionTestCase):
+    def setUp(self):
+        fixture = fixtures.UserFixture()
+        self.user = fixture.user
+        self.client.force_authenticate(self.user)
+        self.url = factories.UserFactory.get_url(self.user)
+
+        self.invalid_payload = {
+            'email': 'updatedmail@example.com',
+        }
+        self.valid_payload = dict(agree_with_policy=True, **self.invalid_payload)
+
+    def test_if_user_did_not_accept_policy_he_can_not_update_his_profile(self):
+        response = self.client.put(self.url, self.invalid_payload)
+        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEquals(response.data['agree_with_policy'], ['User must agree with the policy.'])
+
+    def test_if_user_already_accepted_policy_he_can_update_his_profile(self):
+        self.user.agreement_date = timezone.now()
+        self.user.save()
+
+        response = self.client.put(self.url, self.invalid_payload)
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+    def test_if_user_accepts_policy_he_can_update_his_profile(self):
+        response = self.client.put(self.url, self.valid_payload)
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        self.user.refresh_from_db()
+        self.assertEquals(self.user.email, self.valid_payload['email'])
+
+    def test_if_user_accepts_policy_agreement_data_is_updated(self):
+        response = self.client.put(self.url, self.valid_payload)
+        self.assertEquals(response.status_code, status.HTTP_200_OK)
+
+        self.user.refresh_from_db()
+        self.assertAlmostEqual(self.user.agreement_date, timezone.now())
