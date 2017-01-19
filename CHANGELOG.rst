@@ -5,6 +5,10 @@ Release NEXT
 ------------
 - Nothing yet
 
+Release 0.118.0
+---------------
+- Check if user has already accepted terms of service when he updates profile.
+
 Release 0.117.0
 ---------------
 - Show user description only to staff users.
