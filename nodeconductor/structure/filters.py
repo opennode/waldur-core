@@ -108,13 +108,7 @@ class CustomerFilter(django_filters.FilterSet):
     )
 
     o = django_filters.OrderingFilter(
-        fields=(
-            ('name', 'name'),
-            ('abbreviation', 'abbreviation'),
-            ('contact_details', 'contact_details'),
-            ('native_name', 'native_name'),
-            ('registration_code', 'registration_code'),
-        )
+        fields=('name', 'abbreviation', 'contact_details', 'native_name', 'registration_code')
     )
 
     class Meta(object):
@@ -221,19 +215,10 @@ class UserFilter(django_filters.FilterSet):
     is_active = django_filters.BooleanFilter()
 
     o = django_filters.OrderingFilter(
-        fields=(
-            ('full_name', 'full_name'),
-            ('native_name', 'native_name'),
-            ('organization', 'organization'),
-            ('organization_approved', 'organization_approved'),
-            ('email', 'email'),
-            ('phone_number', 'phone_number'),
-            ('description', 'description'),
-            ('job_title', 'job_title'),
-            ('username', 'username'),
-            ('is_active', 'is_active'),
-            ('registration_method', 'registration_method'),
-        )
+        fields=('full_name', 'native_name', 'organization',
+                'organization_approved', 'email', 'phone_number',
+                'description', 'job_title', 'username',
+                'is_active', 'registration_method')
     )
 
     class Meta(object):
