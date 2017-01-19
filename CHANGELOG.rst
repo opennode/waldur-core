@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- Check if user has already accepted terms of service when he updates profile.
 
 Release 0.117.0
 ---------------

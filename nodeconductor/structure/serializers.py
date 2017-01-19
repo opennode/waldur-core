@@ -561,7 +561,7 @@ class UserOrganizationSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     email = serializers.EmailField()
-    agree_with_policy = serializers.BooleanField(write_only=True,
+    agree_with_policy = serializers.BooleanField(write_only=True, required=False,
                                                  help_text='User must agree with the policy to register.')
     preferred_language = serializers.ChoiceField(choices=settings.LANGUAGES, allow_blank=True, required=False)
     competence = serializers.ChoiceField(choices=settings.NODECONDUCTOR.get('USER_COMPETENCE_LIST', []),
@@ -618,10 +618,12 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
     def validate(self, attrs):
-        if not attrs.pop('agree_with_policy'):
-            raise serializers.ValidationError({'agree_with_policy': 'User must agree with the policy.'})
+        if self.instance and not self.instance.agreement_date:
+            if not attrs.pop('agree_with_policy', False):
+                raise serializers.ValidationError({'agree_with_policy': 'User must agree with the policy.'})
+            else:
+                attrs['agreement_date'] = timezone.now()
 
-        attrs['agreement_date'] = timezone.now()
         user = User(id=getattr(self.instance, 'id', None), **attrs)
         user.clean()
         return attrs
