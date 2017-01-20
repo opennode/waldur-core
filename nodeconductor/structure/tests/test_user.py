@@ -618,3 +618,12 @@ class UserUpdateTest(test.APITransactionTestCase):
 
         self.user.refresh_from_db()
         self.assertAlmostEqual(self.user.agreement_date, timezone.now())
+
+    def test_email_should_be_unique_and_error_should_be_specific_for_field(self):
+        email = self.invalid_payload['email']
+        factories.UserFactory(email=email)
+
+        response = self.client.put(self.url, self.valid_payload)
+
+        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEquals(response.data['email'], ['User with email "%s" already exists' % email])

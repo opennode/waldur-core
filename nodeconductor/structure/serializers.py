@@ -8,6 +8,7 @@ from collections import defaultdict
 import pyvat
 from django.conf import settings
 from django.contrib import auth
+import django.core.exceptions as django_exceptions
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.core.urlresolvers import NoReverseMatch
 from django.db import models as django_models, transaction
@@ -625,8 +626,13 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             else:
                 attrs['agreement_date'] = timezone.now()
 
-        user = User(id=getattr(self.instance, 'id', None), **attrs)
-        user.clean()
+        # Convert validation error from Django to DRF
+        # https://github.com/tomchristie/django-rest-framework/issues/2145
+        try:
+            user = User(id=getattr(self.instance, 'id', None), **attrs)
+            user.clean()
+        except django_exceptions.ValidationError as error:
+            raise exceptions.ValidationError(error.message_dict)
         return attrs
 
 
