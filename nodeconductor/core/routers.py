@@ -3,51 +3,28 @@ from operator import itemgetter
 
 from django.core.urlresolvers import NoReverseMatch
 
-from rest_framework import views, exceptions
+from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.routers import DefaultRouter
-from rest_framework.schemas import SchemaGenerator
 
 
 class SortedDefaultRouter(DefaultRouter):
 
     def get_api_root_view(self, api_urls=None):
         """
-        Return a view to use as the API root.
+        Return a basic root view.
         """
         api_root_dict = OrderedDict()
         list_name = self.routes[0].name
         for prefix, viewset, basename in self.registry:
             api_root_dict[prefix] = list_name.format(basename=basename)
 
-        view_renderers = list(self.root_renderers)
-        schema_media_types = []
-
-        if api_urls and self.schema_title:
-            view_renderers += list(self.schema_renderers)
-            schema_generator = SchemaGenerator(
-                title=self.schema_title,
-                url=self.schema_url,
-                patterns=api_urls
-            )
-            schema_media_types = [
-                renderer.media_type
-                for renderer in self.schema_renderers
-            ]
-
-        class APIRoot(views.APIView):
+        class APIRootView(views.APIView):
             _ignore_model_permissions = True
-            renderer_classes = view_renderers
+            exclude_from_schema = True
 
             def get(self, request, *args, **kwargs):
-                if request.accepted_renderer.media_type in schema_media_types:
-                    # Return a schema response.
-                    schema = schema_generator.get_schema(request)
-                    if schema is None:
-                        raise exceptions.PermissionDenied()
-                    return Response(schema)
-
                 # Return a plain {"name": "hyperlink"} response.
                 ret = OrderedDict()
                 namespace = request.resolver_match.namespace
@@ -68,7 +45,7 @@ class SortedDefaultRouter(DefaultRouter):
 
                 return Response(ret)
 
-        return APIRoot.as_view()
+        return APIRootView.as_view()
 
     def get_default_base_name(self, viewset):
         """
@@ -82,3 +59,11 @@ class SortedDefaultRouter(DefaultRouter):
                 return get_url_name()
 
         return super(SortedDefaultRouter, self).get_default_base_name(viewset)
+
+    def get_method_map(self, viewset, method_map):
+        # head method is not included by default
+        mappings = super(SortedDefaultRouter, self).get_method_map(viewset, method_map)
+        if 'get' in mappings:
+            mappings['head'] = mappings['get']
+
+        return mappings
