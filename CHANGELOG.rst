@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet.
+
+Release 0.119.0
+---------------
 - Fix token authentication according to DRF 3.3.
 - Replace IPAddressField serializer with DRF serializer.
 - Add get_extra_kwargs method to AugmentedSerializerMixin.
@@ -90,10 +94,10 @@ Release 0.108.1
 
 Release 0.108.0
 ---------------
-- Introduction of usage-based price estimatation and billing. 
+- Introduction of usage-based price estimatation and billing.
 - Prohibit editting of price estimates manually.
 - Preserve consumption details of resources.
-- Refactor price estimates calculation for link and unlink operations. 
+- Refactor price estimates calculation for link and unlink operations.
 - Remove "resource provisioned" signal.
 - Add admin action for recalculation of price estimates.
 - Display resource consumption details in admin.
