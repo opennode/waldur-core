@@ -8,13 +8,11 @@ from . import models
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
         model = models.TestService
-        view_name = 'test-detail'
 
 
 class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkSerializer):
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
         model = models.TestServiceProjectLink
-        view_name = 'test-spl-detail'
         extra_kwargs = {
             'service': {'lookup_field': 'uuid', 'view_name': 'oracle-detail'},
         }
@@ -34,7 +32,6 @@ class InstanceSerializer(structure_serializers.BaseResourceSerializer):
 
     class Meta(structure_serializers.BaseResourceSerializer.Meta):
         model = models.TestInstance
-        view_name = 'test-instances-detail'
 
 
 class NewInstanceSerializer(structure_serializers.BaseResourceSerializer):
@@ -51,6 +48,3 @@ class NewInstanceSerializer(structure_serializers.BaseResourceSerializer):
 
     class Meta(structure_serializers.BaseResourceSerializer.Meta):
         model = models.TestNewInstance
-        extra_kwargs = {
-            'url': {'view_name': 'test-new-instances-detail'}
-        }

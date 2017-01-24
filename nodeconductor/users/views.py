@@ -1,4 +1,5 @@
-from rest_framework import filters as rf_filters, permissions, status
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import permissions, status
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -15,7 +16,7 @@ class InvitationViewSet(ProtectedViewSet):
     permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_backends = (
         structure_filters.GenericRoleFilter,
-        rf_filters.DjangoFilterBackend,
+        DjangoFilterBackend,
         filters.InvitationCustomerFilterBackend,
     )
     filter_class = filters.InvitationFilter

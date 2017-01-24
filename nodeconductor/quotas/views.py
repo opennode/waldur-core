@@ -6,7 +6,6 @@ from rest_framework import viewsets
 import reversion
 from reversion.models import Version
 
-from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.core.pagination import UnlimitedLinkHeaderPagination
 from nodeconductor.core.serializers import HistorySerializer
 from nodeconductor.core.utils import datetime_to_timestamp
@@ -21,7 +20,6 @@ class QuotaViewSet(mixins.UpdateModelMixin,
     permission_classes = (rf_permissions.IsAuthenticated,)
     # XXX: Remove a custom pagination class once the quota calculation has been made more efficient
     pagination_class = UnlimitedLinkHeaderPagination
-    filter_backends = (DjangoMappingFilterBackend, )
     filter_class = filters.QuotaFilterSet
 
     def get_queryset(self):

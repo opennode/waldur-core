@@ -6,7 +6,6 @@ from django.db.models import Prefetch
 
 from rest_framework import viewsets, permissions, exceptions, decorators, response, status
 
-from nodeconductor.core.filters import DjangoMappingFilterBackend
 from nodeconductor.cost_tracking import models, serializers, filters
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure import models as structure_models
@@ -224,7 +223,6 @@ class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated,)
     filter_class = filters.DefaultPriceListItemFilter
-    filter_backends = (DjangoMappingFilterBackend,)
     serializer_class = serializers.DefaultPriceListItemSerializer
 
     def list(self, request, *args, **kwargs):
@@ -245,7 +243,6 @@ class MergedPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (permissions.IsAuthenticated,)
     filter_class = filters.DefaultPriceListItemFilter
-    filter_backends = (DjangoMappingFilterBackend,)
     serializer_class = serializers.MergedPriceListItemSerializer
 
     def list(self, request, *args, **kwargs):

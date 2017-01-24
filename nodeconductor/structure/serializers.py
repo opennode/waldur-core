@@ -450,7 +450,6 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                 'queryset': models.Customer.objects.all(),
             }
         }
-        view_name = 'customer_permission-detail'
 
     def create(self, validated_data):
         customer = validated_data['customer']
@@ -521,7 +520,6 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                 'queryset': models.Project.objects.all(),
             }
         }
-        view_name = 'project_permission-detail'
 
     def create(self, validated_data):
         project = validated_data['project']
@@ -734,12 +732,15 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
-        write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
         related_paths = ('customer',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
         }
+        write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
+        for field in write_only_fields:
+            field_params = extra_kwargs.setdefault(field, {})
+            field_params['write_only'] = True
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -844,7 +845,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = (
             'uuid',
             'url',
@@ -1060,7 +1060,6 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
@@ -1189,7 +1188,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = MonitoringSerializerMixin.Meta.fields + (
             'url', 'uuid', 'name', 'description', 'start_time',
             'service', 'service_name', 'service_uuid',
@@ -1276,6 +1274,7 @@ class SummaryServiceSerializer(core_serializers.BaseSummarySerializer):
 
 
 class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
+                                   core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
 
     backend_id = serializers.CharField(write_only=True)
@@ -1292,7 +1291,6 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     class Meta(object):
         model = NotImplemented
-        view_name = NotImplemented
         fields = (
             'url', 'uuid', 'name', 'state', 'created',
             'backend_id', 'project', 'import_history'
@@ -1329,11 +1327,11 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 class VirtualMachineSerializer(BaseResourceSerializer):
 
     external_ips = serializers.ListField(
-        child=core_serializers.IPAddressField(),
+        child=serializers.IPAddressField(protocol='ipv4'),
         read_only=True,
     )
     internal_ips = serializers.ListField(
-        child=core_serializers.IPAddressField(),
+        child=serializers.IPAddressField(protocol='ipv4'),
         read_only=True,
     )
 
@@ -1384,7 +1382,8 @@ class PropertySerializerMetaclass(serializers.SerializerMetaclass):
 
 
 class BasePropertySerializer(six.with_metaclass(PropertySerializerMetaclass,
-                             serializers.HyperlinkedModelSerializer)):
+                                                core_serializers.AugmentedSerializerMixin,
+                                                serializers.HyperlinkedModelSerializer)):
 
     class Meta(object):
         model = NotImplemented

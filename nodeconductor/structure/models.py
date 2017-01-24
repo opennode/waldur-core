@@ -166,6 +166,10 @@ class BasePermission(models.Model):
     is_active = models.BooleanField(default=True, db_index=True)
 
     @classmethod
+    def get_url_name(cls):
+        raise NotImplementedError
+
+    @classmethod
     def get_expired(cls):
         return cls.objects.filter(expiration_time__lt=timezone.now(), is_active=True)
 
@@ -268,6 +272,10 @@ class CustomerPermission(BasePermission):
 
     customer = models.ForeignKey('structure.Customer', related_name='permissions')
     role = CustomerRole(db_index=True)
+
+    @classmethod
+    def get_url_name(cls):
+        return 'customer_permission'
 
     def revoke(self):
         self.customer.remove_user(self.user, self.role)
@@ -447,6 +455,10 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
     role = ProjectRole(db_index=True)
+
+    @classmethod
+    def get_url_name(cls):
+        return 'project_permission'
 
     def revoke(self):
         self.project.remove_user(self.user, self.role)
@@ -652,7 +664,6 @@ class Service(core_models.UuidMixin,
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label
@@ -694,7 +705,6 @@ class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.M
         abstract = True
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
@@ -756,7 +766,6 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return cls._meta.app_label + '-spl'
@@ -1109,7 +1118,6 @@ class ResourceMixin(MonitoringModelMixin,
                 if isinstance(field, GenericForeignKey)]
 
     @classmethod
-    @lru_cache(maxsize=1)
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())

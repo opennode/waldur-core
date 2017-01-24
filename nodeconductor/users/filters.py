@@ -4,14 +4,14 @@ import uuid
 
 import django_filters
 from django.db.models import Q
-from rest_framework.filters import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.users import models
 
 
 class InvitationFilter(django_filters.FilterSet):
-    project = core_filters.UUIDFilter(
+    project = django_filters.UUIDFilter(
         name='project__uuid',
     )
     project_url = core_filters.URLFilter(
@@ -20,6 +20,8 @@ class InvitationFilter(django_filters.FilterSet):
     )
     state = django_filters.MultipleChoiceFilter(choices=models.Invitation.State.CHOICES)
 
+    o = django_filters.OrderingFilter(fields=('email', 'state', 'created'))
+
     class Meta(object):
         model = models.Invitation
         fields = [
@@ -27,15 +29,6 @@ class InvitationFilter(django_filters.FilterSet):
             'civil_number',
             'customer_role',
             'project_role',
-        ]
-        order_by = [
-            'email',
-            'state',
-            'created',
-            # desc
-            '-email',
-            '-state',
-            '-created',
         ]
 
 
