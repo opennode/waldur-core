@@ -133,15 +133,6 @@ class ApiDocs(object):
                                 f.write(self._get_fields(create_fields))
                                 f.write('\n')
 
-                            fltr = top.get_filter_fields()
-                            if fltr['filter']:
-                                f.write('\tFilter fields:\n\n')
-                                for name, field in fltr['filter'].items():
-                                    f.write('\t* ?%s = ``%s``\n' % (name, field))
-                                f.write('\n')
-                            if fltr['order']:
-                                f.write('\tOrder fields: ' + ', '.join(['``%s``' % o for o in fltr['order']]) + '\n\n')
-
                         # 2nd line is supposed to be Retrieve/Update/Delete view
                         if idx == 2 and act.path.endswith('>/'):
                             update_fields = [o for o in fields if not o['readonly'] and not o['protected']]
@@ -293,19 +284,6 @@ class ApiEndpoint(object):
             } for key, field in serializer.get_fields().items()]
 
         return []
-
-    def get_filter_fields(self):
-        try:
-            filter_cls = self.callback.cls.filter_class
-        except AttributeError:
-            return {'filter': {}, 'order': []}
-        else:
-            order_by = getattr(filter_cls.Meta, 'order_by', [])
-            order_by_mapping = {v: k for k, v in getattr(filter_cls.Meta, 'order_by_mapping', {}).items()}
-            return {
-                'filter': {k: self._get_field_type(v) for k, v in filter_cls.declared_filters.items()},
-                'order': sorted([order_by_mapping.get(f, f) for f in order_by if not f.startswith('-')]),
-            }
 
     def get_filter_docs(self):
         try:

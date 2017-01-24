@@ -3,7 +3,6 @@ from collections import OrderedDict
 from datetime import timedelta
 import logging
 
-from django.core import validators
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
 from django.core.urlresolvers import reverse, Resolver404
 from rest_framework import serializers
@@ -48,16 +47,6 @@ class Base64Field(serializers.CharField):
     def to_representation(self, value):
         value = super(Base64Field, self).to_representation(value)
         return base64.b64encode(value)
-
-
-# XXX: this field has to be replaced with default DRF IPAddressField after it implementation:
-# https://github.com/tomchristie/django-rest-framework/issues/1853
-
-class IPAddressField(serializers.CharField):
-    def __init__(self, **kwargs):
-        super(IPAddressField, self).__init__(**kwargs)
-        ip_validators, _ = validators.ip_address_validators(protocol='ipv4', unpack_ipv4=False)
-        self.validators += ip_validators
 
 
 class BasicInfoSerializer(serializers.HyperlinkedModelSerializer):
@@ -221,6 +210,9 @@ class AugmentedSerializerMixin(object):
                     model = models.Project
                     fields = ('url', 'uuid', 'name', 'customer')
                     protected_fields = ('customer',)
+
+    4. This mixin overrides "get_extra_kwargs" method and puts "view_name" to extra_kwargs
+    or uses URL name specified in a model of serialized object.
     """
 
     def get_fields(self):
@@ -282,6 +274,21 @@ class AugmentedSerializerMixin(object):
             return serializers.ReadOnlyField, {'source': related_field_source_map[field_name]}
         except KeyError:
             return super(AugmentedSerializerMixin, self).build_unknown_field(field_name, model_class)
+
+    def get_extra_kwargs(self):
+        extra_kwargs = super(AugmentedSerializerMixin, self).get_extra_kwargs()
+
+        if hasattr(self.Meta, 'view_name'):
+            view_name = self.Meta.view_name
+        else:
+            view_name = core_utils.get_detail_view_name(self.Meta.model)
+
+        if 'url' in extra_kwargs:
+            extra_kwargs['url']['view_name'] = view_name
+        else:
+            extra_kwargs['url'] = {'view_name': view_name}
+
+        return extra_kwargs
 
 
 class RestrictedSerializerMixin(object):

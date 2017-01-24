@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.118.0
+Version: 0.119.0
 Release: 1.el7
 License: MIT
 
@@ -26,14 +26,14 @@ Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.8, python-django < 1.9
 Requires: python-django-admin-tools = 0.7.0
 Requires: python-django-cors-headers
-Requires: python-django-filter >= 0.10
+Requires: python-django-filter = 0.15.3
 Requires: python-django-fluent-dashboard = 0.5.1
 Requires: python-django-fsm = 2.3.0
 Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.5.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
-Requires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
+Requires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.20.2
 Requires: python-elasticsearch = 1.4.0
@@ -62,7 +62,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # systemd package provides _unitdir RPM macro
 BuildRequires: python-django >= 1.8
 BuildRequires: python-django-fluent-dashboard
-BuildRequires: python-django-rest-framework >= 3.1.3, python-django-rest-framework < 3.2.0
+BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
 BuildRequires: python-setuptools
 BuildRequires: systemd
 
@@ -214,6 +214,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Tue Jan 24 2017 Jenkins <jenkins@opennodecloud.com> - 0.119.0-1.el7
+- New upstream release
+
 * Thu Jan 19 2017 Jenkins <jenkins@opennodecloud.com> - 0.118.0-1.el7
 - New upstream release
 

@@ -1,7 +1,7 @@
+from collections import OrderedDict
 from operator import itemgetter
 
 from django.core.urlresolvers import NoReverseMatch
-from django.utils.datastructures import SortedDict
 
 from rest_framework import views
 from rest_framework.response import Response
@@ -11,25 +11,31 @@ from rest_framework.routers import DefaultRouter
 
 class SortedDefaultRouter(DefaultRouter):
 
-    def get_api_root_view(self):
+    def get_api_root_view(self, api_urls=None):
         """
-        Return a view to use as the API root.
+        Return a basic root view.
         """
-        api_root_dict = {}
+        api_root_dict = OrderedDict()
         list_name = self.routes[0].name
         for prefix, viewset, basename in self.registry:
             api_root_dict[prefix] = list_name.format(basename=basename)
 
-        class APIRoot(views.APIView):
+        class APIRootView(views.APIView):
             _ignore_model_permissions = True
+            exclude_from_schema = True
 
             def get(self, request, *args, **kwargs):
-                ret = SortedDict()
-                # sort items before inserting them into a dict
+                # Return a plain {"name": "hyperlink"} response.
+                ret = OrderedDict()
+                namespace = request.resolver_match.namespace
                 for key, url_name in sorted(api_root_dict.items(), key=itemgetter(0)):
+                    if namespace:
+                        url_name = namespace + ':' + url_name
                     try:
                         ret[key] = reverse(
                             url_name,
+                            args=args,
+                            kwargs=kwargs,
                             request=request,
                             format=kwargs.get('format', None)
                         )
@@ -39,7 +45,7 @@ class SortedDefaultRouter(DefaultRouter):
 
                 return Response(ret)
 
-        return APIRoot.as_view()
+        return APIRootView.as_view()
 
     def get_default_base_name(self, viewset):
         """
@@ -53,3 +59,11 @@ class SortedDefaultRouter(DefaultRouter):
                 return get_url_name()
 
         return super(SortedDefaultRouter, self).get_default_base_name(viewset)
+
+    def get_method_map(self, viewset, method_map):
+        # head method is not included by default
+        mappings = super(SortedDefaultRouter, self).get_method_map(viewset, method_map)
+        if 'get' in mappings:
+            mappings['head'] = mappings['get']
+
+        return mappings

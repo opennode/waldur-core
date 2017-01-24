@@ -10,9 +10,9 @@ def nc_setup(*args, **kwargs):
     from rest_framework.utils import model_meta
     from gm2m.relations import GM2MTo
 
-    model_meta._orig_resolve_model = model_meta._resolve_model
-    model_meta._resolve_model = \
-        lambda obj: None if isinstance(obj, GM2MTo) else model_meta._orig_resolve_model(obj)
+    model_meta.orig_get_related_model = model_meta.get_related_model
+    model_meta.get_related_model = \
+        lambda obj: None if isinstance(obj, GM2MTo) else model_meta.orig_get_related_model(obj)
 
 
 LazySettings._orig_setup = LazySettings._setup
