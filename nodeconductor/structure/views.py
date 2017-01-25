@@ -779,7 +779,8 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         if not (self.request.user.is_staff or self.request.user.is_support):
             queryset = queryset.filter(
                 Q(user=self.request.user, is_active=True) |
-                Q(customer__projects__permissions__user=self.request.user, is_active=True)
+                Q(customer__projects__permissions__user=self.request.user, is_active=True) |
+                Q(customer__permissions__user=self.request.user, is_active=True)
             ).distinct()
 
         return queryset
