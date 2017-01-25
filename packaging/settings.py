@@ -17,6 +17,7 @@ config.read(os.path.join(conf_dir, 'settings.ini'))
 config_defaults = {
     'global': {
         'debug': 'false',
+        'default_from_email': '',
         'media_root': os.path.join(work_dir, 'media'),
         'owner_can_manage_customer': 'false',
         'secret_key': '',
@@ -318,12 +319,16 @@ if config.getboolean('events', 'hook'):
 
 # Static files
 # See also: https://docs.djangoproject.com/en/1.8/ref/settings/#static-files
-
 STATIC_ROOT = config.get('global', 'static_root')
 
 # Django cache
 # https://docs.djangoproject.com/en/1.8/topics/cache/
 CACHES['default']['LOCATION'] = redis_url
+
+# Email
+# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#default-from-email
+if config.get('global', 'default_from_email') != '':
+    DEFAULT_FROM_EMAIL = config.get('global', 'default_from_email')
 
 # Django CORS headers
 # See also: https://github.com/ottoyiu/django-cors-headers

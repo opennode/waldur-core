@@ -3,7 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+
+Release 0.119.1
+---------------
+- Fix customer permission visibility issue.
 
 Release 0.119.0
 ---------------
