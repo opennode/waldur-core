@@ -1078,7 +1078,7 @@ class ServiceMetadataViewSet(viewsets.GenericViewSet):
         To get a list of supported service types, run **GET** against */api/service-metadata/* as an authenticated user.
         Use an endpoint from the returned list in order to create new service.
         """
-        return Response(self.get_queryset())
+        return Response(SupportedServices.get_services_with_resources(request))
 
 
 class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
