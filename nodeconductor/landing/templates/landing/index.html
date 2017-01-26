@@ -7,7 +7,6 @@
 
 <title>Waldur MasterMind</title>
 {% load staticfiles %}
-<link rel="shortcut icon" href="{% static "landing/static/images/favicon.ico" %}" type="image/x-icon" />
 <!-- Render -->
 <link rel="stylesheet" type="text/css" href="{% static "landing/static/css/style.css" %}">
 <script src="{% static "landing/static/js/production.js" %}"></script>
@@ -26,11 +25,12 @@
     </div>
 
     <div class="documentation" data-role="screen">
-        <a href="/docs" class="documentation__link" data-role="link">Documentation</a>
+        <a href="https://opennode.atlassian.net/wiki/display/WD/" class="documentation__link" data-role="docs-link">Documentation</a>
     </div>
 
     <div class="api" data-role="screen">
-        <a href="/api" class="api__link" data-role="link">API</a>
+        <a href="/api" class="api__link" data-role="api-link">API</a>
+        <a href="/docs" class="api__link" data-role="api_docs-link">API Documentation</a>
     </div>
 
 </body>
