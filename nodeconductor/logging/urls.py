@@ -16,8 +16,6 @@ events_count_history = views.EventViewSet.as_view({'get': 'count_history'})
 stats_alerts = views.AlertViewSet.as_view({'get': 'stats'})
 
 urlpatterns = [
-    # Separate history URL for consistency with other history endpoints
-    url(r'^events/count/history/', events_count_history, name='event-count-history'),
     # Hook for backward compatibility with old URL
     url(r'^stats/alerts/', stats_alerts, name='stats_alerts'),
 ]

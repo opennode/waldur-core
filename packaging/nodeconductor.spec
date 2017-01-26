@@ -34,6 +34,7 @@ Requires: python-django-model-utils = 2.5.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
 Requires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
+Requires: django-rest-swagger = 2.1.1
 Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
 Requires: python-django-taggit >= 0.20.2
 Requires: python-elasticsearch = 1.4.0
@@ -63,6 +64,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires: python-django >= 1.8
 BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
+BuildRequires: django-rest-swagger = 2.1.1
 BuildRequires: python-setuptools
 BuildRequires: systemd
 

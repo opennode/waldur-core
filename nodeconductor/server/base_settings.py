@@ -48,6 +48,7 @@ INSTALLED_APPS = (
 
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_swagger',
 
     'permission',
     'django_fsm',
@@ -234,3 +235,12 @@ for ext in NodeConductorExtension.get_extensions():
             globals()[key] = val
 
     ext.update_settings(globals())
+
+
+SWAGGER_SETTINGS = {
+    # Display a login/logout button on the Swagger UI
+    'USE_SESSION_AUTH': False,
+    'APIS_SORTER': 'alpha',
+    'LOGIN_URL': 'rest_framework:login',
+    'LOGOUT_URL': 'rest_framework:logout',
+}
