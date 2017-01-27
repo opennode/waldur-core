@@ -238,7 +238,7 @@ for ext in NodeConductorExtension.get_extensions():
 
 
 SWAGGER_SETTINGS = {
-    # Display a login/logout button on the Swagger UI
+    # This parameter should be consistent with DEBUG parameter.
     'USE_SESSION_AUTH': False,
     'APIS_SORTER': 'alpha',
     'LOGIN_URL': 'rest_framework:login',
