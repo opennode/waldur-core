@@ -39,6 +39,11 @@ class IsAdminOrOwnerOrOrganizationManager(IsAdminOrReadOnly):
         approving_user = request.user
         if approving_user.is_staff or request.method in SAFE_METHODS:
             return True
+        elif view.suffix == 'List' or request.method == 'DELETE':
+            return False
+        # Fix for schema generation
+        elif 'uuid' not in view.kwargs:
+            return False
         elif request.method == 'POST' and view.action_map.get('post') in \
                 ['approve_organization', 'reject_organization', 'remove_organization']:
 
@@ -48,8 +53,6 @@ class IsAdminOrOwnerOrOrganizationManager(IsAdminOrReadOnly):
                 return True
 
             return _can_manage_organization(candidate_user, approving_user)
-        elif view.suffix == 'List' or request.method == 'DELETE':
-            return False
 
         return approving_user == view.get_object()
 
