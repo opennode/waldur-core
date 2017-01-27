@@ -1305,7 +1305,10 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     def get_fields(self):
         fields = super(BaseResourceImportSerializer, self).get_fields()
-        fields['project'].queryset = self.context['service'].projects.all()
+        # Context doesn't have service during schema generation
+        if 'service' in self.context:
+            fields['project'].queryset = self.context['service'].projects.all()
+
         return fields
 
     def validate(self, attrs):

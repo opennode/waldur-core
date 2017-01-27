@@ -1071,6 +1071,9 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
+    # Fix for schema generation
+    queryset = []
+
     def list(self, request):
         """
         To get a list of supported service types, run **GET** against */api/service-metadata/* as an authenticated user.
@@ -1275,6 +1278,9 @@ class ServicesViewSet(mixins.ListModelMixin,
 
 
 class BaseCounterView(viewsets.GenericViewSet):
+    # Fix for schema generation
+    queryset = []
+
     def list(self, request, uuid=None):
         result = {}
         fields = request.query_params.getlist('fields') or self.get_fields().keys()
@@ -1572,7 +1578,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def get_serializer_context(self):
         context = super(BaseServiceViewSet, self).get_serializer_context()
-        if self.action == 'link':
+        # Viewset doesn't have object during schema generation
+        if self.action == 'link' and self.lookup_field in self.kwargs:
             context['service'] = self.get_object()
         return context
 
