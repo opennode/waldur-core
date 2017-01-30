@@ -473,6 +473,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
     def validate_expiration_time(self, value):
         if value is not None and value < timezone.now():
             raise serializers.ValidationError('Expiration time should be greater than current time')
+        return value
 
     def get_filtered_field_names(self):
         return 'customer',
@@ -544,6 +545,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
     def validate_expiration_time(self, value):
         if value is not None and value < timezone.now():
             raise serializers.ValidationError('Expiration time should be greater than current time')
+        return value
 
     def get_filtered_field_names(self):
         return 'project',
