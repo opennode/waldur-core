@@ -1603,7 +1603,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         if not view._can_import():
             raise MethodNotAllowed(view.action)
 
-    def _shared_settings_owner_permission(request, view, obj=None):
+    def _require_staff_for_shared_settings(request, view, obj=None):
+        """ Allow to execute action only if service settings are not shared or user is staff """
         if obj is None:
             return
 
@@ -1665,7 +1666,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-    link_permissions = [_has_import_serializer_permission, _shared_settings_owner_permission]
+    link_permissions = [_has_import_serializer_permission, _require_staff_for_shared_settings]
 
     def get_backend(self, service):
         # project_uuid can be supplied in order to get a list of resources
@@ -1693,8 +1694,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    unlink_permissions = [_require_staff_for_shared_settings]
     unlink.destructive = True
-
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     core_views.ActionsViewSet):
