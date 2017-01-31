@@ -3,6 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
+ - Allow user to be in any role simultaneously.
 
 Release 0.119.1
 ---------------
