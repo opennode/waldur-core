@@ -264,9 +264,6 @@ class CustomerRole(models.CharField):
 
 @python_2_unicode_compatible
 class CustomerPermission(BasePermission):
-    class Meta(object):
-        unique_together = ('customer', 'role', 'user', 'is_active')
-
     class Permissions(object):
         customer_path = 'customer'
 
@@ -446,9 +443,6 @@ class ProjectRole(models.CharField):
 
 @python_2_unicode_compatible
 class ProjectPermission(core_models.UuidMixin, BasePermission):
-    class Meta(object):
-        unique_together = ('project', 'role', 'user', 'is_active')
-
     class Permissions(object):
         customer_path = 'project__customer'
         project_path = 'project'
