@@ -420,7 +420,7 @@ class BasePermissionSerializer(core_serializers.AugmentedSerializerMixin, serial
 
     def validate_user(self, user):
         if self.context['request'].user == user:
-            raise ValidationError('It is impossible to edit permissions for yourself.')
+            raise serializers.ValidationError('It is impossible to edit permissions for yourself.')
         return user
 
 
@@ -455,6 +455,16 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermission
                 'queryset': models.Customer.objects.all(),
             }
         }
+
+    def validate(self, data):
+        if not self.instance:
+            customer = data['customer']
+            user = data['user']
+
+            if customer.has_user(user):
+                raise serializers.ValidationError('The fields customer and user must make a unique set.')
+
+        return data
 
     def create(self, validated_data):
         customer = validated_data['customer']
@@ -512,6 +522,16 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionS
                 'queryset': models.Project.objects.all(),
             }
         }
+
+    def validate(self, data):
+        if not self.instance:
+            project = data['project']
+            user = data['user']
+
+            if project.has_user(user):
+                raise serializers.ValidationError('The fields project and user must make a unique set.')
+
+        return data
 
     def create(self, validated_data):
         project = validated_data['project']
