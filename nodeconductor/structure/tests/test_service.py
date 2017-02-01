@@ -5,7 +5,7 @@ from rest_framework import status, test
 
 from nodeconductor.structure import signals
 from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure.tests import factories, fixtures, models as test_models
 
 
 class SuspendServiceTest(test.APITransactionTestCase):
@@ -86,3 +86,15 @@ class UnlinkServiceTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertRaises(models.ObjectDoesNotExist, service.refresh_from_db)
+
+    def test_owner_cannot_unlink_service_with_shared_settings(self):
+        fixture = fixtures.ServiceFixture()
+        service_settings = factories.ServiceSettingsFactory(shared=True)
+        service = test_models.TestService.objects.get(customer=fixture.customer, settings=service_settings)
+        unlink_url = factories.TestServiceFactory.get_url(service, 'unlink')
+        self.client.force_authenticate(fixture.owner)
+
+        response = self.client.post(unlink_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())

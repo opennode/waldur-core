@@ -426,8 +426,8 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     name = django_filters.CharFilter(lookup_type='icontains')
     description = django_filters.CharFilter(lookup_type='icontains')
     state = core_filters.MappedMultipleChoiceFilter(
-        choices=[(representation, representation) for db_value, representation in models.Resource.States.CHOICES],
-        choice_mappings={representation: db_value for db_value, representation in models.Resource.States.CHOICES},
+        choices=[(representation, representation) for db_value, representation in core_models.StateMixin.States.CHOICES],
+        choice_mappings={representation: db_value for db_value, representation in core_models.StateMixin.States.CHOICES},
     )
     uuid = django_filters.UUIDFilter(lookup_type='exact')
     tag = django_filters.ModelMultipleChoiceFilter(
@@ -471,18 +471,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             # resource
             'name', 'description', 'state', 'uuid', 'tag', 'rtag',
         )
-
-
-# XXX: use single class when NC-1237 is done
-class BaseResourceStateFilter(BaseResourceFilter):
-
-    state = core_filters.MappedMultipleChoiceFilter(
-        choices=[(representation, representation) for db_value, representation in core_models.StateMixin.States.CHOICES],
-        choice_mappings={representation: db_value for db_value, representation in core_models.StateMixin.States.CHOICES},
-    )
-
-    class Meta(BaseResourceFilter.Meta):
-        model = models.ResourceMixin
 
 
 class TagsFilter(BaseFilterBackend):
