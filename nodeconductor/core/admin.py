@@ -103,9 +103,9 @@ class CustomAdminAuthenticationForm(admin_forms.AdminAuthenticationForm):
 
 
 class CustomAdminSite(admin.AdminSite):
-    site_title = _('NodeConductor admin')
-    site_header = _('NodeConductor administration')
-    index_title = _('NodeConductor administration')
+    site_title = _('Waldur MasterMind admin')
+    site_header = _('Waldur MasterMind administration')
+    index_title = _('Waldur MasterMind administration')
     login_form = CustomAdminAuthenticationForm
 
     def has_permission(self, request):
