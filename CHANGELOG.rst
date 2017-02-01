@@ -3,8 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Merge BaseResourceStateFilter with BaseResourceFilter
-- Remove BaseResourceStateFilter
+- Allow user to be in any role simultaneously.
+- Merge BaseResourceStateFilter with BaseResourceFilter and remove BaseResourceStateFilter.
 
 Release 0.119.1
 ---------------

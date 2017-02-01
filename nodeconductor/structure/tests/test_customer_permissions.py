@@ -148,7 +148,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
 
     def test_customer_owner_cannot_grant_existing_role_within_his_customer(self):
         self.assert_user_access_to_permission_granting(
-            login_user='first',
+            login_user='staff',
             affected_user='first',
             affected_customer='first',
             expected_status=status.HTTP_400_BAD_REQUEST,
