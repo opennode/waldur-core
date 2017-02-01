@@ -1,14 +1,15 @@
 from collections import OrderedDict
 
 from django.utils.encoding import smart_text
-from rest_framework import exceptions, schemas
+from rest_framework import exceptions, schemas, serializers
 from rest_framework.permissions import AllowAny, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.utils import formatting
 from rest_framework.views import APIView
 from rest_framework_swagger import renderers
 
-from nodeconductor.core.permissions import ActionsPermission
+from permissions import ActionsPermission
+from views import ActionsViewSet
 
 
 # XXX: Drop after removing HEAD requests
@@ -26,33 +27,30 @@ class WaldurEndpointInspector(schemas.EndpointInspector):
         ]
 
 
-def extract_entity_description(entity):
+def get_entity_description(entity):
     """
-    :param entity: function or a class object
-    :return: description in format:
+    Returns description in format:
     * entity human readable name
      * docstring
     """
+
     try:
-        # entity is function
-        label = entity.__name__.strip('_').replace('_', ' ').capitalize()
+        entity_name = entity.__name__.strip('_')
     except AttributeError:
-        # entity is a class object
-        label = formatting.camelcase_to_spaces(entity.__class__.__name__)
+        # entity is a class instance
+        entity_name = entity.__class__.__name__
 
-    label_repr = '* %s\n' % label
+    label = '* %s' % formatting.camelcase_to_spaces(entity_name)
     if entity.__doc__ is not None:
-        entity_docstring = formatting.dedent(smart_text(entity.__doc__))
-        return label_repr + ' * %s\n' % entity_docstring
+        entity_docstring = formatting.dedent(smart_text(entity.__doc__)).replace('\n', '\n\t')
+        return '%s\n * %s' % (label, entity_docstring)
 
-    return label_repr
+    return label
 
 
 def get_validators_description(view):
     """
-    :param view: object
-    :return: Validators description in format:
-
+    Returns validators description in format:
     ### Validators:
     * validator1 name
      * validator1 docstring
@@ -66,24 +64,22 @@ def get_validators_description(view):
     description = ''
     validators = getattr(view, action + '_validators', [])
     for validator in validators:
-        description += extract_entity_description(validator)
+        validator_description = get_entity_description(validator)
+        description += '\n' + validator_description if description else validator_description
 
     return '### Validators:\n' + description if description else ''
 
 
-def get_permissions_description(view, method):
+def get_actions_permission_description(view, method):
     """
-    :param view: object
-    :return: Permissions description in format:
-
-    ### Permissions:
+    Returns actions permissions description in format:
     * permission1 name
      * permission1 docstring
     * permission2 name
      * permission2 docstring
     """
     action = getattr(view, 'action', None)
-    if action is None or ActionsPermission not in view.permission_classes:
+    if action is None:
         return ''
 
     if hasattr(view, action + '_permissions'):
@@ -97,9 +93,67 @@ def get_permissions_description(view, method):
     for permission_type in permission_types:
         permissions = getattr(view, permission_type + '_permissions', [])
         for permission in permissions:
-            description += extract_entity_description(permission)
+            action_perm_description = get_entity_description(permission)
+            description += '\n' + action_perm_description if description else action_perm_description
+
+    return description
+
+
+def get_permissions_description(view, method):
+    """
+    Returns permissions description in format:
+    ### Permissions:
+    * permission1 name
+     * permission1 docstring
+    * permission2 name
+     * permission2 docstring
+    """
+    if not hasattr(view, 'permission_classes'):
+        return ''
+
+    description = ''
+    for permission_class in view.permission_classes:
+        if permission_class == ActionsPermission:
+            actions_perm_description = get_actions_permission_description(view, method)
+            if actions_perm_description:
+                description += '\n' + actions_perm_description if description else actions_perm_description
+            continue
+        perm_description = get_entity_description(permission_class)
+        description += '\n' + perm_description if description else perm_description
 
     return '### Permissions:\n' + description if description else ''
+
+
+def get_validation_description(view, method):
+    """
+    Returns validation description in format:
+    ### Validation:
+    validate method docstring
+    * field1 name
+     * field1 validation docstring
+    * field2 name
+     * field2 validation docstring
+    """
+    if method not in ('PUT', 'PATCH', 'POST') or not hasattr(view, 'get_serializer'):
+        return ''
+
+    serializer = view.get_serializer()
+    description = ''
+    if hasattr(serializer, 'validate') and serializer.validate.__doc__ is not None:
+        description += formatting.dedent(smart_text(serializer.validate.__doc__))
+
+    for field in serializer.fields.values():
+        if not hasattr(serializer, 'validate_' + field.field_name):
+            continue
+
+        field_validation = getattr(serializer, 'validate_' + field.field_name)
+
+        if field_validation.__doc__ is not None:
+            docstring = formatting.dedent(smart_text(field_validation.__doc__)).replace('\n', '\n\t')
+            field_description = '* %s\n * %s' % (field.field_name, docstring)
+            description += '\n' + field_description if description else field_description
+
+    return '### Validation:\n' + description if description else ''
 
 
 class WaldurSchemaGenerator(schemas.SchemaGenerator):
@@ -143,11 +197,10 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
         """
         Checks whether Link action is disabled.
         """
-        if not hasattr(view, 'disabled_actions'):
+        if not isinstance(view, ActionsViewSet):
             return False
 
         action = getattr(view, 'action', None)
-
         return action in view.disabled_actions if action is not None else False
 
     def get_description(self, path, method, view):
@@ -159,13 +212,18 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
         """
         description = super(WaldurSchemaGenerator, self).get_description(path, method, view)
 
-        validators_description = get_validators_description(view)
-        if validators_description:
-            description += '\n' + validators_description
-
         permissions_description = get_permissions_description(view, method)
         if permissions_description:
-            description += '\n' + permissions_description
+            description += '\n\n' + permissions_description if description else permissions_description
+
+        if isinstance(view, ActionsViewSet):
+            validators_description = get_validators_description(view)
+            if validators_description:
+                description += '\n\n' + validators_description if description else validators_description
+
+        validation_description = get_validation_description(view, method)
+        if validation_description:
+            description += '\n\n' + validation_description if description else validation_description
 
         return description
 
