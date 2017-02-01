@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 from django.utils.encoding import smart_text
-from rest_framework import exceptions, schemas, serializers
+from rest_framework import exceptions, schemas
 from rest_framework.permissions import AllowAny, SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.utils import formatting
