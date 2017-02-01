@@ -61,9 +61,9 @@
 
       {% if USE_SESSION_AUTH %}
         {% if request.user.is_authenticated %}
-          <div class='input'><a id="auth" class="header__btn" href="{{ LOGOUT_URL }}?next={{ request.path }}" data-sw-translate>Django Logout</a></div>
+          <div class='input'><a id="auth" class="header__btn" href="{{ LOGOUT_URL }}?next={{ request.path }}" data-sw-translate>Waldur MasterMind Logout</a></div>
         {% else %}
-          <div class='input'><a id="auth" class="header__btn" href="{{ LOGIN_URL }}?next={{ request.path }}" data-sw-translate>Django Login</a></div>
+          <div class='input'><a id="auth" class="header__btn" href="{{ LOGIN_URL }}?next={{ request.path }}" data-sw-translate>Waldur MasterMind Login</a></div>
         {% endif %}
       {% endif %}
       <div id='auth_container'></div>
