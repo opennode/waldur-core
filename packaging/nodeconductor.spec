@@ -64,7 +64,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires: python-django >= 1.8
 BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
-BuildRequires: django-rest-swagger = 2.1.1
+BuildRequires: python-django-rest-swagger = 2.1.1
 BuildRequires: python-setuptools
 BuildRequires: systemd
 
