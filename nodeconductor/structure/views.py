@@ -1978,7 +1978,7 @@ class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
                                                      ResourceViewMixin,
                                                      viewsets.ModelViewSet)):
 
-    filter_class = filters.BaseResourceStateFilter
+    filter_class = filters.BaseResourceFilter
 
     def perform_create(self, serializer):
         super(BaseResourceExecutorViewSet, self).perform_create(serializer)
@@ -2000,7 +2000,7 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
 
 
 class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
-    filter_class = filters.BaseResourceStateFilter
+    filter_class = filters.BaseResourceFilter
     runtime_state_executor = NotImplemented
     runtime_acceptable_states = {
         'stop': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
