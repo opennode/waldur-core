@@ -355,6 +355,7 @@ class NestedProjectPermissionSerializer(serializers.ModelSerializer):
 
 class CustomerUserSerializer(serializers.ModelSerializer):
     role = serializers.ReadOnlyField()
+    expiration_time = serializers.ReadOnlyField(source='perm.expiration_time')
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='customer_permission-detail',
@@ -364,7 +365,8 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission', 'projects']
+        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission', 'projects',
+                  'expiration_time']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -383,6 +385,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
 class ProjectUserSerializer(serializers.ModelSerializer):
     role = serializers.ReadOnlyField()
+    expiration_time = serializers.ReadOnlyField(source='perm.expiration_time')
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='project_permission-detail',
@@ -391,7 +394,8 @@ class ProjectUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission']
+        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission',
+                  'expiration_time']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
