@@ -119,7 +119,7 @@ class CustomAdminSite(admin.AdminSite):
         instance = cls()
         instance._registry = admin.site._registry.copy()
         instance._actions = admin.site._actions.copy()
-        instance._global_actions = admin.site._actions.copy()
+        instance._global_actions = admin.site._global_actions.copy()
         return instance
 
 admin_site = CustomAdminSite.clone_default()
