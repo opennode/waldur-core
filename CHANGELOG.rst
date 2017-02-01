@@ -3,6 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Merge BaseResourceStateFilter with BaseResourceFilter
+- Remove BaseResourceStateFilter
 
 Release 0.119.1
 ---------------
