@@ -105,6 +105,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'nodeconductor.landing',
     'rest_framework',
+    'rest_framework_swagger',
 )
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
