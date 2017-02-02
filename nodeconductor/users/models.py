@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.translation import ugettext_lazy as _
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models
@@ -24,8 +25,8 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
 
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='+', blank=True, null=True)
 
-    customer = models.ForeignKey(structure_models.Customer, related_name='invitations')
-    customer_role = structure_models.CustomerRole(null=True, blank=True)
+    customer = models.ForeignKey(structure_models.Customer, verbose_name=_('organization'), related_name='invitations')
+    customer_role = structure_models.CustomerRole(verbose_name=_('organization role'), null=True, blank=True)
 
     project = models.ForeignKey(structure_models.Project, related_name='invitations', blank=True, null=True)
     project_role = structure_models.ProjectRole(null=True, blank=True)

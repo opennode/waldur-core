@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='invitation',
             name='new_customer_role',
-            field=nodeconductor.structure.models.CustomerRole(blank=True, max_length=30, null=True, choices=[('owner', 'Owner')]),
+            field=nodeconductor.structure.models.CustomerRole(verbose_name='organization role', blank=True, max_length=30, null=True, choices=[('owner', 'Owner')]),
         ),
         migrations.AddField(
             model_name='invitation',

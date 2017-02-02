@@ -270,7 +270,7 @@ class CustomerPermission(BasePermission):
     class Permissions(object):
         customer_path = 'customer'
 
-    customer = models.ForeignKey('structure.Customer', related_name='permissions')
+    customer = models.ForeignKey('structure.Customer', verbose_name=_('organization'), related_name='permissions')
     role = CustomerRole(db_index=True)
 
     @classmethod
@@ -306,6 +306,9 @@ class Customer(core_models.UuidMixin,
     registration_code = models.CharField(max_length=160, default='', blank=True)
 
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
+
+    class Meta(object):
+        verbose_name = _('organization')
 
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 
@@ -422,7 +425,7 @@ class Customer(core_models.UuidMixin,
 
 
 class BalanceHistory(models.Model):
-    customer = models.ForeignKey(Customer)
+    customer = models.ForeignKey(Customer, verbose_name=_('organization'))
     created = AutoCreatedField()
     amount = models.DecimalField(max_digits=9, decimal_places=3)
 
@@ -509,7 +512,8 @@ class Project(core_models.DescribableMixin,
             path_to_scope='project',
         )
 
-    customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
+    customer = models.ForeignKey(
+        Customer, verbose_name=_('organization'), related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()
 
     @property
@@ -565,7 +569,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
         customer_path = 'customer'
         extra_query = dict(shared=True)
 
-    customer = models.ForeignKey(Customer, related_name='service_settings', blank=True, null=True)
+    customer = models.ForeignKey(Customer, verbose_name=_('organization'), related_name='service_settings', blank=True, null=True)
     backend_url = models.URLField(max_length=200, blank=True, null=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
@@ -637,7 +641,7 @@ class Service(core_models.UuidMixin,
         project_path = 'projects'
 
     settings = models.ForeignKey(ServiceSettings)
-    customer = models.ForeignKey(Customer)
+    customer = models.ForeignKey(Customer, verbose_name=_('organization'))
     available_for_all = models.BooleanField(
         default=False,
         help_text="Service will be automatically added to all customers projects if it is available for all"
