@@ -451,7 +451,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermission
             'created_by': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
-                'queryset': User.objects.all(),
+                'read_only': True,
             },
             'customer': {
                 'view_name': 'customer-detail',
@@ -518,7 +518,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionS
             'created_by': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
-                'queryset': User.objects.all(),
+                'read_only': True,
             },
             'project': {
                 'view_name': 'project-detail',
