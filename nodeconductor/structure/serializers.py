@@ -350,7 +350,7 @@ class NestedProjectPermissionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.ProjectPermission
-        fields = ['url', 'uuid', 'name', 'role', 'permission']
+        fields = ['url', 'uuid', 'name', 'role', 'permission', 'expiration_time']
 
 
 class CustomerUserSerializer(serializers.ModelSerializer):
