@@ -148,7 +148,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
 
     def test_customer_owner_cannot_grant_existing_role_within_his_customer(self):
         self.assert_user_access_to_permission_granting(
-            login_user='first',
+            login_user='staff',
             affected_user='first',
             affected_customer='first',
             expected_status=status.HTTP_400_BAD_REQUEST,
@@ -444,6 +444,7 @@ class CustomerPermissionExpirationTest(test.APISimpleTestCase):
             'expiration_time': expiration_time
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
 
     def test_user_can_set_permission_expiration_time_lower_than_current(self):
         staff_user = factories.UserFactory(is_staff=True)

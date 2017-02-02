@@ -22,7 +22,7 @@
     {% if not is_popup %}
     <!-- Header -->
     <div id="header">
-        {% if user.is_active and user.is_staff %}
+        {% if user.is_active and user.is_staff or user.is_active and user.is_support %}
         <div id="user-tools">
             {% block welcome-msg %}
                 {% trans 'Welcome,' %}

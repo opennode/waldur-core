@@ -9199,14 +9199,28 @@ return jQuery;
 
     // absolute center
     function linkPosition() {
-        var elem = $('[data-role="link"]');
+        var elem = $('[data-role="docs-link"]');
         var elLeft = -elem.width()/2;
-        var elTop = -elem.height()/2;
         elem.css({
             'position': 'absolute',
             'top': '55%',
             'left': '50%',
-            // 'margin-top': elTop,
+            'margin-left': elLeft
+        });
+
+        elem = $('[data-role="api-link"]');
+        elem.css({
+            'position': 'absolute',
+            'top': '50%',
+            'left': '50%',
+            'margin-left': elLeft
+        });
+
+        elem = $('[data-role="api_docs-link"]');
+        elem.css({
+            'position': 'absolute',
+            'top': '60%',
+            'left': '50%',
             'margin-left': elLeft
         });
     }

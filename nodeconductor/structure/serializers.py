@@ -355,6 +355,7 @@ class NestedProjectPermissionSerializer(serializers.ModelSerializer):
 
 class CustomerUserSerializer(serializers.ModelSerializer):
     role = serializers.ReadOnlyField()
+    expiration_time = serializers.ReadOnlyField(source='perm.expiration_time')
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='customer_permission-detail',
@@ -364,7 +365,8 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission', 'projects']
+        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission', 'projects',
+                  'expiration_time']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -383,6 +385,7 @@ class CustomerUserSerializer(serializers.ModelSerializer):
 
 class ProjectUserSerializer(serializers.ModelSerializer):
     role = serializers.ReadOnlyField()
+    expiration_time = serializers.ReadOnlyField(source='perm.expiration_time')
     permission = serializers.HyperlinkedRelatedField(
         source='perm.pk',
         view_name='project_permission-detail',
@@ -391,7 +394,8 @@ class ProjectUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission']
+        fields = ['url', 'uuid', 'username', 'full_name', 'email', 'role', 'permission',
+                  'expiration_time']
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -411,25 +415,30 @@ class BalanceHistorySerializer(serializers.ModelSerializer):
         fields = ['created', 'amount']
 
 
-STRUCTURE_PERMISSION_USER_FIELDS = {
-    'fields': ('user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email'),
-    'path': ('username', 'full_name', 'native_name', 'uuid', 'email')
-}
-
-
-class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
-                                   core_serializers.AugmentedSerializerMixin,
-                                   serializers.HyperlinkedModelSerializer):
+class BasePermissionSerializer(core_serializers.AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
     class Meta(object):
+        fields = ('user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email')
+        related_paths = {
+            'user': ('username', 'full_name', 'native_name', 'uuid', 'email'),
+        }
+
+    def validate_user(self, user):
+        if self.context['request'].user == user:
+            raise serializers.ValidationError('It is impossible to edit permissions for yourself.')
+        return user
+
+
+class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionSerializer):
+    class Meta(BasePermissionSerializer.Meta):
         model = models.CustomerPermission
         fields = (
             'url', 'pk', 'role', 'created', 'expiration_time', 'created_by',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
-        ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
-        related_paths = {
-            'user': STRUCTURE_PERMISSION_USER_FIELDS['path'],
-            'customer': ('name', 'native_name', 'abbreviation', 'uuid')
-        }
+        ) + BasePermissionSerializer.Meta.fields
+        related_paths = dict(
+            customer=('name', 'native_name', 'abbreviation', 'uuid'),
+            **BasePermissionSerializer.Meta.related_paths
+        )
         protected_fields = (
             'customer', 'role', 'user', 'created_by', 'created'
         )
@@ -442,7 +451,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
             'created_by': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
-                'queryset': User.objects.all(),
+                'read_only': True,
             },
             'customer': {
                 'view_name': 'customer-detail',
@@ -450,15 +459,6 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
                 'queryset': models.Customer.objects.all(),
             }
         }
-
-    def create(self, validated_data):
-        customer = validated_data['customer']
-        user = validated_data['user']
-        role = validated_data['role']
-        created_by = self.context['request'].user
-
-        permission, _ = customer.add_user(user, role, created_by)
-        return permission
 
     def validate(self, data):
         if not self.instance:
@@ -470,12 +470,22 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin,
 
         return data
 
+    def create(self, validated_data):
+        customer = validated_data['customer']
+        user = validated_data['user']
+        role = validated_data['role']
+        created_by = self.context['request'].user
+
+        permission, _ = customer.add_user(user, role, created_by)
+        return permission
+
     def validate_expiration_time(self, value):
         if value is not None and value < timezone.now():
             raise serializers.ValidationError('Expiration time should be greater than current time')
+        return value
 
     def get_filtered_field_names(self):
-        return 'customer',
+        return ('customer',)
 
 
 class CustomerPermissionLogSerializer(CustomerPermissionSerializer):
@@ -483,23 +493,19 @@ class CustomerPermissionLogSerializer(CustomerPermissionSerializer):
         view_name = 'customer_permission_log-detail'
 
 
-class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
-                                  core_serializers.AugmentedSerializerMixin,
-                                  serializers.HyperlinkedModelSerializer):
-
+class ProjectPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionSerializer):
     customer_name = serializers.ReadOnlyField(source='project.customer.name')
 
-    class Meta(object):
+    class Meta(BasePermissionSerializer.Meta):
         model = models.ProjectPermission
         fields = (
             'url', 'pk', 'role', 'created', 'expiration_time', 'created_by',
             'project', 'project_uuid', 'project_name', 'customer_name'
-        ) + STRUCTURE_PERMISSION_USER_FIELDS['fields']
-
-        related_paths = {
-            'project': ('name', 'uuid'),
-            'user': STRUCTURE_PERMISSION_USER_FIELDS['path']
-        }
+        ) + BasePermissionSerializer.Meta.fields
+        related_paths = dict(
+            project=('name', 'uuid'),
+            **BasePermissionSerializer.Meta.related_paths
+        )
         protected_fields = (
             'project', 'role', 'user', 'created_by', 'created'
         )
@@ -512,7 +518,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
             'created_by': {
                 'view_name': 'user-detail',
                 'lookup_field': 'uuid',
-                'queryset': User.objects.all(),
+                'read_only': True,
             },
             'project': {
                 'view_name': 'project-detail',
@@ -520,16 +526,6 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
                 'queryset': models.Project.objects.all(),
             }
         }
-
-    def create(self, validated_data):
-        project = validated_data['project']
-        user = validated_data['user']
-        role = validated_data['role']
-        created_by = self.context['request'].user
-
-        permission, _ = project.add_user(user, role, created_by)
-
-        return permission
 
     def validate(self, data):
         if not self.instance:
@@ -541,12 +537,23 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin,
 
         return data
 
+    def create(self, validated_data):
+        project = validated_data['project']
+        user = validated_data['user']
+        role = validated_data['role']
+        created_by = self.context['request'].user
+
+        permission, _ = project.add_user(user, role, created_by)
+
+        return permission
+
     def validate_expiration_time(self, value):
         if value is not None and value < timezone.now():
             raise serializers.ValidationError('Expiration time should be greater than current time')
+        return value
 
     def get_filtered_field_names(self):
-        return 'project',
+        return ('project',)
 
 
 class ProjectPermissionLogSerializer(ProjectPermissionSerializer):
@@ -1305,7 +1312,10 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
     def get_fields(self):
         fields = super(BaseResourceImportSerializer, self).get_fields()
-        fields['project'].queryset = self.context['service'].projects.all()
+        # Context doesn't have service during schema generation
+        if 'service' in self.context:
+            fields['project'].queryset = self.context['service'].projects.all()
+
         return fields
 
     def validate(self, attrs):

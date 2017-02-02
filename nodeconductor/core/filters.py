@@ -208,7 +208,7 @@ class CategoryFilter(django_filters.CharFilter):
         return super(CategoryFilter, self).filter(qs, value)
 
 
-class StaffOrUserFilter(object):
+class StaffOrUserFilter(BaseFilterBackend):
     def filter_queryset(self, request, queryset, view):
         if request.user.is_staff or request.user.is_support:
             return queryset

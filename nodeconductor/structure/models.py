@@ -163,7 +163,7 @@ class BasePermission(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, related_name='+')
     created = AutoCreatedField()
     expiration_time = models.DateTimeField(null=True, blank=True)
-    is_active = models.BooleanField(default=True, db_index=True)
+    is_active = models.NullBooleanField(default=True, db_index=True)
 
     @classmethod
     def get_url_name(cls):
@@ -227,7 +227,7 @@ class PermissionMixin(object):
             permissions = permissions.filter(role=role)
 
         affected_permissions = list(permissions)
-        permissions.update(is_active=False, expiration_time=timezone.now())
+        permissions.update(is_active=None, expiration_time=timezone.now())
 
         for permission in affected_permissions:
             self.log_role_revoked(permission)

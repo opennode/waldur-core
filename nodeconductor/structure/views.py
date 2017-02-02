@@ -738,7 +738,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
 class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
                                   mixins.ListModelMixin,
                                   viewsets.GenericViewSet):
-    queryset = models.ProjectPermission.objects.filter(is_active=False)
+    queryset = models.ProjectPermission.objects.filter(is_active=None)
     serializer_class = serializers.ProjectPermissionLogSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
@@ -865,7 +865,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
 class CustomerPermissionLogViewSet(mixins.RetrieveModelMixin,
                                    mixins.ListModelMixin,
                                    viewsets.GenericViewSet):
-    queryset = models.CustomerPermission.objects.filter(is_active=False)
+    queryset = models.CustomerPermission.objects.filter(is_active=None)
     serializer_class = serializers.CustomerPermissionLogSerializer
     permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
@@ -1071,6 +1071,9 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
+    # Fix for schema generation
+    queryset = []
+
     def list(self, request):
         """
         To get a list of supported service types, run **GET** against */api/service-metadata/* as an authenticated user.
@@ -1275,6 +1278,9 @@ class ServicesViewSet(mixins.ListModelMixin,
 
 
 class BaseCounterView(viewsets.GenericViewSet):
+    # Fix for schema generation
+    queryset = []
+
     def list(self, request, uuid=None):
         result = {}
         fields = request.query_params.getlist('fields') or self.get_fields().keys()
@@ -1572,7 +1578,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     def get_serializer_context(self):
         context = super(BaseServiceViewSet, self).get_serializer_context()
-        if self.action == 'link':
+        # Viewset doesn't have object during schema generation
+        if self.action == 'link' and self.lookup_field in self.kwargs:
             context['service'] = self.get_object()
         return context
 
@@ -1596,7 +1603,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
         if not view._can_import():
             raise MethodNotAllowed(view.action)
 
-    def _shared_settings_owner_permission(request, view, obj=None):
+    def _require_staff_for_shared_settings(request, view, obj=None):
+        """ Allow to execute action only if service settings are not shared or user is staff """
         if obj is None:
             return
 
@@ -1658,7 +1666,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-    link_permissions = [_has_import_serializer_permission, _shared_settings_owner_permission]
+    link_permissions = [_has_import_serializer_permission, _require_staff_for_shared_settings]
 
     def get_backend(self, service):
         # project_uuid can be supplied in order to get a list of resources
@@ -1686,8 +1694,8 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    unlink_permissions = [_require_staff_for_shared_settings]
     unlink.destructive = True
-
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     core_views.ActionsViewSet):
@@ -1971,7 +1979,7 @@ class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
                                                      ResourceViewMixin,
                                                      viewsets.ModelViewSet)):
 
-    filter_class = filters.BaseResourceStateFilter
+    filter_class = filters.BaseResourceFilter
 
     def perform_create(self, serializer):
         super(BaseResourceExecutorViewSet, self).perform_create(serializer)
@@ -1993,7 +2001,7 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
 
 
 class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
-    filter_class = filters.BaseResourceStateFilter
+    filter_class = filters.BaseResourceFilter
     runtime_state_executor = NotImplemented
     runtime_acceptable_states = {
         'stop': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,

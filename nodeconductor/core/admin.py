@@ -4,11 +4,14 @@ from django import forms
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
+from django.contrib.admin import forms as admin_forms
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
+
+from rest_framework import permissions as rf_permissions
 import reversion
 
 from nodeconductor.core import models
@@ -87,6 +90,40 @@ class SshPublicKeyAdmin(admin.ModelAdmin):
     readonly_fields = ('user', 'name', 'fingerprint', 'public_key')
 
 
+class CustomAdminAuthenticationForm(admin_forms.AdminAuthenticationForm):
+    error_messages = {
+        'invalid_login': _("Please enter the correct %(username)s and password "
+                           "for a staff or a support account. Note that both fields may be "
+                           "case-sensitive."),
+    }
+
+    def confirm_login_allowed(self, user):
+        if not user.is_active or not user.is_support:
+            return super(CustomAdminAuthenticationForm, self).confirm_login_allowed(user)
+
+
+class CustomAdminSite(admin.AdminSite):
+    site_title = _('Waldur MasterMind admin')
+    site_header = _('Waldur MasterMind administration')
+    index_title = _('Waldur MasterMind administration')
+    login_form = CustomAdminAuthenticationForm
+
+    def has_permission(self, request):
+        if request.method in rf_permissions.SAFE_METHODS:
+            return request.user.is_active and (request.user.is_staff or request.user.is_support)
+
+        return request.user.is_active and request.user.is_staff
+
+    @classmethod
+    def clone_default(cls):
+        instance = cls()
+        instance._registry = admin.site._registry.copy()
+        instance._actions = admin.site._actions.copy()
+        instance._global_actions = admin.site._global_actions.copy()
+        return instance
+
+admin_site = CustomAdminSite.clone_default()
+admin.site = admin_site
 admin.site.register(models.User, UserAdmin)
 admin.site.register(models.SshPublicKey, SshPublicKeyAdmin)
 admin.site.unregister(Group)

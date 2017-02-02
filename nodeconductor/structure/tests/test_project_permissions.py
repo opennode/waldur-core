@@ -247,14 +247,25 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             }
         )
 
-    def test_project_admin_cannot_grant_existing_role_within_his_project(self):
+    def test_project_manager_cannot_grant_existing_role_within_his_project(self):
         self.assert_user_access_to_permission_granting(
-            login_user='admin1',
+            login_user='project_manager1',
             affected_user='admin1',
             affected_project='project11',
             expected_status=status.HTTP_400_BAD_REQUEST,
             expected_payload={
                 'non_field_errors': ['The fields project and user must make a unique set.'],
+            }
+        )
+
+    def test_project_manager_cannot_grant_role_to_himself(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='project_manager1',
+            affected_user='project_manager1',
+            affected_project='project11',
+            expected_status=status.HTTP_400_BAD_REQUEST,
+            expected_payload={
+                'user': ['It is impossible to edit permissions for yourself.'],
             }
         )
 
@@ -463,6 +474,7 @@ class ProjectPermissionExpirationTest(test.APISimpleTestCase):
             'expiration_time': expiration_time
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
 
     def test_user_can_set_permission_expiration_time_lower_than_current(self):
         staff_user = factories.UserFactory(is_staff=True)

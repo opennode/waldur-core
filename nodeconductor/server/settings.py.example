@@ -138,6 +138,9 @@ LOGGING = {
     },
 }
 
+# Display a login/logout button on the Swagger UI
+SWAGGER_SETTINGS['USE_SESSION_AUTH'] = True
+
 # Settings, that are related to NodeCondoctor applications
 NODECONDUCTOR.update({
     'EXTENSIONS_AUTOREGISTER': True,
