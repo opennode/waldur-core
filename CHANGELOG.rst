@@ -3,8 +3,13 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet.
+
+Release 0.120
+-------------
 - Allow user to be in any role simultaneously.
 - Merge BaseResourceStateFilter with BaseResourceFilter and remove BaseResourceStateFilter.
+- Fix permission deletion by making is_active field nullable.
 
 Release 0.119.1
 ---------------
