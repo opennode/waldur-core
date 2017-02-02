@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Display customer as "organization" in /admin.
 
 Release 0.120.0
 ---------------
