@@ -350,7 +350,7 @@ class NestedProjectPermissionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.ProjectPermission
-        fields = ['url', 'uuid', 'name', 'role', 'permission']
+        fields = ['url', 'uuid', 'name', 'role', 'permission', 'expiration_time']
 
 
 class CustomerUserSerializer(serializers.ModelSerializer):
@@ -474,9 +474,11 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermission
         customer = validated_data['customer']
         user = validated_data['user']
         role = validated_data['role']
-        created_by = self.context['request'].user
+        expiration_time = validated_data.get('expiration_time')
 
-        permission, _ = customer.add_user(user, role, created_by)
+        created_by = self.context['request'].user
+        permission, _ = customer.add_user(user, role, created_by, expiration_time)
+
         return permission
 
     def validate_expiration_time(self, value):
@@ -541,9 +543,10 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionS
         project = validated_data['project']
         user = validated_data['user']
         role = validated_data['role']
-        created_by = self.context['request'].user
+        expiration_time = validated_data.get('expiration_time')
 
-        permission, _ = project.add_user(user, role, created_by)
+        created_by = self.context['request'].user
+        permission, _ = project.add_user(user, role, created_by, expiration_time)
 
         return permission
 

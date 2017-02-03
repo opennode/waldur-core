@@ -198,7 +198,7 @@ class PermissionMixin(object):
         return permissions.exists()
 
     @transaction.atomic()
-    def add_user(self, user, role, created_by=None):
+    def add_user(self, user, role, created_by=None, expiration_time=None):
         permission = self.permissions.filter(user=user, role=role, is_active=True).first()
         if permission:
             return permission, False
@@ -208,6 +208,7 @@ class PermissionMixin(object):
             role=role,
             is_active=True,
             created_by=created_by,
+            expiration_time=expiration_time,
         )
 
         structure_role_granted.send(
