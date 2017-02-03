@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Allow user to grant new role and set expiration time simultaneously.
 
 Release 0.120.0
 ---------------
