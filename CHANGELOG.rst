@@ -3,6 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Display customer as "organization" in /admin.
 - Allow user to grant new role and set expiration time simultaneously.
 
 Release 0.120.0
