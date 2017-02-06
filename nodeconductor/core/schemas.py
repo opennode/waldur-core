@@ -1,15 +1,29 @@
 from collections import OrderedDict
 
-from django.utils.encoding import smart_text
+import uritemplate
+
+from django.core.urlresolvers import NoReverseMatch
+from django.utils.encoding import smart_text, force_text
+from django_filters import OrderingFilter, ChoiceFilter, ModelMultipleChoiceFilter
 from rest_framework import exceptions, schemas
+from rest_framework.compat import coreapi
+from rest_framework.fields import ChoiceField, ModelField, HiddenField
 from rest_framework.permissions import AllowAny, SAFE_METHODS
+from rest_framework.relations import HyperlinkedRelatedField, ManyRelatedField
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
+from rest_framework.serializers import ListSerializer, Serializer
 from rest_framework.utils import formatting
 from rest_framework.views import APIView
 from rest_framework_swagger import renderers
 
-from permissions import ActionsPermission
-from views import ActionsViewSet
+
+from nodeconductor.core import permissions, views, utils
+from nodeconductor.core.filters import MappedMultipleChoiceFilter, SynchronizationStateFilter, ContentTypeFilter
+from nodeconductor.core.serializers import GenericRelatedField
+from nodeconductor.cost_tracking.filters import ResourceTypeFilter
+from nodeconductor.structure import SupportedServices
+from nodeconductor.structure.filters import ServiceTypeFilter
 
 
 # XXX: Drop after removing HEAD requests
@@ -91,8 +105,8 @@ def get_actions_permission_description(view, method):
 
     description = ''
     for permission_type in permission_types:
-        permissions = getattr(view, permission_type + '_permissions', [])
-        for permission in permissions:
+        action_perms = getattr(view, permission_type + '_permissions', [])
+        for permission in action_perms:
             action_perm_description = get_entity_description(permission)
             description += '\n' + action_perm_description if description else action_perm_description
 
@@ -113,7 +127,7 @@ def get_permissions_description(view, method):
 
     description = ''
     for permission_class in view.permission_classes:
-        if permission_class == ActionsPermission:
+        if permission_class == permissions.ActionsPermission:
             actions_perm_description = get_actions_permission_description(view, method)
             if actions_perm_description:
                 description += '\n' + actions_perm_description if description else actions_perm_description
@@ -154,6 +168,78 @@ def get_validation_description(view, method):
             description += '\n' + field_description if description else field_description
 
     return '### Validation:\n' + description if description else ''
+
+
+FIELDS = {
+    # filter
+    'BooleanFilter': 'boolean',
+    'CharFilter': 'string',
+    'TimestampFilter': 'UNIX timestamp',
+    'DateTimeFilter': 'DateTime',
+    'URLFilter': 'link',
+    'NumberFilter': 'float',
+    'UUIDFilter': 'string',
+    'ContentTypeFilter': 'string in form app_label.model_name',
+    # serializer
+    'BooleanField': 'boolean',
+    'CharField': 'string',
+    'DecimalField': 'float',
+    'FloatField': 'float',
+    'FileField': 'file',
+    'EmailField': 'email',
+    'IntegerField': 'integer',
+    'IPAddressField': 'IP address',
+    'HyperlinkedRelatedField': 'link',
+    'URLField': 'URL',
+}
+
+
+def get_field_type(field):
+    if isinstance(field, MappedMultipleChoiceFilter):
+        return ' | '.join(['"%s"' % f for f in sorted(field.mapped_to_model)])
+    if isinstance(field, OrderingFilter) or isinstance(field, ChoiceFilter):
+        return ' | '.join(['"%s"' % f[0] for f in field.extra['choices']])
+    if isinstance(field, ChoiceField):
+        return ' | '.join(['"%s"' % f for f in sorted(field.choices)])
+    if isinstance(field, HyperlinkedRelatedField):
+        if field.view_name.endswith('detail'):
+            return 'link to %s' % reverse(field.view_name,
+                                          kwargs={'%s' % field.lookup_field: "'%s'" % field.lookup_field})
+        return reverse(field.view_name)
+    if isinstance(field, ServiceTypeFilter):
+        return ' | '.join(['"%s"' % f for f in SupportedServices.get_filter_mapping().keys()])
+    if isinstance(field, ResourceTypeFilter):
+        return ' | '.join(['"%s"' % f for f in SupportedServices.get_resource_models().keys()])
+    if isinstance(field, SynchronizationStateFilter):
+        return ' | '.join(['"%s"' % f[0] for f in field.DEFAULT_CHOICES])
+    if isinstance(field, GenericRelatedField):
+        links = []
+        for model in field.related_models:
+            detail_view_name = utils.get_detail_view_name(model)
+            for f in field.lookup_fields:
+                try:
+                    link = reverse(detail_view_name, kwargs={'%s' % f: "'%s'" % f})
+                except NoReverseMatch:
+                    pass
+                else:
+                    links.append(link)
+                    break
+        path = ', '.join(links)
+        if path:
+            return 'link to any: %s' % path
+    if isinstance(field, ContentTypeFilter):
+        return "string in form 'app_label'.'model_name'"
+    if isinstance(field, ModelMultipleChoiceFilter):
+        return get_field_type(field.field)
+    if isinstance(field, ListSerializer):
+        return 'list of [%s]' % get_field_type(field.child)
+    if isinstance(field, ManyRelatedField):
+        return 'list of [%s]' % get_field_type(field.child_relation)
+    if isinstance(field, ModelField):
+        return get_field_type(field.model_field)
+
+    name = field.__class__.__name__
+    return FIELDS.get(name, name.replace('Filter', '').replace('Field', ''))
 
 
 class WaldurSchemaGenerator(schemas.SchemaGenerator):
@@ -197,7 +283,7 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
         """
         Checks whether Link action is disabled.
         """
-        if not isinstance(view, ActionsViewSet):
+        if not isinstance(view, views.ActionsViewSet):
             return False
 
         action = getattr(view, 'action', None)
@@ -216,7 +302,7 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
         if permissions_description:
             description += '\n\n' + permissions_description if description else permissions_description
 
-        if isinstance(view, ActionsViewSet):
+        if isinstance(view, views.ActionsViewSet):
             validators_description = get_validators_description(view)
             if validators_description:
                 description += '\n\n' + validators_description if description else validators_description
@@ -226,6 +312,91 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
             description += '\n\n' + validation_description if description else validation_description
 
         return description
+
+    def get_path_fields(self, path, method, view):
+        """
+        Return a list of `coreapi.Field` instances corresponding to any
+        templated path variables.
+        """
+
+        path_types = {
+            'uuid': 'string',
+            'id': 'integer',
+        }
+
+        fields = []
+        for variable in uritemplate.variables(path):
+            path_type = path_types.get(variable, 'path')
+            field = coreapi.Field(name=variable, location=path_type, required=True)
+            fields.append(field)
+
+        return fields
+
+    def get_filter_fields(self, path, method, view):
+        if not schemas.is_list_view(path, method, view):
+            return []
+
+        if not getattr(view, 'filter_backends', None):
+            return []
+
+        fields = []
+        for filter_backend in view.filter_backends:
+            backend = filter_backend()
+            if not hasattr(backend, 'get_filter_class'):
+                fields += filter_backend().get_schema_fields(view)
+                continue
+
+            filter_class = backend.get_filter_class(view, view.get_queryset())
+            if not filter_class:
+                continue
+
+            for filter_name, filter_instance in filter_class().filters.items():
+                filter_type = get_field_type(filter_instance)
+                field = coreapi.Field(
+                    name=filter_name,
+                    required=False,
+                    location=filter_type,
+                )
+                # Prevent double rendering
+                if field not in fields:
+                    fields.append(field)
+
+        return fields
+
+    def get_serializer_fields(self, path, method, view):
+        """
+        Return a list of `coreapi.Field` instances corresponding to any
+        request body input, as determined by the serializer class.
+        """
+        if method not in ('PUT', 'PATCH', 'POST'):
+            return []
+
+        if not hasattr(view, 'get_serializer'):
+            return []
+
+        serializer = view.get_serializer()
+        if not isinstance(serializer, Serializer):
+            return []
+
+        fields = []
+        for field in serializer.fields.values():
+            if field.read_only or isinstance(field, HiddenField):
+                continue
+
+            required = field.required and method != 'PATCH'
+            description = force_text(field.help_text) if field.help_text else ''
+            field_type = 'Type: %s' % get_field_type(field)
+            description += '; ' + field_type if description else field_type
+            field = coreapi.Field(
+                name=field.field_name,
+                location='form',
+                required=required,
+                description=description,
+                type=schemas.types_lookup[field]
+            )
+            fields.append(field)
+
+        return fields
 
 
 class WaldurSchemaView(APIView):
