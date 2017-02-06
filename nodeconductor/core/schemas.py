@@ -1,7 +1,6 @@
 from collections import OrderedDict
 
 import uritemplate
-
 from django.core.urlresolvers import NoReverseMatch
 from django.utils.encoding import smart_text, force_text
 from django_filters import OrderingFilter, ChoiceFilter, ModelMultipleChoiceFilter
