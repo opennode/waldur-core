@@ -1121,22 +1121,6 @@ class ManagedResourceSerializer(BasicResourceSerializer):
     customer_name = serializers.ReadOnlyField(source='service_project_link.project.customer.name')
 
 
-class RelatedResourceSerializer(BasicResourceSerializer):
-    url = serializers.SerializerMethodField()
-    service_tags = serializers.SerializerMethodField()
-
-    def get_url(self, resource):
-        try:
-            return reverse(resource.get_url_name() + '-detail',
-                           kwargs={'uuid': resource.uuid.hex},
-                           request=self.context['request'])
-        except NoReverseMatch:
-            return None
-
-    def get_service_tags(self, resource):
-        return resource.service_project_link.service.settings.get_tags()
-
-
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                              core_serializers.RestrictedSerializerMixin,
                              MonitoringSerializerMixin,
@@ -1194,7 +1178,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.ReadOnlyField(source='get_tags')
     access_url = serializers.SerializerMethodField()
-    related_resources = RelatedResourceSerializer(source='get_related_resources', many=True, read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -1207,7 +1190,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url', 'related_resources'
+            'access_url'
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
