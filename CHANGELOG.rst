@@ -5,6 +5,11 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.121.0
+---------------
+- Display customer as "organization" in /admin.
+- Allow user to grant new role and set expiration time simultaneously.
+
 Release 0.120.0
 ---------------
 - Allow user to be in any role simultaneously.

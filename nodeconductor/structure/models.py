@@ -198,7 +198,7 @@ class PermissionMixin(object):
         return permissions.exists()
 
     @transaction.atomic()
-    def add_user(self, user, role, created_by=None):
+    def add_user(self, user, role, created_by=None, expiration_time=None):
         permission = self.permissions.filter(user=user, role=role, is_active=True).first()
         if permission:
             return permission, False
@@ -208,6 +208,7 @@ class PermissionMixin(object):
             role=role,
             is_active=True,
             created_by=created_by,
+            expiration_time=expiration_time,
         )
 
         structure_role_granted.send(
@@ -270,7 +271,7 @@ class CustomerPermission(BasePermission):
     class Permissions(object):
         customer_path = 'customer'
 
-    customer = models.ForeignKey('structure.Customer', related_name='permissions')
+    customer = models.ForeignKey('structure.Customer', verbose_name=_('organization'), related_name='permissions')
     role = CustomerRole(db_index=True)
 
     @classmethod
@@ -306,6 +307,9 @@ class Customer(core_models.UuidMixin,
     registration_code = models.CharField(max_length=160, default='', blank=True)
 
     balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
+
+    class Meta(object):
+        verbose_name = _('organization')
 
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 
@@ -422,7 +426,7 @@ class Customer(core_models.UuidMixin,
 
 
 class BalanceHistory(models.Model):
-    customer = models.ForeignKey(Customer)
+    customer = models.ForeignKey(Customer, verbose_name=_('organization'))
     created = AutoCreatedField()
     amount = models.DecimalField(max_digits=9, decimal_places=3)
 
@@ -509,7 +513,8 @@ class Project(core_models.DescribableMixin,
             path_to_scope='project',
         )
 
-    customer = models.ForeignKey(Customer, related_name='projects', on_delete=models.PROTECT)
+    customer = models.ForeignKey(
+        Customer, verbose_name=_('organization'), related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()
 
     @property
@@ -565,7 +570,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
         customer_path = 'customer'
         extra_query = dict(shared=True)
 
-    customer = models.ForeignKey(Customer, related_name='service_settings', blank=True, null=True)
+    customer = models.ForeignKey(Customer, verbose_name=_('organization'), related_name='service_settings', blank=True, null=True)
     backend_url = models.URLField(max_length=200, blank=True, null=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
@@ -637,7 +642,7 @@ class Service(core_models.UuidMixin,
         project_path = 'projects'
 
     settings = models.ForeignKey(ServiceSettings)
-    customer = models.ForeignKey(Customer)
+    customer = models.ForeignKey(Customer, verbose_name=_('organization'))
     available_for_all = models.BooleanField(
         default=False,
         help_text="Service will be automatically added to all customers projects if it is available for all"
@@ -1076,46 +1081,6 @@ class ResourceMixin(MonitoringModelMixin,
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
-
-    def get_related_resources(self):
-        return itertools.chain(
-            self._get_generic_related_resources(),
-            # XXX: Temporary hack to speed up queries. Related resources should be removed.
-            self._get_concrete_related_resources(),
-            # self._get_concrete_linked_resources(),
-            # self._get_generic_linked_resources()
-        )
-
-    def _get_generic_related_resources(self):
-        # For example, returns Zabbix host for virtual machine
-
-        return itertools.chain.from_iterable(
-            model.objects.filter(**{field.name: self})
-            for model in ResourceMixin.get_all_models()
-            for field in model._meta.virtual_fields
-            if isinstance(field, GenericForeignKey))
-
-    def _get_concrete_related_resources(self):
-        # For example, returns Zabbix IT Service for Zabbix Host
-
-        return itertools.chain.from_iterable(
-            rel.related_model.objects.filter(**{rel.field.name: self})
-            for rel in self._meta.get_all_related_objects()
-            if issubclass(rel.related_model, ResourceMixin)
-        )
-
-    def _get_concrete_linked_resources(self):
-        # For example, returns GitLab group for project
-        return [getattr(self, field.name)
-                for field in self._meta.fields
-                if isinstance(field, models.ForeignKey) and
-                issubclass(field.related_model, ResourceMixin)]
-
-    def _get_generic_linked_resources(self):
-        # For example, returns GitLab group for project
-        return [getattr(self, field.name)
-                for field in self._meta.virtual_fields
-                if isinstance(field, GenericForeignKey)]
 
     @classmethod
     def get_url_name(cls):

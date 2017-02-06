@@ -231,7 +231,7 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
         response = self.client.delete(self._get_customer_url(self.fixture.customer))
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-        self.assertDictContainsSubset({'detail': 'Cannot delete customer with existing projects'},
+        self.assertDictContainsSubset({'detail': 'Cannot delete organization with existing projects'},
                                       response.data)
 
     # Creation tests

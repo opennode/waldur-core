@@ -91,7 +91,7 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True, db_index=True)),
                 ('role', nodeconductor.structure.models.CustomerRole(db_index=True, max_length=30, choices=[('owner', 'Owner')])),
                 ('created_by', models.ForeignKey(related_name='+', blank=True, to=settings.AUTH_USER_MODEL, null=True)),
-                ('customer', models.ForeignKey(related_name='permissions', to='structure.Customer')),
+                ('customer', models.ForeignKey(verbose_name='organization', related_name='permissions', to='structure.Customer')),
                 ('user', models.ForeignKey(to=settings.AUTH_USER_MODEL)),
             ],
         ),

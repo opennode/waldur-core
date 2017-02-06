@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.120.0
+Version: 0.121.0
 Release: 1.el7
 License: MIT
 
@@ -105,6 +105,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'nodeconductor.landing',
     'rest_framework',
+    'rest_framework_swagger',
 )
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
@@ -216,6 +217,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Mon Feb 6 2017 Jenkins <jenkins@opennodecloud.com> - 0.121.0-1.el7
+- New upstream release
+
 * Thu Feb 2 2017 Jenkins <jenkins@opennodecloud.com> - 0.120.0-1.el7
 - New upstream release
 
