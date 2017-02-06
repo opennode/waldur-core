@@ -17,12 +17,10 @@ from rest_framework.views import APIView
 from rest_framework_swagger import renderers
 
 
-from nodeconductor.core import permissions, views, utils
-from nodeconductor.core.filters import MappedMultipleChoiceFilter, SynchronizationStateFilter, ContentTypeFilter
-from nodeconductor.core.serializers import GenericRelatedField
+from nodeconductor.core import (permissions as core_permissions, views as core_views,
+                                utils as core_utils, filters as core_filters, serializers as core_serializers)
 from nodeconductor.cost_tracking.filters import ResourceTypeFilter
-from nodeconductor.structure import SupportedServices
-from nodeconductor.structure.filters import ServiceTypeFilter
+from nodeconductor.structure import SupportedServices, filters as structure_filters
 
 
 # XXX: Drop after removing HEAD requests
@@ -126,7 +124,7 @@ def get_permissions_description(view, method):
 
     description = ''
     for permission_class in view.permission_classes:
-        if permission_class == permissions.ActionsPermission:
+        if permission_class == core_permissions.ActionsPermission:
             actions_perm_description = get_actions_permission_description(view, method)
             if actions_perm_description:
                 description += '\n' + actions_perm_description if description else actions_perm_description
@@ -189,7 +187,10 @@ FIELDS = {
 
 
 def get_field_type(field):
-    if isinstance(field, MappedMultipleChoiceFilter):
+    """
+    Returns field type/possible values.
+    """
+    if isinstance(field, core_filters.MappedMultipleChoiceFilter):
         return ' | '.join(['"%s"' % f for f in sorted(field.mapped_to_model)])
     if isinstance(field, OrderingFilter) or isinstance(field, ChoiceFilter):
         return ' | '.join(['"%s"' % f[0] for f in field.extra['choices']])
@@ -200,16 +201,16 @@ def get_field_type(field):
             return 'link to %s' % reverse(field.view_name,
                                           kwargs={'%s' % field.lookup_field: "'%s'" % field.lookup_field})
         return reverse(field.view_name)
-    if isinstance(field, ServiceTypeFilter):
+    if isinstance(field, structure_filters.ServiceTypeFilter):
         return ' | '.join(['"%s"' % f for f in SupportedServices.get_filter_mapping().keys()])
     if isinstance(field, ResourceTypeFilter):
         return ' | '.join(['"%s"' % f for f in SupportedServices.get_resource_models().keys()])
-    if isinstance(field, SynchronizationStateFilter):
+    if isinstance(field, core_filters.SynchronizationStateFilter):
         return ' | '.join(['"%s"' % f[0] for f in field.DEFAULT_CHOICES])
-    if isinstance(field, GenericRelatedField):
+    if isinstance(field, core_serializers.GenericRelatedField):
         links = []
         for model in field.related_models:
-            detail_view_name = utils.get_detail_view_name(model)
+            detail_view_name = core_utils.get_detail_view_name(model)
             for f in field.lookup_fields:
                 try:
                     link = reverse(detail_view_name, kwargs={'%s' % f: "'%s'" % f})
@@ -221,7 +222,7 @@ def get_field_type(field):
         path = ', '.join(links)
         if path:
             return 'link to any: %s' % path
-    if isinstance(field, ContentTypeFilter):
+    if isinstance(field, core_filters.ContentTypeFilter):
         return "string in form 'app_label'.'model_name'"
     if isinstance(field, ModelMultipleChoiceFilter):
         return get_field_type(field.field)
@@ -279,7 +280,7 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
         """
         Checks whether Link action is disabled.
         """
-        if not isinstance(view, views.ActionsViewSet):
+        if not isinstance(view, core_views.ActionsViewSet):
             return False
 
         action = getattr(view, 'action', None)
@@ -298,7 +299,7 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
         if permissions_description:
             description += '\n\n' + permissions_description if description else permissions_description
 
-        if isinstance(view, views.ActionsViewSet):
+        if isinstance(view, core_views.ActionsViewSet):
             validators_description = get_validators_description(view)
             if validators_description:
                 description += '\n\n' + validators_description if description else validators_description
