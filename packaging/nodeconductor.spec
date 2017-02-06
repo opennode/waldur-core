@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.120.0
+Version: 0.121.0
 Release: 1.el7
 License: MIT
 
@@ -217,6 +217,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Mon Feb 6 2017 Jenkins <jenkins@opennodecloud.com> - 0.121.0-1.el7
+- New upstream release
+
 * Thu Feb 2 2017 Jenkins <jenkins@opennodecloud.com> - 0.120.0-1.el7
 - New upstream release
 
