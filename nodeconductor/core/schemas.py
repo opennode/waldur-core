@@ -171,26 +171,21 @@ def get_validation_description(view, method):
 
 
 FIELDS = {
-    # filter
-    'BooleanFilter': 'boolean',
-    'CharFilter': 'string',
-    'TimestampFilter': 'UNIX timestamp',
-    'DateTimeFilter': 'DateTime',
-    'URLFilter': 'link',
-    'NumberFilter': 'float',
-    'UUIDFilter': 'string',
-    'ContentTypeFilter': 'string in form app_label.model_name',
-    # serializer
-    'BooleanField': 'boolean',
-    'CharField': 'string',
-    'DecimalField': 'float',
-    'FloatField': 'float',
-    'FileField': 'file',
-    'EmailField': 'email',
-    'IntegerField': 'integer',
-    'IPAddressField': 'IP address',
-    'HyperlinkedRelatedField': 'link',
-    'URLField': 'URL',
+    'Boolean': 'boolean',
+    'Char': 'string',
+    'Timestamp': 'UNIX timestamp',
+    'DateTime': 'DateTime',
+    'URL': 'link',
+    'Number': 'float',
+    'UUID': 'string',
+    'ContentType': 'string in form app_label.model_name',
+    'Decimal': 'float',
+    'Float': 'float',
+    'File': 'file',
+    'Email': 'email',
+    'Integer': 'integer',
+    'IPAddress': 'IP address',
+    'HyperlinkedRelated': 'link',
 }
 
 
@@ -239,7 +234,9 @@ def get_field_type(field):
         return get_field_type(field.model_field)
 
     name = field.__class__.__name__
-    return FIELDS.get(name, name.replace('Filter', '').replace('Field', ''))
+    for w in ('Filter', 'Field', 'Serializer'):
+        name = name.replace(w, '')
+    return FIELDS.get(name, name)
 
 
 class WaldurSchemaGenerator(schemas.SchemaGenerator):
@@ -385,7 +382,7 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
 
             required = field.required and method != 'PATCH'
             description = force_text(field.help_text) if field.help_text else ''
-            field_type = 'Type: %s' % get_field_type(field)
+            field_type = get_field_type(field)
             description += '; ' + field_type if description else field_type
             field = coreapi.Field(
                 name=field.field_name,
