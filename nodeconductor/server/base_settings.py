@@ -238,9 +238,8 @@ for ext in NodeConductorExtension.get_extensions():
 
 
 SWAGGER_SETTINGS = {
-    # This parameter should be consistent with DEBUG parameter.
+    # USE_SESSION_AUTH parameter must be consistent with DEBUG parameter.
+    # If it is True, LOGIN_URL and LOGOUT_URL must be specified.
     'USE_SESSION_AUTH': False,
     'APIS_SORTER': 'alpha',
-    'LOGIN_URL': 'rest_framework:login',
-    'LOGOUT_URL': 'rest_framework:logout',
 }
