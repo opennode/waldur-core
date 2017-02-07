@@ -154,7 +154,7 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         serializer = serializers.BalanceHistorySerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @detail_route(filter_backends=[])
+    @detail_route(filter_backends=[filters.GenericRoleFilter])
     def users(self, request, uuid=None):
         """ A list of users connected to the customer. """
         customer = self.get_object()
@@ -324,7 +324,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
 
         super(ProjectViewSet, self).perform_create(serializer)
 
-    @detail_route(filter_backends=[])
+    @detail_route(filter_backends=[filters.GenericRoleFilter])
     def users(self, request, uuid=None):
         """ A list of users connected to the project """
         project = self.get_object()

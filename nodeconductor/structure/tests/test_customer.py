@@ -459,8 +459,8 @@ class CustomerUsersListTest(test.APITransactionTestCase):
 
         self.assertSetEqual({user['role'] for user in response.data}, {'owner', 'support', None, None})
         self.assertSetEqual({user['uuid'] for user in response.data},
-                            {self.owner.uuid.hex, self.admin.uuid.hex, self.manager.uuid.hex,
-                             self.customer_support.uuid.hex, self.project_support.uuid.hex})
+                            {self.fixture.owner.uuid.hex, self.fixture.admin.uuid.hex, self.fixture.manager.uuid.hex,
+                             self.fixture.customer_support.uuid.hex, self.fixture.project_support.uuid.hex})
         self.assertSetEqual({user['projects'] and user['projects'][0]['role'] or None
                              for user in response.data}, {None, 'admin', 'manager', 'support'})
 
