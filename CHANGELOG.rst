@@ -1,9 +1,11 @@
 CHANGELOG
 =========
 
-Release NEXT
-------------
-- Nothing yet.
+Release 0.121.1
+---------------
+- Make actions metadata renderer more generic so that it can be used for support offering.
+- Allow to order customer and project users by concatenated name.
+- Improve Swagger schema generator.
 
 Release 0.121.0
 ---------------

@@ -29,7 +29,9 @@ Tips for writing tests
 - cover important or complex functions and methods with unittests;
 - write at least one test for a positive flow for each endpoint;
 - do not write tests for actions that does not exist. If you don't support
-  "create" action for any user there is no need to write test for that.
+  "create" action for any user there is no need to write test for that;
+- use fixtures (module fixtures.py) to generate default structure.
+
 
 Running tests
 -------------

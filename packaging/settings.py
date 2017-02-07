@@ -385,7 +385,10 @@ if NODECONDUCTOR['ELASTICSEARCH']['protocol'] == 'https':
         NODECONDUCTOR['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
 
 # Swagger uses DRF session authentication which can be enabled in DEBUG mode
-SWAGGER_SETTINGS['USE_SESSION_AUTH'] = config.getboolean('global', 'debug')
+if config.getboolean('global', 'debug'):
+    SWAGGER_SETTINGS['USE_SESSION_AUTH'] = True
+    SWAGGER_SETTINGS['LOGIN_URL'] = 'rest_framework:login'
+    SWAGGER_SETTINGS['LOGOUT_URL'] = 'rest_framework:logout'
 
 # Sentry integration
 # See also: https://docs.getsentry.com/hosted/clients/python/integrations/django/
