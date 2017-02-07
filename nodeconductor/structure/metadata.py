@@ -6,8 +6,8 @@ from rest_framework import exceptions
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.reverse import reverse
 
-from nodeconductor.core.utils import sort_dict
 from nodeconductor.core.exceptions import IncorrectStateException
+from nodeconductor.core.utils import sort_dict
 
 
 class ActionSerializer(object):
