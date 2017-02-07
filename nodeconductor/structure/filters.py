@@ -5,6 +5,7 @@ import uuid
 from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
+from django.db.models.functions import Concat
 from django.utils import six
 import django_filters
 from django_filters.filterset import FilterSetMetaclass
@@ -237,6 +238,20 @@ class UserFilter(django_filters.FilterSet):
             'is_active',
             'registration_method',
         ]
+
+
+class UserConcatenatedNameOrderingBackend(DjangoFilterBackend):
+    """ Filter user by concatenated full_name + username with ?o=concatenated_name """
+    def filter_queryset(self, request, queryset, view):
+        if 'o' not in request.query_params:
+            return queryset
+        if request.query_params['o'] == 'concatenated_name':
+            order_by = 'concatenated_name'
+        elif request.query_params['o'] == '-concatenated_name':
+            order_by = '-concatenated_name'
+        else:
+            return queryset
+        return queryset.annotate(concatenated_name=Concat('full_name', 'username')).order_by(order_by)
 
 
 class UserPermissionFilter(django_filters.FilterSet):
