@@ -6,8 +6,8 @@ from rest_framework import exceptions
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.reverse import reverse
 
+from nodeconductor.core.utils import sort_dict
 from nodeconductor.core.exceptions import IncorrectStateException
-from nodeconductor.structure import SupportedServices
 
 
 class ActionSerializer(object):
@@ -86,10 +86,11 @@ class ActionsMetadata(SimpleMetadata):
         such as start, stop, unlink
         """
         metadata = OrderedDict()
-        model = view.get_queryset().model
-        actions = SupportedServices.get_resource_actions(model)
+        actions = self.get_resource_actions(view)
+
         resource = view.get_object()
         for action_name, action in actions.items():
+            view.action = action_name
             data = ActionSerializer(action, action_name, request, view, resource)
             metadata[action_name] = data.serialize()
             if not metadata[action_name]['enabled']:
@@ -102,11 +103,23 @@ class ActionsMetadata(SimpleMetadata):
                 metadata[action_name]['fields'] = fields
         return metadata
 
+    @classmethod
+    def get_resource_actions(cls, view):
+        actions = {}
+        for key in dir(view.__class__):
+            callback = getattr(view.__class__, key)
+            if getattr(callback, 'deprecated', False):
+                continue
+            if 'post' not in getattr(callback, 'bind_to_methods', []):
+                continue
+            actions[key] = callback
+        actions['destroy'] = view.destroy
+        return sort_dict(actions)
+
     def get_action_fields(self, view, action_name, resource):
         """
         Get fields exposed by action's serializer
         """
-        view.action = action_name
         serializer = view.get_serializer(resource)
         fields = OrderedDict()
         if not isinstance(serializer, view.serializer_class):
