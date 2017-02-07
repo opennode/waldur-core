@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='user',
             name='token_lifetime',
-            field=models.PositiveIntegerField(default=60, help_text='Token lifetime in seconds.', null=True),
+            field=models.PositiveIntegerField(help_text='Token lifetime in seconds.', null=True),
         ),
     ]

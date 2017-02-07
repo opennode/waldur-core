@@ -32,7 +32,12 @@ class RefreshTokenMixin(object):
     """
     def refresh_token(self, user):
         token, _ = Token.objects.get_or_create(user=user)
-        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+
+        if user.token_lifetime:
+            lifetime = timezone.timedelta(user.token_lifetime)
+        else:
+            lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+
         if token.created < timezone.now() - lifetime:
             token.delete()
             token = Token.objects.create(user=user)
