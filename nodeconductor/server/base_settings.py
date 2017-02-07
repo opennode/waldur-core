@@ -242,4 +242,11 @@ SWAGGER_SETTINGS = {
     # If it is True, LOGIN_URL and LOGOUT_URL must be specified.
     'USE_SESSION_AUTH': False,
     'APIS_SORTER': 'alpha',
+    'SECURITY_DEFINITIONS': {
+        "api_key": {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+        },
+    },
 }
