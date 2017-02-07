@@ -573,12 +573,14 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     competence = serializers.ChoiceField(choices=settings.NODECONDUCTOR.get('USER_COMPETENCE_LIST', []),
                                          allow_blank=True,
                                          required=False)
+    token = serializers.ReadOnlyField(source='auth_token.key')
 
     class Meta(object):
         model = User
         fields = (
             'url',
             'uuid', 'username',
+            'token',
             'full_name', 'native_name',
             'job_title', 'email', 'phone_number',
             'organization', 'organization_approved',
@@ -617,6 +619,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             del fields['is_active']
             del fields['is_staff']
             del fields['description']
+
+        if not user.is_staff and self.instance != user:
+            del fields['token']
 
         if request.method in ('PUT', 'PATCH'):
             fields['username'].read_only = True

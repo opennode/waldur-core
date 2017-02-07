@@ -40,6 +40,43 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         response = self.client.get(factories.UserFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_staff_can_see_token_in_the_list(self):
+        self.client.force_authenticate(self.users['staff'])
+
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), len(self.users))
+        self.assertIsNotNone(response.data[0]['token'])
+
+    def test_staff_can_see_token_of_the_other_user(self):
+        self.client.force_authenticate(self.users['staff'])
+
+        response = self.client.get(factories.UserFactory.get_url(self.users['owner']))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data['token'])
+
+    def owner_cannot_see_token_field_in_the_list_of_users(self):
+        self.client.force_authenticate(self.users['owner'])
+
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), len(self.users))
+        self.assertIsNone(response.data[0]['token'])
+
+    def test_owner_can_see_his_token(self):
+        self.client.force_authenticate(self.users['owner'])
+
+        response = self.client.get(factories.UserFactory.get_url(self.users['owner']))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data['token'])
+
+    def test_owner_cannot_see_token_of_the_other_user(self):
+        self.client.force_authenticate(self.users['owner'])
+
+        response = self.client.get(factories.UserFactory.get_url(self.users['not_owner']))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn('token', response.data)
+
     # Creation tests
     def test_anonymous_user_cannot_create_account(self):
         data = self._get_valid_payload()
