@@ -440,21 +440,18 @@ class CustomerUnicodeTest(TransactionTestCase):
 
 @ddt
 class CustomerUsersListTest(test.APITransactionTestCase):
+    all_users = ('staff', 'owner', 'manager', 'admin', 'customer_support', 'project_support', 'global_support')
+
     def setUp(self):
         self.fixture = fixtures.ProjectFixture()
-        self.staff = self.fixture.staff
-        self.owner = self.fixture.owner
-        self.admin = self.fixture.admin
-        self.manager = self.fixture.manager
-        self.customer = self.fixture.customer
-        self.customer_support = self.fixture.customer_support
-        self.project_support = self.fixture.project_support
-        self.global_support = self.fixture.global_support
-        self.url = factories.CustomerFactory.get_url(self.customer, action='users')
+        self.url = factories.CustomerFactory.get_url(self.fixture.customer, action='users')
 
-    @data('staff', 'owner', 'manager', 'admin', 'customer_support', 'project_support', 'global_support')
+    @data(*all_users)
     def test_user_can_list_customer_users(self, user):
-        self.client.force_authenticate(getattr(self, user))
+        self.client.force_authenticate(getattr(self.fixture, user))
+        # call fixture to initiate all users:
+        for user in self.all_users:
+            getattr(self.fixture, user)
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -471,6 +468,25 @@ class CustomerUsersListTest(test.APITransactionTestCase):
         self.client.force_authenticate(self.fixture.user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_users_ordering_by_concatenated_name(self):
+        walter = factories.UserFactory(full_name='', username='walter')
+        admin = factories.UserFactory(full_name='admin', username='zzz')
+        alice = factories.UserFactory(full_name='', username='alice')
+        dave = factories.UserFactory(full_name='dave', username='dave')
+        expected_order = [admin, alice, dave, walter]
+        for user in expected_order:
+            self.fixture.customer.add_user(user, CustomerRole.OWNER)
+
+        self.client.force_authenticate(self.fixture.staff)
+        response = self.client.get(self.url + '?o=concatenated_name')
+        for serialized_user, expected_user in zip(response.data, expected_order):
+            self.assertEqual(serialized_user['uuid'], expected_user.uuid.hex)
+
+        # reversed order
+        response = self.client.get(self.url + '?o=-concatenated_name')
+        for serialized_user, expected_user in zip(response.data, expected_order[::-1]):
+            self.assertEqual(serialized_user['uuid'], expected_user.uuid.hex)
 
 
 @ddt
