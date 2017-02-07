@@ -580,13 +580,13 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         fields = (
             'url',
             'uuid', 'username',
-            'token',
             'full_name', 'native_name',
             'job_title', 'email', 'phone_number',
             'organization', 'organization_approved',
             'civil_number',
             'description',
             'is_staff', 'is_active', 'is_support',
+            'token', 'token_lifetime',
             'registration_method',
             'date_joined',
             'agree_with_policy',
@@ -622,6 +622,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
         if not user.is_staff and self.instance != user:
             del fields['token']
+            del fields['token_lifetime']
 
         if request.method in ('PUT', 'PATCH'):
             fields['username'].read_only = True

@@ -48,34 +48,38 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data), len(self.users))
         self.assertIsNotNone(response.data[0]['token'])
 
-    def test_staff_can_see_token_of_the_other_user(self):
+    def test_staff_can_see_token_and_its_lifetime_of_the_other_user(self):
         self.client.force_authenticate(self.users['staff'])
 
         response = self.client.get(factories.UserFactory.get_url(self.users['owner']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.data['token'])
+        self.assertIsNotNone(response.data['token_lifetime'])
 
-    def owner_cannot_see_token_field_in_the_list_of_users(self):
+    def owner_cannot_see_token_and_its_lifetime_field_in_the_list_of_users(self):
         self.client.force_authenticate(self.users['owner'])
 
         response = self.client.get(factories.UserFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), len(self.users))
         self.assertIsNone(response.data[0]['token'])
+        self.assertIsNone(response.data[0]['token_lifetime'])
 
-    def test_owner_can_see_his_token(self):
+    def test_owner_can_see_his_token_and_its_lifetime(self):
         self.client.force_authenticate(self.users['owner'])
 
         response = self.client.get(factories.UserFactory.get_url(self.users['owner']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone(response.data['token'])
+        self.assertIsNotNone(response.data['token_lifetime'])
 
-    def test_owner_cannot_see_token_of_the_other_user(self):
+    def test_owner_cannot_see_token_and_its_lifetime_of_the_other_user(self):
         self.client.force_authenticate(self.users['owner'])
 
         response = self.client.get(factories.UserFactory.get_url(self.users['not_owner']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn('token', response.data)
+        self.assertNotIn('token_lifetime', response.data)
 
     # Creation tests
     def test_anonymous_user_cannot_create_account(self):
@@ -160,6 +164,22 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         }
 
         self._ensure_user_cannot_change_field(self.users['owner'], 'organization', data)
+
+    def test_user_can_change_his_token_lifetime(self):
+        data = {
+            'email': 'example@example.com',
+            'token_lifetime': 100,
+        }
+
+        self._ensure_user_can_change_field(self.users['owner'], 'token_lifetime', data)
+
+    def test_user_cannot_change_other_token_lifetime(self):
+        data = {
+            'email': 'example@example.com',
+            'token_lifetime': 100,
+        }
+
+        self._ensure_user_cannot_change_field(self.users['owner'], 'token_lifetime', data)
 
     def test_staff_user_can_change_any_accounts_fields(self):
         self.client.force_authenticate(user=self.users['staff'])
