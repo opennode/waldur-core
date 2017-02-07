@@ -1,6 +1,3 @@
-from collections import OrderedDict
-
-import uritemplate
 from django.core.urlresolvers import NoReverseMatch
 from django.utils.encoding import smart_text, force_text
 from django_filters import OrderingFilter, ChoiceFilter, ModelMultipleChoiceFilter
@@ -239,52 +236,29 @@ def get_field_type(field):
     return FIELDS.get(name, name)
 
 
+def is_disabled_action(view):
+    """
+    Checks whether Link action is disabled.
+    """
+    if not isinstance(view, core_views.ActionsViewSet):
+        return False
+
+    action = getattr(view, 'action', None)
+    return action in view.disabled_actions if action is not None else False
+
+
 class WaldurSchemaGenerator(schemas.SchemaGenerator):
     endpoint_inspector_cls = WaldurEndpointInspector
 
-    def get_links(self, request=None):
+    def create_view(self, callback, method, request=None):
         """
-        Return a dictionary containing all the links that should be
-        included in the API schema.
+        Given a callback, return an actual view instance.
         """
-        links = OrderedDict()
+        view = super(WaldurSchemaGenerator, self).create_view(callback, method, request)
+        if is_disabled_action(view):
+            view.exclude_from_schema = True
 
-        # Generate (path, method, view) given (path, method, callback).
-        paths = []
-        view_endpoints = []
-        for path, method, callback in self.endpoints:
-            view = self.create_view(callback, method, request)
-            if getattr(view, 'exclude_from_schema', False):
-                continue
-            path = self.coerce_path(path, method, view)
-            paths.append(path)
-            view_endpoints.append((path, method, view))
-
-        # Only generate the path prefix for paths that will be included
-        if not paths:
-            return None
-        prefix = self.determine_path_prefix(paths)
-
-        for path, method, view in view_endpoints:
-            if not self.has_view_permissions(path, method, view):
-                continue
-            elif self.is_disabled_action(view):
-                continue
-            link = self.get_link(path, method, view)
-            subpath = path[len(prefix):]
-            keys = self.get_keys(subpath, method, view)
-            schemas.insert_into(links, keys, link)
-        return links
-
-    def is_disabled_action(self, view):
-        """
-        Checks whether Link action is disabled.
-        """
-        if not isinstance(view, core_views.ActionsViewSet):
-            return False
-
-        action = getattr(view, 'action', None)
-        return action in view.disabled_actions if action is not None else False
+        return view
 
     def get_description(self, path, method, view):
         """
@@ -309,25 +283,6 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
             description += '\n\n' + validation_description if description else validation_description
 
         return description
-
-    def get_path_fields(self, path, method, view):
-        """
-        Return a list of `coreapi.Field` instances corresponding to any
-        templated path variables.
-        """
-
-        path_types = {
-            'uuid': 'string',
-            'id': 'integer',
-        }
-
-        fields = []
-        for variable in uritemplate.variables(path):
-            path_type = path_types.get(variable, 'path')
-            field = coreapi.Field(name=variable, location=path_type, required=True)
-            fields.append(field)
-
-        return fields
 
     def get_filter_fields(self, path, method, view):
         if not schemas.is_list_view(path, method, view):
