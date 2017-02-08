@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import migrations, models
+
+
+def update_users_tokens_lifetime(apps, schema_editor):
+    if settings.NODECONDUCTOR['TOKEN_LIFETIME']:
+        seconds = settings.NODECONDUCTOR['TOKEN_LIFETIME'].total_seconds()
+        User = get_user_model()
+        User.objects.update(
+            token_lifetime=int(seconds)
+        )
 
 
 class Migration(migrations.Migration):
@@ -16,4 +27,5 @@ class Migration(migrations.Migration):
             name='token_lifetime',
             field=models.PositiveIntegerField(help_text='Token lifetime in seconds.', null=True),
         ),
+        migrations.RunPython(update_users_tokens_lifetime),
     ]

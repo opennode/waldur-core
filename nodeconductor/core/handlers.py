@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.conf import settings
 from django.forms import model_to_dict
 from django.utils import six
 from rest_framework.authtoken.models import Token
@@ -37,6 +38,13 @@ def delete_error_message(sender, instance, name, source, target, **kwargs):
 
 def log_user_save(sender, instance, created=False, **kwargs):
     if created:
+        # if settings used directly in model - django creates new migration every time settings change
+        # Therefore - set default token_lifetime value in handler.
+        if settings.NODECONDUCTOR['TOKEN_LIFETIME']:
+            seconds = settings.NODECONDUCTOR['TOKEN_LIFETIME'].total_seconds()
+            instance.token_lifetime = int(seconds)
+            instance.save(update_fields=['token_lifetime'])
+
         event_logger.user.info(
             'User {affected_user_username} has been created.',
             event_type='user_creation_succeeded',
