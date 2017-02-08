@@ -574,6 +574,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     backend_url = models.URLField(max_length=200, blank=True, null=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
+    domain = models.CharField(max_length=200, blank=True, null=True)
     token = models.CharField(max_length=255, blank=True, null=True)
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])

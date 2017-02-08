@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+Release NEXT
+------------
+- Nothing yet.
+
+Release 0.122.0
+---------------
+- Add field "domain" to service settings.
+
 Release 0.121.1
 ---------------
 - Make actions metadata renderer more generic so that it can be used for support offering.
