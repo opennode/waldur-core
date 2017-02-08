@@ -36,7 +36,7 @@ class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
             raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
 
         if token.user.token_lifetime:
-            lifetime = timezone.timedelta(token.user.token_lifetime)
+            lifetime = timezone.timedelta(seconds=token.user.token_lifetime)
         else:
             lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
 

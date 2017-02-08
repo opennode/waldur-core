@@ -30,13 +30,31 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         response = self.client.get(self.test_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_user_cannot_use_expired_token(self):
+    def test_user_cannot_use_expired_token_when_user_token_lifetime_is_undefined(self):
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token = response.data['token']
         lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
         mocked_now = timezone.now() + lifetime
+        with patch('django.utils.timezone.now', lambda: mocked_now):
+            self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+            response = self.client.get(self.test_url)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+            self.assertEqual(response.data['detail'], 'Token has expired.')
+
+    def test_token_expires_based_on_user_token_lifetime(self):
+        user = get_user_model().objects.get(username=self.username)
+        configured_token_lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        user_token_lifetime = configured_token_lifetime - timezone.timedelta(seconds=40)
+        user.token_lifetime = user_token_lifetime.seconds
+        user.save()
+
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        token = response.data['token']
+        mocked_now = timezone.now() + user_token_lifetime
         with patch('django.utils.timezone.now', lambda: mocked_now):
             self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
             response = self.client.get(self.test_url)
