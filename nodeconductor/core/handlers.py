@@ -46,6 +46,7 @@ def log_user_save(sender, instance, created=False, **kwargs):
 
         password_changed = instance.password != old_values['password']
         activation_changed = instance.is_active != old_values['is_active']
+        token_lifetime_changed = instance.token_lifetime != old_values['token_lifetime']
         user_updated = any(
             old_value != getattr(instance, field_name)
             for field_name, old_value in six.iteritems(old_values)
@@ -69,6 +70,12 @@ def log_user_save(sender, instance, created=False, **kwargs):
                     'User {affected_user_username} has been deactivated.',
                     event_type='user_deactivated',
                     event_context={'affected_user': instance})
+
+        if token_lifetime_changed:
+            event_logger.user.info(
+                'Token lifetime has been changed for {affected_user_username} to {affected_user_token_lifetime}',
+                event_type='user_token_lifetime_updated',
+                event_context={'affected_user': instance})
 
         if user_updated:
             event_logger.user.info(
