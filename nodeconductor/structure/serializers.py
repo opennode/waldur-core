@@ -10,7 +10,6 @@ from django.conf import settings
 from django.contrib import auth
 import django.core.exceptions as django_exceptions
 from django.core.validators import RegexValidator, MaxLengthValidator
-from django.core.urlresolvers import NoReverseMatch
 from django.db import models as django_models, transaction
 from django.utils import six, timezone
 from django.utils.functional import cached_property
@@ -842,6 +841,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     backend_url = serializers.URLField(max_length=200, allow_null=True, write_only=True, required=False)
     username = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
     password = serializers.CharField(max_length=100, allow_null=True, write_only=True, required=False)
+    domain = serializers.CharField(max_length=200, allow_null=True, write_only=True, required=False)
     token = serializers.CharField(allow_null=True, write_only=True, required=False)
     certificate = serializers.FileField(allow_null=True, write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
@@ -861,11 +861,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'name', 'projects', 'project',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
             'settings', 'settings_uuid',
-            'backend_url', 'username', 'password', 'token', 'certificate',
+            'backend_url', 'username', 'password', 'token', 'certificate', 'domain',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
             'available_for_all', 'scope', 'tags', 'quotas',
         )
-        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope')
+        settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope', 'domain')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
         related_paths = ('customer', 'settings')
         extra_kwargs = {
@@ -895,6 +895,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings__shared',
             'settings__error_message',
             'settings__options',
+            'settings__domain',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
@@ -1422,7 +1423,7 @@ class AggregateSerializer(serializers.Serializer):
 
 
 class PrivateCloudSerializer(BaseResourceSerializer):
-    extra_configuration = core_serializers.JSONField(required=False)
+    extra_configuration = core_serializers.JSONField(read_only=True)
 
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + ('extra_configuration',)
