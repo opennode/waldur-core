@@ -162,7 +162,10 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                           help_text=_('Indicates when the user has agreed with the policy.'))
     preferred_language = models.CharField(max_length=10, blank=True)
     competence = models.CharField(max_length=255, blank=True)
-    token_lifetime = models.PositiveIntegerField(null=True, help_text='Token lifetime in seconds.')
+    token_lifetime = models.PositiveIntegerField(
+        null=True,
+        default=getattr(settings.NODECONDUCTOR.get('TOKEN_LIFETIME'), 'seconds', None),
+        help_text='Token lifetime in seconds.')
 
     objects = UserManager()
 
