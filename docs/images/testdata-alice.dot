@@ -1,20 +1,25 @@
+// Alice dataset
+//
+// Generate chart:
+//
+//   cat foo.dot | dot -Tpng > foo.png
+
 digraph {
-	nodesep = 0.6;
+	nodesep = 0.8;
 
 	node [shape="box"]
 
 	c_mob [label="Customer: Ministry of Bells"];
 	c_mow [label="Customer: Ministry of Whistles"];
 
-	ca_s [label="CloudAccount: Stratus"]
-	pg_bp [label="ProjectGroup: Bells Portal"]
-	ca_c [label="CloudAccount: Cumulus"]
-	pg_wp [label="ProjectGroup: Whistles Portal"]
-	ca_f [label="CloudAccount: Fractus"]
-
 	p_bo [label="Project: bells.org"]
 	p_ewo [label="Project: extranet.whistles.org"]
 	p_iwo [label="Project: intranet.whistles.org"]
+
+	node [shape="none"]
+
+	comment_is_staff [label="is_staff: yes"]
+	comment_no_roles [label="(no roles)"]
 
 	node [shape="oval"]
 
@@ -22,32 +27,18 @@ digraph {
 	Bob -> c_mob [label="role: owner"]
 	Bob -> c_mow [label="role: owner"]
 
-	Walter [label="Walter\nis_staff=true"]
-	Zed [label="Zed\n(no roles)"]
+	Walter -> comment_is_staff [style="dotted"]
+	Zed -> comment_no_roles [style="dotted"]
 
-	c_mob -> pg_bp
-	c_mow -> pg_wp
+	c_mob -> p_bo
 
-	c_mob -> ca_s
-	c_mow -> ca_c
+	c_mow -> p_ewo
+	c_mow -> p_iwo
 
-	pg_bp -> p_bo
-	pg_wp -> p_ewo
-	pg_wp -> p_iwo
-
-	ca_s -> p_bo
-	ca_c -> p_ewo
-
-	Gus -> pg_bp [label="role: manager"]
-	Gus -> pg_wp [label="role: manager"]
-
-	Harry -> pg_wp [label="role: manager"]
-	Harry -> p_iwo [label="role: admin"]
-
-	p_bo -> Charlie [label="role: admin", dir="back"]
-	p_bo -> Dave [label="role: manager", dir="back"]
-	p_ewo -> Dave [label="role: admin", dir="back"]
-	p_ewo -> Erin [label="role: manager", dir="back"]
-	p_iwo -> Erin [label="role: admin", dir="back"]
-	p_iwo -> Frank [label="role: manager", dir="back"]
+	p_bo -> Charlie [label="role: admin" dir="back"]
+	p_bo -> Dave [label="role: manager" dir="back"]
+	p_ewo -> Dave [label="role: admin" dir="back"]
+	p_ewo -> Erin [label="role: manager" dir="back"]
+	p_iwo -> Erin [label="role: admin" dir="back"]
+	p_iwo -> Frank [label="role: manager" dir="back"]
 }
