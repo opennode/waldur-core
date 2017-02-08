@@ -3,7 +3,11 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Add field "domain" to service settings
+- Nothing yet.
+
+Release 0.122.0
+---------------
+- Add field "domain" to service settings.
 
 Release 0.121.1
 ---------------
