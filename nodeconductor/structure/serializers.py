@@ -1048,8 +1048,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def create(self, attrs):
         project = attrs.pop('project', None)
         service = super(BaseServiceSerializer, self).create(attrs)
-        if project:
-            spl = service.projects.through
+        spl = service.projects.through
+        if project and not spl.objects.filter(project=project, service=service).exists():
             spl.objects.create(project=project, service=service)
         return service
 
