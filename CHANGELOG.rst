@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Allow user to define his token lifetime.
+- Add field "domain" to service settings
 
 Release 0.121.1
 ---------------

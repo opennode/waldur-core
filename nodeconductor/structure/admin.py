@@ -229,7 +229,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
-              'token', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message', 'tags')
+              'token', 'domain', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message', 'tags')
     inlines = [QuotaInline]
 
     def get_type_display(self, obj):
