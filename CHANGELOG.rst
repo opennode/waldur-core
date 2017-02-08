@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Allow user to define his token lifetime.
 
 Release 0.120.0
 ---------------
