@@ -33,6 +33,13 @@ class UserEventLogger(EventLogger):
         }
 
 
+class TokenEventLogger(EventLogger):
+    affected_user = User
+
+    class Meta:
+        event_types = ('token_created')
+
+
 class SshPublicKeyEventLogger(EventLogger):
     ssh_key = SshPublicKey
 
@@ -48,3 +55,4 @@ class SshPublicKeyEventLogger(EventLogger):
 event_logger.register('auth', AuthEventLogger)
 event_logger.register('user', UserEventLogger)
 event_logger.register('sshkey', SshPublicKeyEventLogger)
+event_logger.register('token', TokenEventLogger)
