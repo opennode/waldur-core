@@ -37,7 +37,7 @@ class TokenEventLogger(EventLogger):
     affected_user = User
 
     class Meta:
-        event_types = ('token_created')
+        event_types = ('token_created',)
 
 
 class SshPublicKeyEventLogger(EventLogger):
