@@ -5,6 +5,17 @@ Release NEXT
 ------------
 - Allow user to define his token lifetime.
 
+Release 0.121.1
+---------------
+- Make actions metadata renderer more generic so that it can be used for support offering.
+- Allow to order customer and project users by concatenated name.
+- Improve Swagger schema generator.
+
+Release 0.121.0
+---------------
+- Display customer as "organization" in /admin.
+- Allow user to grant new role and set expiration time simultaneously.
+
 Release 0.120.0
 ---------------
 - Allow user to be in any role simultaneously.

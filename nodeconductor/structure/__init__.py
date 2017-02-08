@@ -214,22 +214,6 @@ class SupportedServices(object):
         return cls._registry[key]['resources'][model_str]['view']
 
     @classmethod
-    def get_resource_actions(cls, model):
-        from nodeconductor.core.utils import sort_dict
-
-        view = cls.get_resource_view(model)
-        actions = {}
-        for key in dir(view):
-            callback = getattr(view, key)
-            if getattr(callback, 'deprecated', False):
-                continue
-            if 'post' not in getattr(callback, 'bind_to_methods', []):
-                continue
-            actions[key] = callback
-        actions['destroy'] = view.destroy
-        return sort_dict(actions)
-
-    @classmethod
     def get_services_with_resources(cls, request=None):
         """ Get a list of services and resources endpoints.
             {

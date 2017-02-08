@@ -133,7 +133,7 @@ class ProjectPermissionFactory(factory.DjangoModelFactory):
     def get_url(cls, permission=None, action=None):
         if permission is None:
             permission = ProjectPermissionFactory()
-        url = 'http://testserver' + reverse('project_permission-detail', kwargs={'uuid': permission.uuid})
+        url = 'http://testserver' + reverse('project_permission-detail', kwargs={'pk': permission.pk})
         return url if action is None else url + action + '/'
 
     @classmethod
@@ -153,7 +153,7 @@ class CustomerPermissionFactory(factory.DjangoModelFactory):
     def get_url(cls, permission=None, action=None):
         if permission is None:
             permission = CustomerPermissionFactory()
-        url = 'http://testserver' + reverse('customer_permission-detail', kwargs={'uuid': permission.uuid})
+        url = 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
         return url if action is None else url + action + '/'
 
     @classmethod

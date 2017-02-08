@@ -269,6 +269,7 @@ class ActionsViewSet(viewsets.ModelViewSet):
         class MyView(ActionsViewSet):
             disabled_actions = ['create']  # error 405 will be returned on POST request
     """
+    disabled_actions = []
     permission_classes = (rf_permissions.IsAuthenticated, permissions.ActionsPermission)
 
     def get_serializer_class(self):

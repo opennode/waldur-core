@@ -4,10 +4,11 @@ from django.utils.encoding import force_text
 from django.utils.http import urlencode
 from rest_framework import exceptions
 from rest_framework.metadata import SimpleMetadata
+from rest_framework.request import clone_request
 from rest_framework.reverse import reverse
 
 from nodeconductor.core.exceptions import IncorrectStateException
-from nodeconductor.structure import SupportedServices
+from nodeconductor.core.utils import sort_dict
 
 
 class ActionSerializer(object):
@@ -49,19 +50,23 @@ class ActionSerializer(object):
                 return force_text(e)
         else:
             try:
-                self.view.validate_object_action(obj=self.resource, action_name=self.name)
+                self.view.initial(self.request)
             except exceptions.APIException as e:
                 return force_text(e)
 
     def get_method(self):
         if self.name == 'destroy':
             return 'DELETE'
+        elif self.name == 'update':
+            return 'PUT'
         return getattr(self.func, 'method', 'POST')
 
     def get_url(self):
         base_url = self.request.build_absolute_uri()
         method = self.get_method()
-        return method == 'DELETE' and base_url or base_url + self.name + '/'
+        if method in ('DELETE', 'PUT'):
+            return base_url
+        return base_url + self.name + '/'
 
 
 class ActionsMetadata(SimpleMetadata):
@@ -86,10 +91,15 @@ class ActionsMetadata(SimpleMetadata):
         such as start, stop, unlink
         """
         metadata = OrderedDict()
-        model = view.get_queryset().model
-        actions = SupportedServices.get_resource_actions(model)
+        actions = self.get_resource_actions(view)
+
         resource = view.get_object()
         for action_name, action in actions.items():
+            if action_name == 'update':
+                view.request = clone_request(request, 'PUT')
+            else:
+                view.action = action_name
+
             data = ActionSerializer(action, action_name, request, view, resource)
             metadata[action_name] = data.serialize()
             if not metadata[action_name]['enabled']:
@@ -100,18 +110,41 @@ class ActionsMetadata(SimpleMetadata):
             else:
                 metadata[action_name]['type'] = 'form'
                 metadata[action_name]['fields'] = fields
+
+            view.action = None
+            view.request = request
+
         return metadata
+
+    @classmethod
+    def get_resource_actions(cls, view):
+        actions = {}
+        for key in dir(view.__class__):
+            callback = getattr(view.__class__, key)
+            if getattr(callback, 'deprecated', False):
+                continue
+            if 'post' not in getattr(callback, 'bind_to_methods', []):
+                continue
+            actions[key] = callback
+
+        disabled_actions = getattr(view.__class__, 'disabled_actions', [])
+
+        if 'DELETE' in view.allowed_methods and 'destroy' not in disabled_actions:
+            actions['destroy'] = view.destroy
+
+        if 'PUT' in view.allowed_methods and 'update' not in disabled_actions:
+            actions['update'] = view.update
+
+        return sort_dict(actions)
 
     def get_action_fields(self, view, action_name, resource):
         """
         Get fields exposed by action's serializer
         """
-        view.action = action_name
         serializer = view.get_serializer(resource)
         fields = OrderedDict()
-        if not isinstance(serializer, view.serializer_class):
+        if not isinstance(serializer, view.serializer_class) or action_name == 'update':
             fields = self.get_fields(serializer.fields)
-        view.action = None
         return fields
 
     def get_serializer_info(self, serializer):

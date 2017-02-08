@@ -486,6 +486,20 @@ class ProjectPermissionExpirationTest(test.APISimpleTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_user_can_set_expiration_time_role_when_role_is_created(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.post(factories.ProjectPermissionFactory.get_list_url(), {
+            'project': factories.ProjectFactory.get_url(),
+            'user': factories.UserFactory.get_url(),
+            'role': factories.ProjectPermissionFactory.role,
+            'expiration_time': expiration_time,
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
+
     def test_task_revokes_expired_permissions(self):
         expired_permission = factories.ProjectPermissionFactory(
             expiration_time=timezone.now() - datetime.timedelta(days=100))

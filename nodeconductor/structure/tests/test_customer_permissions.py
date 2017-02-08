@@ -424,9 +424,9 @@ class CustomerPermissionExpirationTest(test.APISimpleTestCase):
     def setUp(self):
         permission = factories.CustomerPermissionFactory()
         self.user = permission.user
-        self.url = reverse('customer_permission-detail', kwargs={'pk': permission.pk})
+        self.url = factories.CustomerPermissionFactory.get_url(permission)
 
-    def test_user_can_not_update_permission_expiration_time(self):
+    def test_user_can_not_update_permission_expiration_time_for_himself(self):
         self.client.force_authenticate(user=self.user)
 
         expiration_time = timezone.now() + datetime.timedelta(days=100)
@@ -435,7 +435,7 @@ class CustomerPermissionExpirationTest(test.APISimpleTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_can_update_permission_expiration_time(self):
+    def test_staff_can_update_permission_expiration_time_for_any_user(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)
 
@@ -446,7 +446,7 @@ class CustomerPermissionExpirationTest(test.APISimpleTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
 
-    def test_user_can_set_permission_expiration_time_lower_than_current(self):
+    def test_user_can_not_set_permission_expiration_time_lower_than_current(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)
 
@@ -455,6 +455,20 @@ class CustomerPermissionExpirationTest(test.APISimpleTestCase):
             'expiration_time': expiration_time
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_user_can_set_expiration_time_role_when_role_is_created(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.post(factories.CustomerPermissionFactory.get_list_url(), {
+            'customer': factories.CustomerFactory.get_url(),
+            'user': factories.UserFactory.get_url(),
+            'role': factories.CustomerPermissionFactory.role,
+            'expiration_time': expiration_time,
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
 
     def test_task_revokes_expired_permissions(self):
         expired_permission = factories.CustomerPermissionFactory(
