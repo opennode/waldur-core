@@ -30,19 +30,6 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         response = self.client.get(self.test_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_user_cannot_use_expired_token_when_user_token_lifetime_is_undefined(self):
-        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        token = response.data['token']
-        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
-        mocked_now = timezone.now() + lifetime
-        with freeze_time(mocked_now):
-            self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
-            response = self.client.get(self.test_url)
-            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-            self.assertEqual(response.data['detail'], 'Token has expired.')
-
     def test_token_expires_based_on_user_token_lifetime(self):
         user = get_user_model().objects.get(username=self.username)
         configured_token_lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
@@ -129,6 +116,7 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
 
         user = get_user_model().objects.get(username=self.username)
         original_token_lifetime = user.token_lifetime
+        original_created_value = user.auth_token.created
         user.token_lifetime = None
         user.save()
 
@@ -137,6 +125,9 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
             response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             token = response.data['token']
+
+        user.auth_token.refresh_from_db()
+        self.assertTrue(user.auth_token.created > original_created_value)
 
         user.token_lifetime = original_token_lifetime
         user.save()
