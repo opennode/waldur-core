@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 
-class TestUser(unittest.TestCase):
+class TestModels(unittest.TestCase):
 
     def setUp(self):
         settings.NODECONDUCTOR['TOKEN_LIFETIME'] = timezone.timedelta(days=1)
