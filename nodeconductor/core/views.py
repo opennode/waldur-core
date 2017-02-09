@@ -39,9 +39,9 @@ class RefreshTokenMixin(object):
             if token.created < timezone.now() - lifetime:
                 token.delete()
                 token = Token.objects.create(user=user)
-            else:
-                token.created = timezone.now()
-                token.save()
+
+        token.created = timezone.now()
+        token.save()
 
         return token
 

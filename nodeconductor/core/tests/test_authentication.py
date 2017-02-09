@@ -123,3 +123,26 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
             token_in_a_year = response.data['token']
             self.assertEqual(original_token, token_in_a_year)
 
+    def test_token_created_date_is_refreshed_even_if_token_lifetime_is_none(self):
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        user = get_user_model().objects.get(username=self.username)
+        original_token_lifetime = user.token_lifetime
+        user.token_lifetime = None
+        user.save()
+
+        last_refresh_time = timezone.now() + timezone.timedelta(seconds=original_token_lifetime)
+        with patch('django.utils.timezone.now', lambda: last_refresh_time):
+            response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            token = response.data['token']
+
+        user.token_lifetime = original_token_lifetime
+        user.save()
+        with patch('django.utils.timezone.now', lambda: last_refresh_time):
+            self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+            response = self.client.get(self.test_url)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
