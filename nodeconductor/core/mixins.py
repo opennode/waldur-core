@@ -71,7 +71,7 @@ class UpdateExecutorMixin(AsyncExecutor):
         instance.refresh_from_db()
         updated_fields = {f.name for f, v in before_update_fields.items() if v != getattr(instance, f.attname)}
         self.update_executor.execute(instance, async=self.async_executor, updated_fields=updated_fields)
-        instance.refresh_from_db()
+        serializer.instance.refresh_from_db()
 
 
 class DeleteExecutorMixin(AsyncExecutor):

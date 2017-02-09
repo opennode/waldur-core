@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Allow user to define his token lifetime.
+- On update, instance is not returned in the old state anymore.
 
 Release 0.122.0
 ---------------
