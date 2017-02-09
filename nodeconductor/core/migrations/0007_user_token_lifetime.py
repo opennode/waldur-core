@@ -9,7 +9,7 @@ from django.db import migrations, models
 def update_users_tokens_lifetime(apps, schema_editor):
     if settings.NODECONDUCTOR['TOKEN_LIFETIME']:
         seconds = settings.NODECONDUCTOR['TOKEN_LIFETIME'].total_seconds()
-        User = get_user_model()
+        User = apps.get_model('core', 'User')
         User.objects.update(
             token_lifetime=int(seconds)
         )
