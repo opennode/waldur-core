@@ -31,7 +31,7 @@ class RefreshTokenMixin(object):
     Token is refreshed if it has not expired yet.
     """
     def refresh_token(self, user):
-        token, _ = Token.objects.get_or_create(user=user)
+        token, created = Token.objects.get_or_create(user=user)
 
         if user.token_lifetime:
             lifetime = timezone.timedelta(seconds=user.token_lifetime)
@@ -39,9 +39,11 @@ class RefreshTokenMixin(object):
             if token.created < timezone.now() - lifetime:
                 token.delete()
                 token = Token.objects.create(user=user)
+                created = True
 
-        token.created = timezone.now()
-        token.save()
+        if not created:
+            token.created = timezone.now()
+            token.save(update_fields=['created'])
 
         return token
 
