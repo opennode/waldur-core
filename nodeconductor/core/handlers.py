@@ -117,8 +117,10 @@ def log_ssh_key_delete(sender, instance, **kwargs):
         event_context={'ssh_key': instance})
 
 
-def log_token_create(sender, instance, **kwargs):
-    event_logger.token.info(
-        'Token has been updated for {affected_user_username}',
-        event_type='token_created',
-        event_context={'affected_user': instance.user})
+def log_token_create(sender, instance, created=False, **kwargs):
+    if created:
+
+        event_logger.token.info(
+            'Token has been updated for {affected_user_username}',
+            event_type='token_created',
+            event_context={'affected_user': instance.user})
