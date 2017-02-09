@@ -4,7 +4,7 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from django.core.cache import cache
 
-from mock import patch
+from freezegun import freeze_time
 
 from rest_framework import test, status
 from rest_framework.authtoken.models import Token
@@ -37,7 +37,7 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         token = response.data['token']
         lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
         mocked_now = timezone.now() + lifetime
-        with patch('django.utils.timezone.now', lambda: mocked_now):
+        with freeze_time(mocked_now):
             self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
             response = self.client.get(self.test_url)
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -55,7 +55,7 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
 
         token = response.data['token']
         mocked_now = timezone.now() + user_token_lifetime
-        with patch('django.utils.timezone.now', lambda: mocked_now):
+        with freeze_time(mocked_now):
             self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
             response = self.client.get(self.test_url)
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -90,7 +90,7 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         token1 = response.data['token']
 
         mocked_now = timezone.now() + timezone.timedelta(seconds=user.token_lifetime)
-        with patch('django.utils.timezone.now', lambda: mocked_now):
+        with freeze_time(mocked_now):
             response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
             token2 = response.data['token']
             self.assertNotEqual(token1, token2)
@@ -118,7 +118,7 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         original_token = response.data['token']
 
         year_ahead = timezone.now() + timezone.timedelta(days=365)
-        with patch('django.utils.timezone.now', lambda: year_ahead):
+        with freeze_time(year_ahead):
             response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
             token_in_a_year = response.data['token']
             self.assertEqual(original_token, token_in_a_year)
@@ -133,14 +133,14 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         user.save()
 
         last_refresh_time = timezone.now() + timezone.timedelta(seconds=original_token_lifetime)
-        with patch('django.utils.timezone.now', lambda: last_refresh_time):
+        with freeze_time(last_refresh_time):
             response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             token = response.data['token']
 
         user.token_lifetime = original_token_lifetime
         user.save()
-        with patch('django.utils.timezone.now', lambda: last_refresh_time):
+        with freeze_time(last_refresh_time):
             self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
             response = self.client.get(self.test_url)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
