@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from ddt import ddt, data
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import test, status
 
@@ -253,7 +254,10 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_invitation_is_canceled_after_expiration_date(self):
-        with self.settings(NODECONDUCTOR={'INVITATION_LIFETIME': timedelta(weeks=1)}):
+        nodeconductor_section = settings.NODECONDUCTOR.copy()
+        nodeconductor_section['INVITATION_LIFETIME'] = timedelta(weeks=1)
+
+        with self.settings(NODECONDUCTOR=nodeconductor_section):
             invitation = factories.ProjectInvitationFactory(created=timezone.now() - timedelta(weeks=1))
             tasks.cancel_expired_invitations()
 

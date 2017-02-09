@@ -40,7 +40,7 @@ def set_default_token_lifetime(sender, instance, created=False, **kwargs):
     if created:
         # if settings used directly in model - django creates new migration every time settings change
         # Therefore - set default token_lifetime value in handler.
-        if 'TOKEN_LIFETIME' in settings.NODECONDUCTOR and settings.NODECONDUCTOR['TOKEN_LIFETIME']:
+        if settings.NODECONDUCTOR['TOKEN_LIFETIME']:
             seconds = settings.NODECONDUCTOR['TOKEN_LIFETIME'].total_seconds()
             instance.token_lifetime = int(seconds)
             instance.save(update_fields=['token_lifetime'])
