@@ -32,6 +32,33 @@ Tips for writing tests
   "create" action for any user there is no need to write test for that;
 - use fixtures (module fixtures.py) to generate default structure.
 
+How to override settings in unit tests
+--------------------------------------
+
+Don't manipulate django.conf.settings directly as Django won't restore the original values after such manipulations.
+Instead you should use standard `context managers and decorators`_.
+They change a setting temporarily and revert to the original value after running the testing code.
+If you modify settings directly, you break test isolation by modifying global variable.
+
+If configuration setting is not plain text or number but dictionary, and you need to update only one parameter,
+you should take whole dict, copy it, modify parameter, and override whole dict.
+
+Wrong:
+
+.. code-block:: python
+
+    with self.settings(NODECONDUCTOR={'INVITATION_LIFETIME': timedelta(weeks=1)}):
+        tasks.cancel_expired_invitations()
+
+Right:
+
+.. code-block:: python
+
+    nodeconductor_settings = settings.NODECONDUCTOR.copy()
+    nodeconductor_settings['INVITATION_LIFETIME'] = timedelta(weeks=1)
+
+    with self.settings(nodeconductor_settings):
+        tasks.cancel_expired_invitations()
 
 Running tests
 -------------
@@ -43,3 +70,5 @@ Also it is assumed that you've already activated virtual Python environment.
   .. code-block:: bash
 
     DJANGO_SETTINGS_MODULE=nodeconductor.server.test_settings nodeconductor test nodeconductor_openstack
+
+.. _context managers and decorators: https://docs.djangoproject.com/en/1.10/topics/testing/tools/#overriding-settings
