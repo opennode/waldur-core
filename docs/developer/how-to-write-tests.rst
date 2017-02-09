@@ -57,7 +57,7 @@ Right:
     nodeconductor_settings = settings.NODECONDUCTOR.copy()
     nodeconductor_settings['INVITATION_LIFETIME'] = timedelta(weeks=1)
 
-    with self.settings(nodeconductor_settings):
+    with self.settings(NODECONDUCTOR=nodeconductor_settings):
         tasks.cancel_expired_invitations()
 
 Running tests
