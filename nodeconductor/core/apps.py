@@ -36,6 +36,12 @@ class CoreConfig(AppConfig):
             dispatch_uid='nodeconductor.core.handlers.log_user_save',
         )
 
+        signals.post_save.connect(
+            handlers.set_default_token_lifetime,
+            sender=User,
+            dispatch_uid='nodeconductor.core.handlers.set_default_token_lifetime',
+        )
+
         signals.post_delete.connect(
             handlers.log_user_delete,
             sender=User,

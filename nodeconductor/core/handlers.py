@@ -36,7 +36,7 @@ def delete_error_message(sender, instance, name, source, target, **kwargs):
     instance.save(update_fields=['error_message'])
 
 
-def log_user_save(sender, instance, created=False, **kwargs):
+def set_default_token_lifetime(sender, instance, created=False, **kwargs):
     if created:
         # if settings used directly in model - django creates new migration every time settings change
         # Therefore - set default token_lifetime value in handler.
@@ -45,6 +45,9 @@ def log_user_save(sender, instance, created=False, **kwargs):
             instance.token_lifetime = int(seconds)
             instance.save(update_fields=['token_lifetime'])
 
+
+def log_user_save(sender, instance, created=False, **kwargs):
+    if created:
         event_logger.user.info(
             'User {affected_user_username} has been created.',
             event_type='user_creation_succeeded',
