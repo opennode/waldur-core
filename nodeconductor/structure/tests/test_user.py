@@ -56,14 +56,14 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         self.assertIsNotNone(response.data['token'])
         self.assertIn('token_lifetime', response.data)
 
-    def owner_cannot_see_token_and_its_lifetime_field_in_the_list_of_users(self):
+    def test_owner_cannot_see_token_and_its_lifetime_field_in_the_list_of_users(self):
         self.client.force_authenticate(self.users['owner'])
 
         response = self.client.get(factories.UserFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), len(self.users))
-        self.assertIsNone(response.data[0]['token'])
-        self.assertIn('token_lifetime', response.data[0])
+        self.assertEqual(len(response.data), 2)
+        self.assertIsNot('token', response.data[0])
+        self.assertIsNot('token_lifetime', response.data[0])
 
     def test_owner_can_see_his_token_and_its_lifetime(self):
         self.client.force_authenticate(self.users['owner'])
