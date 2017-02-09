@@ -4,7 +4,7 @@ from django.core.urlresolvers import reverse
 from django.utils import timezone
 from django.core.cache import cache
 
-from mock import patch
+from freezegun import freeze_time
 
 from rest_framework import test, status
 from rest_framework.authtoken.models import Token
@@ -30,14 +30,19 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         response = self.client.get(self.test_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_user_cannot_use_expired_token(self):
+    def test_token_expires_based_on_user_token_lifetime(self):
+        user = get_user_model().objects.get(username=self.username)
+        configured_token_lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
+        user_token_lifetime = configured_token_lifetime - timezone.timedelta(seconds=40)
+        user.token_lifetime = user_token_lifetime.seconds
+        user.save()
+
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         token = response.data['token']
-        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
-        mocked_now = timezone.now() + lifetime
-        with patch('django.utils.timezone.now', lambda: mocked_now):
+        mocked_now = timezone.now() + user_token_lifetime
+        with freeze_time(mocked_now):
             self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
             response = self.client.get(self.test_url)
             self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -65,13 +70,14 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_expired_token_is_recreated_on_successful_authentication(self):
+        user = get_user_model().objects.get(username=self.username)
+        self.assertIsNotNone(user.token_lifetime)
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         token1 = response.data['token']
 
-        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
-        mocked_now = timezone.now() + lifetime
-        with patch('django.utils.timezone.now', lambda: mocked_now):
+        mocked_now = timezone.now() + timezone.timedelta(seconds=user.token_lifetime)
+        with freeze_time(mocked_now):
             response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
             token2 = response.data['token']
             self.assertNotEqual(token1, token2)
@@ -88,3 +94,46 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
 
         self.assertEqual(token1, token2)
         self.assertTrue(created1 < created2)
+
+    def test_token_never_expires_if_token_lifetime_is_none(self):
+        user = get_user_model().objects.get(username=self.username)
+        user.token_lifetime = None
+        user.save()
+
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        original_token = response.data['token']
+
+        year_ahead = timezone.now() + timezone.timedelta(days=365)
+        with freeze_time(year_ahead):
+            response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+            token_in_a_year = response.data['token']
+            self.assertEqual(original_token, token_in_a_year)
+
+    def test_token_created_date_is_refreshed_even_if_token_lifetime_is_none(self):
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        user = get_user_model().objects.get(username=self.username)
+        original_token_lifetime = user.token_lifetime
+        original_created_value = user.auth_token.created
+        user.token_lifetime = None
+        user.save()
+
+        last_refresh_time = timezone.now() + timezone.timedelta(seconds=original_token_lifetime)
+        with freeze_time(last_refresh_time):
+            response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            token = response.data['token']
+
+        user.auth_token.refresh_from_db()
+        self.assertTrue(user.auth_token.created > original_created_value)
+
+        user.token_lifetime = original_token_lifetime
+        user.save()
+        with freeze_time(last_refresh_time):
+            self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+            response = self.client.get(self.test_url)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+

@@ -1,6 +1,7 @@
 import unittest
 
 import mock
+from django.conf import settings
 from rest_framework import test
 from rest_framework import status
 
@@ -13,15 +14,15 @@ from .. import utils
 
 class BaseEventsApiTest(test.APITransactionTestCase):
     def setUp(self):
-        self.settings_patcher = self.settings(NODECONDUCTOR={
-            'ELASTICSEARCH': {
+        nodeconductor_section = settings.NODECONDUCTOR.copy()
+        nodeconductor_section['ELASTICSEARCH'] = {
                 'username': 'username',
                 'password': 'password',
                 'host': 'example.com',
                 'port': '9999',
                 'protocol': 'https',
             }
-        })
+        self.settings_patcher = self.settings(NODECONDUCTOR=nodeconductor_section)
         self.settings_patcher.enable()
 
         self.es_patcher = mock.patch('nodeconductor.logging.elasticsearch_client.Elasticsearch')
