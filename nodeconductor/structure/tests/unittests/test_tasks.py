@@ -49,18 +49,15 @@ class ThrottleProvisionTaskTest(TestCase):
         factories.TestNewInstanceFactory.create_batch(
             size=params['size'],
             state=models.TestNewInstance.States.CREATING,
-            service_project_link=link
-        )
+            service_project_link=link)
         vm = factories.TestNewInstanceFactory(
             state=models.TestNewInstance.States.CREATION_SCHEDULED,
-            service_project_link=link
-        )
+            service_project_link=link)
         serialized_vm = utils.serialize_instance(vm)
         mocked_retry = Mock()
         tasks.ThrottleProvisionTask.retry = mocked_retry
         tasks.ThrottleProvisionTask().si(
             serialized_vm,
             'create',
-            state_transition='begin_starting'
-        ).apply()
+            state_transition='begin_starting').apply()
         self.assertEqual(mocked_retry.called, params['retried'])
