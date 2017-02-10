@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet.
+
+Release 0.123.0
+---------------
 - Allow user to define his token lifetime.
 - On update, instance is not returned in the old state anymore.
 - Move throttling tasks from openstack plugin into structure.
