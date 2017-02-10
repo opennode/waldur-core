@@ -3,10 +3,9 @@ from __future__ import unicode_literals
 import logging
 
 from celery import shared_task
-from django.conf import settings
 from django.core import exceptions
 from django.db import transaction
-from django.utils import six, timezone
+from django.utils import six
 
 from nodeconductor.core import utils as core_utils, tasks as core_tasks, models as core_models
 from nodeconductor.structure import SupportedServices, models, utils, ServiceBackendError
@@ -189,10 +188,7 @@ class BaseThrottleProvisionTask(RetryUntilAvailableTask):
         ).count()
 
     def get_limit(self, instance):
-        nc_settings = getattr(settings, 'NODECONDUCTOR_OPENSTACK', {})
-        limit_per_type = nc_settings.get('MAX_CONCURRENT_PROVISION', {})
-        model_name = SupportedServices.get_name_for_model(instance)
-        return limit_per_type.get(model_name, self.DEFAULT_LIMIT)
+        return self.DEFAULT_LIMIT
 
 
 class ThrottleProvisionTask(BaseThrottleProvisionTask, core_tasks.BackendMethodTask):
