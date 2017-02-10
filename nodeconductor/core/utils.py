@@ -125,7 +125,7 @@ def request_api(request, url_or_view_name, method='GET', data=None, params=None,
     return response
 
 
-def pwgen(pw_len=8):
+def pwgen(pw_len=16):
     """ Generate a random password with the given length.
         Allowed chars does not have "I" or "O" or letters and
         digits that look similar -- just to avoid confusion.

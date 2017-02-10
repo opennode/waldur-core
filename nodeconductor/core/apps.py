@@ -13,6 +13,7 @@ class CoreConfig(AppConfig):
     def ready(self):
         from nodeconductor.core import handlers
         from nodeconductor.core.models import StateMixin
+        from rest_framework.authtoken.models import Token
 
         User = get_user_model()
         SshPublicKey = self.get_model('SshPublicKey')
@@ -35,6 +36,12 @@ class CoreConfig(AppConfig):
             dispatch_uid='nodeconductor.core.handlers.log_user_save',
         )
 
+        signals.post_save.connect(
+            handlers.set_default_token_lifetime,
+            sender=User,
+            dispatch_uid='nodeconductor.core.handlers.set_default_token_lifetime',
+        )
+
         signals.post_delete.connect(
             handlers.log_user_delete,
             sender=User,
@@ -51,6 +58,12 @@ class CoreConfig(AppConfig):
             handlers.log_ssh_key_delete,
             sender=SshPublicKey,
             dispatch_uid='nodeconductor.core.handlers.log_ssh_key_delete',
+        )
+
+        signals.post_save.connect(
+            handlers.log_token_create,
+            sender=Token,
+            dispatch_uid='nodeconductor.core.handlers.log_token_create',
         )
 
         for index, model in enumerate(StateMixin.get_all_models()):

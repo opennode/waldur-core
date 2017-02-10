@@ -162,6 +162,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                           help_text=_('Indicates when the user has agreed with the policy.'))
     preferred_language = models.CharField(max_length=10, blank=True)
     competence = models.CharField(max_length=255, blank=True)
+    token_lifetime = models.PositiveIntegerField(null=True, help_text='Token lifetime in seconds.')
 
     objects = UserManager()
 
@@ -173,7 +174,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         verbose_name_plural = _('users')
 
     def get_log_fields(self):
-        return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD, 'is_staff', 'is_support')
+        return ('uuid', 'full_name', 'native_name', self.USERNAME_FIELD, 'is_staff', 'is_support', 'token_lifetime')
 
     def get_full_name(self):
         # This method is used in django-reversion as name of revision creator.

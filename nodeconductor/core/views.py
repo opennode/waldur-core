@@ -31,14 +31,20 @@ class RefreshTokenMixin(object):
     Token is refreshed if it has not expired yet.
     """
     def refresh_token(self, user):
-        token, _ = Token.objects.get_or_create(user=user)
-        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
-        if token.created < timezone.now() - lifetime:
-            token.delete()
-            token = Token.objects.create(user=user)
-        else:
+        token, created = Token.objects.get_or_create(user=user)
+
+        if user.token_lifetime:
+            lifetime = timezone.timedelta(seconds=user.token_lifetime)
+
+            if token.created < timezone.now() - lifetime:
+                token.delete()
+                token = Token.objects.create(user=user)
+                created = True
+
+        if not created:
             token.created = timezone.now()
-            token.save()
+            token.save(update_fields=['created'])
+
         return token
 
 

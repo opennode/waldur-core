@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
-import rest_framework.authentication
 from rest_framework import exceptions
+import rest_framework.authentication
 
 import nodeconductor.logging.middleware
 
@@ -35,9 +35,11 @@ class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
         if not token.user.is_active:
             raise exceptions.AuthenticationFailed(_('User inactive or deleted.'))
 
-        lifetime = settings.NODECONDUCTOR.get('TOKEN_LIFETIME', timezone.timedelta(hours=1))
-        if token.created < timezone.now() - lifetime:
-            raise exceptions.AuthenticationFailed(_('Token has expired.'))
+        if token.user.token_lifetime:
+            lifetime = timezone.timedelta(seconds=token.user.token_lifetime)
+
+            if token.created < timezone.now() - lifetime:
+                raise exceptions.AuthenticationFailed(_('Token has expired.'))
 
         return token.user, token
 

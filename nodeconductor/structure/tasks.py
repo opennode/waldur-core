@@ -5,9 +5,9 @@ import logging
 from celery import shared_task
 from django.core import exceptions
 from django.db import transaction
-from django.utils import six, timezone
+from django.utils import six
 
-from nodeconductor.core import utils as core_utils, tasks as core_tasks
+from nodeconductor.core import utils as core_utils, tasks as core_tasks, models as core_models
 from nodeconductor.structure import SupportedServices, models, utils, ServiceBackendError
 
 
@@ -152,3 +152,48 @@ class ServiceSettingsListPullTask(BackgroundListPullTask):
     def get_pulled_objects(self):
         States = self.model.States
         return self.model.objects.filter(state__in=[States.ERRED, States.OK])
+
+
+class RetryUntilAvailableTask(core_tasks.Task):
+    max_retries = 300
+    default_retry_delay = 5
+
+    def pre_execute(self, instance):
+        if not self.is_available(instance):
+            self.retry()
+        super(RetryUntilAvailableTask, self).pre_execute(instance)
+
+    def is_available(self, instance):
+        return True
+
+
+class BaseThrottleProvisionTask(RetryUntilAvailableTask):
+    """
+    Before starting resource provisioning, count how many resources
+    are already in "creating" state and delay provisioning if there are too many of them.
+    """
+    DEFAULT_LIMIT = 4
+
+    def is_available(self, resource):
+        usage = self.get_usage(resource)
+        limit = self.get_limit(resource)
+        return usage <= limit
+
+    def get_usage(self, resource):
+        service_settings = resource.service_project_link.service.settings
+        model_class = resource._meta.model
+        return model_class.objects.filter(
+            state=core_models.StateMixin.States.CREATING,
+            service_project_link__service__settings=service_settings).count()
+
+    def get_limit(self, resource):
+        return self.DEFAULT_LIMIT
+
+
+class ThrottleProvisionTask(BaseThrottleProvisionTask, core_tasks.BackendMethodTask):
+    pass
+
+
+class ThrottleProvisionStateTask(BaseThrottleProvisionTask, core_tasks.StateTransitionTask):
+    pass
+
