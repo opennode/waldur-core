@@ -1,6 +1,6 @@
 from ddt import ddt, data
 from django.test import TestCase
-from mock import patch, mock
+from mock import patch, Mock
 
 from nodeconductor.core import utils
 from nodeconductor.structure import tasks
@@ -56,7 +56,7 @@ class ThrottleProvisionTaskTest(TestCase):
             service_project_link=link
         )
         serialized_vm = utils.serialize_instance(vm)
-        mocked_retry = mock.Mock()
+        mocked_retry = Mock()
         tasks.ThrottleProvisionTask.retry = mocked_retry
         tasks.ThrottleProvisionTask().si(
             serialized_vm,
