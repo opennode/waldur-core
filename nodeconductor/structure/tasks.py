@@ -186,7 +186,7 @@ class BaseThrottleProvisionTask(RetryUntilAvailableTask):
             state=core_models.StateMixin.States.CREATING,
             service_project_link__service__settings=service_settings).count()
 
-    def get_limit(self, instance):
+    def get_limit(self, resource):
         return self.DEFAULT_LIMIT
 
 
