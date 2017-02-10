@@ -46,13 +46,13 @@ class ThrottleProvisionTaskTest(TestCase):
     )
     def test_if_limit_is_reached_provisioning_is_delayed(self, params):
         link = factories.TestServiceProjectLinkFactory()
-        factories.TestInstanceFactory.create_batch(
+        factories.TestNewInstanceFactory.create_batch(
             size=params['size'],
-            state=models.TestInstance.States.STARTING,
+            state=models.TestNewInstance.States.CREATING,
             service_project_link=link
         )
-        vm = factories.TestInstanceFactory(
-            state=models.TestInstance.States.STARTING_SCHEDULED,
+        vm = factories.TestNewInstanceFactory(
+            state=models.TestNewInstance.States.CREATION_SCHEDULED,
             service_project_link=link
         )
         serialized_vm = utils.serialize_instance(vm)
@@ -60,7 +60,7 @@ class ThrottleProvisionTaskTest(TestCase):
         tasks.ThrottleProvisionTask.retry = mocked_retry
         tasks.ThrottleProvisionTask().si(
             serialized_vm,
-            'start',
+            'create',
             state_transition='begin_starting'
         ).apply()
         self.assertEqual(mocked_retry.called, params['retried'])

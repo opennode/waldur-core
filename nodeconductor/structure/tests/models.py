@@ -39,11 +39,6 @@ class TestInstance(structure_models.VirtualMachineMixin, structure_models.Resour
     def get_url_name(cls):
         return 'test-instances'
 
-    @property
-    def human_readable_state(self):
-        # is required to test ThrottleProvisioningTask until migrated to NewResource.
-        return self.state
-
 
 class TestNewInstance(core_models.RuntimeStateMixin,
                       core_models.StateMixin,
