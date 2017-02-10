@@ -174,18 +174,17 @@ class BaseThrottleProvisionTask(RetryUntilAvailableTask):
     """
     DEFAULT_LIMIT = 4
 
-    def is_available(self, instance):
-        usage = self.get_usage(instance)
-        limit = self.get_limit(instance)
+    def is_available(self, resource):
+        usage = self.get_usage(resource)
+        limit = self.get_limit(resource)
         return usage <= limit
 
-    def get_usage(self, instance):
-        service_settings = instance.service_project_link.service.settings
-        model_class = instance._meta.model
+    def get_usage(self, resource):
+        service_settings = resource.service_project_link.service.settings
+        model_class = resource._meta.model
         return model_class.objects.filter(
             state=core_models.StateMixin.States.CREATING,
-            service_project_link__service__settings=service_settings
-        ).count()
+            service_project_link__service__settings=service_settings).count()
 
     def get_limit(self, instance):
         return self.DEFAULT_LIMIT
