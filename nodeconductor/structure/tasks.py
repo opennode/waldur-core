@@ -170,9 +170,7 @@ class RetryUntilAvailableTask(core_tasks.Task):
 
 class BaseThrottleProvisionTask(RetryUntilAvailableTask):
     """
-    One OpenStack settings does not support provisioning of more than
-    4 instances together, also there are limitations for volumes and snapshots.
-    Before starting resource provisioning we need to count how many resources
+    Before starting resource provisioning, count how many resources
     are already in "creating" state and delay provisioning if there are too many of them.
     """
     DEFAULT_LIMIT = 4
