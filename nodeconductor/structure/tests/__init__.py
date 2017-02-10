@@ -10,6 +10,9 @@ class TestBackend(ServiceBackend):
     def destroy(self, resource, force=False):
         pass
 
+    def start(self, resource):
+        pass
+
 
 class TestConfig(AppConfig):
     name = 'nodeconductor.structure.tests'

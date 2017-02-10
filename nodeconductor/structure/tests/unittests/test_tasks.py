@@ -1,9 +1,10 @@
+from ddt import ddt, data
 from django.test import TestCase
-from mock import patch
+from mock import patch, mock
 
 from nodeconductor.core import utils
 from nodeconductor.structure import tasks
-from nodeconductor.structure.tests import factories
+from nodeconductor.structure.tests import factories, models
 
 
 class TestDetectVMCoordinatesTask(TestCase):
@@ -35,3 +36,31 @@ class TestDetectVMCoordinatesTask(TestCase):
         instance.refresh_from_db()
         self.assertIsNone(instance.latitude)
         self.assertIsNone(instance.longitude)
+
+@ddt
+class ThrottleProvisionTaskTest(TestCase):
+
+    @data(
+        dict(size=tasks.ThrottleProvisionTask.DEFAULT_LIMIT + 1, retried=True),
+        dict(size=tasks.ThrottleProvisionTask.DEFAULT_LIMIT - 1, retried=False),
+    )
+    def test_if_limit_is_reached_provisioning_is_delayed(self, params):
+        link = factories.TestServiceProjectLinkFactory()
+        factories.TestInstanceFactory.create_batch(
+            size=params['size'],
+            state=models.TestInstance.States.STARTING,
+            service_project_link=link
+        )
+        vm = factories.TestInstanceFactory(
+            state=models.TestInstance.States.STARTING_SCHEDULED,
+            service_project_link=link
+        )
+        serialized_vm = utils.serialize_instance(vm)
+        mocked_retry = mock.Mock()
+        tasks.ThrottleProvisionTask.retry = mocked_retry
+        tasks.ThrottleProvisionTask().si(
+            serialized_vm,
+            'start',
+            state_transition='begin_starting'
+        ).apply()
+        self.assertEqual(mocked_retry.called, params['retried'])
