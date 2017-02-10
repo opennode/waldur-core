@@ -20,10 +20,6 @@ from nodeconductor.core import models, utils
 logger = logging.getLogger(__name__)
 
 
-class Throttled(RuntimeError):
-    pass
-
-
 class StateChangeError(RuntimeError):
     pass
 
