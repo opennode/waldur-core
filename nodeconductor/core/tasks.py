@@ -574,8 +574,8 @@ class PenalizedBackgroundTask(BackgroundTask):
     1 run: Cache state: Empty; Result: failed
     2 run: Cache state: counter = 1, penalty = 1; Result: skipped
     3 run: Cache state: counter = 0, penalty = 1; Result: failed
-    4 run: Cache state: counter = 2, penalty = 2; Result: failed
-    5 run: Cache state: counter = 1, penalty = 2; Result: failed
+    4 run: Cache state: counter = 2, penalty = 2; Result: skipped
+    5 run: Cache state: counter = 1, penalty = 2; Result: skipped
     6 run: Cache state: counter = 0, penalty = 2; Result: success
     7 run: Cache state: Empty; Result: success
     """
