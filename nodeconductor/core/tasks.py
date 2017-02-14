@@ -581,38 +581,12 @@ class PenalizedBackgroundTask(BackgroundTask):
     """
 
     MAX_PENALTY = 3
-    DEFAULT_CACHE_LIFETIME = 24 * 60 * 60
+    CACHE_LIFETIME = 24 * 60 * 60
 
     def _get_cache_key(self, args, kwargs):
         """ Returns key to be used in cache """
         hash_input = json.dumps({'name': self.name, 'args': args, 'kwargs': kwargs}, sort_keys=True)
         return hashlib.md5(hash_input).hexdigest()
-
-    def _get_cache_expire_time(self, args, kwargs):
-        """
-        Returns cache expiration time if task was found in CELERYBEAT_SCHEDULE,
-        otherwise returns DEFAULT_CACHE_LIFETIME value
-        """
-        running_task = {
-            'name': self.name,
-            'args': list(args),
-            'kwargs': kwargs,
-        }
-        schedules = []
-        for t in settings.CELERYBEAT_SCHEDULE.values():
-            task = {
-                'name': t.get('task', ''),
-                'args': list(t.get('args', [])),
-                'kwargs': t.get('kwargs', {}),
-            }
-            if task == running_task:
-                schedules.append(t['schedule'])
-
-        if schedules:
-            # Add an extra minute to prevent cache deletion before task execution
-            return max(schedules).seconds + 60
-
-        return self.DEFAULT_CACHE_LIFETIME
 
     def apply_async(self, args=None, kwargs=None, **options):
         """
@@ -623,8 +597,7 @@ class PenalizedBackgroundTask(BackgroundTask):
         if not counter:
             return super(PenalizedBackgroundTask, self).apply_async(args=args, kwargs=kwargs, **options)
 
-        expire_time = self._get_cache_expire_time(args, kwargs)
-        cache.set(key, (counter - 1, penalty), expire_time)
+        cache.set(key, (counter - 1, penalty), self.CACHE_LIFETIME)
         logger.info('The task %s will not be executed due to the penalty.' % self.name)
         return self.AsyncResult(options.get('task_id'))
 
@@ -637,9 +610,8 @@ class PenalizedBackgroundTask(BackgroundTask):
         if penalty < self.MAX_PENALTY:
             penalty += 1
 
-        expire_time = self._get_cache_expire_time(args, kwargs)
         logger.info('The task %s is penalized and will be executed on %d run.' % (self.name, penalty))
-        cache.set(key, (penalty, penalty), expire_time)
+        cache.set(key, (penalty, penalty), self.CACHE_LIFETIME)
         return super(PenalizedBackgroundTask, self).on_failure(exc, task_id, args, kwargs, einfo)
 
     def on_success(self, retval, task_id, args, kwargs):
