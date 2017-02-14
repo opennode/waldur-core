@@ -121,6 +121,11 @@ ROOT_URLCONF = 'nodeconductor.server.urls'
 
 AUTH_USER_MODEL = 'core.User'
 
+# Session
+# https://docs.djangoproject.com/en/1.8/ref/settings/#sessions
+SESSION_COOKIE_AGE = 3600
+SESSION_SAVE_EVERY_REQUEST = True
+
 WSGI_APPLICATION = 'nodeconductor.server.wsgi.application'
 
 # Internationalization
