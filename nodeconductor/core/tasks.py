@@ -578,6 +578,8 @@ class PenalizedBackgroundTask(BackgroundTask):
     5 run: Cache state: counter = 1, penalty = 2; Result: skipped
     6 run: Cache state: counter = 0, penalty = 2; Result: success
     7 run: Cache state: Empty; Result: success
+
+    NB! Ensure that CACHE_LIFETIME is longer than time between the task executions.
     """
 
     MAX_PENALTY = 3
