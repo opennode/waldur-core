@@ -584,7 +584,7 @@ class PenalizedBackgroundTask(BackgroundTask):
     DEFAULT_CACHE_LIFETIME = 24 * 60 * 60
 
     def _get_cache_key(self, args, kwargs):
-        """Returns key to be used in cache"""
+        """ Returns key to be used in cache """
         hash_input = json.dumps({'name': self.name, 'args': args, 'kwargs': kwargs}, sort_keys=True)
         return hashlib.md5(hash_input).hexdigest()
 
@@ -623,7 +623,7 @@ class PenalizedBackgroundTask(BackgroundTask):
         if not counter:
             return super(PenalizedBackgroundTask, self).apply_async(args=args, kwargs=kwargs, **options)
 
-        expire_time = self. _get_cache_expire_time(args, kwargs)
+        expire_time = self._get_cache_expire_time(args, kwargs)
         cache.set(key, (counter - 1, penalty), expire_time)
         logger.info('The task %s will not be executed due to the penalty.' % self.name)
         return self.AsyncResult(options.get('task_id'))
@@ -637,7 +637,7 @@ class PenalizedBackgroundTask(BackgroundTask):
         if penalty < self.MAX_PENALTY:
             penalty += 1
 
-        expire_time = self. _get_cache_expire_time(args, kwargs)
+        expire_time = self._get_cache_expire_time(args, kwargs)
         logger.info('The task %s is penalized and will be executed on %d run.' % (self.name, penalty))
         cache.set(key, (penalty, penalty), expire_time)
         return super(PenalizedBackgroundTask, self).on_failure(exc, task_id, args, kwargs, einfo)
