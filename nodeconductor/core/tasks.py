@@ -6,12 +6,11 @@ import hashlib
 import logging
 import sys
 
-from celery import current_app, current_task, Task as CeleryTask
+from celery import current_task, Task as CeleryTask
 from celery.execute import send_task as send_celery_task
 from celery.exceptions import MaxRetriesExceededError
 from celery.worker.job import Request
 from django.core.cache import cache
-from django.conf import settings
 from django.db import transaction, IntegrityError, models as django_models
 from django.db.models import ObjectDoesNotExist
 from django.utils import six
@@ -484,7 +483,7 @@ class PenalizedBackgroundTask(BackgroundTask):
         if penalty < self.MAX_PENALTY:
             penalty += 1
 
-        logger.info('The task %s is penalized and will be executed on %d run.' % (self.name, penalty))
+        logger.debug('The task %s is penalized and will be executed on %d run.' % (self.name, penalty))
         cache.set(key, (penalty, penalty), self.CACHE_LIFETIME)
         return super(PenalizedBackgroundTask, self).on_failure(exc, task_id, args, kwargs, einfo)
 
@@ -495,7 +494,7 @@ class PenalizedBackgroundTask(BackgroundTask):
         key = self._get_cache_key(args, kwargs)
         if cache.get(key) is not None:
             cache.delete(key)
-            logger.info('Penalty for the task %s has been removed.' % self.name)
+            logger.debug('Penalty for the task %s has been removed.' % self.name)
 
         return super(PenalizedBackgroundTask, self).on_success(retval, task_id, args, kwargs)
 
