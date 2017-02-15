@@ -321,8 +321,6 @@ class RequiredFieldsMixin(object):
             field = fields.get(name)
             if field:
                 field.required = True
-            else:
-                logger.warning('Unable to make field `%s` read-only, because it does not exist.', name)
         return fields
 
 
@@ -339,8 +337,6 @@ class ExtraFieldOptionsMixin(object):
             if field:
                 for key, val in options.items():
                     setattr(field, key, val)
-            else:
-                logger.warning('Unable to set metadata for field `%s`, because it does not exist.', name)
         return fields
 
 
