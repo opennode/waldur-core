@@ -182,7 +182,6 @@ class TestServiceFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = test_models.TestService
 
-    name = factory.Sequence(lambda n: 'service%s' % n)
     settings = factory.SubFactory(ServiceSettingsFactory)
     customer = factory.SubFactory(CustomerFactory)
 

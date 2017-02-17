@@ -307,17 +307,17 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
 
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'customer', 'settings')
-    ordering = ('name', 'customer')
+    list_display = ('customer', 'settings')
+    ordering = ('customer',)
 
 
 class ServiceProjectLinkAdmin(admin.ModelAdmin):
     readonly_fields = ('service', 'project')
     list_display = ('get_service_name', 'get_customer_name', 'get_project_name')
     list_filter = ('service__settings', 'project__name')
-    ordering = ('service__customer__name', 'project__name', 'service__name')
+    ordering = ('service__customer__name', 'project__name')
     list_display_links = ('get_service_name',)
-    search_fields = ('service__customer__name', 'project__name', 'service__name')
+    search_fields = ('service__customer__name', 'project__name')
     inlines = [QuotaInline]
 
     def get_queryset(self, request):
@@ -325,7 +325,7 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
         return queryset.select_related('service', 'project', 'project__customer')
 
     def get_service_name(self, obj):
-        return obj.service.name
+        return obj.service.settings.name
 
     get_service_name.short_description = 'Service'
 

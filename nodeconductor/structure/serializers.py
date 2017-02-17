@@ -122,7 +122,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     uuid = serializers.ReadOnlyField(source='service.uuid')
     url = serializers.SerializerMethodField()
     service_project_link_url = serializers.SerializerMethodField()
-    name = serializers.ReadOnlyField(source='service.name')
+    name = serializers.ReadOnlyField(source='service.settings.name')
     type = serializers.SerializerMethodField()
     state = serializers.SerializerMethodField()
     shared = serializers.SerializerMethodField()
@@ -238,7 +238,6 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'service__settings__state',
             'project_id',
             'service__uuid',
-            'service__name',
             'service__settings__uuid',
             'service__settings__shared'
         )
@@ -864,7 +863,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         fields = (
             'uuid',
             'url',
-            'name', 'projects', 'project',
+            'projects', 'project',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
             'settings', 'settings_uuid',
             'backend_url', 'username', 'password', 'token', 'certificate', 'domain',
@@ -890,7 +889,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def eager_load(queryset):
         related_fields = (
             'uuid',
-            'name',
             'available_for_all',
             'customer__uuid',
             'customer__name',
