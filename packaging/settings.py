@@ -27,6 +27,7 @@ config_defaults = {
     },
     'auth': {
         'token_lifetime': 3600,
+        'session_lifetime': 3600,
     },
     'elasticsearch': {
         # This location is RHEL7-specific, may be different on other platforms
@@ -351,6 +352,10 @@ MIDDLEWARE_CLASSES = (
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
 ) + MIDDLEWARE_CLASSES
+
+# Session
+# https://docs.djangoproject.com/en/1.8/ref/settings/#sessions
+SESSION_COOKIE_AGE = config.getint('auth', 'session_lifetime')
 
 # Celery
 # See also:

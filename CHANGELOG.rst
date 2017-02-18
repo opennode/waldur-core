@@ -3,7 +3,12 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+
+Release 0.124.0
+---------------
+- Logging cleanup.
+- Limit admin session life time to 1h by default, made it configurable.
+- Implemented penalized background task for reducing load from polling of services in down state.
 
 Release 0.123.0
 ---------------

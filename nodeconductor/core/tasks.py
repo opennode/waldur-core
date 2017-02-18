@@ -1,14 +1,16 @@
 from __future__ import unicode_literals
 
 import functools
+import json
+import hashlib
 import logging
 import sys
 
-from celery import current_app, current_task, Task as CeleryTask
+from celery import current_task, Task as CeleryTask
 from celery.execute import send_task as send_celery_task
 from celery.exceptions import MaxRetriesExceededError
 from celery.worker.job import Request
-from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction, IntegrityError, models as django_models
 from django.db.models import ObjectDoesNotExist
 from django.utils import six
@@ -429,6 +431,72 @@ class BackgroundTask(CeleryTask):
             logger.info(message)
             return
         return super(BackgroundTask, self).apply_async(args=args, kwargs=kwargs, **options)
+
+
+class PenalizedBackgroundTask(BackgroundTask):
+    """
+    Background task, which applies penalties in case of failed execution.
+    It uses cache memory for tracking results of previous task executions.
+    The following values are stored to the cache memory:
+        - counter - the task will be skipped till the counter gets 0.
+        - penalty - shows how much runs the task will skip in case of failed execution.
+
+    For example,
+    1 run: Cache state: Empty; Result: failed
+    2 run: Cache state: counter = 1, penalty = 1; Result: skipped
+    3 run: Cache state: counter = 0, penalty = 1; Result: failed
+    4 run: Cache state: counter = 2, penalty = 2; Result: skipped
+    5 run: Cache state: counter = 1, penalty = 2; Result: skipped
+    6 run: Cache state: counter = 0, penalty = 2; Result: success
+    7 run: Cache state: Empty; Result: success
+
+    NB! Ensure that CACHE_LIFETIME is longer than time between the task executions.
+    """
+
+    MAX_PENALTY = 3
+    CACHE_LIFETIME = 24 * 60 * 60
+
+    def _get_cache_key(self, args, kwargs):
+        """ Returns key to be used in cache """
+        hash_input = json.dumps({'name': self.name, 'args': args, 'kwargs': kwargs}, sort_keys=True)
+        return hashlib.md5(hash_input).hexdigest()
+
+    def apply_async(self, args=None, kwargs=None, **options):
+        """
+        Checks whether task must be skipped and decreases the counter in that case.
+        """
+        key = self._get_cache_key(args, kwargs)
+        counter, penalty = cache.get(key, (0, 0))
+        if not counter:
+            return super(PenalizedBackgroundTask, self).apply_async(args=args, kwargs=kwargs, **options)
+
+        cache.set(key, (counter - 1, penalty), self.CACHE_LIFETIME)
+        logger.info('The task %s will not be executed due to the penalty.' % self.name)
+        return self.AsyncResult(options.get('task_id'))
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        """
+        Increases penalty for the task and resets the counter.
+        """
+        key = self._get_cache_key(args, kwargs)
+        _, penalty = cache.get(key, (0, 0))
+        if penalty < self.MAX_PENALTY:
+            penalty += 1
+
+        logger.debug('The task %s is penalized and will be executed on %d run.' % (self.name, penalty))
+        cache.set(key, (penalty, penalty), self.CACHE_LIFETIME)
+        return super(PenalizedBackgroundTask, self).on_failure(exc, task_id, args, kwargs, einfo)
+
+    def on_success(self, retval, task_id, args, kwargs):
+        """
+        Clears cache for the task.
+        """
+        key = self._get_cache_key(args, kwargs)
+        if cache.get(key) is not None:
+            cache.delete(key)
+            logger.debug('Penalty for the task %s has been removed.' % self.name)
+
+        return super(PenalizedBackgroundTask, self).on_success(retval, task_id, args, kwargs)
 
 
 def log_celery_task(request):

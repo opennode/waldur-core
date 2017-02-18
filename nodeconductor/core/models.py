@@ -127,6 +127,7 @@ class ScheduleMixin(models.Model):
         super(ScheduleMixin, self).save(*args, **kwargs)
 
 
+@python_2_unicode_compatible
 class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, PermissionsMixin):
     username = models.CharField(
         _('username'), max_length=30, unique=True,
@@ -201,6 +202,12 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
         # User email has to be unique or empty
         if self.email and User.objects.filter(email=self.email).exclude(id=self.id).exists():
             raise ValidationError({'email': 'User with email "%s" already exists' % self.email})
+
+    def __str__(self):
+        if self.civil_number:
+            return '%s (%s)' % (self.get_username(), self.civil_number)
+
+        return self.get_username()
 
 
 def validate_ssh_public_key(ssh_key):
