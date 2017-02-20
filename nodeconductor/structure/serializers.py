@@ -863,16 +863,17 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     certificate = serializers.FileField(allow_null=True, write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
-    shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
-    error_message = serializers.ReadOnlyField(source='settings.error_message')
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     tags = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
+    shared = serializers.ReadOnlyField(source='settings.shared')
+    error_message = serializers.ReadOnlyField(source='settings.error_message')
     terms_of_services = serializers.ReadOnlyField(source='settings.terms_of_services')
     homepage = serializers.ReadOnlyField(source='settings.homepage')
     certifications = CertificationSerializer(many=True, read_only=True, source='settings.certifications')
+    name = serializers.ReadOnlyField(source='settings.name')
 
     class Meta(object):
         model = NotImplemented
@@ -882,9 +883,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'projects', 'project',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
             'settings', 'settings_uuid', 'backend_url', 'username', 'password',
-            'token', 'certificate', 'domain', 'terms_of_services', 'homepage', 'certifications',
-            'resources_count', 'service_type', 'shared', 'state', 'error_message',
-            'available_for_all', 'scope', 'tags', 'quotas',
+            'token', 'certificate', 'domain', 'terms_of_services', 'homepage',
+            'certifications', 'name', 'available_for_all', 'scope', 'tags', 'quotas',
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope', 'domain')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
@@ -911,6 +911,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'customer__native_name',
             'settings__state',
             'settings__uuid',
+            'settings__name',
             'settings__type',
             'settings__shared',
             'settings__error_message',
