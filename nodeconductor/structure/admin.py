@@ -200,6 +200,12 @@ class ProjectAdmin(FormRequestAdminMixin,
     inlines = [QuotaInline]
 
 
+class CertificationAdmin(admin.ModelAdmin):
+    list_display = ('value', 'url')
+    list_filter = ('value', )
+    fields = ('value', 'url', 'description')
+
+
 class ServiceSettingsAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
@@ -228,10 +234,11 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     change_readonly_fields = ('shared', 'customer')
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
-    # TODO [TM:2/20/17] update admin page.
     fields = ('type', 'name', 'backend_url', 'username', 'password',
-              'token', 'domain', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message', 'tags')
+              'token', 'domain', 'certificate', 'options', 'customer',
+              'shared', 'state', 'error_message', 'tags', 'homepage', 'terms_of_services', 'certifications')
     inlines = [QuotaInline]
+    filter_horizontal = ('certifications',)
 
     def get_type_display(self, obj):
         return obj.get_type_display()
@@ -384,6 +391,7 @@ class VirtualMachineAdmin(ResourceAdmin):
     detect_coordinates.short_description = "Detect coordinates of virtual machines"
 
 
+admin.site.register(models.Certification, CertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)

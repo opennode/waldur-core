@@ -558,7 +558,10 @@ class Project(core_models.DescribableMixin,
 class Certification(core_models.UuidMixin, core_models.DescribableMixin):
     value = models.CharField(max_length=255)
     url = models.URLField(max_length=255, blank=True)
-    service_settings = models.ManyToManyField(to='ServiceSettings', related_name='certifications')
+
+    class Meta(object):
+        verbose_name = 'Certification'
+        verbose_name_plural = 'Certifications'
 
     def __str__(self):
         return self.value
@@ -592,6 +595,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     homepage = models.URLField(max_length=255, blank=True)
     terms_of_services = models.TextField(blank=True)
+    certifications = models.ManyToManyField(to='Certification', related_name='service_settings')
 
     tracker = FieldTracker()
 

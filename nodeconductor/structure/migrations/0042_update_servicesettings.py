@@ -16,11 +16,14 @@ class Migration(migrations.Migration):
             name='Certification',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('description', models.CharField(max_length=500, verbose_name='description', blank=True)),
                 ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('value', models.CharField(max_length=255)),
+                ('url', models.URLField(max_length=255, blank=True)),
             ],
             options={
-                'abstract': False,
+                'verbose_name': 'Certification',
+                'verbose_name_plural': 'Certifications',
             },
         ),
         migrations.AddField(
@@ -34,18 +37,8 @@ class Migration(migrations.Migration):
             field=models.TextField(blank=True),
         ),
         migrations.AddField(
-            model_name='certification',
-            name='service_settings',
-            field=models.ManyToManyField(related_name='certifications', to='structure.ServiceSettings'),
-        ),
-        migrations.AddField(
-            model_name='certification',
-            name='description',
-            field=models.CharField(max_length=500, verbose_name='description', blank=True),
-        ),
-        migrations.AddField(
-            model_name='certification',
-            name='url',
-            field=models.URLField(max_length=255, blank=True),
+            model_name='servicesettings',
+            name='certifications',
+            field=models.ManyToManyField(related_name='service_settings', to='structure.Certification'),
         ),
     ]
