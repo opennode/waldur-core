@@ -3,8 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-# TODO [TM:2/20/17] update changelog.
-- Nothing yet.
+- Remove name from service, service settings name is used instead.
+- Introduce and connect certification model to service settings.
 
 Release 0.123.0
 ---------------
