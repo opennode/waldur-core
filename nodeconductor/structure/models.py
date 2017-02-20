@@ -566,7 +566,7 @@ class Certification(core_models.UuidMixin,
         ordering = ['-name']
 
     def __str__(self):
-        return self.value
+        return self.name
 
     @classmethod
     def get_url_name(cls):
