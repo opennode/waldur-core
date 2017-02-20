@@ -228,6 +228,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     change_readonly_fields = ('shared', 'customer')
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
+    # TODO [TM:2/20/17] update admin page.
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message', 'tags')
     inlines = [QuotaInline]

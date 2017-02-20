@@ -724,6 +724,14 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
+class CertificationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.Certification
+        # TODO [TM:2/20/17] implement crud.
+        fields = ('value', 'description', 'url')
+
+
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                 core_serializers.AugmentedSerializerMixin,
                                 serializers.HyperlinkedModelSerializer):
@@ -735,6 +743,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
+    certifications = CertificationSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -742,6 +751,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
+            'homepage', 'terms_of_services', 'certifications',
             'quotas', 'scope',
         )
         protected_fields = ('type', 'customer')
@@ -750,6 +760,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
+            'certifications': {'lookup_field': 'uuid'},
         }
         write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
         for field in write_only_fields:
@@ -761,7 +772,8 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
     @staticmethod
     def eager_load(queryset):
-        return queryset.select_related('customer').prefetch_related('quotas')
+        queryset = queryset.select_related('customer').prefetch_related('quotas')
+        return queryset.prefetch_related('certifications')
 
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
@@ -858,6 +870,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     tags = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
+    terms_of_services = serializers.ReadOnlyField(source='settings.terms_of_services')
+    homepage = serializers.ReadOnlyField(source='settings.homepage')
+    certifications = CertificationSerializer(many=True, read_only=True, source='settings.certifications')
+
     class Meta(object):
         model = NotImplemented
         fields = (
@@ -865,8 +881,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'url',
             'projects', 'project',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'settings', 'settings_uuid',
-            'backend_url', 'username', 'password', 'token', 'certificate', 'domain',
+            'settings', 'settings_uuid', 'backend_url', 'username', 'password',
+            'token', 'certificate', 'domain', 'terms_of_services', 'homepage', 'certifications',
             'resources_count', 'service_type', 'shared', 'state', 'error_message',
             'available_for_all', 'scope', 'tags', 'quotas',
         )
@@ -900,6 +916,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             'settings__error_message',
             'settings__options',
             'settings__domain',
+            'settings__terms_of_services',
+            'settings__homepage',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')

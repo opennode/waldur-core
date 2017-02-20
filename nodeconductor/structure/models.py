@@ -555,6 +555,16 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
+class Certification(core_models.UuidMixin, core_models.DescribableMixin):
+    value = models.CharField(max_length=255)
+    url = models.URLField(max_length=255, blank=True)
+    service_settings = models.ManyToManyField(to='ServiceSettings', related_name='certifications')
+
+    def __str__(self):
+        return self.value
+
+
+@python_2_unicode_compatible
 class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                       core_models.UuidMixin,
                       core_models.NameMixin,
@@ -580,6 +590,8 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
     options = JSONField(default={}, help_text='Extra options', blank=True)
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    homepage = models.URLField(max_length=255, blank=True)
+    terms_of_services = models.TextField(blank=True)
 
     tracker = FieldTracker()
 
