@@ -201,9 +201,9 @@ class ProjectAdmin(FormRequestAdminMixin,
 
 
 class CertificationAdmin(admin.ModelAdmin):
-    list_display = ('value', 'url')
-    list_filter = ('value', )
-    fields = ('value', 'url', 'description')
+    list_display = ('name', 'link')
+    list_filter = ('name', )
+    fields = ('name', 'link', 'description')
 
 
 class ServiceSettingsAdminForm(ModelForm):

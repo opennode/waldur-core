@@ -724,12 +724,14 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
-class CertificationSerializer(serializers.ModelSerializer):
+class CertificationSerializer(core_serializers.AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = models.Certification
-        # TODO [TM:2/20/17] implement crud.
-        fields = ('value', 'description', 'url')
+        fields = ('uuid', 'url', 'name', 'description', 'link')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
 
 
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,

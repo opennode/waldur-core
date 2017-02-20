@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 import nodeconductor.core.fields
+import nodeconductor.core.validators
 
 
 class Migration(migrations.Migration):
@@ -17,11 +18,12 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('description', models.CharField(max_length=500, verbose_name='description', blank=True)),
+                ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', nodeconductor.core.fields.UUIDField()),
-                ('value', models.CharField(max_length=255)),
-                ('url', models.URLField(max_length=255, blank=True)),
+                ('link', models.URLField(max_length=255, blank=True)),
             ],
             options={
+                'ordering': ['-name'],
                 'verbose_name': 'Certification',
                 'verbose_name_plural': 'Certifications',
             },

@@ -2250,3 +2250,11 @@ class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
 
     pull_executor = NotImplemented
     pull_validators = [core_validators.StateValidator(models.NewResource.States.OK, models.NewResource.States.ERRED)]
+
+
+class CertificationViewSet(core_views.ActionsViewSet):
+    lookup_field = 'uuid'
+    metadata_class = ActionsMetadata
+    unsafe_methods_permissions = [permissions.is_staff]
+    serializer_class = serializers.CertificationSerializer
+    queryset = models.Certification.objects.all()

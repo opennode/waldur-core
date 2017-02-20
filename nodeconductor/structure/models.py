@@ -555,16 +555,22 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
-class Certification(core_models.UuidMixin, core_models.DescribableMixin):
-    value = models.CharField(max_length=255)
-    url = models.URLField(max_length=255, blank=True)
+class Certification(core_models.UuidMixin,
+                    core_models.NameMixin,
+                    core_models.DescribableMixin):
+    link = models.URLField(max_length=255, blank=True)
 
     class Meta(object):
         verbose_name = 'Certification'
         verbose_name_plural = 'Certifications'
+        ordering = ['-name']
 
     def __str__(self):
         return self.value
+
+    @classmethod
+    def get_url_name(cls):
+        return 'certification'
 
 
 @python_2_unicode_compatible
