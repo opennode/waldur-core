@@ -23,7 +23,7 @@ License: MIT
 Requires: logrotate
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
-Requires: python-django >= 1.8, python-django < 1.9
+Requires: python-django >= 1.9, python-django < 1.10
 Requires: python-django-admin-tools = 0.7.0
 Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
@@ -61,7 +61,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
-BuildRequires: python-django >= 1.8
+BuildRequires: python-django >= 1.9, python-django < 1.10
 BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
 BuildRequires: python-django-rest-swagger = 2.1.1

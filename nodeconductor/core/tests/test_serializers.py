@@ -5,7 +5,7 @@ from collections import namedtuple
 
 from rest_framework import serializers
 from rest_framework.response import Response
-from rest_framework.test import APIRequestFactory, APISimpleTestCase, force_authenticate
+from rest_framework.test import APIRequestFactory, APITransactionTestCase, force_authenticate
 from rest_framework.views import APIView
 
 from nodeconductor.core.fields import JsonField
@@ -117,7 +117,7 @@ class RestrictedSerializerView(APIView):
         return Response(serializer.data)
 
 
-class RestrictedSerializerTest(APISimpleTestCase):
+class RestrictedSerializerTest(APITransactionTestCase):
     def test_serializer_returns_fields_required_in_request(self):
         fields = ['name', 'url']
         response = self.make_request(fields)

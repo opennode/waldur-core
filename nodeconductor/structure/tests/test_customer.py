@@ -212,7 +212,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
 
 
 @ddt
-class CustomerApiManipulationTest(UrlResolverMixin, test.APISimpleTestCase):
+class CustomerApiManipulationTest(UrlResolverMixin, test.APITransactionTestCase):
     def setUp(self):
         self.fixture = fixtures.ProjectFixture()
 

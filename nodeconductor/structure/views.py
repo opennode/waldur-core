@@ -28,7 +28,7 @@ from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException, ValidationError
 from rest_framework.response import Response
-import reversion
+from reversion import revisions as reversion
 
 from nodeconductor.core import (
     filters as core_filters, mixins as core_mixins, models as core_models, exceptions as core_exceptions,

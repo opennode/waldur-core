@@ -11,7 +11,7 @@ tests_requires = [
     'factory_boy==2.4.1',
     'freezegun==0.3.7',
     'mock>=1.0.1',
-    'mock-django==0.6.6',
+    'mock-django==0.6.9',
     'six>=1.9.0',
     'sqlalchemy>=1.0.12',
 ]
@@ -19,7 +19,7 @@ tests_requires = [
 install_requires = [
     'Celery>=3.1.23,<3.2',
     'croniter>=0.3.4,<0.3.6',
-    'Django>=1.8,<1.9',
+    'Django>=1.9,<1.10',
     'django-admin-tools==0.7.0',
     'django-filter==0.15.3',
     'django-fluent-dashboard==0.5.1',
@@ -28,7 +28,7 @@ install_requires = [
     'django-model-utils==2.5.2',
     'django-permission==0.9.2',
     'django-redis-cache>=1.6.5',
-    'django-reversion>=1.8.7,<=1.9.3',
+    'django-reversion>=1.10.0,<=1.10.2',
     'django-rest-swagger==2.1.1',
     'django-taggit>=0.20.2',
     'djangorestframework>=3.5.3,<3.6.0',

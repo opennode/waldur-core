@@ -6,7 +6,7 @@ from rest_framework import test
 from nodeconductor.structure.tests.factories import UserFactory
 
 
-class VersionApiPermissionTest(test.APISimpleTestCase):
+class VersionApiPermissionTest(test.APITransactionTestCase):
     def setUp(self):
         self.version_url = 'http://testserver/api/version/'
 

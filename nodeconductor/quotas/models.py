@@ -11,7 +11,7 @@ from django.db.models import Sum
 from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from model_utils import FieldTracker
-import reversion
+from reversion import revisions as reversion
 
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
