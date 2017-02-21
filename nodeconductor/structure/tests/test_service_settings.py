@@ -1,9 +1,10 @@
+from ddt import ddt, data
+
 from rest_framework import status, test
 
-from django.core.urlresolvers import reverse
+from nodeconductor.structure import models
 
-from nodeconductor.structure.models import ServiceSettings, CustomerRole
-from nodeconductor.structure.tests import factories
+from . import fixtures, factories
 
 
 class ServiceSettingsTest(test.APITransactionTestCase):
@@ -19,7 +20,7 @@ class ServiceSettingsTest(test.APITransactionTestCase):
             'inaccessible': factories.CustomerFactory(),
         }
 
-        self.customers['owned'].add_user(self.users['owner'], CustomerRole.OWNER)
+        self.customers['owned'].add_user(self.users['owner'], models.CustomerRole.OWNER)
 
         self.settings = {
             'shared': factories.ServiceSettingsFactory(shared=True),
@@ -31,16 +32,10 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         # Token is excluded, because it is not available for OpenStack
         self.credentials = ('backend_url', 'username', 'password')
 
-    def _get_settings_url(self, settings=None):
-        if settings:
-            return 'http://testserver' + reverse('servicesettings-detail', kwargs={'uuid': settings.uuid})
-        else:
-            return 'http://testserver' + reverse('servicesettings-list')
-
     def test_user_can_see_shared_settings(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
-        response = self.client.get(self._get_settings_url())
+        response = self.client.get(factories.ServiceSettingsFactory.get_list_url())
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(len(response.data), 1)
         self.assert_credentials_hidden(response.data[0])
@@ -49,7 +44,7 @@ class ServiceSettingsTest(test.APITransactionTestCase):
     def test_user_can_see_shared_and_own_settings(self):
         self.client.force_authenticate(user=self.users['owner'])
 
-        response = self.client.get(self._get_settings_url())
+        response = self.client.get(factories.ServiceSettingsFactory.get_list_url())
         uuids_recieved = [d['uuid'] for d in response.data]
         uuids_expected = [self.settings[s].uuid.hex for s in ('shared', 'owned')]
         self.assertItemsEqual(uuids_recieved, uuids_expected, response.data)
@@ -57,7 +52,7 @@ class ServiceSettingsTest(test.APITransactionTestCase):
     def test_admin_can_see_all_settings(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.get(self._get_settings_url())
+        response = self.client.get(factories.ServiceSettingsFactory.get_list_url())
         uuids_recieved = [d['uuid'] for d in response.data]
         uuids_expected = [s.uuid.hex for s in self.settings.values()]
         self.assertItemsEqual(uuids_recieved, uuids_expected, uuids_recieved)
@@ -65,25 +60,25 @@ class ServiceSettingsTest(test.APITransactionTestCase):
     def test_user_can_see_credentials_of_own_settings(self):
         self.client.force_authenticate(user=self.users['owner'])
 
-        response = self.client.get(self._get_settings_url(self.settings['owned']))
+        response = self.client.get(factories.ServiceSettingsFactory.get_url(self.settings['owned']))
         self.assert_credentials_visible(response.data)
 
     def test_user_cant_see_others_settings(self):
         self.client.force_authenticate(user=self.users['not_owner'])
 
-        response = self.client.get(self._get_settings_url(self.settings['owned']))
+        response = self.client.get(factories.ServiceSettingsFactory.get_url(self.settings['owned']))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_admin_can_see_all_credentials(self):
         self.client.force_authenticate(user=self.users['staff'])
 
-        response = self.client.get(self._get_settings_url(self.settings['owned']))
+        response = self.client.get(factories.ServiceSettingsFactory.get_url(self.settings['owned']))
         self.assert_credentials_visible(response.data)
 
     def test_user_cant_see_shared_credentials(self):
         self.client.force_authenticate(user=self.users['owner'])
 
-        response = self.client.get(self._get_settings_url(self.settings['shared']))
+        response = self.client.get(factories.ServiceSettingsFactory.get_url(self.settings['shared']))
         self.assert_credentials_hidden(response.data)
 
     def assert_credentials_visible(self, data):
@@ -101,8 +96,8 @@ class ServiceSettingsTest(test.APITransactionTestCase):
             "name": "Test backend",
             "type": 2,
         }
-        response = self.client.patch(self._get_settings_url(self.settings['owned']), payload)
-        settings = ServiceSettings.objects.get(uuid=self.settings['owned'].uuid)
+        response = self.client.patch(factories.ServiceSettingsFactory.get_url(self.settings['owned']), payload)
+        settings = models.ServiceSettings.objects.get(uuid=self.settings['owned'].uuid)
         self.assertNotEqual(settings.type, payload['type'], response.data)
 
     def test_user_can_change_settings_password(self):
@@ -111,6 +106,27 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         payload = {
             "password": "secret",
         }
-        response = self.client.patch(self._get_settings_url(self.settings['owned']), payload)
-        settings = ServiceSettings.objects.get(uuid=self.settings['owned'].uuid)
+        response = self.client.patch(factories.ServiceSettingsFactory.get_url(self.settings['owned']), payload)
+        settings = models.ServiceSettings.objects.get(uuid=self.settings['owned'].uuid)
         self.assertEqual(settings.password, payload['password'], response.data)
+
+
+@ddt
+class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+
+    @data('staff')
+    def test_user_can_update_certifications(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        settings = self.fixture.service_settings
+        certification = factories.CertificationFactory()
+        url = factories.ServiceSettingsFactory.get_url(settings, 'update_certifications')
+        payload = {'certifications': [ factories.CertificationFactory.get_url(certification)]}
+
+        response = self.client.post(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        settings.refresh_from_db()
+        self.assertTrue(settings.certifications.filter(pk=certification.pk).exists())

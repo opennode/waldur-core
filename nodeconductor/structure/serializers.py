@@ -726,13 +726,36 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
 
 class CertificationSerializer(core_serializers.AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
 
-    class Meta:
+    class Meta(object):
         model = models.Certification
         fields = ('uuid', 'url', 'name', 'description', 'link')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
 
+
+class NestedCertificationSerializer(serializers.HyperlinkedRelatedField):
+
+    class Meta(object):
+        model = models.Certification
+        field = ('url',)
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+
+class ServiceSettingsCertificationsUpdateSerializer(serializers.Serializer):
+    certifications = NestedCertificationSerializer(queryset=models.Certification.objects.all(),
+                                                   required=True,
+                                                   view_name='certification-detail',
+                                                   lookup_field='uuid',
+                                                   many=True)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        certifications = validated_data.pop('certifications', None)
+        instance.certifications.add(*certifications)
+        return instance
 
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                 core_serializers.AugmentedSerializerMixin,

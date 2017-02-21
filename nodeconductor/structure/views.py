@@ -1077,6 +1077,26 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
         return Response(stats, status=status.HTTP_200_OK)
 
+    @detail_route(methods=['post'])
+    def update_certifications(self, request, uuid=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        serialized_instance = serializers.ServiceSettingsSerializer(instance, context={'request': self.request})
+
+        return Response(serialized_instance.data, status=status.HTTP_200_OK)
+
+    # TODO [TM:2/21/17] test permissions
+
+    def get_serializer_class(self):
+        default_serializer_class = super(ServiceSettingsViewSet, self).get_serializer_class()
+        if self.request.method == 'POST' and self.action == 'update_certifications':
+            return serializers.ServiceSettingsCertificationsUpdateSerializer
+        else:
+            return default_serializer_class
+
+
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
     # Fix for schema generation

@@ -157,7 +157,7 @@ class CustomerPermissionFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('customer_permission-list')
 
 
@@ -176,6 +176,10 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
             settings = ServiceSettingsFactory()
         url = 'http://testserver' + reverse('servicesettings-detail', kwargs={'uuid': settings.uuid})
         return url if action is None else url + action + '/'
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('servicesettings-list')
 
 
 class TestServiceFactory(factory.DjangoModelFactory):
