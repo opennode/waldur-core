@@ -116,17 +116,37 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
 
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
+        self.settings = self.fixture.service_settings
+        self.certification = factories.CertificationFactory()
+        self.url = factories.ServiceSettingsFactory.get_url(self.settings, 'update_certifications')
+        self.payload = {'certifications': [ factories.CertificationFactory.get_url(self.certification)]}
 
     @data('staff')
     def test_user_can_update_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
-        settings = self.fixture.service_settings
-        certification = factories.CertificationFactory()
-        url = factories.ServiceSettingsFactory.get_url(settings, 'update_certifications')
-        payload = {'certifications': [ factories.CertificationFactory.get_url(certification)]}
 
-        response = self.client.post(url, payload)
+        response = self.client.post(self.url, self.payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        settings.refresh_from_db()
-        self.assertTrue(settings.certifications.filter(pk=certification.pk).exists())
+        self.settings.refresh_from_db()
+        self.assertTrue(self.settings.certifications.filter(pk=self.certification.pk).exists())
+
+    @data('owner', 'global_support')
+    def test_user_can_not_update_certifications_if_he_is_not_staff(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.client.post(self.url, self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_can_update_certifications_if_settings_are_shared(self):
+        self.client.force_authenticate(self.fixture.owner)
+        self.settings.shared = True
+        self.settings.save()
+
+        response = self.client.post(self.url, self.payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.settings.refresh_from_db()
+        self.assertTrue(self.settings.certifications.filter(pk=self.certification.pk).exists())
+

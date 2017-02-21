@@ -1074,6 +1074,15 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
 
         return Response(stats, status=status.HTTP_200_OK)
 
+    def is_owner_if_shared(request, view, obj=None):
+        if obj is None:
+            return
+
+        if obj.shared:
+            return permissions.is_owner(request, view, obj)
+        else:
+            return permissions.is_staff(request, view, obj)
+
     @detail_route(methods=['post'])
     def update_certifications(self, request, uuid=None):
         instance = self.get_object()
@@ -1085,8 +1094,7 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
     update_certifications_serializer_class = serializers.ServiceSettingsCertificationsUpdateSerializer
-
-    # TODO [TM:2/21/17] test permissions
+    update_certifications_permissions = [is_owner_if_shared]
 
 
 
