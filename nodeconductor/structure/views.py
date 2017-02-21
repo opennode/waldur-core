@@ -1074,7 +1074,7 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
 
         return Response(stats, status=status.HTTP_200_OK)
 
-    def is_owner_if_shared(request, view, obj=None):
+    def can_user_update_settings(request, view, obj=None):
         if obj is None:
             return
 
@@ -1094,7 +1094,7 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
     update_certifications_serializer_class = serializers.ServiceSettingsCertificationsUpdateSerializer
-    update_certifications_permissions = [is_owner_if_shared]
+    update_certifications_permissions = [can_user_update_settings]
 
 
 
