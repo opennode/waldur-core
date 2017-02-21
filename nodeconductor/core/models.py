@@ -6,6 +6,7 @@ import logging
 
 from croniter.croniter import croniter
 from datetime import datetime
+import django
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
@@ -163,7 +164,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                           help_text=_('Indicates when the user has agreed with the policy.'))
     preferred_language = models.CharField(max_length=10, blank=True)
     competence = models.CharField(max_length=255, blank=True)
-    token_lifetime = models.PositiveIntegerField(null=True, help_text='Token lifetime in seconds.')
+    token_lifetime = models.PositiveIntegerField(null=True, help_text='Token lifetime in seconds.',
+                                                 validators=[django.core.validators.MinValueValidator(60)])
 
     objects = UserManager()
 
