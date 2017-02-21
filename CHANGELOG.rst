@@ -6,6 +6,12 @@ Release NEXT
 - Remove name from service, service settings name is used instead.
 - Introduce and connect certification model to service settings.
 
+Release 0.124.0
+---------------
+- Logging cleanup.
+- Limit admin session life time to 1h by default, made it configurable.
+- Implemented penalized background task for reducing load from polling of services in down state.
+
 Release 0.123.0
 ---------------
 - Allow user to define his token lifetime.
