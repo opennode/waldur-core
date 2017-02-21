@@ -149,4 +149,3 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.settings.refresh_from_db()
         self.assertTrue(self.settings.certifications.filter(pk=self.certification.pk).exists())
-
