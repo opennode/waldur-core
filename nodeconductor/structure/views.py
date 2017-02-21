@@ -987,18 +987,15 @@ class SshKeyViewSet(mixins.CreateModelMixin,
             raise APIException(e)
 
 
-class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
-                             mixins.UpdateModelMixin,
-                             mixins.ListModelMixin,
-                             core_mixins.EagerLoadMixin,
-                             viewsets.GenericViewSet):
+class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
+                             core_views.ActionsViewSet):
     queryset = models.ServiceSettings.objects.filter()
     serializer_class = serializers.ServiceSettingsSerializer
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,
                        filters.ServiceSettingsScopeFilterBackend)
     filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
+    disabled_actions = ['create', 'destroy']
 
     def list(self, request, *args, **kwargs):
         """
@@ -1087,14 +1084,9 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
 
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
-    # TODO [TM:2/21/17] test permissions
+    update_certifications_serializer_class = serializers.ServiceSettingsCertificationsUpdateSerializer
 
-    def get_serializer_class(self):
-        default_serializer_class = super(ServiceSettingsViewSet, self).get_serializer_class()
-        if self.request.method == 'POST' and self.action == 'update_certifications':
-            return serializers.ServiceSettingsCertificationsUpdateSerializer
-        else:
-            return default_serializer_class
+    # TODO [TM:2/21/17] test permissions
 
 
 
