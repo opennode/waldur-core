@@ -202,7 +202,8 @@ class ProjectAdmin(FormRequestAdminMixin,
 
 class CertificationAdmin(admin.ModelAdmin):
     list_display = ('name', 'link')
-    search_fields = ['name', 'link', 'description']
+    search_fields = ['name', 'link']
+    list_filter = ('service_settings',)
 
 
 class ServiceSettingsAdminForm(ModelForm):
