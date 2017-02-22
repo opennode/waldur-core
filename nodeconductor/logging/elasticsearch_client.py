@@ -99,7 +99,7 @@ class ElasticsearchClient(object):
     class SearchBody(dict):
         FTS_FIELDS = (
             'message', 'customer_abbreviation', 'importance', 'project_group_name',
-            'cloud_account_name', 'project_name', 'user_native_name', 'user_full_name')
+            'project_name', 'user_native_name', 'user_full_name')
 
         def __init__(self):
             self.queries = {}

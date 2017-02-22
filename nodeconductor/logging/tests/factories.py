@@ -30,8 +30,6 @@ class EventFactory(object):
         self.fields = {
             '@timestamp': '2015-04-19T16:25:45.376+04:00',
             '@version': 1,
-            'cloud_account_name': 'test_cloud_account_name',
-            'cloud_account_uuid': 'test_cloud_account_uuid',
             'customer_abbreviation': 'TCAN',
             'customer_contact_details': 'test details',
             'customer_name': 'Test cusomter',

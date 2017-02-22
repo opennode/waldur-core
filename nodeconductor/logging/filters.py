@@ -24,7 +24,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
 
         - ?event_type=<string> - type of filtered events. Can be list
         - ?search=<string> - text for FTS. FTS fields: 'message', 'customer_abbreviation', 'importance'
-          'cloud_account_name', 'project_name', 'user_full_name', 'user_native_name'
+          'project_name', 'user_full_name', 'user_native_name'
         - ?scope=<URL> - url of object that is connected to event
         - ?scope_type=<string> - name of scope type of object that is connected to event
         - ?feature=<feature> (can be list) - include all event with type that belong to given features
