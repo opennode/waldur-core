@@ -315,7 +315,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
 
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ('customer', 'settings')
+    list_display = ('settings', 'customer')
     ordering = ('customer',)
 
 
