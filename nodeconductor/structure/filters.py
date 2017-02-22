@@ -369,7 +369,7 @@ class ServiceFilterMetaclass(FilterSetMetaclass):
 
 class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filters.FilterSet)):
     customer = django_filters.UUIDFilter(name='customer__uuid')
-    name = django_filters.CharFilter(view_name='settings__name', lookup_type='icontains')
+    name = django_filters.CharFilter(name='settings__name', lookup_type='icontains')
     project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
     project_uuid = django_filters.UUIDFilter(name='projects__uuid', distinct=True)
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
