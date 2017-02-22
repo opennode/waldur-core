@@ -756,6 +756,7 @@ class ServiceSettingsCertificationsUpdateSerializer(serializers.Serializer):
         instance.certifications.add(*certifications)
         return instance
 
+
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                 core_serializers.AugmentedSerializerMixin,
                                 serializers.HyperlinkedModelSerializer):

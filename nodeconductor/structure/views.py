@@ -1097,7 +1097,6 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
     update_certifications_permissions = [can_user_update_settings]
 
 
-
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
     # Fix for schema generation
     queryset = []
