@@ -692,7 +692,7 @@ class Service(core_models.UuidMixin,
         return cls._meta.app_label
 
     def get_log_fields(self):
-        return ('uuid', 'customer')
+        return ('uuid', 'customer', 'settings')
 
     def _get_log_context(self, entity_name):
         context = super(Service, self)._get_log_context(entity_name)
