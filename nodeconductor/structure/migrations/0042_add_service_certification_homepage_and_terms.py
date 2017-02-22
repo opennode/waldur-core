@@ -28,16 +28,16 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'Service Certifications',
             },
         ),
-        # migrations.AddField(
-        #     model_name='servicesettings',
-        #     name='homepage',
-        #     field=models.URLField(max_length=255, blank=True),
-        # ),
-        # migrations.AddField(
-        #     model_name='servicesettings',
-        #     name='terms_of_services',
-        #     field=models.TextField(blank=True),
-        # ),
+        migrations.AddField(
+            model_name='servicesettings',
+            name='homepage',
+            field=models.URLField(max_length=255, blank=True),
+        ),
+        migrations.AddField(
+            model_name='servicesettings',
+            name='terms_of_services',
+            field=models.TextField(blank=True),
+        ),
         migrations.AddField(
             model_name='servicesettings',
             name='certifications',
