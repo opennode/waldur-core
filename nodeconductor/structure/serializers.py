@@ -723,7 +723,7 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
-class CertificationSerializer(core_serializers.AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
+class CertificationSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = models.Certification
