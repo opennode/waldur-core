@@ -796,8 +796,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
     @staticmethod
     def eager_load(queryset):
-        queryset = queryset.select_related('customer').prefetch_related('quotas')
-        return queryset.prefetch_related('certifications')
+        return queryset.select_related('customer').prefetch_related('quotas').prefetch_related('certifications')
 
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
