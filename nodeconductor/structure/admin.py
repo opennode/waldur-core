@@ -357,7 +357,7 @@ class ResourceAdmin(admin.ModelAdmin):
         return obj.service_project_link.service
 
     get_service.short_description = 'Service'
-    get_service.admin_order_field = 'service_project_link__service__name'
+    get_service.admin_order_field = 'service_project_link__service__settings__name'
 
     def get_project(self, obj):
         return obj.service_project_link.project
