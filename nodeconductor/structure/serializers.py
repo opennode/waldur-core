@@ -1035,9 +1035,15 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
+                if 'name' not in self.initial_data:
+                    raise serializers.ValidationError({'name': 'Name field is required.'})
+
+                if len(self.initial_data['name']) > 150:
+                    raise serializers.ValidationError({'name': 'Name exceeds 150 symbols.'})
+
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
-                    name=attrs['name'],
+                    name=self.initial_data['name'],
                     customer=customer,
                     **args)
 
@@ -1114,7 +1120,7 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
 
-    service_name = serializers.CharField(source='service.settings.name')
+    service_name = serializers.ReadOnlyField(source='service.settings.name')
 
     class Meta(object):
         model = NotImplemented
