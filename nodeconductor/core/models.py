@@ -6,7 +6,6 @@ import logging
 
 from croniter.croniter import croniter
 from datetime import datetime
-import django
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
@@ -165,7 +164,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     preferred_language = models.CharField(max_length=10, blank=True)
     competence = models.CharField(max_length=255, blank=True)
     token_lifetime = models.PositiveIntegerField(null=True, help_text='Token lifetime in seconds.',
-                                                 validators=[django.core.validators.MinValueValidator(60)])
+                                                 validators=[validators.MinValueValidator(60)])
 
     objects = UserManager()
 
