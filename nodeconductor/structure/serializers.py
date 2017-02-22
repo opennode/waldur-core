@@ -16,9 +16,7 @@ from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
-from nodeconductor.core import models as core_models
-from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core import utils as core_utils
+from nodeconductor.core import (models as core_models, serializers as core_serializers, utils as core_utils)
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
@@ -239,7 +237,8 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'project_id',
             'service__uuid',
             'service__settings__uuid',
-            'service__settings__shared'
+            'service__settings__shared',
+            'service__settings__name',
         )
         for link_model in ServiceProjectLink.get_all_models():
             links = (link_model.objects.all()
@@ -1117,12 +1116,14 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
 
+    service_name = serializers.CharField(source='service.settings.name')
+
     class Meta(object):
         model = NotImplemented
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
-            'service', 'service_name', 'service_uuid'
+            'service', 'service_uuid', 'service_name',
         )
         related_paths = ('project', 'service')
         extra_kwargs = {
@@ -1198,7 +1199,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         read_only=True,
         lookup_field='uuid')
 
-    service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
+    service_name = serializers.ReadOnlyField(source='service_project_link.service.settings.name')
     service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
 
     service_settings = serializers.HyperlinkedRelatedField(
