@@ -6,23 +6,23 @@ from nodeconductor.structure import models
 from . import fixtures, factories
 
 
-class BaseCertificationTest(test.APITransactionTestCase):
+class BaseServiceCertificationTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.fixture = fixtures.ProjectFixture()
 
 
 @ddt
-class CertificationRetrieveTest(BaseCertificationTest):
+class ServiceCertificationRetrieveTest(BaseServiceCertificationTest):
 
     def setUp(self):
-        super(CertificationRetrieveTest, self).setUp()
-        self.url = factories.CertificationFactory.get_list_url()
+        super(ServiceCertificationRetrieveTest, self).setUp()
+        self.url = factories.ServiceCertificationFactory.get_list_url()
 
     @data('user', 'global_support', 'owner', 'manager', 'admin', 'staff')
     def test_user_can_see_list_of_available_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
-        certification = factories.CertificationFactory()
+        certification = factories.ServiceCertificationFactory()
 
         response = self.client.get(self.url)
 
@@ -31,11 +31,11 @@ class CertificationRetrieveTest(BaseCertificationTest):
 
 
 @ddt
-class CertificationCreateTest(BaseCertificationTest):
+class ServiceCertificationCreateTest(BaseServiceCertificationTest):
 
     def setUp(self):
-        super(CertificationCreateTest, self).setUp()
-        self.url = factories.CertificationFactory.get_list_url()
+        super(ServiceCertificationCreateTest, self).setUp()
+        self.url = factories.ServiceCertificationFactory.get_list_url()
 
     @data('staff')
     def test_staff_can_create_certification(self, user):
@@ -49,7 +49,7 @@ class CertificationCreateTest(BaseCertificationTest):
         response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        certification = models.Certification.objects.get(name=payload['name'])
+        certification = models.ServiceCertification.objects.get(name=payload['name'])
         self.assertEqual(response.data['name'], payload['name'])
         self.assertEqual(certification.name, payload['name'])
         self.assertEqual(response.data['link'], payload['link'])
@@ -72,12 +72,12 @@ class CertificationCreateTest(BaseCertificationTest):
 
 
 @ddt
-class CertificationUpdateTest(BaseCertificationTest):
+class ServiceCertificationUpdateTest(BaseServiceCertificationTest):
 
     def setUp(self):
-        super(CertificationUpdateTest, self).setUp()
-        self.certification = factories.CertificationFactory()
-        self.url = factories.CertificationFactory.get_url(self.certification)
+        super(ServiceCertificationUpdateTest, self).setUp()
+        self.certification = factories.ServiceCertificationFactory()
+        self.url = factories.ServiceCertificationFactory.get_url(self.certification)
 
     @data('staff')
     def test_staff_can_update_certification(self, user):
@@ -100,12 +100,12 @@ class CertificationUpdateTest(BaseCertificationTest):
 
 
 @ddt
-class CertificationDeleteTest(BaseCertificationTest):
+class ServiceCertificationDeleteTest(BaseServiceCertificationTest):
 
     def setUp(self):
-        super(CertificationDeleteTest, self).setUp()
-        self.certification = factories.CertificationFactory()
-        self.url = factories.CertificationFactory.get_url(self.certification)
+        super(ServiceCertificationDeleteTest, self).setUp()
+        self.certification = factories.ServiceCertificationFactory()
+        self.url = factories.ServiceCertificationFactory.get_url(self.certification)
 
     @data('staff')
     def test_staff_can_delete_certification(self, user):
@@ -114,7 +114,7 @@ class CertificationDeleteTest(BaseCertificationTest):
         response = self.client.delete(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        with self.assertRaises(models.Certification.DoesNotExist):
+        with self.assertRaises(models.ServiceCertification.DoesNotExist):
             self.certification.refresh_from_db()
 
     @data('admin', 'manager', 'global_support', 'user')
@@ -124,4 +124,4 @@ class CertificationDeleteTest(BaseCertificationTest):
         response = self.client.delete(self.url)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertTrue(models.Certification.objects.filter(pk=self.certification.pk).exists())
+        self.assertTrue(models.ServiceCertification.objects.filter(pk=self.certification.pk).exists())

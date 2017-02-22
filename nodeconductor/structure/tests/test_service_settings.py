@@ -117,9 +117,9 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
         self.settings = self.fixture.service_settings
-        self.certification = factories.CertificationFactory()
+        self.certification = factories.ServiceCertificationFactory()
         self.url = factories.ServiceSettingsFactory.get_url(self.settings, 'update_certifications')
-        self.payload = {'certifications': [ factories.CertificationFactory.get_url(self.certification)]}
+        self.payload = {'certifications': [factories.ServiceCertificationFactory.get_url(self.certification)]}
 
     @data('staff')
     def test_user_can_update_certifications(self, user):

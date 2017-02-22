@@ -555,14 +555,14 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
-class Certification(core_models.UuidMixin,
+class ServiceCertification(core_models.UuidMixin,
                     core_models.NameMixin,
                     core_models.DescribableMixin):
     link = models.URLField(max_length=255, blank=True)
 
     class Meta(object):
-        verbose_name = 'Certification'
-        verbose_name_plural = 'Certifications'
+        verbose_name = 'Service Certification'
+        verbose_name_plural = 'Service Certifications'
         ordering = ['-name']
 
     def __str__(self):
@@ -570,7 +570,7 @@ class Certification(core_models.UuidMixin,
 
     @classmethod
     def get_url_name(cls):
-        return 'certification'
+        return 'service-certification'
 
 
 @python_2_unicode_compatible
@@ -601,7 +601,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     homepage = models.URLField(max_length=255, blank=True)
     terms_of_services = models.TextField(blank=True)
-    certifications = models.ManyToManyField(to='Certification', related_name='service_settings')
+    certifications = models.ManyToManyField(to='ServiceCertification', related_name='service_settings')
 
     tracker = FieldTracker()
 

@@ -200,7 +200,7 @@ class ProjectAdmin(FormRequestAdminMixin,
     inlines = [QuotaInline]
 
 
-class CertificationAdmin(admin.ModelAdmin):
+class ServiceCertificationAdmin(admin.ModelAdmin):
     list_display = ('name', 'link')
     search_fields = ['name', 'link']
     list_filter = ('service_settings',)
@@ -391,7 +391,7 @@ class VirtualMachineAdmin(ResourceAdmin):
     detect_coordinates.short_description = "Detect coordinates of virtual machines"
 
 
-admin.site.register(models.Certification, CertificationAdmin)
+admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)

@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Certification',
+            name='ServiceCertification',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('description', models.CharField(max_length=500, verbose_name='description', blank=True)),
@@ -24,23 +24,23 @@ class Migration(migrations.Migration):
             ],
             options={
                 'ordering': ['-name'],
-                'verbose_name': 'Certification',
-                'verbose_name_plural': 'Certifications',
+                'verbose_name': 'Service Certification',
+                'verbose_name_plural': 'Service Certifications',
             },
         ),
-        migrations.AddField(
-            model_name='servicesettings',
-            name='homepage',
-            field=models.URLField(max_length=255, blank=True),
-        ),
-        migrations.AddField(
-            model_name='servicesettings',
-            name='terms_of_services',
-            field=models.TextField(blank=True),
-        ),
+        # migrations.AddField(
+        #     model_name='servicesettings',
+        #     name='homepage',
+        #     field=models.URLField(max_length=255, blank=True),
+        # ),
+        # migrations.AddField(
+        #     model_name='servicesettings',
+        #     name='terms_of_services',
+        #     field=models.TextField(blank=True),
+        # ),
         migrations.AddField(
             model_name='servicesettings',
             name='certifications',
-            field=models.ManyToManyField(related_name='service_settings', to='structure.Certification'),
+            field=models.ManyToManyField(related_name='service_settings', to='structure.ServiceCertification'),
         ),
     ]
