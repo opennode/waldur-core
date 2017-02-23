@@ -27,7 +27,7 @@ Requires: python-django >= 1.9, python-django < 1.10
 Requires: python-django-admin-tools = 0.7.0
 Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
-Requires: python-django-fluent-dashboard = 0.5.1
+Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
 Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.5.2
