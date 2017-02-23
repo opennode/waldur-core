@@ -743,11 +743,12 @@ class NestedServiceCertificationSerializer(serializers.HyperlinkedRelatedField):
 
 
 class ServiceSettingsCertificationsUpdateSerializer(serializers.Serializer):
-    certifications = NestedServiceCertificationSerializer(queryset=models.ServiceCertification.objects.all(),
-                                                          required=True,
-                                                          view_name='service-certification-detail',
-                                                          lookup_field='uuid',
-                                                          many=True)
+    certifications = NestedServiceCertificationSerializer(
+        queryset=models.ServiceCertification.objects.all(),
+        required=True,
+        view_name='service-certification-detail',
+        lookup_field='uuid',
+        many=True)
 
     @transaction.atomic
     def update(self, instance, validated_data):
