@@ -904,7 +904,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         fields = (
             'uuid',
             'url',
-            'projects', 'project',
+            'projects', 'project', 'state', 'service_type',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'resources_count',
             'settings', 'settings_uuid', 'backend_url', 'username', 'password',
             'token', 'certificate', 'domain', 'terms_of_services', 'homepage',
