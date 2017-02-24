@@ -157,7 +157,7 @@ class CustomerPermissionFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('customer_permission-list')
 
 
@@ -177,12 +177,15 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
         url = 'http://testserver' + reverse('servicesettings-detail', kwargs={'uuid': settings.uuid})
         return url if action is None else url + action + '/'
 
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('servicesettings-list')
+
 
 class TestServiceFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = test_models.TestService
 
-    name = factory.Sequence(lambda n: 'service%s' % n)
     settings = factory.SubFactory(ServiceSettingsFactory)
     customer = factory.SubFactory(CustomerFactory)
 
@@ -253,3 +256,32 @@ class TestNewInstanceFactory(factory.DjangoModelFactory):
     @classmethod
     def get_list_url(cls):
         return 'http://testserver' + reverse('test-new-instances-list')
+
+
+class ServiceCertificationFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = models.ServiceCertification
+
+    name = factory.Sequence(lambda n: 'certification%s' % n)
+    link = factory.Sequence(lambda n: 'https://www.test.com/certification%s' % n)
+    description = factory.Sequence(lambda n: 'description of the certification%s' % n)
+
+    @classmethod
+    def get_url(cls, instance=None, action=None):
+        if instance is None:
+            instance = ServiceCertificationFactory()
+        url = 'http://testserver' + reverse('service-certification-detail', kwargs={'uuid': instance.uuid})
+        return url if action is None else url + action + '/'
+
+    @classmethod
+    def get_list_url(cls):
+        return 'http://testserver' + reverse('service-certification-list')
+
+    @factory.post_generation
+    def service_settings(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for service_settings in extracted:
+                self.service_settings.add(service_settings)

@@ -200,6 +200,12 @@ class ProjectAdmin(FormRequestAdminMixin,
     inlines = [QuotaInline]
 
 
+class ServiceCertificationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'link')
+    search_fields = ['name', 'link']
+    list_filter = ('service_settings',)
+
+
 class ServiceSettingsAdminForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
@@ -229,8 +235,10 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
-              'token', 'domain', 'certificate', 'options', 'customer', 'shared', 'state', 'error_message', 'tags')
+              'token', 'domain', 'certificate', 'options', 'customer',
+              'shared', 'state', 'error_message', 'tags', 'homepage', 'terms_of_services', 'certifications')
     inlines = [QuotaInline]
+    filter_horizontal = ('certifications',)
 
     def get_type_display(self, obj):
         return obj.get_type_display()
@@ -307,17 +315,17 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
 
 class ServiceAdmin(admin.ModelAdmin):
-    list_display = ('name', 'customer', 'settings')
-    ordering = ('name', 'customer')
+    list_display = ('settings', 'customer')
+    ordering = ('customer',)
 
 
 class ServiceProjectLinkAdmin(admin.ModelAdmin):
     readonly_fields = ('service', 'project')
     list_display = ('get_service_name', 'get_customer_name', 'get_project_name')
-    list_filter = ('service__settings', 'project__name')
-    ordering = ('service__customer__name', 'project__name', 'service__name')
+    list_filter = ('service__settings', 'project__name', 'service__settings__name')
+    ordering = ('service__customer__name', 'project__name')
     list_display_links = ('get_service_name',)
-    search_fields = ('service__customer__name', 'project__name', 'service__name')
+    search_fields = ('service__customer__name', 'project__name', 'service__settings__name')
     inlines = [QuotaInline]
 
     def get_queryset(self, request):
@@ -325,7 +333,7 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
         return queryset.select_related('service', 'project', 'project__customer')
 
     def get_service_name(self, obj):
-        return obj.service.name
+        return obj.service.settings.name
 
     get_service_name.short_description = 'Service'
 
@@ -349,7 +357,7 @@ class ResourceAdmin(admin.ModelAdmin):
         return obj.service_project_link.service
 
     get_service.short_description = 'Service'
-    get_service.admin_order_field = 'service_project_link__service__name'
+    get_service.admin_order_field = 'service_project_link__service__settings__name'
 
     def get_project(self, obj):
         return obj.service_project_link.project
@@ -383,6 +391,7 @@ class VirtualMachineAdmin(ResourceAdmin):
     detect_coordinates.short_description = "Detect coordinates of virtual machines"
 
 
+admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)

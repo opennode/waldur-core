@@ -555,6 +555,25 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
+class ServiceCertification(core_models.UuidMixin,
+                    core_models.NameMixin,
+                    core_models.DescribableMixin):
+    link = models.URLField(max_length=255, blank=True)
+
+    class Meta(object):
+        verbose_name = 'Service Certification'
+        verbose_name_plural = 'Service Certifications'
+        ordering = ['-name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_url_name(cls):
+        return 'service-certification'
+
+
+@python_2_unicode_compatible
 class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                       core_models.UuidMixin,
                       core_models.NameMixin,
@@ -580,6 +599,9 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
     options = JSONField(default={}, help_text='Extra options', blank=True)
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    homepage = models.URLField(max_length=255, blank=True)
+    terms_of_services = models.TextField(blank=True)
+    certifications = models.ManyToManyField(to='ServiceCertification', related_name='service_settings')
 
     tracker = FieldTracker()
 
@@ -627,7 +649,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
 
 @python_2_unicode_compatible
 class Service(core_models.UuidMixin,
-              core_models.NameMixin,
               core_models.DescendantMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
@@ -655,14 +676,14 @@ class Service(core_models.UuidMixin,
         super(Service, self).__init__(*args, **kwargs)
 
     def __str__(self):
-        return self.name
-
-    def get_backend(self, **kwargs):
-        return self.settings.get_backend(**kwargs)
+        return self.settings.name
 
     @property
     def full_name(self):
-        return ' / '.join([self.settings.name, self.name])
+        return self.settings.name
+
+    def get_backend(self, **kwargs):
+        return self.settings.get_backend(**kwargs)
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -675,7 +696,7 @@ class Service(core_models.UuidMixin,
         return cls._meta.app_label
 
     def get_log_fields(self):
-        return ('uuid', 'name', 'customer')
+        return ('uuid', 'customer', 'settings')
 
     def _get_log_context(self, entity_name):
         context = super(Service, self)._get_log_context(entity_name)
@@ -789,7 +810,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
             m.objects.filter(service_project_link=self) for m in resource_models)
 
     def __str__(self):
-        return '{0} | {1}'.format(self.service.name, self.project.name)
+        return '{0} | {1}'.format(self.service.settings.name, self.project.name)
 
 
 def validate_yaml(value):
