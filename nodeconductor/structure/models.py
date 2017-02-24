@@ -137,7 +137,7 @@ class VATMixin(models.Model):
         charge = self.get_vat_charge()
         if charge.action == pyvat.VatChargeAction.charge:
             return charge.rate
-        # Return None, if reverse_charge or no_charge action is applied
+            # Return None, if reverse_charge or no_charge action is applied
 
     def get_vat_charge(self):
         if not self.country:
@@ -821,9 +821,6 @@ class VirtualMachineMixin(CoordinatesMixin):
     min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
     min_disk = models.PositiveIntegerField(default=0, help_text='Minimum disk size in MiB')
 
-    external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-    internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-
     image_name = models.CharField(max_length=150, blank=True)
 
     key_name = models.CharField(max_length=50, blank=True)
@@ -851,6 +848,14 @@ class VirtualMachineMixin(CoordinatesMixin):
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @property
+    def external_ips(self):
+        raise NotImplementedError()
+
+    @property
+    def internal_ips(self):
+        raise NotImplementedError()
 
 
 class PublishableMixin(models.Model):
@@ -931,9 +936,9 @@ class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
 
         STABLE_STATES = set([ONLINE, OFFLINE])
         UNSTABLE_STATES = set([
-            s for (s, _) in CHOICES
-            if s not in STABLE_STATES
-        ])
+                                  s for (s, _) in CHOICES
+                                  if s not in STABLE_STATES
+                                  ])
 
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED,

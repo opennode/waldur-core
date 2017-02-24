@@ -1211,14 +1211,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     def get_resource_type(self, obj):
         return SupportedServices.get_name_for_model(obj)
 
-    def to_representation(self, instance):
-        # We need this hook, because ips have to be represented as list
-        if hasattr(instance, 'external_ips'):
-            instance.external_ips = [instance.external_ips] if instance.external_ips else []
-        if hasattr(instance, 'internal_ips'):
-            instance.internal_ips = [instance.internal_ips] if instance.internal_ips else []
-        return super(BaseResourceSerializer, self).to_representation(instance)
-
     def get_resource_fields(self):
         return self.Meta.model._meta.get_all_field_names()
 
