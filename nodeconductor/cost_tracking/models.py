@@ -24,6 +24,7 @@ from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
 from nodeconductor.structure import models as structure_models, SupportedServices
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,7 +123,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         if hasattr(self.scope, 'backend_id'):
             self.details['backend_id'] = self.scope.backend_id
         if self.is_resource_estimate():
-            self.details['service_settings_name'] = self.scope.service_project_link.service.settings.name
+            self.details['service_name'] = self.scope.service_project_link.service.name
             self.details['project_name'] = self.scope.service_project_link.project.name
         self.save(update_fields=['details'])
 
@@ -195,7 +196,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
 
     def get_scope_name(self):
         if self.scope:
-            if isinstance(self.scope, (structure_models.ServiceProjectLink, structure_models.Service)):
+            if isinstance(self.scope, structure_models.ServiceProjectLink):
                 # We need to display some meaningful name for SPL.
                 return str(self.scope)
             else:

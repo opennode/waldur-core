@@ -284,6 +284,7 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
             service_model = SupportedServices.get_service_models()[shared_settings.type]['service']
             service_model.objects.create(customer=customer,
                                          settings=shared_settings,
+                                         name=shared_settings.name,
                                          available_for_all=True)
         except KeyError:
             logger.warning("Unregistered service of type %s" % shared_settings.type)
@@ -302,6 +303,7 @@ def connect_shared_service_settings_to_customers(sender, instance, name, source,
         if not service_model.objects.filter(customer=customer, settings=service_settings).exists():
             service_model.objects.create(customer=customer,
                                          settings=service_settings,
+                                         name=service_settings.name,
                                          available_for_all=True)
 
 
