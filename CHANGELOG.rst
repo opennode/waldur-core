@@ -3,10 +3,6 @@ CHANGELOG
 
 Release NEXT
 ------------
-Nothing yet.
-
-Release 0.125.0
----------------
 - Remove name from service, service settings name is used instead.
 - Introduce and connect certification model to service settings.
 
