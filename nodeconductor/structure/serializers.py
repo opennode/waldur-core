@@ -16,9 +16,7 @@ from django.utils.functional import cached_property
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
-from nodeconductor.core import models as core_models
-from nodeconductor.core import serializers as core_serializers
-from nodeconductor.core import utils as core_utils
+from nodeconductor.core import (models as core_models, serializers as core_serializers, utils as core_utils)
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
@@ -49,6 +47,7 @@ class PermissionFieldFilteringMixin(object):
        in the class that this mixin is mixed into and return
        the field in question from that method.
     """
+
     def get_fields(self):
         fields = super(PermissionFieldFilteringMixin, self).get_fields()
 
@@ -122,7 +121,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     uuid = serializers.ReadOnlyField(source='service.uuid')
     url = serializers.SerializerMethodField()
     service_project_link_url = serializers.SerializerMethodField()
-    name = serializers.ReadOnlyField(source='service.name')
+    name = serializers.ReadOnlyField(source='service.settings.name')
     type = serializers.SerializerMethodField()
     state = serializers.SerializerMethodField()
     shared = serializers.SerializerMethodField()
@@ -238,9 +237,9 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'service__settings__state',
             'project_id',
             'service__uuid',
-            'service__name',
             'service__settings__uuid',
-            'service__settings__shared'
+            'service__settings__shared',
+            'service__settings__name',
         )
         for link_model in ServiceProjectLink.get_all_models():
             links = (link_model.objects.all()
@@ -289,7 +288,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'url': {'lookup_field': 'uuid'},
         }
         # Balance should be modified by nodeconductor_paypal app
-        read_only_fields = ('balance', )
+        read_only_fields = ('balance',)
 
     def get_image(self, customer):
         if not customer.image:
@@ -725,10 +724,42 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
+class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.ServiceCertification
+        fields = ('uuid', 'url', 'name', 'description', 'link')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid', 'view_name': 'service-certification-detail'},
+        }
+
+
+class NestedServiceCertificationSerializer(serializers.HyperlinkedRelatedField):
+    class Meta(object):
+        model = models.ServiceCertification
+        field = ('url',)
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+
+class ServiceSettingsCertificationsUpdateSerializer(serializers.Serializer):
+    certifications = NestedServiceCertificationSerializer(
+        queryset=models.ServiceCertification.objects.all(),
+        required=True,
+        view_name='service-certification-detail',
+        lookup_field='uuid',
+        many=True)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        certifications = validated_data.pop('certifications', None)
+        instance.certifications.add(*certifications)
+        return instance
+
+
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                 core_serializers.AugmentedSerializerMixin,
                                 serializers.HyperlinkedModelSerializer):
-
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
     state = MappedChoiceField(
         choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
@@ -736,6 +767,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
+    certifications = ServiceCertificationSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -743,6 +775,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'url', 'uuid', 'name', 'type', 'state', 'error_message', 'shared',
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
+            'homepage', 'terms_of_services', 'certifications',
             'quotas', 'scope',
         )
         protected_fields = ('type', 'customer')
@@ -751,6 +784,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
+            'certifications': {'lookup_field': 'uuid'},
         }
         write_only_fields = ('backend_url', 'username', 'token', 'password', 'certificate')
         for field in write_only_fields:
@@ -762,7 +796,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
     @staticmethod
     def eager_load(queryset):
-        return queryset.select_related('customer').prefetch_related('quotas')
+        return queryset.select_related('customer').prefetch_related('quotas').prefetch_related('certifications')
 
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
@@ -811,6 +845,7 @@ class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
     """ Build a list of supported services via serializers definition.
         See SupportedServices for details.
     """
+
     def __new__(cls, name, bases, args):
         SupportedServices.register_service(args['Meta'].model)
         serializer = super(ServiceSerializerMetaclass, cls).__new__(cls, name, bases, args)
@@ -852,24 +887,28 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     certificate = serializers.FileField(allow_null=True, write_only=True, required=False)
     resources_count = serializers.SerializerMethodField()
     service_type = serializers.SerializerMethodField()
-    shared = serializers.ReadOnlyField(source='settings.shared')
     state = serializers.SerializerMethodField()
-    error_message = serializers.ReadOnlyField(source='settings.error_message')
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     tags = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
+
+    shared = serializers.ReadOnlyField(source='settings.shared')
+    error_message = serializers.ReadOnlyField(source='settings.error_message')
+    terms_of_services = serializers.ReadOnlyField(source='settings.terms_of_services')
+    homepage = serializers.ReadOnlyField(source='settings.homepage')
+    certifications = ServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
+    name = serializers.ReadOnlyField(source='settings.name')
 
     class Meta(object):
         model = NotImplemented
         fields = (
             'uuid',
             'url',
-            'name', 'projects', 'project',
-            'customer', 'customer_uuid', 'customer_name', 'customer_native_name',
-            'settings', 'settings_uuid',
-            'backend_url', 'username', 'password', 'token', 'certificate', 'domain',
-            'resources_count', 'service_type', 'shared', 'state', 'error_message',
-            'available_for_all', 'scope', 'tags', 'quotas',
+            'projects', 'project',
+            'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'resources_count',
+            'settings', 'settings_uuid', 'backend_url', 'username', 'password',
+            'token', 'certificate', 'domain', 'terms_of_services', 'homepage',
+            'certifications', 'name', 'available_for_all', 'scope', 'tags', 'quotas',
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope', 'domain')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
@@ -890,18 +929,20 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def eager_load(queryset):
         related_fields = (
             'uuid',
-            'name',
             'available_for_all',
             'customer__uuid',
             'customer__name',
             'customer__native_name',
             'settings__state',
             'settings__uuid',
+            'settings__name',
             'settings__type',
             'settings__shared',
             'settings__error_message',
             'settings__options',
             'settings__domain',
+            'settings__terms_of_services',
+            'settings__homepage',
         )
         queryset = queryset.select_related('customer', 'settings').only(*related_fields)
         projects = models.Project.objects.all().only('uuid', 'name')
@@ -995,9 +1036,15 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
+                if 'name' not in self.initial_data:
+                    raise serializers.ValidationError({'name': 'Name field is required.'})
+
+                if len(self.initial_data['name']) > 150:
+                    raise serializers.ValidationError({'name': 'Name exceeds 150 symbols.'})
+
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
-                    name=attrs['name'],
+                    name=self.initial_data['name'],
                     customer=customer,
                     **args)
 
@@ -1064,7 +1111,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
                                        core_serializers.AugmentedSerializerMixin,
                                        serializers.HyperlinkedModelSerializer):
-
     project = serializers.HyperlinkedRelatedField(
         queryset=models.Project.objects.all(),
         view_name='project-detail',
@@ -1075,12 +1121,14 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
         read_only=True)
 
+    service_name = serializers.ReadOnlyField(source='service.settings.name')
+
     class Meta(object):
         model = NotImplemented
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
-            'service', 'service_name', 'service_uuid'
+            'service', 'service_uuid', 'service_name',
         )
         related_paths = ('project', 'service')
         extra_kwargs = {
@@ -1156,7 +1204,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         read_only=True,
         lookup_field='uuid')
 
-    service_name = serializers.ReadOnlyField(source='service_project_link.service.name')
+    service_name = serializers.ReadOnlyField(source='service_project_link.service.settings.name')
     service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
 
     service_settings = serializers.HyperlinkedRelatedField(
@@ -1253,21 +1301,18 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
 
 class PublishableResourceSerializer(BaseResourceSerializer):
-
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + ('publishing_state',)
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
 class SummaryResourceSerializer(core_serializers.BaseSummarySerializer):
-
     @classmethod
     def get_serializer(cls, model):
         return SupportedServices.get_resource_serializer(model)
 
 
 class SummaryServiceSerializer(core_serializers.BaseSummarySerializer):
-
     @classmethod
     def get_serializer(cls, model):
         return SupportedServices.get_service_serializer(model)
@@ -1276,7 +1321,6 @@ class SummaryServiceSerializer(core_serializers.BaseSummarySerializer):
 class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
                                    core_serializers.AugmentedSerializerMixin,
                                    serializers.HyperlinkedModelSerializer):
-
     backend_id = serializers.CharField(write_only=True)
     project = serializers.HyperlinkedRelatedField(
         queryset=models.Project.objects.all(),
@@ -1328,7 +1372,6 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
 
 
 class VirtualMachineSerializer(BaseResourceSerializer):
-
     external_ips = serializers.ListField(
         child=serializers.IPAddressField(protocol='ipv4'),
         read_only=True,
@@ -1379,6 +1422,7 @@ class PropertySerializerMetaclass(serializers.SerializerMetaclass):
     """ Build a list of supported properties via serializers definition.
         See SupportedServices for details.
     """
+
     def __new__(cls, name, bases, args):
         SupportedServices.register_property(args['Meta'].model)
         return super(PropertySerializerMetaclass, cls).__new__(cls, name, bases, args)
@@ -1387,7 +1431,6 @@ class PropertySerializerMetaclass(serializers.SerializerMetaclass):
 class BasePropertySerializer(six.with_metaclass(PropertySerializerMetaclass,
                                                 core_serializers.AugmentedSerializerMixin,
                                                 serializers.HyperlinkedModelSerializer)):
-
     class Meta(object):
         model = NotImplemented
 
