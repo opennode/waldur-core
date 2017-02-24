@@ -50,7 +50,8 @@ class ServiceProjectLinkSignalsTest(TestCase):
 
     def create_service(self, customer, available_for_all):
         service_settings = factories.ServiceSettingsFactory(shared=False)
-        return test_models.TestService.objects.create(customer=customer,
+        return test_models.TestService.objects.create(name='test',
+                                                      customer=customer,
                                                       settings=service_settings,
                                                       available_for_all=available_for_all)
 

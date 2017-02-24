@@ -216,18 +216,13 @@ class ScopeDeleteTest(TestCase):
 
     @freeze_time('2016-08-08 13:00:00')
     def test_estimate_populate_details_on_scope_deletion(self):
-        scopes = (self.resource, self.project)
+        scopes = (self.resource, self.service, self.project)
         for scope in scopes:
             estimate = models.PriceEstimate.objects.get_current(scope)
             scope.delete()
             estimate.refresh_from_db()
 
             self.assertEqual(estimate.details['name'], scope.name)
-
-        estimate = models.PriceEstimate.objects.get_current(self.service)
-        self.service.delete()
-        estimate.refresh_from_db()
-        self.assertEqual(estimate.details['name'], str(self.service))
 
     # set time to next month to make sure that estimates for previous months are deleted too.
     @freeze_time('2016-09-01 12:00:00')
