@@ -36,7 +36,7 @@ install_requires = [
     'hiredis>=0.2.0',
     'iptools>=0.6.1',
     'jsonfield==1.0.0',
-    'Pillow>=2.0.0,<3.0.0',
+    'Pillow>=2.0.0',
     'PyYAML>=3.10',
     'pycountry>=1.20,<2.0',
     'pyvat>=1.3.1,<2.0',
