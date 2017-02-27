@@ -680,10 +680,6 @@ class Service(core_models.UuidMixin,
     def __str__(self):
         return self.settings.name
 
-    @property
-    def full_name(self):
-        return self.settings.name
-
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
 
