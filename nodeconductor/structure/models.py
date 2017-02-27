@@ -852,11 +852,25 @@ class VirtualMachineMixin(CoordinatesMixin):
 
     @property
     def external_ips(self):
-        raise NotImplementedError()
+        """
+        Returns a list of external IPs.
+        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
+        For instance:
+         - SaltStack (aws) handles IPs as private and public IP addresses;
+         - DigitalOcean has only 1 external ip called ip_address.
+        """
+        return []
 
     @property
     def internal_ips(self):
-        raise NotImplementedError()
+        """
+        Returns a list of internal IPs.
+        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
+        For instance:
+         - SaltStack (aws) handles IPs as private and public IP addresses;
+         - DigitalOcean does not support internal IP at the moment.
+        """
+        return []
 
 
 class PublishableMixin(models.Model):
