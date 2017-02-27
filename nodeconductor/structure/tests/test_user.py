@@ -331,7 +331,7 @@ class PasswordSerializerTest(unittest.TestCase):
             {'password': ['This field may not be blank.']}, serializer.errors)
 
 
-class UserFilterTest(test.APISimpleTestCase):
+class UserFilterTest(test.APITransactionTestCase):
 
     def test_user_list_can_be_filtered(self):
         supported_filters = [
@@ -684,3 +684,10 @@ class UserUpdateTest(test.APITransactionTestCase):
 
         self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEquals(response.data['email'], ['User with email "%s" already exists' % email])
+
+    def test_token_lifetime_cannot_be_less_than_60_seconds(self):
+        self.valid_payload['token_lifetime'] = 59
+
+        response = self.client.put(self.url, self.valid_payload)
+        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('token_lifetime', response.data)

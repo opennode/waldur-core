@@ -96,6 +96,21 @@ AUTHENTICATION_BACKENDS = (
     'permission.backends.PermissionBackend',
 )
 
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
 ANONYMOUS_USER_ID = None
 
 TEMPLATES = [
@@ -113,6 +128,7 @@ TEMPLATES = [
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader',
             ) + ADMIN_TEMPLATE_LOADERS,
+            'builtins': ['permission.templatetags.permissionif'],
         },
     },
 ]

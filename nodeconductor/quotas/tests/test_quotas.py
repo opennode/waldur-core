@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 from rest_framework import test, status
-import reversion
+from reversion import revisions as reversion
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.quotas.tests import factories

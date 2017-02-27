@@ -450,7 +450,7 @@ class ProjectPermissionFilterTest(test.APITransactionTestCase):
         self.assertEqual(len(response.data), 0)
 
 
-class ProjectPermissionExpirationTest(test.APISimpleTestCase):
+class ProjectPermissionExpirationTest(test.APITransactionTestCase):
     def setUp(self):
         permission = factories.ProjectPermissionFactory()
         self.user = permission.user
@@ -513,7 +513,7 @@ class ProjectPermissionExpirationTest(test.APISimpleTestCase):
             not_expired_permission.user, not_expired_permission.role))
 
 
-class ProjectPermissionCreatedByTest(test.APISimpleTestCase):
+class ProjectPermissionCreatedByTest(test.APITransactionTestCase):
     def test_user_which_granted_permission_is_stored(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)

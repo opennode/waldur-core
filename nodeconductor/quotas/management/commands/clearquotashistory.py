@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-import reversion
+from reversion import revisions as reversion
 
 from nodeconductor.quotas.models import Quota
 

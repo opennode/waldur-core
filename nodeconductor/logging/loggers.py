@@ -352,6 +352,8 @@ class LoggableMixin(object):
                 context[name] = value.isoformat()
             elif isinstance(value, decimal.Decimal):
                 context[name] = float(value)
+            elif isinstance(value, dict):
+                context[name] = value
             else:
                 context[name] = six.text_type(value)
 

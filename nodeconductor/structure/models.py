@@ -137,6 +137,7 @@ class VATMixin(models.Model):
         charge = self.get_vat_charge()
         if charge.action == pyvat.VatChargeAction.charge:
             return charge.rate
+
         # Return None, if reverse_charge or no_charge action is applied
 
     def get_vat_charge(self):
@@ -555,6 +556,23 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
+class ServiceCertification(core_models.UuidMixin, core_models.NameMixin, core_models.DescribableMixin):
+    link = models.URLField(max_length=255, blank=True)
+
+    class Meta(object):
+        verbose_name = 'Service Certification'
+        verbose_name_plural = 'Service Certifications'
+        ordering = ['-name']
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_url_name(cls):
+        return 'service-certification'
+
+
+@python_2_unicode_compatible
 class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                       core_models.UuidMixin,
                       core_models.NameMixin,
@@ -570,7 +588,11 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
         customer_path = 'customer'
         extra_query = dict(shared=True)
 
-    customer = models.ForeignKey(Customer, verbose_name=_('organization'), related_name='service_settings', blank=True, null=True)
+    customer = models.ForeignKey(Customer,
+                                 verbose_name=_('organization'),
+                                 related_name='service_settings',
+                                 blank=True,
+                                 null=True)
     backend_url = models.URLField(max_length=200, blank=True, null=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
@@ -580,6 +602,9 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
     options = JSONField(default={}, help_text='Extra options', blank=True)
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    homepage = models.URLField(max_length=255, blank=True)
+    terms_of_services = models.TextField(blank=True)
+    certifications = models.ManyToManyField(to='ServiceCertification', related_name='service_settings')
 
     tracker = FieldTracker()
 
@@ -627,7 +652,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
 
 @python_2_unicode_compatible
 class Service(core_models.UuidMixin,
-              core_models.NameMixin,
               core_models.DescendantMixin,
               quotas_models.QuotaModelMixin,
               LoggableMixin,
@@ -655,14 +679,10 @@ class Service(core_models.UuidMixin,
         super(Service, self).__init__(*args, **kwargs)
 
     def __str__(self):
-        return self.name
+        return self.settings.name
 
     def get_backend(self, **kwargs):
         return self.settings.get_backend(**kwargs)
-
-    @property
-    def full_name(self):
-        return ' / '.join([self.settings.name, self.name])
 
     @classmethod
     @lru_cache(maxsize=1)
@@ -675,7 +695,7 @@ class Service(core_models.UuidMixin,
         return cls._meta.app_label
 
     def get_log_fields(self):
-        return ('uuid', 'name', 'customer')
+        return ('uuid', 'customer', 'settings')
 
     def _get_log_context(self, entity_name):
         context = super(Service, self)._get_log_context(entity_name)
@@ -789,7 +809,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
             m.objects.filter(service_project_link=self) for m in resource_models)
 
     def __str__(self):
-        return '{0} | {1}'.format(self.service.name, self.project.name)
+        return '{0} | {1}'.format(self.service.settings.name, self.project.name)
 
 
 def validate_yaml(value):
@@ -821,9 +841,6 @@ class VirtualMachineMixin(CoordinatesMixin):
     min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
     min_disk = models.PositiveIntegerField(default=0, help_text='Minimum disk size in MiB')
 
-    external_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-    internal_ips = models.GenericIPAddressField(null=True, blank=True, protocol='IPv4')
-
     image_name = models.CharField(max_length=150, blank=True)
 
     key_name = models.CharField(max_length=50, blank=True)
@@ -851,6 +868,28 @@ class VirtualMachineMixin(CoordinatesMixin):
     @lru_cache(maxsize=1)
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @property
+    def external_ips(self):
+        """
+        Returns a list of external IPs.
+        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
+        For instance:
+         - SaltStack (aws) handles IPs as private and public IP addresses;
+         - DigitalOcean has only 1 external ip called ip_address.
+        """
+        return []
+
+    @property
+    def internal_ips(self):
+        """
+        Returns a list of internal IPs.
+        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
+        For instance:
+         - SaltStack (aws) handles IPs as private and public IP addresses;
+         - DigitalOcean does not support internal IP at the moment.
+        """
+        return []
 
 
 class PublishableMixin(models.Model):

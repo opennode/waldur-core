@@ -39,6 +39,14 @@ class TestInstance(structure_models.VirtualMachineMixin, structure_models.Resour
     def get_url_name(cls):
         return 'test-instances'
 
+    @property
+    def internal_ips(self):
+        return ['127.0.0.1']
+
+    @property
+    def external_ips(self):
+        return ['8.8.8.8']
+
 
 class TestNewInstance(core_models.RuntimeStateMixin,
                       core_models.StateMixin,
