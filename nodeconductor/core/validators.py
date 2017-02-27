@@ -2,7 +2,10 @@ from __future__ import unicode_literals
 
 from croniter import croniter
 from django.core.exceptions import ValidationError
+from django.core.validators import BaseValidator
 from django.utils import timezone
+from django.utils.deconstruct import deconstructible
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core import exceptions
 
@@ -13,6 +16,26 @@ def validate_cron_schedule(value):
         croniter(value, base_time)
     except (KeyError, ValueError) as e:
         raise ValidationError(str(e))
+
+
+@deconstructible
+class MinCronValueValidator(BaseValidator):
+    """
+    Validate that the value of cron schedule is greater or equal than provided limit_value,
+    otherwise raise ValidationError.
+    """
+    message = _('Ensure this value is greater than or equal to %(limit_value) hour(s).')
+    code = 'min_cron_value'
+
+    def compare(self, cleaned, limit_value):
+        validate_cron_schedule(cleaned)
+
+        now = timezone.now()
+        schedule = croniter(cleaned, now)
+        closest_schedule = schedule.get_next(timezone.datetime)
+        next_schedule = schedule.get_next(timezone.datetime)
+        schedule_interval_in_hours = (next_schedule - closest_schedule).total_seconds() / 3600
+        return schedule_interval_in_hours < limit_value
 
 
 def validate_name(value):
