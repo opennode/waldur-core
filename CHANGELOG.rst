@@ -3,6 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Change external and internal ips to property. Force all models inherited from VirtualMachineMixin to define external
+and internal ips properties.
 - Remove name from service, service settings name is used instead.
 - Introduce and connect certification model to service settings.
 
