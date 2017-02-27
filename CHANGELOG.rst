@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Make external and internal ips a property. Force all models inherited from inherited VirtualMachineMixin to define it.
+- Change external and internal ips to property. Force all models inherited from VirtualMachineMixin to define external
+and internal ips properties.
 
 Release 0.124.0
 ---------------
