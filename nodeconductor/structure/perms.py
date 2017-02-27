@@ -10,6 +10,7 @@ User = get_user_model()
 
 PERMISSION_LOGICS = (
     ('structure.Customer', StaffPermissionLogic(any_permission=True)),
+    ('structure.ServiceCertification', StaffPermissionLogic(any_permission=True)),
     ('structure.Project', FilteredCollaboratorsPermissionLogic(
         collaborators_query='customer__permissions__user',
         collaborators_filter={

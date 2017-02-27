@@ -987,18 +987,15 @@ class SshKeyViewSet(mixins.CreateModelMixin,
             raise APIException(e)
 
 
-class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
-                             mixins.UpdateModelMixin,
-                             mixins.ListModelMixin,
-                             core_mixins.EagerLoadMixin,
-                             viewsets.GenericViewSet):
+class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
+                             core_views.ActionsViewSet):
     queryset = models.ServiceSettings.objects.filter()
     serializer_class = serializers.ServiceSettingsSerializer
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,
                        filters.ServiceSettingsScopeFilterBackend)
     filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
+    disabled_actions = ['create', 'destroy']
 
     def list(self, request, *args, **kwargs):
         """
@@ -1076,6 +1073,28 @@ class ServiceSettingsViewSet(mixins.RetrieveModelMixin,
             stats = {}
 
         return Response(stats, status=status.HTTP_200_OK)
+
+    def can_user_update_settings(request, view, obj=None):
+        if obj is None:
+            return
+
+        if obj.shared:
+            return permissions.is_owner(request, view, obj)
+        else:
+            return permissions.is_staff(request, view, obj)
+
+    @detail_route(methods=['post'])
+    def update_certifications(self, request, uuid=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        serialized_instance = serializers.ServiceSettingsSerializer(instance, context={'request': self.request})
+
+        return Response(serialized_instance.data, status=status.HTTP_200_OK)
+
+    update_certifications_serializer_class = serializers.ServiceSettingsCertificationsUpdateSerializer
+    update_certifications_permissions = [can_user_update_settings]
 
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
@@ -2250,3 +2269,11 @@ class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
 
     pull_executor = NotImplemented
     pull_validators = [core_validators.StateValidator(models.NewResource.States.OK, models.NewResource.States.ERRED)]
+
+
+class ServiceCertificationViewSet(core_views.ActionsViewSet):
+    lookup_field = 'uuid'
+    metadata_class = ActionsMetadata
+    unsafe_methods_permissions = [permissions.is_staff]
+    serializer_class = serializers.ServiceCertificationSerializer
+    queryset = models.ServiceCertification.objects.all()
