@@ -137,7 +137,8 @@ class VATMixin(models.Model):
         charge = self.get_vat_charge()
         if charge.action == pyvat.VatChargeAction.charge:
             return charge.rate
-            # Return None, if reverse_charge or no_charge action is applied
+
+        # Return None, if reverse_charge or no_charge action is applied
 
     def get_vat_charge(self):
         if not self.country:
@@ -936,9 +937,9 @@ class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
 
         STABLE_STATES = set([ONLINE, OFFLINE])
         UNSTABLE_STATES = set([
-                                  s for (s, _) in CHOICES
-                                  if s not in STABLE_STATES
-                                  ])
+            s for (s, _) in CHOICES
+            if s not in STABLE_STATES
+        ])
 
     state = FSMIntegerField(
         default=States.PROVISIONING_SCHEDULED,
