@@ -23,11 +23,11 @@ License: MIT
 Requires: logrotate
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
-Requires: python-django >= 1.8, python-django < 1.9
+Requires: python-django >= 1.9, python-django < 1.10
 Requires: python-django-admin-tools = 0.7.0
 Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
-Requires: python-django-fluent-dashboard = 0.5.1
+Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
 Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.5.2
@@ -35,7 +35,7 @@ Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
 Requires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
 Requires: python-django-rest-swagger = 2.1.1
-Requires: python-django-reversion >= 1.8.7, python-django-reversion <= 1.9.3
+Requires: python-django-reversion >= 1.10.0, python-django-reversion <= 1.10.2
 Requires: python-django-taggit >= 0.20.2
 Requires: python-elasticsearch = 1.4.0
 Requires: python-hiredis >= 0.2.0
@@ -61,7 +61,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
-BuildRequires: python-django >= 1.8
+BuildRequires: python-django >= 1.9, python-django < 1.10
 BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
 BuildRequires: python-django-rest-swagger = 2.1.1

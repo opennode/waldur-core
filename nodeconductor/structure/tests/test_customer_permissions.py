@@ -302,7 +302,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
         return 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
 
 
-class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
+class CustomerPermissionApiFiltrationTest(test.APITransactionTestCase):
     def setUp(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)
@@ -420,7 +420,7 @@ class CustomerPermissionApiFiltrationTest(test.APISimpleTestCase):
         return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})
 
 
-class CustomerPermissionExpirationTest(test.APISimpleTestCase):
+class CustomerPermissionExpirationTest(test.APITransactionTestCase):
     def setUp(self):
         permission = factories.CustomerPermissionFactory()
         self.user = permission.user
@@ -483,7 +483,7 @@ class CustomerPermissionExpirationTest(test.APISimpleTestCase):
             not_expired_permission.user, not_expired_permission.role))
 
 
-class CustomerPermissionCreatedByTest(test.APISimpleTestCase):
+class CustomerPermissionCreatedByTest(test.APITransactionTestCase):
     def test_user_which_granted_permission_is_stored(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)

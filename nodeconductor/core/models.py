@@ -8,7 +8,8 @@ from croniter.croniter import croniter
 from datetime import datetime
 from django.apps import apps
 from django.conf import settings
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin, UserManager
 from django.core import validators
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
@@ -19,7 +20,7 @@ from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
-import reversion
+from reversion import revisions as reversion
 from reversion.models import Version
 
 from nodeconductor.core.fields import CronScheduleField, UUIDField

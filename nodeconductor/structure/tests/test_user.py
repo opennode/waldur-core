@@ -331,7 +331,7 @@ class PasswordSerializerTest(unittest.TestCase):
             {'password': ['This field may not be blank.']}, serializer.errors)
 
 
-class UserFilterTest(test.APISimpleTestCase):
+class UserFilterTest(test.APITransactionTestCase):
 
     def test_user_list_can_be_filtered(self):
         supported_filters = [

@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from rest_framework import permissions as rf_permissions, exceptions as rf_exceptions, decorators, response, status
 from rest_framework import mixins
 from rest_framework import viewsets
-import reversion
+from reversion import revisions as reversion
 from reversion.models import Version
 
 from nodeconductor.core.pagination import UnlimitedLinkHeaderPagination
