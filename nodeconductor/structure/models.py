@@ -555,9 +555,7 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
-class ServiceCertification(core_models.UuidMixin,
-                    core_models.NameMixin,
-                    core_models.DescribableMixin):
+class ServiceCertification(core_models.UuidMixin, core_models.NameMixin, core_models.DescribableMixin):
     link = models.URLField(max_length=255, blank=True)
 
     class Meta(object):
@@ -589,7 +587,11 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
         customer_path = 'customer'
         extra_query = dict(shared=True)
 
-    customer = models.ForeignKey(Customer, verbose_name=_('organization'), related_name='service_settings', blank=True, null=True)
+    customer = models.ForeignKey(Customer,
+                                 verbose_name=_('organization'),
+                                 related_name='service_settings',
+                                 blank=True,
+                                 null=True)
     backend_url = models.URLField(max_length=200, blank=True, null=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
