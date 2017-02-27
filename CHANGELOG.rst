@@ -1,8 +1,8 @@
 CHANGELOG
 =========
 
-Release NEXT
-------------
+Release 0.125.0
+---------------
 - Change external and internal ips to property. Force all models inherited from VirtualMachineMixin to define external
 and internal ips properties.
 - Remove name from service, service settings name is used instead.
