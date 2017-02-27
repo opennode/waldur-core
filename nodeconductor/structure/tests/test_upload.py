@@ -10,7 +10,7 @@ from nodeconductor.structure.images import dummy_image
 
 
 @override_settings(MEDIA_URL='/media/')
-class ImageUploadTest(test.APISimpleTestCase):
+class ImageUploadTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = UserFactory(is_staff=True)
         self.owner = UserFactory()

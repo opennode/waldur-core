@@ -1,5 +1,5 @@
 from django.test import TransactionTestCase
-import reversion
+from reversion import revisions as reversion
 
 from nodeconductor.core.utils import silent_call
 from . import models as test_models
