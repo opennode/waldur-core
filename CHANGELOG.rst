@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+Next Release
+------------
+- Add minimum schedule value validator.
+Now it is possible to set minimum time frame for resource schedule operations.
+
 Release 0.125.0
 ---------------
 - Change external and internal ips to property. Force all models inherited from VirtualMachineMixin to define external
