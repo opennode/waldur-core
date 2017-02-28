@@ -25,12 +25,7 @@ class CronScheduleField(models.CharField):
     description = "A cron schedule in textual form"
 
     def __init__(self, *args, **kwargs):
-        validators = [validate_cron_schedule]
-
-        if 'validators' in kwargs:
-            validators = validators + kwargs['validators']
-
-        kwargs['validators'] = validators
+        kwargs['validators'] = [validate_cron_schedule] + kwargs.get('validators', [])
         kwargs['max_length'] = kwargs.get('max_length', 15)
         super(CronScheduleField, self).__init__(*args, **kwargs)
 
