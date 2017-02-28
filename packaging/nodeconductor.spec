@@ -100,6 +100,7 @@ INSTALLED_APPS = (
     'admin_tools.menu',
     'admin_tools.theming',
     'fluent_dashboard',  # should go before 'django.contrib.admin'
+    'django.contrib.contenttypes',
     'django.contrib.admin',
     'django.contrib.staticfiles',
     'nodeconductor.landing',
