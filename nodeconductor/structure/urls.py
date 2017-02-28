@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from nodeconductor.structure import views
 
@@ -21,8 +21,7 @@ def register_in(router):
     router.register(r'service-certifications', views.ServiceCertificationViewSet, base_name='service-certification')
 
 
-urlpatterns = patterns(
-    '',
+urlpatterns = [
     url(r'^stats/creation-time/$', views.CreationTimeStatsView.as_view(), name='stats_creation_time'),
     url(r'^stats/quota/$', views.AggregatedStatsView.as_view(), name='stats_quota'),
     url(r'^stats/quota/timeline/$', views.QuotaTimelineStatsView.as_view(), name='stats_quota_timeline'),
@@ -30,4 +29,4 @@ urlpatterns = patterns(
     url(r'^customers/(?P<uuid>[a-z0-9]+)/counters/$', views.CustomerCountersView.as_view({'get': 'list'}), name='customer_counters'),
     url(r'^projects/(?P<uuid>[a-z0-9]+)/counters/$', views.ProjectCountersView.as_view({'get': 'list'}), name='project_counters'),
     url(r'^user-counters/$', views.UserCountersView.as_view({'get': 'list'}), name='user_counters'),
-)
+]
