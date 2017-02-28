@@ -24,7 +24,7 @@ class MinCronValueValidator(BaseValidator):
     Validate that the value of cron schedule is greater or equal than provided limit_value,
     otherwise raise ValidationError.
     """
-    message = _('Ensure this value is greater than or equal to %(limit_value) hour(s).')
+    message = _('Ensure schedule period is greater than or equal to %(limit_value)s hour(s).')
     code = 'min_cron_value'
 
     def compare(self, cleaned, limit_value):
