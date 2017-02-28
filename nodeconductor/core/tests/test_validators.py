@@ -30,6 +30,6 @@ class MinCronValueValidatorTest(test.APITransactionTestCase):
             validator(value)
 
     @data('0 * * * *', '0 0 * * *', '0 0 0 * *', '0 0 * * 0', '0 0 1 * *', '0 0 1 1 *', '0 0 1 1 *')
-    def test_validator_does_not_raise_error_if_schedule_is_bigger_than_1_hour(self, value):
+    def test_validator_does_not_raise_error_if_schedule_is_greater_than_or_equal_1_hour(self, value):
         validator = validators.MinCronValueValidator(limit_value=1)
         validator(value)
