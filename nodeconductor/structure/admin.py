@@ -1,4 +1,4 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
@@ -262,10 +262,9 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         return form
 
     def get_urls(self):
-        my_urls = patterns(
-            '',
+        my_urls = [
             url(r'^(.+)/services/$', self.admin_site.admin_view(self.services)),
-        )
+        ]
         return my_urls + super(ServiceSettingsAdmin, self).get_urls()
 
     def services(self, request, pk=None):
