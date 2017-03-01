@@ -9,6 +9,7 @@ from django.contrib import admin
 from django.views.generic import TemplateView
 
 from nodeconductor.core import NodeConductorExtension
+from nodeconductor.core import views as core_views
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.core.schemas import WaldurSchemaView
 from nodeconductor.cost_tracking import urls as cost_tracking_urls, CostTrackingRegister
@@ -48,8 +49,8 @@ urlpatterns += [
     url(r'^api/', include(router.urls)),
     url(r'^api/', include('nodeconductor.logging.urls')),
     url(r'^api/', include('nodeconductor.structure.urls')),
-    url(r'^api/version/', 'nodeconductor.core.views.version_detail'),
-    url(r'^api-auth/password/', 'nodeconductor.core.views.obtain_auth_token', name='auth-password'),
+    url(r'^api/version/', core_views.version_detail),
+    url(r'^api-auth/password/', core_views.obtain_auth_token, name='auth-password'),
     url(r'^$', TemplateView.as_view(template_name='landing/index.html')),
 ]
 

@@ -768,6 +768,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     certifications = ServiceCertificationSerializer(many=True, read_only=True)
+    geolocations = core_serializers.JSONField(read_only=True)
 
     class Meta(object):
         model = models.ServiceSettings
@@ -776,7 +777,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
             'backend_url', 'username', 'password', 'token', 'certificate',
             'customer', 'customer_name', 'customer_native_name',
             'homepage', 'terms_of_services', 'certifications',
-            'quotas', 'scope',
+            'quotas', 'scope', 'geolocations',
         )
         protected_fields = ('type', 'customer')
         read_only_fields = ('shared', 'state', 'error_message')
@@ -796,7 +797,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
     @staticmethod
     def eager_load(queryset):
-        return queryset.select_related('customer').prefetch_related('quotas').prefetch_related('certifications')
+        return queryset.select_related('customer').prefetch_related('quotas', 'certifications')
 
     def get_fields(self):
         fields = super(ServiceSettingsSerializer, self).get_fields()
@@ -896,19 +897,19 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     error_message = serializers.ReadOnlyField(source='settings.error_message')
     terms_of_services = serializers.ReadOnlyField(source='settings.terms_of_services')
     homepage = serializers.ReadOnlyField(source='settings.homepage')
+    geolocations = core_serializers.JSONField(source='settings.geolocations', read_only=True)
     certifications = ServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
     name = serializers.ReadOnlyField(source='settings.name')
 
     class Meta(object):
         model = NotImplemented
         fields = (
-            'uuid',
-            'url',
-            'projects', 'project', 'state', 'service_type',
+            'uuid', 'url', 'name', 'state', 'service_type',
+            'projects', 'project',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'resources_count',
             'settings', 'settings_uuid', 'backend_url', 'username', 'password',
             'token', 'certificate', 'domain', 'terms_of_services', 'homepage',
-            'certifications', 'name', 'available_for_all', 'scope', 'tags', 'quotas',
+            'certifications', 'geolocations', 'available_for_all', 'scope', 'tags', 'quotas',
         )
         settings_fields = ('backend_url', 'username', 'password', 'token', 'certificate', 'scope', 'domain')
         protected_fields = ('customer', 'settings', 'project') + settings_fields
