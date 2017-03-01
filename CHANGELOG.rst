@@ -1,8 +1,9 @@
 CHANGELOG
 =========
 
-Next Release
-------------
+Release 0.126.0
+---------------
+- Migrate to Django 1.9
 - Add minimum schedule value validator.
 Now it is possible to set minimum time frame for resource schedule operations.
 - Drop django-gm2m dependency.
