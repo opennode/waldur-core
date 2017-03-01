@@ -24,7 +24,7 @@ from reversion import revisions as reversion
 from reversion.models import Version
 
 from nodeconductor.core.fields import CronScheduleField, UUIDField
-from nodeconductor.core.validators import validate_name
+from nodeconductor.core.validators import validate_name, MinCronValueValidator
 from nodeconductor.logging.loggers import LoggableMixin
 
 
@@ -100,7 +100,7 @@ class ScheduleMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    schedule = CronScheduleField(max_length=15)
+    schedule = CronScheduleField(max_length=15, validators=[MinCronValueValidator(1)])
     next_trigger_at = models.DateTimeField(null=True)
     timezone = models.CharField(max_length=50, default=django_timezone.get_current_timezone_name)
     is_active = models.BooleanField(default=False)

@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+Release 0.126.0
+---------------
+- Migrate to Django 1.9
+- Add minimum schedule value validator.
+Now it is possible to set minimum time frame for resource schedule operations.
+- Drop django-gm2m dependency.
+- Replace django.conf.urls.patterns with list of urls.
+- Allow to define geolocation for service settings.
+
 Release 0.125.0
 ---------------
 - Change external and internal ips to property. Force all models inherited from VirtualMachineMixin to define external

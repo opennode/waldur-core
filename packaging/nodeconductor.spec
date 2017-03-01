@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.125.0
+Version: 0.126.0
 Release: 1.el7
 License: MIT
 
@@ -29,7 +29,6 @@ Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
-Requires: python-django-gm2m = 0.4.2
 Requires: python-django-model-utils = 2.5.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
@@ -101,6 +100,7 @@ INSTALLED_APPS = (
     'admin_tools.menu',
     'admin_tools.theming',
     'fluent_dashboard',  # should go before 'django.contrib.admin'
+    'django.contrib.contenttypes',
     'django.contrib.admin',
     'django.contrib.staticfiles',
     'nodeconductor.landing',
@@ -217,6 +217,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Wed Mar 1 2017 Jenkins <jenkins@opennodecloud.com> - 0.126.0-1.el7
+- New upstream release
+
 * Mon Feb 27 2017 Jenkins <jenkins@opennodecloud.com> - 0.125.0-1.el7
 - New upstream release
 

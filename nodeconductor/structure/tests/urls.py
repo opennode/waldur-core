@@ -1,4 +1,4 @@
-from django.conf.urls import patterns, include, url
+from django.conf.urls import include, url
 
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.server.urls import urlpatterns
@@ -16,7 +16,6 @@ def register_in(router):
 router = DefaultRouter()
 register_in(router)
 
-urlpatterns += patterns(
-    '',
+urlpatterns += [
     url(r'^api/', include(router.urls)),
-)
+]

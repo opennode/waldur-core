@@ -3,13 +3,13 @@ from __future__ import unicode_literals
 import permission
 
 from django.conf import settings
-from django.conf.urls import patterns
 from django.conf.urls import include
 from django.conf.urls import url
 from django.contrib import admin
 from django.views.generic import TemplateView
 
 from nodeconductor.core import NodeConductorExtension
+from nodeconductor.core import views as core_views
 from nodeconductor.core.routers import SortedDefaultRouter as DefaultRouter
 from nodeconductor.core.schemas import WaldurSchemaView
 from nodeconductor.cost_tracking import urls as cost_tracking_urls, CostTrackingRegister
@@ -33,11 +33,10 @@ structure_urls.register_in(router)
 users_urls.register_in(router)
 
 
-urlpatterns = patterns(
-    '',
+urlpatterns = [
     url(r'^admin/', include(admin.site.urls), name='admin'),
     url(r'^admintools/', include('admin_tools.urls')),
-)
+]
 
 if settings.NODECONDUCTOR.get('EXTENSIONS_AUTOREGISTER'):
     for ext in NodeConductorExtension.get_extensions():
@@ -45,16 +44,15 @@ if settings.NODECONDUCTOR.get('EXTENSIONS_AUTOREGISTER'):
             urlpatterns += ext.django_urls()
             ext.rest_urls()(router)
 
-urlpatterns += patterns(
-    '',
+urlpatterns += [
     url(r'^docs/', WaldurSchemaView.as_view()),
     url(r'^api/', include(router.urls)),
     url(r'^api/', include('nodeconductor.logging.urls')),
     url(r'^api/', include('nodeconductor.structure.urls')),
-    url(r'^api/version/', 'nodeconductor.core.views.version_detail'),
-    url(r'^api-auth/password/', 'nodeconductor.core.views.obtain_auth_token', name='auth-password'),
+    url(r'^api/version/', core_views.version_detail),
+    url(r'^api-auth/password/', core_views.obtain_auth_token, name='auth-password'),
     url(r'^$', TemplateView.as_view(template_name='landing/index.html')),
-)
+]
 
 if settings.DEBUG:
     from django.conf.urls.static import static
