@@ -236,7 +236,8 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer',
-              'shared', 'state', 'error_message', 'tags', 'homepage', 'terms_of_services', 'certifications')
+              'shared', 'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
+              'certifications', 'geolocations')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
 

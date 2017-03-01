@@ -601,6 +601,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
     options = JSONField(default={}, help_text='Extra options', blank=True)
+    geolocations = JSONField(default=[], help_text='List of latitudes and longitudes', blank=True)
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     homepage = models.URLField(max_length=255, blank=True)
     terms_of_services = models.TextField(blank=True)
