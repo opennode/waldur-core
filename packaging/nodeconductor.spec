@@ -20,11 +20,13 @@ License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # python-psycopg2 is needed to use PostgreSQL as database backend
+# python-django-appconf is needed for python-django-permission; 0.6 release does not support python-django 1.9
 Requires: logrotate
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.9, python-django < 1.10
 Requires: python-django-admin-tools = 0.7.0
+Requires: python-django-appconf >= 1.0.1
 Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
 Requires: python-django-fluent-dashboard = 0.6.1
