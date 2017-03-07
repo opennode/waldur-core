@@ -264,7 +264,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def get_urls(self):
         my_urls = [
-            url(r'^(.+)/services/$', self.admin_site.admin_view(self.services)),
+            url(r'^(.+)/change/services/$', self.admin_site.admin_view(self.services)),
         ]
         return my_urls + super(ServiceSettingsAdmin, self).get_urls()
 
@@ -272,18 +272,17 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         settings = models.ServiceSettings.objects.get(id=pk)
         projects = {}
 
-        for name, model in SupportedServices.get_service_models().items():
-            services = model['service'].objects.filter(settings=settings).values_list('id', flat=True)
-            for spl in model['service_project_link'].objects.filter(service__in=services):
-                projects.setdefault(spl.project.id, {
-                    'name': six.text_type(spl.project),
-                    'url': get_admin_url(spl.project),
-                    'services': [],
-                })
-                projects[spl.project.id]['services'].append({
-                    'name': six.text_type(spl.service),
-                    'url': get_admin_url(spl.service),
-                })
+        spl_model = SupportedServices.get_related_models(settings)['service_project_link']
+        for spl in spl_model.objects.filter(service__settings=settings):
+            projects.setdefault(spl.project.id, {
+                'name': six.text_type(spl.project),
+                'url': get_admin_url(spl.project),
+                'services': [],
+            })
+            projects[spl.project.id]['services'].append({
+                'name': six.text_type(spl.service),
+                'url': get_admin_url(spl.service),
+            })
 
         return render(request, 'structure/service_settings_entities.html', {'projects': projects.values()})
 
