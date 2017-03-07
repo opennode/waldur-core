@@ -604,7 +604,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     geolocations = JSONField(default=[], help_text='List of latitudes and longitudes', blank=True)
     shared = models.BooleanField(default=False, help_text='Anybody can use it')
     homepage = models.URLField(max_length=255, blank=True)
-    terms_of_services = models.TextField(blank=True)
+    terms_of_services = models.URLField(max_length=255, blank=True)
     certifications = models.ManyToManyField(to='ServiceCertification', related_name='service_settings')
 
     tracker = FieldTracker()
