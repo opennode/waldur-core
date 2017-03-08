@@ -3,7 +3,7 @@ CHANGELOG
 
 Next Release
 ------------
-- Validate permission granting user role expiration time.
+- Validate role expiration time for permission granting user.
 
 Release 0.126.0
 ---------------

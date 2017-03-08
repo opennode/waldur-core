@@ -654,40 +654,6 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
-    def can_manage_roles_for(self, project, role, expiration_time):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        customer_perm = models.CustomerPermission.objects.filter(
-            role=models.CustomerRole.OWNER,
-            user=user,
-            customer=project.customer,
-        )
-        if customer_perm.exists():
-            perm_expiration_time = customer_perm.first().expiration_time
-            if perm_expiration_time is None:
-                return True
-            elif expiration_time is not None and perm_expiration_time > expiration_time:
-                return True
-
-        if role != models.ProjectRole.ADMINISTRATOR:
-            return False
-
-        project_perm = models.ProjectPermission.objects.filter(
-            role=models.ProjectRole.MANAGER,
-            user=user,
-            project=project,
-        )
-        if project_perm.exists():
-            perm_expiration_time = project_perm.first().expiration_time
-            if perm_expiration_time is None:
-                return True
-            elif expiration_time is not None and perm_expiration_time > expiration_time:
-                return True
-
-        return False
-
     def list(self, request, *args, **kwargs):
         """
         Project permissions expresses connection of user to a project.
@@ -736,7 +702,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         role = serializer.validated_data['role']
         expiration_time = serializer.validated_data.get('expiration_time')
 
-        if not self.can_manage_roles_for(affected_project, role, expiration_time):
+        if not affected_project.can_manage_role(self.request.user, role, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
@@ -749,7 +715,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         role = serializer.instance.role
         expiration_time = serializer.validated_data.get('expiration_time', serializer.instance.expiration_time)
 
-        if not self.can_manage_roles_for(affected_project, role, expiration_time)\
+        if not affected_project.can_manage_role(self.request.user, role, expiration_time)\
                 or serializer.instance.user == self.request.user:
             raise PermissionDenied('You do not have permission to perform this action.')
 
@@ -761,7 +727,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         role = instance.role
         expiration_time = instance.expiration_time
 
-        if not self.can_manage_roles_for(affected_project, role, expiration_time):
+        if not affected_project.can_manage_role(self.request.user, role, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_project.remove_user(affected_user, role)
@@ -794,25 +760,6 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         # rf_permissions.DjangoObjectPermissions,
     )
     filter_class = filters.CustomerPermissionFilter
-
-    def can_manage_roles_for(self, customer, expiration_time):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        customer_perm = models.CustomerPermission.objects.filter(
-            role=models.CustomerRole.OWNER,
-            user=user,
-            customer=customer,
-        )
-        if customer_perm.exists():
-            perm_expiration_time = customer_perm.first().expiration_time
-            if perm_expiration_time is None:
-                return True
-            elif expiration_time is not None and perm_expiration_time > expiration_time:
-                return True
-
-        return False
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
@@ -873,7 +820,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         affected_user = serializer.validated_data['user']
         expiration_time = serializer.validated_data.get('expiration_time')
 
-        if not self.can_manage_roles_for(affected_customer, expiration_time):
+        if not affected_customer.can_manage_role(self.request.user, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         if not affected_customer.get_users().filter(pk=affected_user.pk).exists():
@@ -888,7 +835,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         affected_customer = serializer.instance.customer
         expiration_time = serializer.validated_data.get('expiration_time', serializer.instance.expiration_time)
 
-        if not self.can_manage_roles_for(affected_customer, expiration_time) \
+        if not affected_customer.can_manage_role(self.request.user, expiration_time) \
                 or serializer.instance.user == self.request.user:
             raise PermissionDenied('You do not have permission to perform this action.')
 
@@ -900,7 +847,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         role = instance.role
         expiration_time = instance.expiration_time
 
-        if not self.can_manage_roles_for(affected_customer, expiration_time):
+        if not affected_customer.can_manage_role(self.request.user, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_customer.remove_user(affected_user, role)
