@@ -16,6 +16,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='servicesettings',
             name='geolocations',
-            field=jsonfield.fields.JSONField(blank=True, default=[], help_text='List of latitudes and longitudes'),
+            field=jsonfield.fields.JSONField(blank=True, default=[], help_text='List of latitudes and longitudes. For example: [{"latitude": 123, "longitude": 345}, {"latitude": 456, "longitude": 678}]'),
         ),
     ]

@@ -41,6 +41,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='servicesettings',
             name='certifications',
-            field=models.ManyToManyField(related_name='service_settings', to='structure.ServiceCertification'),
+            field=models.ManyToManyField(blank=True, related_name='service_settings', to='structure.ServiceCertification'),
         ),
     ]
