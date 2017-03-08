@@ -500,6 +500,20 @@ class ProjectPermissionExpirationTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
 
+    def test_user_cannot_grant_permissions_with_greater_expiration_time(self):
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        permission = factories.ProjectPermissionFactory(
+            role=ProjectRole.MANAGER,
+            expiration_time=expiration_time)
+        self.client.force_authenticate(user=permission.user)
+        response = self.client.post(factories.ProjectPermissionFactory.get_list_url(), {
+            'project': factories.ProjectFactory.get_url(project=permission.project),
+            'user': factories.UserFactory.get_url(),
+            'role': factories.ProjectPermissionFactory.role,
+            'expiration_time': expiration_time + datetime.timedelta(days=1),
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_task_revokes_expired_permissions(self):
         expired_permission = factories.ProjectPermissionFactory(
             expiration_time=timezone.now() - datetime.timedelta(days=100))

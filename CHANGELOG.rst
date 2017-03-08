@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+Next Release
+------------
+- Validate permission granting user role expiration time.
+
 Release 0.126.0
 ---------------
 - Migrate to Django 1.9
