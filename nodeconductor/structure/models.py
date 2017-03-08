@@ -190,11 +190,23 @@ class PermissionMixin(object):
     Provides method to grant, revoke and check object permissions.
     """
 
-    def has_user(self, user, role=None):
+    def has_user(self, user, role=None, timestamp=False):
+        """
+        Checks whether user has role in entity.
+        `timestamp` can have following values:
+            - False - check whether user has role in entity at the moment.
+            - None - check whether user has permanent role in entity.
+            - Datetime object - check whether user will have role in entity at specific timestamp.
+        """
         permissions = self.permissions.filter(user=user, is_active=True)
 
         if role is not None:
             permissions = permissions.filter(role=role)
+
+        if timestamp is None:
+            permissions = permissions.filter(expiration_time=None)
+        elif timestamp:
+            permissions = permissions.filter(expiration_time__gte=timestamp)
 
         return permissions.exists()
 
@@ -403,6 +415,16 @@ class Customer(core_models.UuidMixin,
     def can_user_update_quotas(self, user):
         return user.is_staff
 
+    def can_manage_role(self, user, timestamp=False):
+        """
+        Checks whether user can grant/update/revoke customer permissions.
+        `timestamp` can have following values:
+            - False - check whether user can manage permissions at the moment.
+            - None - check whether user can permanently manage permissions.
+            - Datetime object - check whether user will be able to manage permissions at specific timestamp.
+        """
+        return user.is_staff or self.has_user(user, CustomerRole.OWNER, timestamp)
+
     def get_children(self):
         return itertools.chain.from_iterable(
             m.objects.filter(customer=self) for m in [Project] + Service.get_all_models())
@@ -540,6 +562,21 @@ class Project(core_models.DescribableMixin,
 
     def can_user_update_quotas(self, user):
         return user.is_staff
+
+    def can_manage_role(self, user, role, timestamp=False):
+        """
+        Checks whether user can grant/update/revoke project permissions for specific role.
+        `timestamp` can have following values:
+            - False - check whether user can manage permissions at the moment.
+            - None - check whether user can permanently manage permissions.
+            - Datetime object - check whether user will be able to manage permissions at specific timestamp.
+        """
+        if user.is_staff:
+            return True
+        if self.customer.has_user(user, CustomerRole.OWNER, timestamp):
+            return True
+
+        return role == ProjectRole.ADMINISTRATOR and self.has_user(user, ProjectRole.MANAGER, timestamp)
 
     def get_log_fields(self):
         return ('uuid', 'customer', 'name')
