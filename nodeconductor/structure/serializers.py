@@ -1037,7 +1037,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
-                name = attrs.get('settings').get('name')
+                settings = attrs.pop('settings')
+                name = settings.get('name') if settings else None
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
                     name=name,
@@ -1104,11 +1105,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return service
 
     def update(self, instance, attrs):
-        settings_name = attrs.get('settings').get('name')
-        if settings_name:
-            instance.settings.name = settings_name
+        settings = attrs.pop('settings')
+        if settings:
+            instance.settings.name = settings.get('name')
             instance.settings.save()
-            del attrs['settings']
 
         return super(BaseServiceSerializer, self).update(instance, attrs)
 
