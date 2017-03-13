@@ -129,6 +129,18 @@ class ServiceUpdateTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_it_is_not_possible_to_update_service_settings_name_if_user_is_not_owner_of_settings_customer(self):
+        service = self.fixture.service
+        service.settings.customer = factories.CustomerFactory()
+        service.settings.save()
+        payload = self._get_valid_payload(service)
+
+        self.client.force_authenticate(self.fixture.owner)
+        url = factories.TestServiceFactory.get_url(service)
+        response = self.client.put(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def _get_valid_payload(self, service):
         expected_name = 'tensymbols'
         settings_url = factories.ServiceSettingsFactory.get_url(service.settings)

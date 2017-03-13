@@ -1107,6 +1107,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def update(self, instance, attrs):
         settings = attrs.pop('settings')
         if settings:
+            if not instance.settings.customer.has_user(self.context['request'].user, models.CustomerRole.OWNER):
+                raise exceptions.PermissionDenied()
+
             instance.settings.name = settings.get('name')
             instance.settings.save()
 
