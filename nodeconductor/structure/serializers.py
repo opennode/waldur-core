@@ -1040,8 +1040,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if 'name' not in self.initial_data:
                     raise serializers.ValidationError({'name': 'Name field is required.'})
 
-                if len(self.initial_data['name']) > 150:
-                    raise serializers.ValidationError({'name': 'Name exceeds 150 symbols.'})
+                self._validate_name_length(self.initial_data['name'])
 
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
@@ -1071,6 +1070,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def _validate_settings(self, settings):
         pass
+
+    def _validate_name_length(self, name):
+        if len(self.initial_data['name']) > 150:
+            raise serializers.ValidationError({'name': 'Name exceeds 150 symbols.'})
 
     def get_resources_count(self, service):
         return self.get_resources_count_map[service.pk]
@@ -1107,6 +1110,15 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         if project and not spl_model.objects.filter(project=project, service=service).exists():
             spl_model.objects.create(project=project, service=service)
         return service
+
+    def update(self, instance, attrs):
+        name = self.initial_data.get('name')
+        if name:
+            self._validate_name_length(name)
+            instance.settings.name = name
+            instance.settings.save()
+
+        return super(BaseServiceSerializer, self).update(instance, attrs)
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
