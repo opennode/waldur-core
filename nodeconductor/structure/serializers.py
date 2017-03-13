@@ -973,6 +973,12 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 else:
                     del fields[field]
 
+        if self.context['request'].method in ('PUT', 'PATCH'):
+            service = self.context['view'].get_object()
+            customer = service.settings.customer
+            if not (customer and customer.has_user(self.context['request'].user, models.CustomerRole.OWNER)):
+                del fields['name']
+
         return fields
 
     def build_unknown_field(self, field_name, model_class):
@@ -1106,9 +1112,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def update(self, instance, attrs):
         if 'settings' in attrs:
             settings = attrs.pop('settings')
-            if not instance.settings.customer.has_user(self.context['request'].user, models.CustomerRole.OWNER):
-                raise exceptions.PermissionDenied()
-
             instance.settings.name = settings.get('name')
             instance.settings.save()
 
