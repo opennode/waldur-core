@@ -899,7 +899,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     homepage = serializers.ReadOnlyField(source='settings.homepage')
     geolocations = core_serializers.JSONField(source='settings.geolocations', read_only=True)
     certifications = ServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
-    name = serializers.ReadOnlyField(source='settings.name')
+    name = serializers.CharField(source='settings.name', validators=[MaxLengthValidator(150)])
 
     class Meta(object):
         model = NotImplemented
@@ -1037,14 +1037,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
-                if 'name' not in self.initial_data:
-                    raise serializers.ValidationError({'name': 'Name field is required.'})
-
-                self._validate_name_length(self.initial_data['name'])
-
+                name = attrs.get('settings').get('name')
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
-                    name=self.initial_data['name'],
+                    name=name,
                     customer=customer,
                     **args)
 
@@ -1070,10 +1066,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def _validate_settings(self, settings):
         pass
-
-    def _validate_name_length(self, name):
-        if len(self.initial_data['name']) > 150:
-            raise serializers.ValidationError({'name': 'Name exceeds 150 symbols.'})
 
     def get_resources_count(self, service):
         return self.get_resources_count_map[service.pk]
@@ -1112,11 +1104,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return service
 
     def update(self, instance, attrs):
-        name = self.initial_data.get('name')
-        if name:
-            self._validate_name_length(name)
-            instance.settings.name = name
+        settings_name = attrs.get('settings').get('name')
+        if settings_name:
+            instance.settings.name = settings_name
             instance.settings.save()
+            del attrs['settings']
 
         return super(BaseServiceSerializer, self).update(instance, attrs)
 
