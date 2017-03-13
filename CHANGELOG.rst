@@ -4,6 +4,7 @@ CHANGELOG
 Next Release
 ------------
 - Validate role expiration time for permission granting user.
+- Fix settings name update through service name update.
 
 Release 0.126.0
 ---------------
