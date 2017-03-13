@@ -1037,8 +1037,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
-                settings = attrs.pop('settings')
-                name = settings.get('name') if settings else None
+                name = attrs.pop('settings').get('name')
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
                     name=name,
@@ -1105,8 +1104,8 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return service
 
     def update(self, instance, attrs):
-        settings = attrs.pop('settings')
-        if settings:
+        if 'settings' in attrs:
+            settings = attrs.pop('settings')
             if not instance.settings.customer.has_user(self.context['request'].user, models.CustomerRole.OWNER):
                 raise exceptions.PermissionDenied()
 
