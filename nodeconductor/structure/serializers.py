@@ -1114,11 +1114,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return service
 
     def update(self, instance, attrs):
-        if 'settings' in attrs:
-            name = attrs.pop('settings', {}).get('name')
-            if name:
-                instance.settings.name = name
-                instance.settings.save()
+        name = attrs.pop('settings', {}).get('name')
+        if name:
+            instance.settings.name = name
+            instance.settings.save()
 
         return super(BaseServiceSerializer, self).update(instance, attrs)
 
