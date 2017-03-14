@@ -904,7 +904,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     class Meta(object):
         model = NotImplemented
         fields = (
-            'uuid', 'url', 'name', 'state', 'service_type',
+            'uuid', 'url', 'name', 'state', 'service_type', 'shared',
             'projects', 'project',
             'customer', 'customer_uuid', 'customer_name', 'customer_native_name', 'resources_count',
             'settings', 'settings_uuid', 'backend_url', 'username', 'password',
