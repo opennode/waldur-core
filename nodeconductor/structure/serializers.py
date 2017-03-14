@@ -899,7 +899,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     homepage = serializers.ReadOnlyField(source='settings.homepage')
     geolocations = core_serializers.JSONField(source='settings.geolocations', read_only=True)
     certifications = ServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
-    name = serializers.CharField(source='settings.name', validators=[MaxLengthValidator(150)])
+    name = serializers.ReadOnlyField(source='settings.name')
+
+    validate_name_length = MaxLengthValidator(150)
 
     class Meta(object):
         model = NotImplemented
@@ -1024,6 +1026,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if attrs.get('customer') != settings.customer:
                     raise serializers.ValidationError('Customer must match settings customer.')
 
+        if self.context['request'].method in ('POST', 'PUT', 'PATCH'):
+            name = self.initial_data.get('name')
+            if name:
+                self.validate_name_length(name)
+
         if self.context['request'].method == 'POST':
             # Make shallow copy to protect from mutations
             settings_fields = self.Meta.settings_fields[:]
@@ -1047,7 +1054,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if extra_fields:
                     args['options'] = {f: attrs[f] for f in extra_fields if f in attrs}
 
-                name = attrs.pop('settings').get('name')
+                name = self.initial_data.get('name')
+                if name is None:
+                    raise serializers.ValidationError({'name': 'Name field is required.'})
+
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
                     name=name,
@@ -1114,7 +1124,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         return service
 
     def update(self, instance, attrs):
-        name = attrs.pop('settings', {}).get('name')
+        name = self.initial_data.get('name')
         if name:
             instance.settings.name = name
             instance.settings.save()
