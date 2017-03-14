@@ -5,6 +5,10 @@ Next Release
 ------------
 - Fix settings fields values overlap issue on settings creation.
 
+Release 0.126.2
+---------------
+- Fix settings fields values overlap issue on settings creation.
+
 Release 0.126.1
 ---------------
 - Validate role expiration time for permission granting user.
