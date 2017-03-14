@@ -1126,7 +1126,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def _user_is_owner_of_customer_settings(self):
         service = self.instance
         customer = service.settings.customer
-        return customer and customer.has_user(self.context['request'].user, models.CustomerRole.OWNER)
+        return ('request' in self.context and
+                customer and
+                customer.has_user(self.context['request'].user, models.CustomerRole.OWNER))
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
