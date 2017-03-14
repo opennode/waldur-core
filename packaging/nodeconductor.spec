@@ -14,17 +14,19 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.126.0
+Version: 0.126.1
 Release: 1.el7
 License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # python-psycopg2 is needed to use PostgreSQL as database backend
+# python-django-appconf is needed for python-django-permission; 0.6 release does not support python-django 1.9
 Requires: logrotate
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.9, python-django < 1.10
 Requires: python-django-admin-tools = 0.7.0
+Requires: python-django-appconf >= 1.0.1
 Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
 Requires: python-django-fluent-dashboard = 0.6.1
@@ -45,7 +47,7 @@ Requires: python-psycopg2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: python-redis = 2.10.3
-Requires: python-requests >= 2.6.0
+Requires: python-requests >= 2.10.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
@@ -217,6 +219,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Tue Mar 14 2017 Jenkins <jenkins@opennodecloud.com> - 0.126.1-1.el7
+- New upstream release
+
 * Wed Mar 1 2017 Jenkins <jenkins@opennodecloud.com> - 0.126.0-1.el7
 - New upstream release
 

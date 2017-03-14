@@ -456,6 +456,18 @@ class CustomerPermissionExpirationTest(test.APITransactionTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_user_cannot_grant_permissions_with_greater_expiration_time(self):
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        permission = factories.CustomerPermissionFactory(expiration_time=expiration_time)
+        self.client.force_authenticate(user=permission.user)
+        response = self.client.post(factories.CustomerPermissionFactory.get_list_url(), {
+            'customer': factories.CustomerFactory.get_url(customer=permission.customer),
+            'user': factories.UserFactory.get_url(),
+            'role': CustomerRole.OWNER,
+            'expiration_time': expiration_time + datetime.timedelta(days=1),
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_user_can_set_expiration_time_role_when_role_is_created(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)

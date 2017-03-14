@@ -654,19 +654,6 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
-    def can_manage_roles_for(self, project, role):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        if project.customer.has_user(user, models.CustomerRole.OWNER):
-            return True
-
-        if role == models.ProjectRole.ADMINISTRATOR and project.has_user(user, models.ProjectRole.MANAGER):
-            return True
-
-        return False
-
     def list(self, request, *args, **kwargs):
         """
         Project permissions expresses connection of user to a project.
@@ -713,8 +700,9 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         affected_project = serializer.validated_data['project']
         affected_user = serializer.validated_data['user']
         role = serializer.validated_data['role']
+        expiration_time = serializer.validated_data.get('expiration_time')
 
-        if not self.can_manage_roles_for(affected_project, role):
+        if not affected_project.can_manage_role(self.request.user, role, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
@@ -725,8 +713,9 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         affected_project = serializer.instance.project
         role = serializer.instance.role
+        expiration_time = serializer.validated_data.get('expiration_time', serializer.instance.expiration_time)
 
-        if not self.can_manage_roles_for(affected_project, role)\
+        if not affected_project.can_manage_role(self.request.user, role, expiration_time)\
                 or serializer.instance.user == self.request.user:
             raise PermissionDenied('You do not have permission to perform this action.')
 
@@ -736,8 +725,9 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         affected_user = instance.user
         affected_project = instance.project
         role = instance.role
+        expiration_time = instance.expiration_time
 
-        if not self.can_manage_roles_for(affected_project, role):
+        if not affected_project.can_manage_role(self.request.user, role, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_project.remove_user(affected_user, role)
@@ -770,16 +760,6 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         # rf_permissions.DjangoObjectPermissions,
     )
     filter_class = filters.CustomerPermissionFilter
-
-    def can_manage_roles_for(self, customer):
-        user = self.request.user
-        if user.is_staff:
-            return True
-
-        if customer.has_user(user, models.CustomerRole.OWNER):
-            return True
-
-        return False
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
@@ -838,8 +818,9 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         affected_customer = serializer.validated_data['customer']
         affected_user = serializer.validated_data['user']
+        expiration_time = serializer.validated_data.get('expiration_time')
 
-        if not self.can_manage_roles_for(affected_customer):
+        if not affected_customer.can_manage_role(self.request.user, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         if not affected_customer.get_users().filter(pk=affected_user.pk).exists():
@@ -852,8 +833,9 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         affected_customer = serializer.instance.customer
+        expiration_time = serializer.validated_data.get('expiration_time', serializer.instance.expiration_time)
 
-        if not self.can_manage_roles_for(affected_customer) \
+        if not affected_customer.can_manage_role(self.request.user, expiration_time) \
                 or serializer.instance.user == self.request.user:
             raise PermissionDenied('You do not have permission to perform this action.')
 
@@ -863,8 +845,9 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         affected_user = instance.user
         affected_customer = instance.customer
         role = instance.role
+        expiration_time = instance.expiration_time
 
-        if not self.can_manage_roles_for(affected_customer):
+        if not affected_customer.can_manage_role(self.request.user, expiration_time):
             raise PermissionDenied('You do not have permission to perform this action.')
 
         affected_customer.remove_user(affected_user, role)
