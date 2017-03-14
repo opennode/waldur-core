@@ -144,6 +144,20 @@ class ServiceUpdateTest(test.APITransactionTestCase):
         service.settings.refresh_from_db()
         self.assertEqual(service.settings.name, old_name)
 
+    def test_service_settings_name_is_updated_if_user_is_not_owner_of_settings_customer_and_is_staff(self):
+        service = self.fixture.service
+        service.settings.customer = factories.CustomerFactory()
+        service.settings.save()
+        payload = self._get_valid_payload(service)
+
+        self.client.force_authenticate(self.fixture.staff)
+        url = factories.TestServiceFactory.get_url(service)
+        response = self.client.put(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        service.settings.refresh_from_db()
+        self.assertEqual(service.settings.name, payload['name'])
+
     def _get_valid_payload(self, service):
         expected_name = 'tensymbols'
         settings_url = factories.ServiceSettingsFactory.get_url(service.settings)

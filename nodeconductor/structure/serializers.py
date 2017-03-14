@@ -1116,18 +1116,21 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def update(self, instance, attrs):
         name = self.initial_data.get('name')
 
-        # user should not be able to update settings name if he is not an owner of settings customer
-        if name and self._user_is_owner_of_customer_settings():
+        # user should not be able to update settings name if he is not an owner of settings customer and not a staff
+        if name and self._user_has_permissions_to_change_name():
             instance.settings.name = name
             instance.settings.save()
 
         return super(BaseServiceSerializer, self).update(instance, attrs)
 
+    def _user_has_permissions_to_change_name(self):
+        return 'request' in self.context and (self._user_is_owner_of_customer_settings() or
+                                              self.context['request'].user.is_staff)
+
     def _user_is_owner_of_customer_settings(self):
         service = self.instance
         customer = service.settings.customer
-        return ('request' in self.context and
-                customer and
+        return (customer and
                 customer.has_user(self.context['request'].user, models.CustomerRole.OWNER))
 
 
