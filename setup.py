@@ -40,7 +40,7 @@ install_requires = [
     'pycountry>=1.20,<2.0',
     'pyvat>=1.3.1,<2.0',
     'redis==2.10.3',
-    'requests>=2.6.0',
+    'requests>=2.10.0,!=2.12.2,!=2.13.0',
     'sqlparse>=0.1.11',
     'urllib3<1.18',
 ]
