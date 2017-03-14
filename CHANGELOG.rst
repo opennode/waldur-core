@@ -3,7 +3,7 @@ CHANGELOG
 
 Next Release
 ------------
-- Fix settings fields values overlap issue on settings creation.
+- Disallow name update if user is not owner of service settings customer.
 
 Release 0.126.2
 ---------------

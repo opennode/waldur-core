@@ -975,16 +975,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 else:
                     del fields[field]
 
-        # user should not be able to update settings name if he is not an owner of settings customer
-        # As settings is readonly 'name' is set directly on update action.
-        # Remove it if user has no rights to update it.
-        if self.context['request'].method in ('PUT', 'PATCH'):
-            service = self.instance
-            customer = service.settings.customer
-
-            if not (customer and customer.has_user(self.context['request'].user, models.CustomerRole.OWNER)):
-                del fields['name']
-
         return fields
 
     def build_unknown_field(self, field_name, model_class):
@@ -1125,11 +1115,20 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def update(self, instance, attrs):
         name = self.initial_data.get('name')
-        if name:
+
+        # user should not be able to update settings name if he is not an owner of settings customer
+        if name and self._user_is_owner_of_customer_settings():
             instance.settings.name = name
             instance.settings.save()
 
         return super(BaseServiceSerializer, self).update(instance, attrs)
+
+    def _user_is_owner_of_customer_settings(self):
+        service = self.instance
+        customer = service.settings.customer
+        return ('request' in self.context and
+                customer and
+                customer.has_user(self.context['request'].user, models.CustomerRole.OWNER))
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,

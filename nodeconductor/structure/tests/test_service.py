@@ -141,6 +141,7 @@ class ServiceUpdateTest(test.APITransactionTestCase):
         response = self.client.put(url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        service.settings.refresh_from_db()
         self.assertEqual(service.settings.name, old_name)
 
     def _get_valid_payload(self, service):
