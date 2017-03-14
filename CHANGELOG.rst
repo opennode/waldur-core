@@ -3,7 +3,11 @@ CHANGELOG
 
 Next Release
 ------------
-Nothing yet.
+- Fix settings fields values overlap issue on settings creation.
+
+Release 0.126.2
+---------------
+- Fix settings fields values overlap issue on settings creation.
 
 Release 0.126.1
 ---------------
