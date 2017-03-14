@@ -973,9 +973,13 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 else:
                     del fields[field]
 
+        # user should not be able to update settings name if he is not an owner of settings customer
+        # As settings is readonly 'name' is set directly on update action.
+        # Remove it if user has no rights to update it.
         if self.context['request'].method in ('PUT', 'PATCH'):
-            service = self.context['view'].get_object()
+            service = self.instance
             customer = service.settings.customer
+
             if not (customer and customer.has_user(self.context['request'].user, models.CustomerRole.OWNER)):
                 del fields['name']
 
@@ -1111,9 +1115,9 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def update(self, instance, attrs):
         if 'settings' in attrs:
-            settings = attrs.pop('settings')
-            if settings:
-                instance.settings.name = settings.get('name')
+            name = attrs.pop('settings', {}).get('name')
+            if name:
+                instance.settings.name = name
                 instance.settings.save()
 
         return super(BaseServiceSerializer, self).update(instance, attrs)
