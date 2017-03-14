@@ -3,7 +3,7 @@ CHANGELOG
 
 Next Release
 ------------
-- Disallow name update if user is not owner of service settings customer but not a staff.
+- Update service settings name update policy: allow to customer owner or staff only.
 
 Release 0.126.2
 ---------------
