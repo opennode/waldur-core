@@ -1,6 +1,7 @@
-from mock_django import mock_signal_receiver
+from ddt import ddt, data
 from django.core.urlresolvers import reverse
 from django.db import models
+from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
 from nodeconductor.structure import signals
@@ -100,50 +101,47 @@ class UnlinkServiceTest(test.APITransactionTestCase):
         self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())
 
 
+@ddt
 class ServiceUpdateTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
+        self.service = self.fixture.service
+        self.url = factories.TestServiceFactory.get_url(self.fixture.service)
 
-    def test_it_is_possible_to_update_service_settings_name(self):
-        service = self.fixture.service
-        payload = self._get_valid_payload(service)
+    def _get_valid_payload(self, **options):
+        settings_url = factories.ServiceSettingsFactory.get_url(self.service.settings)
+        payload = {'name': 'tensymbols', 'settings': settings_url}
+        payload.update(options)
+        return payload
 
-        self.client.force_authenticate(self.fixture.owner)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
+    @data('staff', 'owner')
+    def test_it_is_possible_to_update_service_settings_name(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_valid_payload()
+
+        response = self.client.put(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        service.settings.refresh_from_db()
-        self.assertEqual(service.settings.name, payload['name'])
+        self.service.settings.refresh_from_db()
+        self.assertEqual(self.service.settings.name, payload['name'])
+
+    @data('manager', 'admin')
+    def test_it_is_impossible_to_update_service_settings_name_without_permissions(self, user):
+        self.fixture.service_project_link  # create SPL to make sure that users can view service.
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_valid_payload()
+
+        response = self.client.put(self.url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.service.settings.refresh_from_db()
+        self.assertNotEqual(self.service.settings.name, payload['name'])
 
     def test_it_is_not_possible_to_update_service_settings_name_if_it_is_too_long(self):
-        service = self.fixture.service
-        payload = self._get_valid_payload(service)
-        expected_name = 'tensymbols'*16
-        payload['name'] = expected_name
-
         self.client.force_authenticate(self.fixture.owner)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
+        payload = self._get_valid_payload(name='tensymbols' * 16)
+
+        response = self.client.put(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_service_settings_name_is_not_updated_if_user_is_not_owner_of_settings_customer(self):
-        service = self.fixture.service
-        service.settings.customer = factories.CustomerFactory()
-        service.settings.save()
-        old_name = service.settings.name
-        payload = self._get_valid_payload(service)
-
-        self.client.force_authenticate(self.fixture.owner)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(service.settings.name, old_name)
-
-    def _get_valid_payload(self, service):
-        expected_name = 'tensymbols'
-        settings_url = factories.ServiceSettingsFactory.get_url(service.settings)
-        return {'name': expected_name, 'settings': settings_url}
