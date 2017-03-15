@@ -994,6 +994,16 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         """
         return super(ServiceSettingsViewSet, self).list(request, *args, **kwargs)
 
+    def can_user_update_settings(request, view, obj=None):
+        """ User can update settings only if he is an owner of their customer or a staff. """
+        if obj is None:
+            return
+
+        if not obj.customer:
+            return permissions.is_staff(request, view, obj)
+        else:
+            return permissions.is_owner(request, view, obj)
+
     def update(self, request, *args, **kwargs):
         """
         To update service settings, issue a **PUT** or **PATCH** to */api/service-settings/<uuid>/* as a customer owner.
@@ -1015,6 +1025,8 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
             }
         """
         return super(ServiceSettingsViewSet, self).update(request, *args, **kwargs)
+
+    update_permissions = partial_update_permissions = [can_user_update_settings]
 
     @detail_route()
     def stats(self, request, uuid=None):
@@ -1056,15 +1068,6 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
             stats = {}
 
         return Response(stats, status=status.HTTP_200_OK)
-
-    def can_user_update_settings(request, view, obj=None):
-        if obj is None:
-            return
-
-        if obj.shared:
-            return permissions.is_owner(request, view, obj)
-        else:
-            return permissions.is_staff(request, view, obj)
 
     @detail_route(methods=['post'])
     def update_certifications(self, request, uuid=None):
