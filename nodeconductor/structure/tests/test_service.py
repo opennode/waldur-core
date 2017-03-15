@@ -158,6 +158,23 @@ class ServiceUpdateTest(test.APITransactionTestCase):
         service.settings.refresh_from_db()
         self.assertEqual(service.settings.name, payload['name'])
 
+    def test_service_settings_name_cannot_be_set_to_whitespaces(self):
+        service = self.fixture.service
+        service.settings.customer = factories.CustomerFactory()
+        service.settings.save()
+        old_name = service.settings.name
+        payload = self._get_valid_payload(service)
+        payload['name'] = '    '
+
+        self.client.force_authenticate(self.fixture.staff)
+        url = factories.TestServiceFactory.get_url(service)
+        response = self.client.put(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('name', response.data)
+        service.settings.refresh_from_db()
+        self.assertEqual(service.settings.name, old_name)
+
     def _get_valid_payload(self, service):
         expected_name = 'tensymbols'
         settings_url = factories.ServiceSettingsFactory.get_url(service.settings)

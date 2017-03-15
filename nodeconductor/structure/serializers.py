@@ -1019,7 +1019,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         if self.context['request'].method in ('POST', 'PUT', 'PATCH'):
             name = self.initial_data.get('name')
             if name:
-                self.validate_name_length(name)
+                self._validate_name(name)
 
         if self.context['request'].method == 'POST':
             # Make shallow copy to protect from mutations
@@ -1076,6 +1076,11 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     def _validate_settings(self, settings):
         pass
+
+    def _validate_name(self, name):
+        self.validate_name_length(name)
+        if not name.strip():
+            raise serializers.ValidationError({'name': 'Name cannot be empty'})
 
     def get_resources_count(self, service):
         return self.get_resources_count_map[service.pk]
