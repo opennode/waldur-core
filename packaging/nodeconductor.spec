@@ -47,7 +47,7 @@ Requires: python-psycopg2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: python-redis = 2.10.3
-Requires: python-requests >= 2.10.0
+Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
