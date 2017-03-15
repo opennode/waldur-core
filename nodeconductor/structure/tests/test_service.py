@@ -1,4 +1,3 @@
-from ddt import ddt, data
 from django.core.urlresolvers import reverse
 from django.db import models
 from mock_django import mock_signal_receiver
@@ -99,49 +98,3 @@ class UnlinkServiceTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())
-
-
-@ddt
-class ServiceUpdateTest(test.APITransactionTestCase):
-
-    def setUp(self):
-        self.fixture = fixtures.ServiceFixture()
-        self.service = self.fixture.service
-        self.url = factories.TestServiceFactory.get_url(self.fixture.service)
-
-    def _get_valid_payload(self, **options):
-        settings_url = factories.ServiceSettingsFactory.get_url(self.service.settings)
-        payload = {'name': 'tensymbols', 'settings': settings_url}
-        payload.update(options)
-        return payload
-
-    @data('staff', 'owner')
-    def test_it_is_possible_to_update_service_settings_name(self, user):
-        self.client.force_authenticate(getattr(self.fixture, user))
-        payload = self._get_valid_payload()
-
-        response = self.client.put(self.url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.service.settings.refresh_from_db()
-        self.assertEqual(self.service.settings.name, payload['name'])
-
-    @data('manager', 'admin')
-    def test_it_is_impossible_to_update_service_settings_name_without_permissions(self, user):
-        self.fixture.service_project_link  # create SPL to make sure that users can view service.
-        self.client.force_authenticate(getattr(self.fixture, user))
-        payload = self._get_valid_payload()
-
-        response = self.client.put(self.url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.service.settings.refresh_from_db()
-        self.assertNotEqual(self.service.settings.name, payload['name'])
-
-    def test_it_is_not_possible_to_update_service_settings_name_if_it_is_too_long(self):
-        self.client.force_authenticate(self.fixture.owner)
-        payload = self._get_valid_payload(name='tensymbols' * 16)
-
-        response = self.client.put(self.url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

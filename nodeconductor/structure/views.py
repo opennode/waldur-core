@@ -1665,8 +1665,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            customer = serializer.validated_data['project'].customer
-
             try:
                 resource = serializer.save()
             except ServiceBackendError as e:
@@ -1709,6 +1707,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     unlink_permissions = [_require_staff_for_shared_settings]
     unlink.destructive = True
+
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     core_views.ActionsViewSet):

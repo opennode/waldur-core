@@ -3,7 +3,7 @@ CHANGELOG
 
 Next Release
 ------------
-- Fix settings fields values overlap issue on settings creation.
+- Disable service setting name update via service endpoint.
 
 Release 0.126.2
 ---------------

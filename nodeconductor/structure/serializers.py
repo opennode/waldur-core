@@ -901,8 +901,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     certifications = ServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
     name = serializers.ReadOnlyField(source='settings.name')
 
-    validate_name_length = MaxLengthValidator(150)
-
     class Meta(object):
         model = NotImplemented
         fields = (
@@ -975,16 +973,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 else:
                     del fields[field]
 
-        # user should not be able to update settings name if he is not an owner of settings customer
-        # As settings is readonly 'name' is set directly on update action.
-        # Remove it if user has no rights to update it.
-        if self.context['request'].method in ('PUT', 'PATCH'):
-            service = self.instance
-            customer = service.settings.customer
-
-            if not (customer and customer.has_user(self.context['request'].user, models.CustomerRole.OWNER)):
-                del fields['name']
-
         return fields
 
     def build_unknown_field(self, field_name, model_class):
@@ -1026,12 +1014,10 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 if attrs.get('customer') != settings.customer:
                     raise serializers.ValidationError('Customer must match settings customer.')
 
-        if self.context['request'].method in ('POST', 'PUT', 'PATCH'):
-            name = self.initial_data.get('name')
-            if name:
-                self.validate_name_length(name)
-
         if self.context['request'].method == 'POST':
+            name = self.initial_data.get('name')
+            if not name or not name.strip():
+                raise serializers.ValidationError({'name': 'Name cannot be empty'})
             # Make shallow copy to protect from mutations
             settings_fields = self.Meta.settings_fields[:]
             create_settings = any([attrs.get(f) for f in settings_fields])
@@ -1122,14 +1108,6 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         if project and not spl_model.objects.filter(project=project, service=service).exists():
             spl_model.objects.create(project=project, service=service)
         return service
-
-    def update(self, instance, attrs):
-        name = self.initial_data.get('name')
-        if name:
-            instance.settings.name = name
-            instance.settings.save()
-
-        return super(BaseServiceSerializer, self).update(instance, attrs)
 
 
 class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
