@@ -7,7 +7,7 @@ from nodeconductor.structure import models
 from . import fixtures, factories
 
 
-class ServiceSettingsTest(test.APITransactionTestCase):
+class ServiceSettingsListTest(test.APITransactionTestCase):
     def setUp(self):
         self.users = {
             'staff': factories.UserFactory(is_staff=True),
@@ -89,26 +89,87 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         for field in self.credentials:
             self.assertNotIn(field, data)
 
-    def test_user_cant_change_settings_type(self):
-        self.client.force_authenticate(user=self.users['owner'])
 
-        payload = {
-            "name": "Test backend",
-            "type": 2,
-        }
-        response = self.client.patch(factories.ServiceSettingsFactory.get_url(self.settings['owned']), payload)
-        settings = models.ServiceSettings.objects.get(uuid=self.settings['owned'].uuid)
-        self.assertNotEqual(settings.type, payload['type'], response.data)
+@ddt
+class ServiceSettingUpdateTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.service_settings = self.fixture.service_settings
+        self.service_settings.shared = True
+        self.service_settings.save()
+        self.url = factories.ServiceSettingsFactory.get_url(self.service_settings)
+
+    def get_valid_payload(self):
+        return {'name': 'test'}
+
+    @data('staff')
+    def test_user_can_update_service_settings_without_customer_if_he_has_permission(self, user):
+        self.service_settings.customer = None
+        self.service_settings.save()
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self.get_valid_payload()
+
+        response = self.client.patch(self.url, data=payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.service_settings.refresh_from_db()
+        self.assertEqual(self.service_settings.name, payload['name'])
+
+    @data('owner', 'manager', 'admin')
+    def test_user_cannot_update_service_settings_without_customer_if_he_has_no_permission(self, user):
+        self.service_settings.customer = None
+        self.service_settings.save()
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self.get_valid_payload()
+
+        response = self.client.patch(self.url, data=payload)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.service_settings.refresh_from_db()
+        self.assertNotEqual(self.service_settings.name, payload['name'])
+
+    @data('staff', 'owner')
+    def test_user_can_update_service_settings_with_customer_if_he_has_permission(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self.get_valid_payload()
+
+        response = self.client.patch(self.url, data=payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.service_settings.refresh_from_db()
+        self.assertEqual(self.service_settings.name, payload['name'])
+
+    @data('manager', 'admin')
+    def test_user_cannot_update_service_settings_with_customer_if_he_has_no_permission(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self.get_valid_payload()
+
+        response = self.client.patch(self.url, data=payload)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.service_settings.refresh_from_db()
+        self.assertNotEqual(self.service_settings.name, payload['name'])
+
+    def test_user_cannot_change_settings_type(self):
+        self.client.force_authenticate(user=self.fixture.owner)
+        payload = {'name': 'Test backend', 'type': 2}
+
+        response = self.client.patch(self.url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.service_settings.refresh_from_db()
+        self.assertNotEqual(self.service_settings.type, payload['type'], response.data)
 
     def test_user_can_change_settings_password(self):
-        self.client.force_authenticate(user=self.users['owner'])
+        self.client.force_authenticate(user=self.fixture.owner)
+        payload = {'password': 'secret'}
 
-        payload = {
-            "password": "secret",
-        }
-        response = self.client.patch(factories.ServiceSettingsFactory.get_url(self.settings['owned']), payload)
-        settings = models.ServiceSettings.objects.get(uuid=self.settings['owned'].uuid)
-        self.assertEqual(settings.password, payload['password'], response.data)
+        response = self.client.patch(self.url, data=payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.service_settings.refresh_from_db()
+        self.assertEqual(self.service_settings.password, payload['password'], response.data)
 
 
 @ddt
@@ -117,13 +178,15 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
         self.settings = self.fixture.service_settings
+        self.settings.shared = True
+        self.settings.save()
         self.associated_certification = factories.ServiceCertificationFactory()
         self.settings.certifications.add(self.associated_certification)
         self.new_certification = factories.ServiceCertificationFactory()
         self.url = factories.ServiceSettingsFactory.get_url(self.settings, 'update_certifications')
 
-    @data('staff')
-    def test_user_can_add_certifications(self, user):
+    @data('staff', 'owner')
+    def test_user_can_update_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
         certifications = [self.new_certification, self.associated_certification]
         payload = self._get_payload(*certifications)
@@ -147,8 +210,8 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
         self.assertTrue(self.settings.certifications.filter(pk=self.new_certification.pk).exists())
         self.assertFalse(self.settings.certifications.filter(pk=self.associated_certification.pk).exists())
 
-    @data('owner', 'global_support')
-    def test_user_can_not_update_certifications_if_settings_are_not_shared(self, user):
+    @data('manager', 'admin', 'global_support')
+    def test_user_can_not_update_certifications_if_he_is_not_staff(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
         payload = self._get_payload(self.associated_certification)
 

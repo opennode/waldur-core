@@ -1,6 +1,6 @@
-from mock_django import mock_signal_receiver
 from django.core.urlresolvers import reverse
 from django.db import models
+from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
 from nodeconductor.structure import signals
@@ -98,84 +98,3 @@ class UnlinkServiceTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())
-
-
-class ServiceUpdateTest(test.APITransactionTestCase):
-
-    def setUp(self):
-        self.fixture = fixtures.ServiceFixture()
-
-    def test_it_is_possible_to_update_service_settings_name(self):
-        service = self.fixture.service
-        payload = self._get_valid_payload(service)
-
-        self.client.force_authenticate(self.fixture.owner)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        service.settings.refresh_from_db()
-        self.assertEqual(service.settings.name, payload['name'])
-
-    def test_it_is_not_possible_to_update_service_settings_name_if_it_is_too_long(self):
-        service = self.fixture.service
-        payload = self._get_valid_payload(service)
-        expected_name = 'tensymbols'*16
-        payload['name'] = expected_name
-
-        self.client.force_authenticate(self.fixture.owner)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_service_settings_name_is_not_updated_if_user_is_not_owner_of_settings_customer(self):
-        service = self.fixture.service
-        service.settings.customer = factories.CustomerFactory()
-        service.settings.save()
-        old_name = service.settings.name
-        payload = self._get_valid_payload(service)
-
-        self.client.force_authenticate(self.fixture.owner)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        service.settings.refresh_from_db()
-        self.assertEqual(service.settings.name, old_name)
-
-    def test_service_settings_name_is_updated_if_user_is_not_owner_of_settings_customer_and_is_staff(self):
-        service = self.fixture.service
-        service.settings.customer = factories.CustomerFactory()
-        service.settings.save()
-        payload = self._get_valid_payload(service)
-
-        self.client.force_authenticate(self.fixture.staff)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        service.settings.refresh_from_db()
-        self.assertEqual(service.settings.name, payload['name'])
-
-    def test_service_settings_name_cannot_be_set_to_whitespaces(self):
-        service = self.fixture.service
-        service.settings.customer = factories.CustomerFactory()
-        service.settings.save()
-        old_name = service.settings.name
-        payload = self._get_valid_payload(service)
-        payload['name'] = '    '
-
-        self.client.force_authenticate(self.fixture.staff)
-        url = factories.TestServiceFactory.get_url(service)
-        response = self.client.put(url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('name', response.data)
-        service.settings.refresh_from_db()
-        self.assertEqual(service.settings.name, old_name)
-
-    def _get_valid_payload(self, service):
-        expected_name = 'tensymbols'
-        settings_url = factories.ServiceSettingsFactory.get_url(service.settings)
-        return {'name': expected_name, 'settings': settings_url}

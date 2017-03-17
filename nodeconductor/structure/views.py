@@ -1002,6 +1002,16 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         """
         return super(ServiceSettingsViewSet, self).list(request, *args, **kwargs)
 
+    def can_user_update_settings(request, view, obj=None):
+        """ User can update settings only if he is an owner of their customer or a staff. """
+        if obj is None:
+            return
+
+        if not obj.customer:
+            return permissions.is_staff(request, view, obj)
+        else:
+            return permissions.is_owner(request, view, obj)
+
     def update(self, request, *args, **kwargs):
         """
         To update service settings, issue a **PUT** or **PATCH** to */api/service-settings/<uuid>/* as a customer owner.
@@ -1023,6 +1033,8 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
             }
         """
         return super(ServiceSettingsViewSet, self).update(request, *args, **kwargs)
+
+    update_permissions = partial_update_permissions = [can_user_update_settings]
 
     @detail_route()
     def stats(self, request, uuid=None):
@@ -1064,15 +1076,6 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
             stats = {}
 
         return Response(stats, status=status.HTTP_200_OK)
-
-    def can_user_update_settings(request, view, obj=None):
-        if obj is None:
-            return
-
-        if obj.shared:
-            return permissions.is_owner(request, view, obj)
-        else:
-            return permissions.is_staff(request, view, obj)
 
     @detail_route(methods=['post'])
     def update_certifications(self, request, uuid=None):
@@ -1670,8 +1673,6 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
-            customer = serializer.validated_data['project'].customer
-
             try:
                 resource = serializer.save()
             except ServiceBackendError as e:
@@ -1714,6 +1715,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
 
     unlink_permissions = [_require_staff_for_shared_settings]
     unlink.destructive = True
+
 
 class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
                                     core_views.ActionsViewSet):
@@ -2150,7 +2152,7 @@ class QuotaTimelineStatsView(views.APIView):
 
     def get_all_spls_quotas(self):
         # XXX: quick and dirty hack for OpenStack: use tenants instead of SPLs as quotas scope.
-        spl_models = [m if m.__name__ != 'OpenStackServiceProjectLink' else m.tenants.related.related_model
+        spl_models = [m if m.__name__ != 'OpenStackServiceProjectLink' else m.tenants.model
                       for m in models.ServiceProjectLink.get_all_models()]
         return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
 

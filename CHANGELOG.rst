@@ -3,7 +3,11 @@ CHANGELOG
 
 Next Release
 ------------
-- Update service settings name update policy: allow to customer owner or staff only.
+Nothing yet.
+
+Release 0.127.0
+---------------
+- Disable service setting name update via service endpoint.
 
 Release 0.126.2
 ---------------
