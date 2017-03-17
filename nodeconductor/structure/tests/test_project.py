@@ -8,7 +8,7 @@ from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
-from nodeconductor.structure import signals
+from nodeconductor.structure import signals, models
 from nodeconductor.structure.models import CustomerRole, Project, ProjectRole
 from nodeconductor.structure.tests import factories, fixtures
 
@@ -511,3 +511,52 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         return {
             'certifications': urls
         }
+
+
+class ProjectGetTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+
+    def test_service_certification_state_is_ok_if_project_certifications_is_a_subset_of_service_certifications(self):
+        self.client.force_authenticate(self.fixture.owner)
+        link = self.fixture.service_project_link
+        project_certifications = [factories.ServiceCertificationFactory()]
+        service_certifications = project_certifications + [factories.ServiceCertificationFactory()]
+        link.service.settings.certifications.add(*service_certifications)
+        link.project.certifications.add(*project_certifications)
+        url = factories.ProjectFactory.get_url(link.project)
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone('policy_compliant', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['policy_compliant'], "OK")
+
+    def test_certification_state_is_erred_if_project_certifications_is_not_a_subset_of_service_certifications(self):
+        self.client.force_authenticate(self.fixture.owner)
+        link = self.fixture.service_project_link
+        service_certification = factories.ServiceCertificationFactory()
+        project_certification = factories.ServiceCertificationFactory()
+        link.service.settings.certifications.add(service_certification)
+        link.project.certifications.add(project_certification)
+        url = factories.ProjectFactory.get_url(link.project)
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone('policy_compliant', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['policy_compliant'], "ERRED")
+
+    def test_missing_certification_name_is_in_error_message(self):
+        self.client.force_authenticate(self.fixture.owner)
+        link = self.fixture.service_project_link
+        service_certification = factories.ServiceCertificationFactory()
+        project_certification = factories.ServiceCertificationFactory()
+        link.service.settings.certifications.add(service_certification)
+        link.project.certifications.add(project_certification)
+        url = factories.ProjectFactory.get_url(link.project)
+
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone('policy_compliant', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['policy_compliant'], "ERRED")
+        self.assertIn(project_certification.name, response.data['services'][0]['policy_message'])

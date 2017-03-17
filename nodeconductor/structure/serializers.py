@@ -127,6 +127,9 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
+    policy_compliant = serializers.ChoiceField(choices=models.ServiceProjectLink.CertificationState.CHOICES,
+                                               read_only=True)
+    policy_message = serializers.SerializerMethodField()
 
     def get_settings(self, link):
         """
@@ -167,6 +170,15 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
 
     def get_shared(self, link):
         return link.service.settings.shared
+
+    def get_policy_message(self, link):
+        if link.policy_compliant != link.CertificationState.OK:
+            service_certifications = link.service.settings.certifications.values_list('name', flat=True)
+            project_certifications = link.project.certifications.values_list('name', flat=True)
+            missing_certification_names = list(set(project_certifications) - set(service_certifications))
+            return 'Next certifications are missing: "%s"' % ', '.join(missing_certification_names)
+        else:
+            return ''
 
 
 class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
@@ -217,10 +229,10 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'customer__uuid',
             'customer__name',
             'customer__native_name',
-            'customer__abbreviation'
+            'customer__abbreviation',
         )
-        return queryset.select_related('customer').only(*related_fields) \
-            .prefetch_related('quotas')
+        return queryset.select_related('customer').only(*related_fields)\
+            .prefetch_related('quotas').prefetch_related('certifications')
 
     def create(self, validated_data):
         project = super(ProjectSerializer, self).create(validated_data)
@@ -256,7 +268,8 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         for link_model in ServiceProjectLink.get_all_models():
             links = (link_model.objects.all()
                      .select_related('service', 'service__settings')
-                     .only(*related_fields))
+                     .only(*related_fields)
+                     .prefetch_related('service__settings__certifications'))
             if isinstance(self.instance, list):
                 links = links.filter(project__in=self.instance)
             else:

@@ -811,6 +811,13 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
                          StructureModel):
     """ Base service-project link class. See Service class for usage example. """
 
+    class CertificationState(object):
+        OK = 'OK'
+        ERRED = 'ERRED'
+        WARNING = 'WARNING'
+
+        CHOICES = [OK, ERRED, WARNING]
+
     class Meta(object):
         abstract = True
         unique_together = ('service', 'project')
@@ -846,6 +853,19 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
                            if m.service_project_link.field.related_model == self.__class__]
         return itertools.chain.from_iterable(
             m.objects.filter(service_project_link=self) for m in resource_models)
+
+    @property
+    def policy_compliant(self):
+        """
+        Defines whether service compliant with required project certifications.
+        """
+        service_certifications = self.service.settings.certifications.values_list('name', flat=True)
+        project_certifications = self.project.certifications.values_list('name', flat=True)
+
+        if set(project_certifications).issubset(set(service_certifications)):
+            return self.CertificationState.OK
+        else:
+            return self.CertificationState.ERRED
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
