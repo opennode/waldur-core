@@ -536,6 +536,7 @@ class Project(core_models.DescribableMixin,
             path_to_scope='project',
         )
 
+    certifications = models.ManyToManyField(to='ServiceCertification', related_name='projects', blank=True)
     customer = models.ForeignKey(
         Customer, verbose_name=_('organization'), related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()

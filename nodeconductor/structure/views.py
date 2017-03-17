@@ -191,19 +191,12 @@ class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generi
         raise PermissionDenied()
 
 
-class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
+class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
     queryset = models.Project.objects.all()
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          rf_permissions.DjangoObjectPermissions)
     filter_class = filters.ProjectFilter
-
-    def get_serializer_class(self):
-        if self.action == 'users':
-            return serializers.ProjectUserSerializer
-        return super(ProjectViewSet, self).get_serializer_class()
 
     def get_serializer_context(self):
         context = super(ProjectViewSet, self).get_serializer_context()
@@ -335,6 +328,34 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         queryset = self.paginate_queryset(queryset)
         serializer = self.get_serializer(queryset, many=True)
         return self.get_paginated_response(serializer.data)
+
+    users_serializer_class = serializers.ProjectUserSerializer
+
+    @detail_route(methods=['post'])
+    def add_certifications(self, request, uuid=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        serialized_instance = serializers.ProjectSerializer(instance, context={'request': self.request})
+
+        return Response(serialized_instance.data, status=status.HTTP_200_OK)
+
+    add_certifications_serializer_class = serializers.CertificationsAddSerializer
+    add_certifications_permissions = [permissions.is_staff]
+
+    @detail_route(methods=['post'])
+    def remove_certifications(self, request, uuid=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        serialized_instance = serializers.ProjectSerializer(instance, context={'request': self.request})
+
+        return Response(serialized_instance.data, status=status.HTTP_200_OK)
+
+    remove_certifications_serializer_class = serializers.CertificationsRemoveSerializer
+    remove_certifications_permissions = [permissions.is_staff]
 
 
 class UserViewSet(viewsets.ModelViewSet):

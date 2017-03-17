@@ -169,12 +169,22 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         return link.service.settings.shared
 
 
+class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.ServiceCertification
+        fields = ('uuid', 'url', 'name', 'description', 'link')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid', 'view_name': 'service-certification-detail'},
+        }
+
+
 class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
                         PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
+    certifications = ServiceCertificationSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = models.Project
@@ -186,10 +196,12 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'quotas',
             'services',
             'created',
+            'certifications',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
+            'certifications': {'lookup_field': 'uuid'},
         }
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
@@ -722,15 +734,6 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
             del fields['user_uuid']
 
         return fields
-
-
-class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta(object):
-        model = models.ServiceCertification
-        fields = ('uuid', 'url', 'name', 'description', 'link')
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid', 'view_name': 'service-certification-detail'},
-        }
 
 
 class NestedServiceCertificationSerializer(serializers.HyperlinkedRelatedField):

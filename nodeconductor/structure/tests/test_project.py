@@ -464,3 +464,58 @@ class ProjectCountersListTest(test.APITransactionTestCase):
         response = self.client.get(self.url, {'fields': ['users', 'apps', 'vms']})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {'users': 2, 'apps': 0, 'vms': 1})
+
+
+class BaseCertificationTestCase(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.project = self.fixture.project
+        self.certification = factories.ServiceCertificationFactory()
+        self.payload = {'certifications': [factories.ServiceCertificationFactory.get_url(self.certification)]}
+
+
+@ddt
+class ProjectAddCertificationTest(BaseCertificationTestCase):
+
+    def setUp(self):
+        super(ProjectAddCertificationTest, self).setUp()
+        self.url = factories.ProjectFactory.get_url(self.project, action='add_certifications')
+
+    @data('staff')
+    def test_user_can_add_certifications(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.client.post(self.url, self.payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(self.project.certifications.filter(pk=self.certification.pk).exists())
+
+    @data('owner', 'global_support')
+    def test_user_cannot_add_certifications_if_he_is_not_staff(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.client.post(self.url, self.payload)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+@ddt
+class ProjectRemoveCertificationTest(BaseCertificationTestCase):
+
+    def setUp(self):
+        super(ProjectRemoveCertificationTest, self).setUp()
+        self.url = factories.ProjectFactory.get_url(self.project, action='remove_certifications')
+
+    @data('staff')
+    def test_user_can_remove_certifications(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.client.post(self.url, self.payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(self.project.certifications.filter(pk=self.certification.pk).exists())
+
+    @data('owner', 'global_support')
+    def test_user_cannot_remove_certifications_if_he_is_not_staff(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.client.post(self.url, self.payload)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
