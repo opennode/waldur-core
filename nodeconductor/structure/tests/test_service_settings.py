@@ -111,85 +111,66 @@ class ServiceSettingsTest(test.APITransactionTestCase):
         self.assertEqual(settings.password, payload['password'], response.data)
 
 
-class BaseCertificationTestCase(test.APITransactionTestCase):
+@ddt
+class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
 
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
         self.settings = self.fixture.service_settings
-        self.certification = factories.ServiceCertificationFactory()
-        self.payload = {'certifications': [factories.ServiceCertificationFactory.get_url(self.certification)]}
-
-
-@ddt
-class ServiceSettingsAddCertifications(BaseCertificationTestCase):
-
-    def setUp(self):
-        super(ServiceSettingsAddCertifications, self).setUp()
-        self.url = factories.ServiceSettingsFactory.get_url(self.settings, 'add_certifications')
+        self.associated_certification = factories.ServiceCertificationFactory()
+        self.settings.certifications.add(self.associated_certification)
+        self.new_certification = factories.ServiceCertificationFactory()
+        self.url = factories.ServiceSettingsFactory.get_url(self.settings, 'update_certifications')
 
     @data('staff')
     def test_user_can_add_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
+        certifications = [self.new_certification, self.associated_certification]
+        payload = self._get_payload(*certifications)
 
-        response = self.client.post(self.url, self.payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        self.settings.refresh_from_db()
-        self.assertTrue(self.settings.certifications.filter(pk=self.certification.pk).exists())
-
-    @data('owner', 'global_support')
-    def test_user_can_not_add_certifications_if_he_is_not_staff(self, user):
-        self.client.force_authenticate(getattr(self.fixture, user))
-
-        response = self.client.post(self.url, self.payload)
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_owner_can_add_certifications_if_settings_are_shared(self):
-        self.client.force_authenticate(self.fixture.owner)
-        self.settings.shared = True
-        self.settings.save()
-
-        response = self.client.post(self.url, self.payload)
+        response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.settings.refresh_from_db()
-        self.assertTrue(self.settings.certifications.filter(pk=self.certification.pk).exists())
-
-
-@ddt
-class ServiceSettingsRemoveCertifications(BaseCertificationTestCase):
-
-    def setUp(self):
-        super(ServiceSettingsRemoveCertifications, self).setUp()
-        self.url = factories.ServiceSettingsFactory.get_url(self.settings, 'remove_certifications')
-        self.settings.certifications.add(self.certification)
+        certification_pks = list(c.pk for c in certifications)
+        self.assertEqual(self.settings.certifications.filter(pk__in=certification_pks).count(), len(certifications))
 
     @data('staff')
     def test_user_can_remove_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_payload(self.new_certification)
 
-        response = self.client.post(self.url, self.payload)
+        response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.settings.refresh_from_db()
-        self.assertFalse(self.settings.certifications.filter(pk=self.certification.pk).exists())
+        self.assertTrue(self.settings.certifications.filter(pk=self.new_certification.pk).exists())
+        self.assertFalse(self.settings.certifications.filter(pk=self.associated_certification.pk).exists())
 
     @data('owner', 'global_support')
-    def test_user_can_not_remove_certifications_if_he_is_not_staff(self, user):
+    def test_user_can_not_update_certifications_if_settings_are_not_shared(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_payload(self.associated_certification)
 
-        response = self.client.post(self.url, self.payload)
+        response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_owner_can_remove_certifications_if_settings_are_shared(self):
+    def test_owner_can_update_certifications_if_settings_are_shared(self):
         self.client.force_authenticate(self.fixture.owner)
         self.settings.shared = True
         self.settings.save()
+        payload = self._get_payload(self.new_certification)
 
-        response = self.client.post(self.url, self.payload)
+        response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.settings.refresh_from_db()
-        self.assertFalse(self.settings.certifications.filter(pk=self.certification.pk).exists())
+        self.assertTrue(self.settings.certifications.filter(pk=self.new_certification.pk).exists())
+        self.assertFalse(self.settings.certifications.filter(pk=self.associated_certification.pk).exists())
+
+    def _get_payload(self, *certifications):
+        certification_urls = list(factories.ServiceCertificationFactory.get_url(c) for c in certifications)
+        return {
+            'certifications': certification_urls
+        }

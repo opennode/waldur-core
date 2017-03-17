@@ -745,7 +745,7 @@ class NestedServiceCertificationSerializer(serializers.HyperlinkedRelatedField):
         }
 
 
-class CertificationsAddSerializer(serializers.Serializer):
+class CertificationsUpdateSerializer(serializers.Serializer):
     certifications = NestedServiceCertificationSerializer(
         queryset=models.ServiceCertification.objects.all(),
         required=True,
@@ -756,22 +756,8 @@ class CertificationsAddSerializer(serializers.Serializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         certifications = validated_data.pop('certifications', None)
+        instance.certifications.clear()
         instance.certifications.add(*certifications)
-        return instance
-
-
-class CertificationsRemoveSerializer(serializers.Serializer):
-    certifications = NestedServiceCertificationSerializer(
-        queryset=models.ServiceCertification.objects.all(),
-        required=True,
-        view_name='service-certification-detail',
-        lookup_field='uuid',
-        many=True)
-
-    @transaction.atomic
-    def update(self, instance, validated_data):
-        certifications = validated_data.pop('certifications', None)
-        instance.certifications.remove(*certifications)
         return instance
 
 

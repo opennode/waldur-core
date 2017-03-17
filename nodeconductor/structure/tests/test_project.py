@@ -466,56 +466,48 @@ class ProjectCountersListTest(test.APITransactionTestCase):
         self.assertEqual(response.data, {'users': 2, 'apps': 0, 'vms': 1})
 
 
-class BaseCertificationTestCase(test.APITransactionTestCase):
+@ddt
+class ProjectUpdateCertificationTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
         self.project = self.fixture.project
-        self.certification = factories.ServiceCertificationFactory()
-        self.payload = {'certifications': [factories.ServiceCertificationFactory.get_url(self.certification)]}
-
-
-@ddt
-class ProjectAddCertificationTest(BaseCertificationTestCase):
-
-    def setUp(self):
-        super(ProjectAddCertificationTest, self).setUp()
-        self.url = factories.ProjectFactory.get_url(self.project, action='add_certifications')
+        self.associated_certification = factories.ServiceCertificationFactory()
+        self.project.certifications.add(self.associated_certification)
+        self.new_certification = factories.ServiceCertificationFactory()
+        self.url = factories.ProjectFactory.get_url(self.project, action='update_certifications')
 
     @data('staff')
     def test_user_can_add_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
+        certifications = [self.associated_certification, self.new_certification]
+        payload = self._get_payload(*certifications)
 
-        response = self.client.post(self.url, self.payload)
+        response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(self.project.certifications.filter(pk=self.certification.pk).exists())
+        certifications_pks = list(c.pk for c in certifications)
+        self.assertTrue(self.project.certifications.filter(pk__in=certifications_pks).count(), len(certifications))
 
     @data('owner', 'global_support')
-    def test_user_cannot_add_certifications_if_he_is_not_staff(self, user):
+    def test_user_cannot_update_certifications_if_he_is_not_staff(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_payload(self.new_certification)
 
-        response = self.client.post(self.url, self.payload)
+        response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-
-@ddt
-class ProjectRemoveCertificationTest(BaseCertificationTestCase):
-
-    def setUp(self):
-        super(ProjectRemoveCertificationTest, self).setUp()
-        self.url = factories.ProjectFactory.get_url(self.project, action='remove_certifications')
 
     @data('staff')
     def test_user_can_remove_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_payload(self.new_certification)
 
-        response = self.client.post(self.url, self.payload)
+        response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(self.project.certifications.filter(pk=self.certification.pk).exists())
+        self.assertTrue(self.project.certifications.filter(pk=self.new_certification.pk).exists())
+        self.assertFalse(self.project.certifications.filter(pk=self.associated_certification.pk).exists())
 
-    @data('owner', 'global_support')
-    def test_user_cannot_remove_certifications_if_he_is_not_staff(self, user):
-        self.client.force_authenticate(getattr(self.fixture, user))
-
-        response = self.client.post(self.url, self.payload)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def _get_payload(self, *certifications):
+        urls = list(factories.ServiceCertificationFactory.get_url(c) for c in certifications)
+        return {
+            'certifications': urls
+        }

@@ -332,7 +332,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
     users_serializer_class = serializers.ProjectUserSerializer
 
     @detail_route(methods=['post'])
-    def add_certifications(self, request, uuid=None):
+    def update_certifications(self, request, uuid=None):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -341,21 +341,8 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
 
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
-    add_certifications_serializer_class = serializers.CertificationsAddSerializer
-    add_certifications_permissions = [permissions.is_staff]
-
-    @detail_route(methods=['post'])
-    def remove_certifications(self, request, uuid=None):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
-        serialized_instance = serializers.ProjectSerializer(instance, context={'request': self.request})
-
-        return Response(serialized_instance.data, status=status.HTTP_200_OK)
-
-    remove_certifications_serializer_class = serializers.CertificationsRemoveSerializer
-    remove_certifications_permissions = [permissions.is_staff]
+    update_certifications_serializer_class = serializers.CertificationsUpdateSerializer
+    update_certifications_permissions = [permissions.is_staff]
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -1088,7 +1075,7 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
             return permissions.is_staff(request, view, obj)
 
     @detail_route(methods=['post'])
-    def add_certifications(self, request, uuid=None):
+    def update_certifications(self, request, uuid=None):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1097,21 +1084,8 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
 
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
-    add_certifications_serializer_class = serializers.CertificationsAddSerializer
-    add_certifications_permissions = [can_user_update_settings]
-
-    @detail_route(methods=['post'])
-    def remove_certifications(self, request, uuid=None):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
-        serialized_instance = serializers.ServiceSettingsSerializer(instance, context={'request': self.request})
-
-        return Response(serialized_instance.data, status=status.HTTP_200_OK)
-
-    remove_certifications_serializer_class = serializers.CertificationsRemoveSerializer
-    remove_certifications_permissions = [can_user_update_settings]
+    update_certifications_serializer_class = serializers.CertificationsUpdateSerializer
+    update_certifications_permissions = [can_user_update_settings]
 
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
