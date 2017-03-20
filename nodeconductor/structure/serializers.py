@@ -235,7 +235,7 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'customer__abbreviation',
         )
         return queryset.select_related('customer').only(*related_fields)\
-            .prefetch_related('quotas').prefetch_related('certifications')
+            .prefetch_related('quotas', 'certifications')
 
     def create(self, validated_data):
         certifications = validated_data.pop('certifications', [])
