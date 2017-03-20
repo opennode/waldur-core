@@ -477,7 +477,7 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         self.new_certification = factories.ServiceCertificationFactory()
         self.url = factories.ProjectFactory.get_url(self.project, action='update_certifications')
 
-    @data('staff')
+    @data('staff', 'owner')
     def test_user_can_add_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
         certifications = [self.associated_certification, self.new_certification]
@@ -488,15 +488,15 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         certifications_pks = list(c.pk for c in certifications)
         self.assertTrue(self.project.certifications.filter(pk__in=certifications_pks).count(), len(certifications))
 
-    @data('owner', 'global_support')
-    def test_user_cannot_update_certifications_if_he_is_not_staff(self, user):
+    @data('global_support', 'manager')
+    def test_user_cannot_update_certifications_if_he_has_no_permissions(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
         payload = self._get_payload(self.new_certification)
 
         response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @data('staff')
+    @data('staff', 'owner')
     def test_user_can_remove_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
         payload = self._get_payload(self.new_certification)
