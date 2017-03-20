@@ -597,6 +597,7 @@ class Project(core_models.DescribableMixin,
 @python_2_unicode_compatible
 class ServiceCertification(core_models.UuidMixin, core_models.DescribableMixin):
     link = models.URLField(max_length=255, blank=True)
+    # NameMixin is not used here as name has to be unique.
     name = models.CharField(_('name'), max_length=150, validators=[validate_name], unique=True)
 
     class Meta(object):
