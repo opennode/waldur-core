@@ -1304,6 +1304,8 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         if not service_project_link.is_policy_compliant:
             raise serializers.ValidationError('Cannot create a resource for a policy non-compliant service.')
 
+        return service_project_link
+
     @transaction.atomic
     def create(self, validated_data):
         data = validated_data.copy()
