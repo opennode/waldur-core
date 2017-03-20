@@ -181,12 +181,14 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
             return ''
 
 
-class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
+class NestedServiceCertificationSerializer(core_serializers.AugmentedSerializerMixin,
+                                           core_serializers.HyperlinkedRelatedModelSerializer):
     class Meta(object):
         model = models.ServiceCertification
         fields = ('uuid', 'url', 'name', 'description', 'link')
+        read_only_fields = ('name', 'description', 'link')
         extra_kwargs = {
-            'url': {'lookup_field': 'uuid', 'view_name': 'service-certification-detail'},
+            'url': {'lookup_field': 'uuid'},
         }
 
 
@@ -196,7 +198,9 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
-    certifications = ServiceCertificationSerializer(many=True, read_only=True)
+    certifications = NestedServiceCertificationSerializer(
+        queryset=models.ServiceCertification.objects.all(),
+        many=True, required=False)
 
     class Meta(object):
         model = models.Project
@@ -235,7 +239,9 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             .prefetch_related('quotas').prefetch_related('certifications')
 
     def create(self, validated_data):
+        certifications = validated_data.pop('certifications', [])
         project = super(ProjectSerializer, self).create(validated_data)
+        project.certifications.add(*certifications)
 
         return project
 
@@ -749,21 +755,10 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
-class NestedServiceCertificationSerializer(serializers.HyperlinkedRelatedField):
-    class Meta(object):
-        model = models.ServiceCertification
-        field = ('url',)
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
-
-
 class CertificationsUpdateSerializer(serializers.Serializer):
     certifications = NestedServiceCertificationSerializer(
         queryset=models.ServiceCertification.objects.all(),
         required=True,
-        view_name='service-certification-detail',
-        lookup_field='uuid',
         many=True)
 
     @transaction.atomic
@@ -772,6 +767,15 @@ class CertificationsUpdateSerializer(serializers.Serializer):
         instance.certifications.clear()
         instance.certifications.add(*certifications)
         return instance
+
+
+class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta(object):
+        model = models.ServiceCertification
+        fields = ('uuid', 'url', 'name', 'description', 'link')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid', 'view_name': 'service-certification-detail'},
+        }
 
 
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
@@ -784,7 +788,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
-    certifications = ServiceCertificationSerializer(many=True, read_only=True)
+    certifications = NestedServiceCertificationSerializer(many=True, read_only=True)
     geolocations = core_serializers.JSONField(read_only=True)
 
     class Meta(object):
@@ -915,7 +919,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     terms_of_services = serializers.ReadOnlyField(source='settings.terms_of_services')
     homepage = serializers.ReadOnlyField(source='settings.homepage')
     geolocations = core_serializers.JSONField(source='settings.geolocations', read_only=True)
-    certifications = ServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
+    certifications = NestedServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
     name = serializers.ReadOnlyField(source='settings.name')
 
     class Meta(object):

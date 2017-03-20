@@ -246,7 +246,7 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
         self.assertFalse(self.settings.certifications.filter(pk=self.associated_certification.pk).exists())
 
     def _get_payload(self, *certifications):
-        certification_urls = list(factories.ServiceCertificationFactory.get_url(c) for c in certifications)
+        certification_urls = [{"url": factories.ServiceCertificationFactory.get_url(c)} for c in certifications]
         return {
             'certifications': certification_urls
         }
