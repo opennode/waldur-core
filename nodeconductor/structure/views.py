@@ -1003,14 +1003,14 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         return super(ServiceSettingsViewSet, self).list(request, *args, **kwargs)
 
     def can_user_update_settings(request, view, obj=None):
-        """ User can update settings only if he is an owner of their customer or a staff. """
+        """ Only staff can update shared settings, otherwise user has to be an owner of the settings."""
         if obj is None:
             return
 
-        if not obj.customer:
-            return permissions.is_staff(request, view, obj)
-        else:
+        if obj.customer and not obj.shared:
             return permissions.is_owner(request, view, obj)
+        else:
+            return permissions.is_staff(request, view, obj)
 
     def update(self, request, *args, **kwargs):
         """
