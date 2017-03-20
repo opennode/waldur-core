@@ -484,6 +484,7 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         payload = self._get_payload(*certifications)
 
         response = self.client.post(self.url, payload)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         certifications_pks = list(c.pk for c in certifications)
         self.assertTrue(self.project.certifications.filter(pk__in=certifications_pks).count(), len(certifications))
@@ -494,6 +495,7 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         payload = self._get_payload(self.new_certification)
 
         response = self.client.post(self.url, payload)
+
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @data('staff', 'owner')
@@ -502,6 +504,7 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         payload = self._get_payload(self.new_certification)
 
         response = self.client.post(self.url, payload)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(self.project.certifications.filter(pk=self.new_certification.pk).exists())
         self.assertFalse(self.project.certifications.filter(pk=self.associated_certification.pk).exists())
@@ -528,6 +531,7 @@ class ProjectGetTest(test.APITransactionTestCase):
         url = factories.ProjectFactory.get_url(link.project)
 
         response = self.client.get(url)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone('policy_compliant', response.data['services'][0])
         self.assertEqual(response.data['services'][0]['policy_compliant'], "OK")
@@ -542,6 +546,7 @@ class ProjectGetTest(test.APITransactionTestCase):
         url = factories.ProjectFactory.get_url(link.project)
 
         response = self.client.get(url)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone('policy_compliant', response.data['services'][0])
         self.assertEqual(response.data['services'][0]['policy_compliant'], "ERRED")
@@ -556,6 +561,7 @@ class ProjectGetTest(test.APITransactionTestCase):
         url = factories.ProjectFactory.get_url(link.project)
 
         response = self.client.get(url)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsNotNone('policy_compliant', response.data['services'][0])
         self.assertEqual(response.data['services'][0]['policy_compliant'], "ERRED")

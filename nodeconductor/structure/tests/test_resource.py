@@ -65,7 +65,6 @@ class ResourceCreateTest(test.APITransactionTestCase):
             'service_project_link': factories.TestServiceProjectLinkFactory.get_url(self.service_project_link),
             'name': 'impossible resource',
         }
-
         url = factories.TestInstanceFactory.get_list_url()
 
         response = self.client.post(url, payload)
