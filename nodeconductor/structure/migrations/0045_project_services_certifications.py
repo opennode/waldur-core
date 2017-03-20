@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 
+import nodeconductor.core.validators
+
 
 class Migration(migrations.Migration):
 
@@ -16,5 +18,10 @@ class Migration(migrations.Migration):
             model_name='project',
             name='certifications',
             field=models.ManyToManyField(blank=True, related_name='projects', to='structure.ServiceCertification'),
+        ),
+        migrations.AlterField(
+            model_name='servicecertification',
+            name='name',
+            field=models.CharField(max_length=150, unique=True, validators=[nodeconductor.core.validators.validate_name], verbose_name='name'),
         ),
     ]
