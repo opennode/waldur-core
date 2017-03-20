@@ -492,16 +492,15 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         self.url = factories.ProjectFactory.get_url(self.project, action='update_certifications')
 
     @data('staff', 'owner')
-    def test_user_can_add_certifications(self, user):
+    def test_user_can_update_certifications(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
-        certifications = [self.associated_certification, self.new_certification]
-        payload = self._get_payload(*certifications)
+        payload = self._get_payload(self.new_certification)
 
         response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        certifications_pks = list(c.pk for c in certifications)
-        self.assertTrue(self.project.certifications.filter(pk__in=certifications_pks).count(), len(certifications))
+        self.assertTrue(self.project.certifications.filter(pk=self.new_certification.pk).exists())
+        self.assertFalse(self.project.certifications.filter(pk=self.associated_certification.pk).exists())
 
     @data('global_support', 'manager')
     def test_user_cannot_update_certifications_if_he_has_no_permissions(self, user):
@@ -511,17 +510,6 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    @data('staff', 'owner')
-    def test_user_can_remove_certifications(self, user):
-        self.client.force_authenticate(getattr(self.fixture, user))
-        payload = self._get_payload(self.new_certification)
-
-        response = self.client.post(self.url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(self.project.certifications.filter(pk=self.new_certification.pk).exists())
-        self.assertFalse(self.project.certifications.filter(pk=self.associated_certification.pk).exists())
 
     def _get_payload(self, *certifications):
         urls = [{"url": factories.ServiceCertificationFactory.get_url(c)} for c in certifications]
