@@ -172,7 +172,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         return link.service.settings.shared
 
     def get_policy_message(self, link):
-        if link.policy_compliant != link.CertificationState.OK:
+        if not link.is_policy_compliant:
             service_certifications = link.service.settings.certifications.values_list('name', flat=True)
             project_certifications = link.project.certifications.values_list('name', flat=True)
             missing_certification_names = list(set(project_certifications) - set(service_certifications))
