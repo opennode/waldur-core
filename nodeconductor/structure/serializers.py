@@ -1264,7 +1264,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url'
+            'access_url', 'policy_compliant',
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1292,9 +1292,11 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             .select_related(
                 'service_project_link',
                 'service_project_link__service',
+                'service_project_link__service__settings',
                 'service_project_link__project',
                 'service_project_link__project__customer',
-            )
+            ).prefetch_related('service_project_link__service__settings__certifications',
+                               'service_project_link__project__certifications',)
         )
 
     @transaction.atomic

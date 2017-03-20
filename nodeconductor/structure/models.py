@@ -859,8 +859,8 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         """
         Defines whether service compliant with required project certifications.
         """
-        service_certifications = self.service.settings.certifications.values_list('name', flat=True)
-        project_certifications = self.project.certifications.values_list('name', flat=True)
+        service_certifications = [c.name for c in self.service.settings.certifications.all()]
+        project_certifications = [c.name for c in self.project.certifications.all()]
 
         if set(project_certifications).issubset(set(service_certifications)):
             return self.CertificationState.OK
@@ -1238,6 +1238,10 @@ class ResourceMixin(MonitoringModelMixin,
     def unlink(self):
         # XXX: add special attribute to an instance in order to be tracked by signal handler
         setattr(self, 'PERFORM_UNLINK', True)
+
+    @property
+    def policy_compliant(self):
+        return self.service_project_link.policy_compliant == self.service_project_link.CertificationState.OK
 
 
 # deprecated, use NewResource instead.
