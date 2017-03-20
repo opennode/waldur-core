@@ -1296,7 +1296,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                 'service_project_link__project',
                 'service_project_link__project__customer',
             ).prefetch_related('service_project_link__service__settings__certifications',
-                               'service_project_link__project__certifications',)
+                               'service_project_link__project__certifications')
         )
 
     @transaction.atomic
