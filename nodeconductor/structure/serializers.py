@@ -754,7 +754,7 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
-class CertificationsUpdateSerializer(serializers.Serializer):
+class ServiceCertificationsUpdateSerializer(serializers.Serializer):
     certifications = NestedServiceCertificationSerializer(
         queryset=models.ServiceCertification.objects.all(),
         required=True,

@@ -341,7 +341,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
 
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
-    update_certifications_serializer_class = serializers.CertificationsUpdateSerializer
+    update_certifications_serializer_class = serializers.ServiceCertificationsUpdateSerializer
     update_certifications_permissions = [permissions.is_owner]
 
 
@@ -1087,7 +1087,7 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
 
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
-    update_certifications_serializer_class = serializers.CertificationsUpdateSerializer
+    update_certifications_serializer_class = serializers.ServiceCertificationsUpdateSerializer
     update_certifications_permissions = [can_user_update_settings]
 
 
