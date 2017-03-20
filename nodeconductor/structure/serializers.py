@@ -127,8 +127,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
-    policy_compliant = serializers.ChoiceField(choices=models.ServiceProjectLink.State.CHOICES,
-                                               read_only=True)
+    policy_state = serializers.ChoiceField(choices=models.ServiceProjectLink.State.CHOICES, read_only=True)
     policy_message = serializers.SerializerMethodField()
 
     def get_settings(self, link):
@@ -1256,7 +1255,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.ReadOnlyField(source='get_tags')
     access_url = serializers.SerializerMethodField()
-    policy_compliant = serializers.BooleanField(source='service_project_link.is_policy_compliant', read_only=True)
+    is_policy_compliant = serializers.BooleanField(source='service_project_link.is_policy_compliant', read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -1269,7 +1268,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url', 'policy_compliant',
+            'access_url', 'is_policy_compliant',
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')

@@ -858,7 +858,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
             m.objects.filter(service_project_link=self) for m in resource_models)
 
     @property
-    def policy_compliant(self):
+    def policy_state(self):
         """
         Defines whether service compliant with required project certifications.
         """
@@ -872,7 +872,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
 
     @property
     def is_policy_compliant(self):
-        return self.policy_compliant == self.State.OK
+        return self.policy_state == self.State.OK
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
