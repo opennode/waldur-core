@@ -32,6 +32,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.validators import validate_name
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
@@ -594,8 +595,9 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
-class ServiceCertification(core_models.UuidMixin, core_models.NameMixin, core_models.DescribableMixin):
+class ServiceCertification(core_models.UuidMixin, core_models.DescribableMixin):
     link = models.URLField(max_length=255, blank=True)
+    name = models.CharField(_('name'), max_length=150, validators=[validate_name], unique=True)
 
     class Meta(object):
         verbose_name = 'Service Certification'
