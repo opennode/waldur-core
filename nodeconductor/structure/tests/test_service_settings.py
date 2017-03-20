@@ -200,15 +200,14 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
     @data('staff', 'owner')
     def test_user_can_update_certifications_for_unshared_settings(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
-        certifications = [self.new_certification, self.associated_certification]
-        payload = self._get_payload(*certifications)
+        payload = self._get_payload(self.new_certification)
 
         response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.settings.refresh_from_db()
-        certification_pks = list(c.pk for c in certifications)
-        self.assertEqual(self.settings.certifications.filter(pk__in=certification_pks).count(), len(certifications))
+        self.assertTrue(self.settings.certifications.filter(pk=self.new_certification.pk).exists())
+        self.assertFalse(self.settings.certifications.filter(pk=self.associated_certification.pk).exists())
 
     @data('manager', 'admin', 'global_support', 'owner')
     def test_user_can_not_update_certifications_for_shared_settings_if_he_is_not_staff(self, user):
@@ -232,18 +231,6 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.settings.refresh_from_db()
         self.assertTrue(self.settings.certifications.filter(pk=self.new_certification.pk).exists())
-
-    @data('staff', 'owner')
-    def test_user_can_remove_certifications(self, user):
-        self.client.force_authenticate(getattr(self.fixture, user))
-        payload = self._get_payload(self.new_certification)
-
-        response = self.client.post(self.url, payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        self.settings.refresh_from_db()
-        self.assertTrue(self.settings.certifications.filter(pk=self.new_certification.pk).exists())
-        self.assertFalse(self.settings.certifications.filter(pk=self.associated_certification.pk).exists())
 
     def _get_payload(self, *certifications):
         certification_urls = [{"url": factories.ServiceCertificationFactory.get_url(c)} for c in certifications]
