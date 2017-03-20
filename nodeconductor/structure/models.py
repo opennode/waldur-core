@@ -813,7 +813,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
                          StructureModel):
     """ Base service-project link class. See Service class for usage example. """
 
-    class CertificationState(object):
+    class State(object):
         OK = 'OK'
         ERRED = 'ERRED'
         WARNING = 'WARNING'
@@ -865,13 +865,13 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         project_certifications = [c.name for c in self.project.certifications.all()]
 
         if set(project_certifications).issubset(set(service_certifications)):
-            return self.CertificationState.OK
+            return self.State.OK
         else:
-            return self.CertificationState.ERRED
+            return self.State.ERRED
 
     @property
     def is_policy_compliant(self):
-        return self.policy_compliant == self.CertificationState.OK
+        return self.policy_compliant == self.State.OK
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
