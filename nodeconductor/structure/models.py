@@ -862,10 +862,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         """
         Defines whether service compliant with required project certifications.
         """
-        service_certifications = [c.name for c in self.service.settings.certifications.all()]
-        project_certifications = [c.name for c in self.project.certifications.all()]
-
-        if set(project_certifications).issubset(set(service_certifications)):
+        if set(self.project.certifications.all()).issubset(set(self.service.settings.certifications.all())):
             return self.State.OK
         else:
             return self.State.ERRED
