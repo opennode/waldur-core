@@ -50,3 +50,26 @@ class ResourceRemovalTest(test.APITransactionTestCase):
         self.assertFalse(test_models.TestService.objects.filter(id=service.id).exists())
         self.assertFalse(ServiceSettings.objects.filter(id=settings.id).exists())
         self.assertTrue(test_models.TestInstance.objects.filter(id=other_vm.id).exists())
+
+
+class ResourceCreateTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=self.user)
+        self.service_project_link = factories.TestServiceProjectLinkFactory()
+
+    def test_resource_cannot_be_created_with_non_complied_service_project_link(self):
+        self.service_project_link.project.certifications.add(factories.ServiceCertificationFactory())
+        payload = {
+            'service_project_link': factories.TestServiceProjectLinkFactory.get_url(self.service_project_link),
+            'name': 'impossible resource',
+        }
+
+        url = factories.TestInstanceFactory.get_list_url()
+
+        response = self.client.post(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('service_project_link', response.data)
+

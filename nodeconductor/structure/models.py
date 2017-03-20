@@ -869,6 +869,10 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         else:
             return self.CertificationState.ERRED
 
+    @property
+    def is_policy_compliant(self):
+        return self.policy_compliant == self.CertificationState.OK
+
     def __str__(self):
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
 
@@ -1240,10 +1244,6 @@ class ResourceMixin(MonitoringModelMixin,
     def unlink(self):
         # XXX: add special attribute to an instance in order to be tracked by signal handler
         setattr(self, 'PERFORM_UNLINK', True)
-
-    @property
-    def policy_compliant(self):
-        return self.service_project_link.policy_compliant == self.service_project_link.CertificationState.OK
 
 
 # deprecated, use NewResource instead.

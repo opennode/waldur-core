@@ -1252,6 +1252,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.ReadOnlyField(source='get_tags')
     access_url = serializers.SerializerMethodField()
+    policy_compliant = serializers.BooleanField(source='service_project_link.is_policy_compliant', read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -1298,6 +1299,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             ).prefetch_related('service_project_link__service__settings__certifications',
                                'service_project_link__project__certifications')
         )
+
+    def validate_service_project_link(self, service_project_link):
+        if not service_project_link.is_policy_compliant:
+            raise serializers.ValidationError('Cannot create resource for policy non-compliant service.')
 
     @transaction.atomic
     def create(self, validated_data):
