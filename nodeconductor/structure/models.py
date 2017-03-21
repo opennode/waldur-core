@@ -860,7 +860,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
     @property
     def validation_state(self):
         """
-        Defines whether service compliant with required project certifications.
+        Defines whether a  service compliant with required project certifications.
         """
         if set(self.project.certifications.all()).issubset(set(self.service.settings.certifications.all())):
             return self.States.OK
@@ -874,7 +874,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
     @property
     def validation_message(self):
         """
-        A validation message if service project link is not valid by any reason. Empty for valid link.
+        Validation result clarification.
         """
         if not self.is_valid:
             service_certifications = self.service.settings.certifications.all()
