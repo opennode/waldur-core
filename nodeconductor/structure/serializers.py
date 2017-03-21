@@ -132,7 +132,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         read_only=True,
         help_text='A state of service compliance with project requirements.')
     validation_message = serializers.ReadOnlyField(
-        help_text='An error message for a service that is non-compliant with project requirements')
+        help_text='An error message for a service that is non-compliant with project requirements.')
 
     def get_settings(self, link):
         """
