@@ -104,7 +104,7 @@ class ServiceSettingUpdateTest(test.APITransactionTestCase):
         return {'name': 'test'}
 
     @data('staff', 'owner')
-    def test_user_can_update_unshared_service_settings_with_customer_if_he_has_permission(self, user):
+    def test_only_staff_and_an_owner_of_an_unshared_service_settings_can_update_the_settings(self, user):
         self.service_settings.shared = False
         self.service_settings.save()
         self.client.force_authenticate(getattr(self.fixture, user))
