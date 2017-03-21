@@ -59,8 +59,9 @@ class ResourceCreateTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.user)
         self.service_project_link = factories.TestServiceProjectLinkFactory()
 
-    def test_resource_cannot_be_created_with_non_complied_service_project_link(self):
+    def test_resource_cannot_be_created_for_invalid_service(self):
         self.service_project_link.project.certifications.add(factories.ServiceCertificationFactory())
+        self.assertFalse(self.service_project_link.is_valid)
         payload = {
             'service_project_link': factories.TestServiceProjectLinkFactory.get_url(self.service_project_link),
             'name': 'impossible resource',
