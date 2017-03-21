@@ -621,7 +621,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             del fields['is_staff']
             del fields['description']
 
-        if not user.is_staff and self.instance != user:
+        if not self._can_see_token(user):
             del fields['token']
             del fields['token_lifetime']
 
@@ -629,6 +629,17 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             fields['username'].read_only = True
 
         return fields
+
+    def _can_see_token(self, user):
+        # Staff can see any token
+        # User can see his own token either via details view or /api/users/?current
+
+        if user.is_staff:
+            return True
+        elif isinstance(self.instance, list) and len(self.instance) == 1:
+            return self.instance[0] == user
+        else:
+            return self.instance == user
 
     def validate(self, attrs):
         agree_with_policy = attrs.pop('agree_with_policy', False)
