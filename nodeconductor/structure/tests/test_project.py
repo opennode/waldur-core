@@ -153,7 +153,7 @@ class ProjectFilterTest(test.APITransactionTestCase):
             self.assertEqual(len(response.data), 1, 'Expected project to be returned when ordering by %s' % ordering)
 
 
-class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
+class ProjectUpdateDeleteTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = factories.UserFactory(is_staff=True)
 
