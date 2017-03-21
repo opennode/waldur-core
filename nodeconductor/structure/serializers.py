@@ -127,8 +127,8 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
-    policy_state = serializers.ChoiceField(choices=models.ServiceProjectLink.States.CHOICES, read_only=True)
-    policy_message = serializers.SerializerMethodField()
+    validation_state = serializers.ChoiceField(choices=models.ServiceProjectLink.States.CHOICES, read_only=True)
+    validation_message = serializers.CharField()
 
     def get_settings(self, link):
         """
@@ -169,15 +169,6 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
 
     def get_shared(self, link):
         return link.service.settings.shared
-
-    def get_policy_message(self, link):
-        if not link.is_policy_compliant:
-            service_certifications = link.service.settings.certifications.all()
-            project_certifications = link.project.certifications.all()
-            missing_certifications = set(project_certifications) - set(service_certifications)
-            return 'Next certifications are missing: "%s"' % ', '.join([c.name for c in missing_certifications])
-        else:
-            return ''
 
 
 class NestedServiceCertificationSerializer(core_serializers.AugmentedSerializerMixin,
@@ -1255,7 +1246,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.ReadOnlyField(source='get_tags')
     access_url = serializers.SerializerMethodField()
-    is_policy_compliant = serializers.BooleanField(source='service_project_link.is_policy_compliant', read_only=True)
+    is_valid = serializers.BooleanField(source='service_project_link.is_valid', read_only=True)
 
     class Meta(object):
         model = NotImplemented
@@ -1268,7 +1259,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url', 'is_policy_compliant',
+            'access_url', 'is_valid',
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1304,7 +1295,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         )
 
     def validate_service_project_link(self, service_project_link):
-        if not service_project_link.is_policy_compliant:
+        if not service_project_link.is_valid:
             raise serializers.ValidationError('Cannot create a resource for a policy non-compliant service.')
 
         return service_project_link

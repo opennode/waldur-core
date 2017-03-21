@@ -534,8 +534,8 @@ class ProjectGetTest(test.APITransactionTestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone('policy_state', response.data['services'][0])
-        self.assertEqual(response.data['services'][0]['policy_state'], "OK")
+        self.assertIsNotNone('validation_state', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['validation_state'], "OK")
 
     def test_certification_state_is_erred_if_project_certifications_is_not_a_subset_of_service_certifications(self):
         self.client.force_authenticate(self.fixture.owner)
@@ -549,8 +549,8 @@ class ProjectGetTest(test.APITransactionTestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone('policy_state', response.data['services'][0])
-        self.assertEqual(response.data['services'][0]['policy_state'], "ERRED")
+        self.assertIsNotNone('validation_state', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['validation_state'], "ERRED")
 
     def test_missing_certification_name_is_in_error_message(self):
         self.client.force_authenticate(self.fixture.owner)
@@ -564,6 +564,6 @@ class ProjectGetTest(test.APITransactionTestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsNotNone('policy_state', response.data['services'][0])
-        self.assertEqual(response.data['services'][0]['policy_state'], "ERRED")
-        self.assertIn(project_certification.name, response.data['services'][0]['policy_message'])
+        self.assertIsNotNone('validation_state', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['validation_state'], "ERRED")
+        self.assertIn(project_certification.name, response.data['services'][0]['validation_message'])

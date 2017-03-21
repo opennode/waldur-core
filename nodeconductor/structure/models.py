@@ -858,7 +858,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
             m.objects.filter(service_project_link=self) for m in resource_models)
 
     @property
-    def policy_state(self):
+    def validation_state(self):
         """
         Defines whether service compliant with required project certifications.
         """
@@ -868,8 +868,21 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
             return self.States.ERRED
 
     @property
-    def is_policy_compliant(self):
-        return self.policy_state == self.States.OK
+    def is_valid(self):
+        return self.validation_state == self.States.OK
+
+    @property
+    def validation_message(self):
+        """
+        A validation message if service project link is not valid by any reason. Empty for valid link.
+        """
+        if not self.is_valid:
+            service_certifications = self.service.settings.certifications.all()
+            project_certifications = self.project.certifications.all()
+            missing_certifications = set(project_certifications) - set(service_certifications)
+            return 'Next certifications are missing: "%s"' % ', '.join([c.name for c in missing_certifications])
+        else:
+            return ''
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
