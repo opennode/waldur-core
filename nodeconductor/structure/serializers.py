@@ -127,8 +127,12 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
-    validation_state = serializers.ChoiceField(choices=models.ServiceProjectLink.States.CHOICES, read_only=True)
-    validation_message = serializers.ReadOnlyField()
+    validation_state = serializers.ChoiceField(
+        choices=models.ServiceProjectLink.States.CHOICES,
+        read_only=True,
+        help_text='A state of service compliance with project requirements.')
+    validation_message = serializers.ReadOnlyField(
+        help_text='An error message for a service that is non-compliant with project requirements')
 
     def get_settings(self, link):
         """
