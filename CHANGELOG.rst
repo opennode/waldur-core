@@ -5,6 +5,10 @@ Next Release
 ------------
 Nothing yet.
 
+Release 0.127.1
+---------------
+- Render token for the current user.
+
 Release 0.127.0
 ---------------
 - Disable service setting name update via service endpoint.
