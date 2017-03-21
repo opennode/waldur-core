@@ -116,19 +116,6 @@ class ServiceSettingUpdateTest(test.APITransactionTestCase):
         self.service_settings.refresh_from_db()
         self.assertEqual(self.service_settings.name, payload['name'])
 
-    @data('staff')
-    def test_user_can_update_shared_service_settings_without_customer_if_he_has_permission(self, user):
-        self.service_settings.customer = None
-        self.service_settings.save()
-        self.client.force_authenticate(getattr(self.fixture, user))
-        payload = self.get_valid_payload()
-
-        response = self.client.patch(self.url, data=payload)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.service_settings.refresh_from_db()
-        self.assertEqual(self.service_settings.name, payload['name'])
-
     @data('owner', 'manager', 'admin')
     def test_user_cannot_update_shared_service_settings_without_customer_if_he_has_no_permission(self, user):
         self.service_settings.customer = None
@@ -141,6 +128,19 @@ class ServiceSettingUpdateTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.service_settings.refresh_from_db()
         self.assertNotEqual(self.service_settings.name, payload['name'])
+
+    @data('staff')
+    def test_user_can_update_shared_service_settings_without_customer_if_he_has_permission(self, user):
+        self.service_settings.customer = None
+        self.service_settings.save()
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self.get_valid_payload()
+
+        response = self.client.patch(self.url, data=payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.service_settings.refresh_from_db()
+        self.assertEqual(self.service_settings.name, payload['name'])
 
     @data('manager', 'admin')
     def test_user_cannot_update_shared_service_settings_with_customer_if_he_has_no_permission(self, user):
