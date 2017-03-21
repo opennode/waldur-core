@@ -1296,7 +1296,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     def validate_service_project_link(self, service_project_link):
         if not service_project_link.is_valid:
-            raise serializers.ValidationError('Cannot create a resource for a policy non-compliant service.')
+            raise serializers.ValidationError(service_project_link.validation_message)
 
         return service_project_link
 
