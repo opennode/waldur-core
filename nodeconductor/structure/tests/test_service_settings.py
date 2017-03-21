@@ -117,7 +117,7 @@ class ServiceSettingUpdateTest(test.APITransactionTestCase):
         self.assertEqual(self.service_settings.name, payload['name'])
 
     @data('staff')
-    def test_user_can_update_service_settings_without_customer_if_he_has_permission(self, user):
+    def test_user_can_update_shared_service_settings_without_customer_if_he_has_permission(self, user):
         self.service_settings.customer = None
         self.service_settings.save()
         self.client.force_authenticate(getattr(self.fixture, user))
@@ -143,7 +143,7 @@ class ServiceSettingUpdateTest(test.APITransactionTestCase):
         self.assertNotEqual(self.service_settings.name, payload['name'])
 
     @data('manager', 'admin')
-    def test_user_cannot_update_service_settings_with_customer_if_he_has_no_permission(self, user):
+    def test_user_cannot_update_shared_service_settings_with_customer_if_he_has_no_permission(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
         payload = self.get_valid_payload()
 
@@ -153,7 +153,7 @@ class ServiceSettingUpdateTest(test.APITransactionTestCase):
         self.service_settings.refresh_from_db()
         self.assertNotEqual(self.service_settings.name, payload['name'])
 
-    def test_user_cannot_change_settings_type(self):
+    def test_user_cannot_change_unshared_settings_type(self):
         self.service_settings.shared = False
         self.service_settings.save()
         self.client.force_authenticate(user=self.fixture.owner)
