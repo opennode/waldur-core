@@ -128,7 +128,7 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
     validation_state = serializers.ChoiceField(choices=models.ServiceProjectLink.States.CHOICES, read_only=True)
-    validation_message = serializers.CharField()
+    validation_message = serializers.ReadOnlyField()
 
     def get_settings(self, link):
         """
