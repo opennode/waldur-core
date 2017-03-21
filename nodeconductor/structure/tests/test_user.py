@@ -81,6 +81,15 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         self.assertNotIn('token', response.data)
         self.assertNotIn('token_lifetime', response.data)
 
+    def test_user_can_see_his_token_via_current_filter(self):
+        self.client.force_authenticate(self.users['owner'])
+
+        response = self.client.get(factories.UserFactory.get_list_url(), {'current': True})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(1, len(response.data))
+        self.assertIsNotNone('token', response.data[0])
+        self.assertIsNotNone('token_lifetime', response.data[0])
+
     # Creation tests
     def test_anonymous_user_cannot_create_account(self):
         data = self._get_valid_payload()
