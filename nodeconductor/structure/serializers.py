@@ -1250,7 +1250,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.ReadOnlyField(source='get_tags')
     access_url = serializers.SerializerMethodField()
-    is_valid = serializers.BooleanField(source='service_project_link.is_valid', read_only=True)
+    is_link_valid = serializers.BooleanField(
+        source='service_project_link.is_valid',
+        read_only=True,
+        help_text='True if resource is originated from a service that satisfies an associated project requirements.')
 
     class Meta(object):
         model = NotImplemented
@@ -1263,7 +1266,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url', 'is_valid',
+            'access_url', 'is_link_valid',
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
