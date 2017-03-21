@@ -1007,6 +1007,7 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         if obj is None:
             return
 
+        # TODO [TM:3/21/17] clean it up after WAL-634. Clean up service settings update tests as well.
         if obj.customer and not obj.shared:
             return permissions.is_owner(request, view, obj)
         else:
