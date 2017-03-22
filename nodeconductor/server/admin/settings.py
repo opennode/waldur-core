@@ -31,3 +31,8 @@ ADMIN_TOOLS_MENU = 'nodeconductor.server.admin.menu.CustomMenu'
 
 # Should be specified, otherwise all Applications dashboard will be included.
 FLUENT_DASHBOARD_APP_GROUPS = ()
+
+FLUENT_DASHBOARD_QUICK_LINKS = [
+    ['Shared service provider list', '/admin/structure/servicesettings/?shared__exact=1'],
+    ['Shared service provider in ERRED state', '/admin/structure/servicesettings/?shared__exact=1&state__exact=4'],
+]

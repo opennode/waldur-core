@@ -1,4 +1,5 @@
 from django.utils.translation import ugettext_lazy as _
+from django.conf import settings
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 from fluent_dashboard.modules import AppIconList
 
@@ -58,11 +59,11 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
         self.children.append(AppIconList(_('Billing'), models=billing_models))
         self.children.append(AppIconList(_('Structure'), models=(
-            'nodeconductor.structure.*',
+            'nodeconductor.structure.models.Customer',
+            'nodeconductor.structure.models.Project',
             'nodeconductor.core.models.User',
         )))
 
-    def init_with_context(self, context):
         self.children.append(modules.LinkList(
             _('Installed components'),
             layout='stacked',
@@ -71,6 +72,11 @@ class CustomIndexDashboard(FluentIndexDashboard):
             collapsible=True,
             children=self._get_installed_plugin_info()
         ))
+
+        self.children.append(modules.LinkList(
+            _('Quick links'),
+            layout='inline',
+            children=settings.FLUENT_DASHBOARD_QUICK_LINKS))
 
 
 class CustomAppIndexDashboard(FluentAppIndexDashboard):
