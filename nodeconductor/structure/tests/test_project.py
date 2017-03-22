@@ -8,7 +8,7 @@ from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
-from nodeconductor.structure import signals
+from nodeconductor.structure import signals, models
 from nodeconductor.structure.models import CustomerRole, Project, ProjectRole
 from nodeconductor.structure.tests import factories, fixtures
 
@@ -118,16 +118,7 @@ class ProjectTest(TransactionTestCase):
         self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
 
 
-def _get_valid_project_payload(resource=None):
-    resource = resource or factories.ProjectFactory()
-    return {
-        'name': resource.name,
-        'customer': 'http://testserver' + reverse('customer-detail', kwargs={'uuid': resource.customer.uuid}),
-    }
-
-
 class ProjectFilterTest(test.APITransactionTestCase):
-
     def setUp(self):
         self.staff = factories.UserFactory(is_staff=True)
         self.project = factories.ProjectFactory()
@@ -155,87 +146,98 @@ class ProjectFilterTest(test.APITransactionTestCase):
             self.assertEqual(len(response.data), 1, 'Expected project to be returned when ordering by %s' % ordering)
 
 
-class ProjectCreateUpdateDeleteTest(test.APITransactionTestCase):
-
+class ProjectUpdateDeleteTest(test.APITransactionTestCase):
     def setUp(self):
-        self.staff = factories.UserFactory(is_staff=True)
-
-        self.customer = factories.CustomerFactory()
-        self.owner = factories.UserFactory()
-        self.customer_support = factories.UserFactory()
-        self.customer.add_user(self.owner, CustomerRole.OWNER)
-        self.customer.add_user(self.customer_support, CustomerRole.SUPPORT)
-
-        self.project = factories.ProjectFactory(customer=self.customer)
-        self.admin = factories.UserFactory()
-        self.project.add_user(self.admin, ProjectRole.ADMINISTRATOR)
-
-        self.other_project = factories.ProjectFactory()
-
-    # Create tests:
-    def test_staff_can_create_any_project(self):
-        self.client.force_authenticate(self.staff)
-
-        data = _get_valid_project_payload()
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Project.objects.filter(name=data['name']).exists())
-
-    def test_project_can_be_created_with_null_description(self):
-        self.client.force_authenticate(self.staff)
-
-    def test_owner_can_create_project_belonging_to_the_customer_he_owns(self):
-        self.client.force_authenticate(self.owner)
-
-        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(Project.objects.filter(name=data['name']).exists())
-
-    def test_owner_cannot_create_project_not_belonging_to_the_customer_he_owns(self):
-        self.client.force_authenticate(self.owner)
-
-        data = _get_valid_project_payload()
-        data['name'] = 'unique name 2'
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(Project.objects.filter(name=data['name']).exists())
-
-    def test_owner_cannot_create_project_if_customer_quota_were_exceeded(self):
-        self.customer.set_quota_limit('nc_project_count', 0)
-        data = _get_valid_project_payload(factories.ProjectFactory.build(customer=self.customer))
-
-        self.client.force_authenticate(self.owner)
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
-
-    def test_customer_support_cannot_create_project(self):
-        self.client.force_authenticate(self.customer_support)
-
-        data = _get_valid_project_payload(factories.ProjectFactory.create(customer=self.customer))
-        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertTrue(Project.objects.filter(name=data['name']).exists())
+        self.fixture = fixtures.ServiceFixture()
 
     # Update tests:
     def test_user_can_change_single_project_field(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.fixture.staff)
 
         data = {'name': 'New project name'}
-        response = self.client.patch(factories.ProjectFactory.get_url(self.project), data)
+        response = self.client.patch(factories.ProjectFactory.get_url(self.fixture.project), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('New project name', response.data['name'])
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
     # Delete tests:
     def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.fixture.owner)
 
-        project = factories.ProjectFactory()
+        project = self.fixture.project
         response = self.client.delete(factories.ProjectFactory.get_url(project))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Project.objects.filter(pk=project.pk).exists())
+
+
+class ProjectCreateTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+
+    def test_staff_can_create_any_project(self):
+        self.client.force_authenticate(self.fixture.owner)
+        data = self._get_valid_project_payload(self.fixture.customer)
+
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
+
+    def test_owner_can_create_project_belonging_to_the_customer_he_owns(self):
+        self.client.force_authenticate(self.fixture.owner)
+        data = self._get_valid_project_payload(self.fixture.customer)
+
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Project.objects.filter(name=data['name']).exists())
+
+    def test_owner_cannot_create_project_not_belonging_to_the_customer_he_owns(self):
+        self.client.force_authenticate(self.fixture.owner)
+        data = self._get_valid_project_payload(factories.CustomerFactory())
+        data['name'] = 'unique name 2'
+
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Project.objects.filter(name=data['name']).exists())
+
+    def test_owner_cannot_create_project_if_customer_quota_were_exceeded(self):
+        self.fixture.customer.set_quota_limit('nc_project_count', 0)
+        data = self._get_valid_project_payload(self.fixture.customer)
+        self.client.force_authenticate(self.fixture.owner)
+
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_customer_support_cannot_create_project(self):
+        self.client.force_authenticate(self.fixture.customer_support)
+        data = self._get_valid_project_payload(self.fixture.customer)
+
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Project.objects.filter(name=data['name']).exists())
+
+    def test_user_can_specify_certifications(self):
+        self.client.force_authenticate(self.fixture.owner)
+        data = self._get_valid_project_payload(self.fixture.customer)
+        certificate = factories.ServiceCertificationFactory()
+        data['certifications'] = [{"url": factories.ServiceCertificationFactory.get_url(certificate)}]
+
+        response = self.client.post(factories.ProjectFactory.get_list_url(), data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Project.objects.filter(name=data['name'], customer=self.fixture.customer).exists())
+        self.assertTrue(models.ServiceCertification.objects.filter(projects__name=data['name'],
+                                                                   name=certificate.name).exists())
+
+    def _get_valid_project_payload(self, customer):
+        return {
+            'name': 'New project name',
+            'customer': factories.CustomerFactory.get_url(customer),
+        }
 
 
 class ProjectApiPermissionTest(test.APITransactionTestCase):
@@ -464,3 +466,91 @@ class ProjectCountersListTest(test.APITransactionTestCase):
         response = self.client.get(self.url, {'fields': ['users', 'apps', 'vms']})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {'users': 2, 'apps': 0, 'vms': 1})
+
+
+@ddt
+class ProjectUpdateCertificationTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.project = self.fixture.project
+        self.associated_certification = factories.ServiceCertificationFactory()
+        self.project.certifications.add(self.associated_certification)
+        self.new_certification = factories.ServiceCertificationFactory()
+        self.url = factories.ProjectFactory.get_url(self.project, action='update_certifications')
+
+    @data('staff', 'owner')
+    def test_user_can_update_certifications(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_payload(self.new_certification)
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(self.project.certifications.filter(pk=self.new_certification.pk).exists())
+        self.assertFalse(self.project.certifications.filter(pk=self.associated_certification.pk).exists())
+
+    @data('global_support', 'manager')
+    def test_user_cannot_update_certifications_if_he_has_no_permissions(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        payload = self._get_payload(self.new_certification)
+
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def _get_payload(self, *certifications):
+        urls = [{"url": factories.ServiceCertificationFactory.get_url(c)} for c in certifications]
+        return {
+            'certifications': urls
+        }
+
+
+class ProjectGetTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+
+    def test_service_certification_state_is_ok_if_project_certifications_is_a_subset_of_service_certifications(self):
+        self.client.force_authenticate(self.fixture.owner)
+        link = self.fixture.service_project_link
+        project_certifications = [factories.ServiceCertificationFactory()]
+        service_certifications = project_certifications + [factories.ServiceCertificationFactory()]
+        link.service.settings.certifications.add(*service_certifications)
+        link.project.certifications.add(*project_certifications)
+        url = factories.ProjectFactory.get_url(link.project)
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone('validation_state', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['validation_state'], "OK")
+
+    def test_certification_state_is_erred_if_project_certifications_is_not_a_subset_of_service_certifications(self):
+        self.client.force_authenticate(self.fixture.owner)
+        link = self.fixture.service_project_link
+        service_certification = factories.ServiceCertificationFactory()
+        project_certification = factories.ServiceCertificationFactory()
+        link.service.settings.certifications.add(service_certification)
+        link.project.certifications.add(project_certification)
+        url = factories.ProjectFactory.get_url(link.project)
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone('validation_state', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['validation_state'], "ERRED")
+
+    def test_missing_certification_name_is_in_error_message(self):
+        self.client.force_authenticate(self.fixture.owner)
+        link = self.fixture.service_project_link
+        service_certification = factories.ServiceCertificationFactory()
+        project_certification = factories.ServiceCertificationFactory()
+        link.service.settings.certifications.add(service_certification)
+        link.project.certifications.add(project_certification)
+        url = factories.ProjectFactory.get_url(link.project)
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone('validation_state', response.data['services'][0])
+        self.assertEqual(response.data['services'][0]['validation_state'], "ERRED")
+        self.assertIn(project_certification.name, response.data['services'][0]['validation_message'])

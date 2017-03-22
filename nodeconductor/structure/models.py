@@ -32,6 +32,7 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.validators import validate_name
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
@@ -536,6 +537,7 @@ class Project(core_models.DescribableMixin,
             path_to_scope='project',
         )
 
+    certifications = models.ManyToManyField(to='ServiceCertification', related_name='projects', blank=True)
     customer = models.ForeignKey(
         Customer, verbose_name=_('organization'), related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()
@@ -593,8 +595,10 @@ class Project(core_models.DescribableMixin,
 
 
 @python_2_unicode_compatible
-class ServiceCertification(core_models.UuidMixin, core_models.NameMixin, core_models.DescribableMixin):
+class ServiceCertification(core_models.UuidMixin, core_models.DescribableMixin):
     link = models.URLField(max_length=255, blank=True)
+    # NameMixin is not used here as name has to be unique.
+    name = models.CharField(_('name'), max_length=150, validators=[validate_name], unique=True)
 
     class Meta(object):
         verbose_name = 'Service Certification'
@@ -810,6 +814,13 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
                          StructureModel):
     """ Base service-project link class. See Service class for usage example. """
 
+    class States(object):
+        OK = 'OK'
+        ERRED = 'ERRED'
+        WARNING = 'WARNING'
+
+        CHOICES = [OK, ERRED, WARNING]
+
     class Meta(object):
         abstract = True
         unique_together = ('service', 'project')
@@ -845,6 +856,33 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
                            if m.service_project_link.field.related_model == self.__class__]
         return itertools.chain.from_iterable(
             m.objects.filter(service_project_link=self) for m in resource_models)
+
+    @property
+    def validation_state(self):
+        """
+        Defines whether a  service compliant with required project certifications.
+        """
+        if set(self.project.certifications.all()).issubset(set(self.service.settings.certifications.all())):
+            return self.States.OK
+        else:
+            return self.States.ERRED
+
+    @property
+    def is_valid(self):
+        return self.validation_state == self.States.OK
+
+    @property
+    def validation_message(self):
+        """
+        Validation result clarification.
+        """
+        if not self.is_valid:
+            service_certifications = self.service.settings.certifications.all()
+            project_certifications = self.project.certifications.all()
+            missing_certifications = set(project_certifications) - set(service_certifications)
+            return 'Next certifications are missing: "%s"' % ', '.join([c.name for c in missing_certifications])
+        else:
+            return ''
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
