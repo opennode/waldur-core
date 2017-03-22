@@ -34,5 +34,7 @@ FLUENT_DASHBOARD_APP_GROUPS = ()
 
 FLUENT_DASHBOARD_QUICK_LINKS = [
     ['Shared service provider list', '/admin/structure/servicesettings/?shared__exact=1'],
-    ['Shared service provider in ERRED state', '/admin/structure/servicesettings/?shared__exact=1&state__exact=4'],
+    ['Shared service providers in ERRED state', '/admin/structure/servicesettings/?shared__exact=1&state__exact=4'],
+    ['Shared resource list', '/admin/structure/sharedresource/'],
+    ['Shared resources in ERRED state', '/admin/structure/sharedresource/?state=4'],
 ]

@@ -75,7 +75,6 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
         self.children.append(modules.LinkList(
             _('Quick links'),
-            layout='inline',
             children=settings.FLUENT_DASHBOARD_QUICK_LINKS))
 
 

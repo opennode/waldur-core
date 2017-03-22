@@ -165,3 +165,10 @@ class ServiceSettingsManager(GenericKeyMixin, models.Manager):
         """ Return list of models that are acceptable """
         from nodeconductor.structure.models import ResourceMixin
         return ResourceMixin.get_all_models()
+
+
+class SharedServiceSettingsManager(ServiceSettingsManager):
+
+    def get_queryset(self):
+        queryset = super(SharedServiceSettingsManager, self).get_queryset()
+        return queryset.filter(shared=True)

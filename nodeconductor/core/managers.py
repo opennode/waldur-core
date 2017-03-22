@@ -95,7 +95,12 @@ class SummaryQuerySet(object):
         return self
 
     def all(self):
-        return self
+        return self._clone()
+
+    def _clone(self):
+        copied_queryset = SummaryQuerySet([])
+        copied_queryset.querysets = [qs.all() for qs in self.querysets]
+        return copied_queryset
 
     def none(self):
         try:
