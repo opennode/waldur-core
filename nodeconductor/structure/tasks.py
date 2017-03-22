@@ -58,7 +58,7 @@ class ConnectSharedSettingsTask(core_tasks.Task):
 
         with transaction.atomic():
             for customer in models.Customer.objects.all():
-                defaults = {'name': service_settings.name, 'available_for_all': True}
+                defaults = {'available_for_all': True}
                 service, _ = service_model.objects.get_or_create(
                     customer=customer, settings=service_settings, defaults=defaults)
 
