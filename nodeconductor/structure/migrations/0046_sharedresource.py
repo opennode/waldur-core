@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0044_terms_of_services_url'),
+        ('structure', '0045_project_services_certifications'),
     ]
 
     operations = [

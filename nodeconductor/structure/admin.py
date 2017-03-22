@@ -195,12 +195,13 @@ class ProjectAdmin(FormRequestAdminMixin,
                    admin.ModelAdmin):
     form = ProjectAdminForm
 
-    fields = ('name', 'description', 'customer', 'admins', 'managers', 'support_users')
+    fields = ('name', 'description', 'customer', 'admins', 'managers', 'support_users', 'certifications')
 
     list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
+    filter_horizontal = ('certifications',)
 
 
 class ServiceCertificationAdmin(admin.ModelAdmin):
