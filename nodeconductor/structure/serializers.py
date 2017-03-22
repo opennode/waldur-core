@@ -127,6 +127,12 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     shared = serializers.SerializerMethodField()
     settings_uuid = serializers.ReadOnlyField(source='service.settings.uuid')
     settings = serializers.SerializerMethodField()
+    validation_state = serializers.ChoiceField(
+        choices=models.ServiceProjectLink.States.CHOICES,
+        read_only=True,
+        help_text='A state of service compliance with project requirements.')
+    validation_message = serializers.ReadOnlyField(
+        help_text='An error message for a service that is non-compliant with project requirements.')
 
     def get_settings(self, link):
         """
@@ -169,12 +175,26 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
         return link.service.settings.shared
 
 
+class NestedServiceCertificationSerializer(core_serializers.AugmentedSerializerMixin,
+                                           core_serializers.HyperlinkedRelatedModelSerializer):
+    class Meta(object):
+        model = models.ServiceCertification
+        fields = ('uuid', 'url', 'name', 'description', 'link')
+        read_only_fields = ('name', 'description', 'link')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid'},
+        }
+
+
 class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
                         PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
                         serializers.HyperlinkedModelSerializer):
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()
+    certifications = NestedServiceCertificationSerializer(
+        queryset=models.ServiceCertification.objects.all(),
+        many=True, required=False)
 
     class Meta(object):
         model = models.Project
@@ -186,10 +206,12 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'quotas',
             'services',
             'created',
+            'certifications',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
+            'certifications': {'lookup_field': 'uuid'},
         }
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
@@ -205,13 +227,15 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'customer__uuid',
             'customer__name',
             'customer__native_name',
-            'customer__abbreviation'
+            'customer__abbreviation',
         )
-        return queryset.select_related('customer').only(*related_fields) \
-            .prefetch_related('quotas')
+        return queryset.select_related('customer').only(*related_fields)\
+            .prefetch_related('quotas', 'certifications')
 
     def create(self, validated_data):
+        certifications = validated_data.pop('certifications', [])
         project = super(ProjectSerializer, self).create(validated_data)
+        project.certifications.add(*certifications)
 
         return project
 
@@ -244,7 +268,8 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         for link_model in ServiceProjectLink.get_all_models():
             links = (link_model.objects.all()
                      .select_related('service', 'service__settings')
-                     .only(*related_fields))
+                     .only(*related_fields)
+                     .prefetch_related('service__settings__certifications'))
             if isinstance(self.instance, list):
                 links = links.filter(project__in=self.instance)
             else:
@@ -735,6 +760,20 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         return fields
 
 
+class ServiceCertificationsUpdateSerializer(serializers.Serializer):
+    certifications = NestedServiceCertificationSerializer(
+        queryset=models.ServiceCertification.objects.all(),
+        required=True,
+        many=True)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        certifications = validated_data.pop('certifications', None)
+        instance.certifications.clear()
+        instance.certifications.add(*certifications)
+        return instance
+
+
 class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
     class Meta(object):
         model = models.ServiceCertification
@@ -742,30 +781,6 @@ class ServiceCertificationSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'lookup_field': 'uuid', 'view_name': 'service-certification-detail'},
         }
-
-
-class NestedServiceCertificationSerializer(serializers.HyperlinkedRelatedField):
-    class Meta(object):
-        model = models.ServiceCertification
-        field = ('url',)
-        extra_kwargs = {
-            'url': {'lookup_field': 'uuid'},
-        }
-
-
-class ServiceSettingsCertificationsUpdateSerializer(serializers.Serializer):
-    certifications = NestedServiceCertificationSerializer(
-        queryset=models.ServiceCertification.objects.all(),
-        required=True,
-        view_name='service-certification-detail',
-        lookup_field='uuid',
-        many=True)
-
-    @transaction.atomic
-    def update(self, instance, validated_data):
-        certifications = validated_data.pop('certifications', None)
-        instance.certifications.add(*certifications)
-        return instance
 
 
 class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
@@ -778,7 +793,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
-    certifications = ServiceCertificationSerializer(many=True, read_only=True)
+    certifications = NestedServiceCertificationSerializer(many=True, read_only=True)
     geolocations = core_serializers.JSONField(read_only=True)
 
     class Meta(object):
@@ -909,7 +924,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     terms_of_services = serializers.ReadOnlyField(source='settings.terms_of_services')
     homepage = serializers.ReadOnlyField(source='settings.homepage')
     geolocations = core_serializers.JSONField(source='settings.geolocations', read_only=True)
-    certifications = ServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
+    certifications = NestedServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
     name = serializers.ReadOnlyField(source='settings.name')
 
     class Meta(object):
@@ -1246,6 +1261,10 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
 
     tags = serializers.ReadOnlyField(source='get_tags')
     access_url = serializers.SerializerMethodField()
+    is_link_valid = serializers.BooleanField(
+        source='service_project_link.is_valid',
+        read_only=True,
+        help_text='True if resource is originated from a service that satisfies an associated project requirements.')
 
     class Meta(object):
         model = NotImplemented
@@ -1258,7 +1277,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation',
             'tags', 'error_message',
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
-            'access_url'
+            'access_url', 'is_link_valid',
         )
         protected_fields = ('service', 'service_project_link')
         read_only_fields = ('start_time', 'error_message', 'backend_id')
@@ -1286,10 +1305,18 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             .select_related(
                 'service_project_link',
                 'service_project_link__service',
+                'service_project_link__service__settings',
                 'service_project_link__project',
                 'service_project_link__project__customer',
-            )
+            ).prefetch_related('service_project_link__service__settings__certifications',
+                               'service_project_link__project__certifications')
         )
+
+    def validate_service_project_link(self, service_project_link):
+        if not service_project_link.is_valid:
+            raise serializers.ValidationError(service_project_link.validation_message)
+
+        return service_project_link
 
     @transaction.atomic
     def create(self, validated_data):

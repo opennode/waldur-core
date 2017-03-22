@@ -3,7 +3,13 @@ CHANGELOG
 
 Next Release
 ------------
-Nothing yet.
+- Nothing yet.
+
+Release 0.128.0
+---------------
+- Allow customer to limit project services by certificates.
+- Add validation state and message to resources.
+- Forbid resource creation is service project link is created from a service that does not satisfy project requirements.
 
 Release 0.127.1
 ---------------
