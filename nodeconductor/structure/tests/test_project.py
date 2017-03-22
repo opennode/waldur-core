@@ -148,35 +148,23 @@ class ProjectFilterTest(test.APITransactionTestCase):
 
 class ProjectUpdateDeleteTest(test.APITransactionTestCase):
     def setUp(self):
-        self.staff = factories.UserFactory(is_staff=True)
-
-        self.customer = factories.CustomerFactory()
-        self.owner = factories.UserFactory()
-        self.customer_support = factories.UserFactory()
-        self.customer.add_user(self.owner, CustomerRole.OWNER)
-        self.customer.add_user(self.customer_support, CustomerRole.SUPPORT)
-
-        self.project = factories.ProjectFactory(customer=self.customer)
-        self.admin = factories.UserFactory()
-        self.project.add_user(self.admin, ProjectRole.ADMINISTRATOR)
-
-        self.other_project = factories.ProjectFactory()
+        self.fixture = fixtures.ServiceFixture()
 
     # Update tests:
     def test_user_can_change_single_project_field(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.fixture.staff)
 
         data = {'name': 'New project name'}
-        response = self.client.patch(factories.ProjectFactory.get_url(self.project), data)
+        response = self.client.patch(factories.ProjectFactory.get_url(self.fixture.project), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('New project name', response.data['name'])
         self.assertTrue(Project.objects.filter(name=data['name']).exists())
 
     # Delete tests:
     def test_user_can_delete_project_belonging_to_the_customer_he_owns(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.fixture.owner)
 
-        project = factories.ProjectFactory()
+        project = self.fixture.project
         response = self.client.delete(factories.ProjectFactory.get_url(project))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Project.objects.filter(pk=project.pk).exists())
