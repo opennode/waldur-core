@@ -118,13 +118,6 @@ class ProjectTest(TransactionTestCase):
         self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
 
 
-def _get_valid_project_payload(customer):
-    return {
-        'name': 'New project name',
-        'customer': factories.CustomerFactory.get_url(customer),
-    }
-
-
 class ProjectFilterTest(test.APITransactionTestCase):
     def setUp(self):
         self.staff = factories.UserFactory(is_staff=True)
@@ -195,7 +188,7 @@ class ProjectCreateTest(test.APITransactionTestCase):
 
     def test_staff_can_create_any_project(self):
         self.client.force_authenticate(self.fixture.owner)
-        data = _get_valid_project_payload(self.fixture.customer)
+        data = self._get_valid_project_payload(self.fixture.customer)
 
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
 
@@ -204,7 +197,7 @@ class ProjectCreateTest(test.APITransactionTestCase):
 
     def test_owner_can_create_project_belonging_to_the_customer_he_owns(self):
         self.client.force_authenticate(self.fixture.owner)
-        data = _get_valid_project_payload(self.fixture.customer)
+        data = self._get_valid_project_payload(self.fixture.customer)
 
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
 
@@ -213,7 +206,7 @@ class ProjectCreateTest(test.APITransactionTestCase):
 
     def test_owner_cannot_create_project_not_belonging_to_the_customer_he_owns(self):
         self.client.force_authenticate(self.fixture.owner)
-        data = _get_valid_project_payload(factories.CustomerFactory())
+        data = self._get_valid_project_payload(factories.CustomerFactory())
         data['name'] = 'unique name 2'
 
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
@@ -223,7 +216,7 @@ class ProjectCreateTest(test.APITransactionTestCase):
 
     def test_owner_cannot_create_project_if_customer_quota_were_exceeded(self):
         self.fixture.customer.set_quota_limit('nc_project_count', 0)
-        data = _get_valid_project_payload(self.fixture.customer)
+        data = self._get_valid_project_payload(self.fixture.customer)
         self.client.force_authenticate(self.fixture.owner)
 
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
@@ -232,7 +225,7 @@ class ProjectCreateTest(test.APITransactionTestCase):
 
     def test_customer_support_cannot_create_project(self):
         self.client.force_authenticate(self.fixture.customer_support)
-        data = _get_valid_project_payload(self.fixture.customer)
+        data = self._get_valid_project_payload(self.fixture.customer)
 
         response = self.client.post(factories.ProjectFactory.get_list_url(), data)
 
@@ -241,7 +234,7 @@ class ProjectCreateTest(test.APITransactionTestCase):
 
     def test_user_can_specify_certifications(self):
         self.client.force_authenticate(self.fixture.owner)
-        data = _get_valid_project_payload(self.fixture.customer)
+        data = self._get_valid_project_payload(self.fixture.customer)
         certificate = factories.ServiceCertificationFactory()
         data['certifications'] = [{"url": factories.ServiceCertificationFactory.get_url(certificate)}]
 
@@ -251,6 +244,12 @@ class ProjectCreateTest(test.APITransactionTestCase):
         self.assertTrue(Project.objects.filter(name=data['name'], customer=self.fixture.customer).exists())
         self.assertTrue(models.ServiceCertification.objects.filter(projects__name=data['name'],
                                                                    name=certificate.name).exists())
+
+    def _get_valid_project_payload(self, customer):
+        return {
+            'name': 'New project name',
+            'customer': factories.CustomerFactory.get_url(customer),
+        }
 
 
 class ProjectApiPermissionTest(test.APITransactionTestCase):
