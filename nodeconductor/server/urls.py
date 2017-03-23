@@ -60,9 +60,3 @@ if settings.DEBUG:
 
     # enable login/logout for web UI in debug mode
     urlpatterns += url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-
-if settings.DEBUG:
-    import debug_toolbar
-    urlpatterns = [
-        url(r'^__debug__/', include(debug_toolbar.urls)),
-    ] + urlpatterns
