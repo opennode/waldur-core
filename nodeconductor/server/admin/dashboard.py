@@ -156,6 +156,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         self.children.append(modules.LinkList(
             _('Installed components'),
             layout='stacked',
+            enabled=False,
             draggable=True,
             deletable=True,
             collapsible=True,
