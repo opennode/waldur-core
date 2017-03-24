@@ -51,6 +51,15 @@ class CustomIndexDashboard(FluentIndexDashboard):
         return result
 
     def _get_quick_access_info(self):
+        """
+        Returns a list of ListLink items to be added to Quick Access tab.
+        Contains:
+        - a link to Organizations, Projects and Users;
+        - a link to shared service settings;
+        - a link to shared service settings in ERRED state if any;
+        - custom configured links in admin/settings FLUENT_DASHBOARD_QUICK_ACCESS_LINKS attribute;
+        - a list of links to resources in erred state and linked to shared service settings if there any in such state.
+        """
         quick_access_links = []
 
         # add custom links
