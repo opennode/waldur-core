@@ -3,8 +3,8 @@ from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 from fluent_dashboard.modules import AppIconList
 
-from nodeconductor.core import NodeConductorExtension, models
-from nodeconductor.structure import models as structure_models
+from nodeconductor.core import NodeConductorExtension, models as core_models
+from nodeconductor.structure import models as structure_models, SupportedServices
 from nodeconductor import __version__
 
 
@@ -50,25 +50,39 @@ class CustomIndexDashboard(FluentIndexDashboard):
         return result
 
     def _get_quick_access_info(self):
-        default = []
+        quick_access_links = []
 
-        for model in (structure_models.Project, structure_models.Customer, models.User):
-            default.append(self._get_link_to_model(model))
+        for model in (structure_models.Project, structure_models.Customer, core_models.User):
+            quick_access_links.append(self._get_link_to_model(model))
 
         shared_service_setttings = self._get_link_to_model(structure_models.ServiceSettings)
         erred_shared_service_settings = shared_service_setttings.copy()
         shared_service_setttings['url'] = shared_service_setttings['url'] + '?shared__exact=1'
         shared_service_setttings['title'] = _('Shared service settings')
-        default.append(shared_service_setttings)
+        quick_access_links.append(shared_service_setttings)
 
-        erred_state = structure_models.ServiceSettings.States.ERRED
+        erred_state = core_models.StateMixin.States.ERRED
         erred_shared_service_settings['url'] = shared_service_setttings['url'] + '&state__exact=' + str(erred_state)
         settings_in_erred_state = structure_models.ServiceSettings.objects.filter(state=erred_state).count()
-        erred_settings_title = '{0} {1}'.format(settings_in_erred_state, _('shared settings in ERRED state'))
-        erred_shared_service_settings['title'] = erred_settings_title
-        default.append(erred_shared_service_settings)
+        if settings_in_erred_state:
+            erred_settings_title = '{0} {1}'.format(settings_in_erred_state, 'shared service settings in ERRED state')
+            erred_shared_service_settings['title'] = erred_settings_title
+            quick_access_links.append(erred_shared_service_settings)
 
-        return default
+        resource_models = SupportedServices.get_resource_models()
+        for resource_type, resource_model in resource_models.items():
+            erred_amount = resource_model.objects.filter(state=erred_state).count()
+            if erred_amount:
+                link = self._get_erred_resource_link(resource_model, erred_amount, erred_state)
+                quick_access_links.append(link)
+
+        return quick_access_links
+
+    def _get_erred_resource_link(self, model, erred_amount, erred_state):
+        result = self._get_link_to_model(model)
+        result['title'] = '{0} {1} in ERRED state'.format(erred_amount, result['title'])
+        result['url'] = '{0}?shared=1&state__exact={1}'.format(result['url'], erred_state)
+        return result
 
     def _get_link_to_model(self, model):
         return {
