@@ -70,15 +70,15 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
         shared_service_setttings = self._get_link_to_model(structure_models.ServiceSettings)
         erred_shared_service_settings = shared_service_setttings.copy()
-        shared_service_setttings['url'] = shared_service_setttings['url'] + '?shared__exact=1'
+        shared_service_setttings['url'] = '%s?shared__exact=1' % shared_service_setttings['url']
         shared_service_setttings['title'] = _('Shared service settings')
         quick_access_links.append(shared_service_setttings)
 
         erred_state = core_models.StateMixin.States.ERRED
-        erred_shared_service_settings['url'] = shared_service_setttings['url'] + '&state__exact=' + str(erred_state)
+        erred_shared_service_settings['url'] = '%s&state__exact=%s' % (shared_service_setttings['url'], erred_state)
         settings_in_erred_state = structure_models.ServiceSettings.objects.filter(state=erred_state).count()
         if settings_in_erred_state:
-            erred_settings_title = '{0} {1}'.format(settings_in_erred_state, 'shared service settings in ERRED state')
+            erred_settings_title = '%s shared service settings in ERRED state' % settings_in_erred_state
             erred_shared_service_settings['title'] = erred_settings_title
             quick_access_links.append(erred_shared_service_settings)
 
@@ -93,8 +93,8 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_erred_resource_link(self, model, erred_amount, erred_state):
         result = self._get_link_to_model(model)
-        result['title'] = '{0} {1} in ERRED state'.format(erred_amount, result['title'])
-        result['url'] = '{0}?shared=1&state__exact={1}'.format(result['url'], erred_state)
+        result['title'] = '%s %s in ERRED state' % (erred_amount, result['title'])
+        result['url'] = '%s?shared=1&state__exact=%s' % (result['url'], erred_state)
         return result
 
     def _get_link_to_model(self, model):
