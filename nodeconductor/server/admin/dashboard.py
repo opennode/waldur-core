@@ -54,11 +54,9 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         Returns a list of ListLink items to be added to Quick Access tab.
         Contains:
-        - a link to Organizations, Projects and Users;
+        - links to Organizations, Projects and Users;
         - a link to shared service settings;
-        - a link to shared service settings in ERRED state if any;
         - custom configured links in admin/settings FLUENT_DASHBOARD_QUICK_ACCESS_LINKS attribute;
-        - a list of links to resources in erred state and linked to shared service settings if there any in such state.
         """
         quick_access_links = []
 
@@ -69,25 +67,9 @@ class CustomIndexDashboard(FluentIndexDashboard):
             quick_access_links.append(self._get_link_to_model(model))
 
         shared_service_setttings = self._get_link_to_model(structure_models.ServiceSettings)
-        erred_shared_service_settings = shared_service_setttings.copy()
         shared_service_setttings['url'] = '%s?shared__exact=1' % shared_service_setttings['url']
         shared_service_setttings['title'] = _('Shared service settings')
         quick_access_links.append(shared_service_setttings)
-
-        erred_state = core_models.StateMixin.States.ERRED
-        erred_shared_service_settings['url'] = '%s&state__exact=%s' % (shared_service_setttings['url'], erred_state)
-        settings_in_erred_state = structure_models.ServiceSettings.objects.filter(state=erred_state).count()
-        if settings_in_erred_state:
-            erred_settings_title = '%s shared service settings in ERRED state' % settings_in_erred_state
-            erred_shared_service_settings['title'] = erred_settings_title
-            quick_access_links.append(erred_shared_service_settings)
-
-        resource_models = SupportedServices.get_resource_models()
-        for resource_type, resource_model in resource_models.items():
-            erred_amount = resource_model.objects.filter(state=erred_state).count()
-            if erred_amount:
-                link = self._get_erred_resource_link(resource_model, erred_amount, erred_state)
-                quick_access_links.append(link)
 
         return quick_access_links
 
@@ -99,10 +81,64 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_link_to_model(self, model):
         return {
-            'title': str(model._meta.verbose_name_plural).capitalize(),
+            'title': '%s(s)' % str(model._meta.verbose_name).capitalize(),
             'url': reverse("admin:%s_%s_changelist" % (model._meta.app_label, model._meta.model_name)),
             'external': True,
         }
+
+    def _get_link_to_instance(self, instance):
+        return {
+            'title': '%s' % instance,
+            'url': reverse("admin:%s_%s_change" % (instance._meta.app_label, instance._meta.model_name),
+                           args=(instance.pk,)),
+            'external': True,
+        }
+
+    def _get_erred_shared_settings_module(self):
+        """
+        Returns a LinkList based module which contains link to shared service setting instances in ERRED state.
+        """
+        result_module = modules.LinkList(title='Erred shared service settings')
+        erred_state = structure_models.ServiceSettings.States.ERRED
+
+        queryset = structure_models.ServiceSettings.objects.filter(shared=True)
+        settings_in_erred_state = queryset.filter(state=erred_state).count()
+
+        if settings_in_erred_state:
+            result_module.pre_content = 'Found %s shared service settings(s)' % settings_in_erred_state
+            for settings in queryset.filter(state=erred_state).iterator():
+                module_child = self._get_link_to_instance(settings)
+                result_module.children.append(module_child)
+        else:
+            result_module.pre_content = 'Nothing found.'
+
+        return result_module
+
+    def _get_erred_resources_module(self):
+        """
+        Returns a list of links to resources which are in ERRED state and linked to a shared service settings.
+        """
+        result_module = modules.LinkList(title='Resources in ERRED state')
+        erred_state = structure_models.NewResource.States.ERRED
+        children = []
+
+        resource_models = SupportedServices.get_resource_models()
+        resources_in_erred_state_overall = 0
+        for resource_type, resource_model in resource_models.items():
+            queryset = resource_model.objects.filter(service_project_link__service__settings__shared=True)
+            erred_amount = queryset.filter(state=erred_state).count()
+            if erred_amount:
+                resources_in_erred_state_overall = resources_in_erred_state_overall + erred_amount
+                link = self._get_erred_resource_link(resource_model, erred_amount, erred_state)
+                children.append(link)
+
+        if resources_in_erred_state_overall:
+            result_module.pre_content = 'Found %s resource(s).' % resources_in_erred_state_overall
+            result_module.children = children
+        else:
+            result_module.pre_content = 'Nothing found.'
+
+        return result_module
 
     def __init__(self, **kwargs):
         FluentIndexDashboard.__init__(self, **kwargs)
@@ -128,6 +164,9 @@ class CustomIndexDashboard(FluentIndexDashboard):
             _('Quick access'),
             children=self._get_quick_access_info())
         )
+
+        self.children.append(self._get_erred_shared_settings_module())
+        self.children.append(self._get_erred_resources_module())
 
 
 class CustomAppIndexDashboard(FluentAppIndexDashboard):
