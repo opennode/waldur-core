@@ -352,10 +352,30 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
     get_customer_name.short_description = 'Customer'
 
 
+class DerivedFromSharedSettingsResourceFilter(SimpleListFilter):
+    title = 'service settings'
+    parameter_name = 'shared'
+
+    def lookups(self, request, model_admin):
+        return ((1, 'Shared'), (0, 'Private'))
+
+    def queryset(self, request, queryset):
+        if self.value() is not None:
+            return queryset.filter(service_project_link__service__settings__shared=self.value())
+        else:
+            return queryset
+
+
 class ResourceAdmin(admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('uuid', 'name', 'backend_id', 'state', 'created', 'get_service', 'get_project', 'error_message')
-    list_filter = ('state',)
+    list_display = ('uuid', 'name', 'backend_id', 'state', 'created',
+                    'get_service', 'get_project', 'error_message', 'get_settings_shared')
+    list_filter = ('state', DerivedFromSharedSettingsResourceFilter)
+
+    def get_settings_shared(self, obj):
+        return obj.service_project_link.service.settings.shared
+    
+    get_settings_shared.short_description = 'Are service settings shared'
 
     def get_service(self, obj):
         return obj.service_project_link.service
