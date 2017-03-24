@@ -693,14 +693,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
             service.delete()
 
 
-class SharedResource(ServiceSettings):
-
-    class Meta:
-        proxy = True
-
-    objects = SharedServiceSettingsManager('scope')
-
-
 @python_2_unicode_compatible
 class Service(core_models.UuidMixin,
               core_models.DescendantMixin,

@@ -374,7 +374,7 @@ class ResourceAdmin(admin.ModelAdmin):
 
     def get_settings_shared(self, obj):
         return obj.service_project_link.service.settings.shared
-    
+
     get_settings_shared.short_description = 'Are service settings shared'
 
     def get_service(self, obj):
@@ -415,82 +415,7 @@ class VirtualMachineAdmin(ResourceAdmin):
     detect_coordinates.short_description = "Detect coordinates of virtual machines"
 
 
-class ResourceChangeList(ChangeList):
-
-    def url_for_result(self, result):
-        pk = getattr(result, self.pk_attname)
-        model = type(result)
-        app_label = model._meta.app_label
-        model_name = model._meta.model_name
-        reversed_url = reverse(
-            'admin:%s_%s_change' % (app_label, model_name),
-            args=(admin_utils.quote(pk),),
-            current_app=self.model_admin.admin_site.name)
-
-        return reversed_url
-
-    def get_queryset(self, request):
-        """
-        Override default get_queryset as ResourceSummaryQuerySet does not have query representation.
-        """
-        shared_settings = self.model_admin.get_queryset(request)
-        resources = SupportedServices.get_resource_models().values()
-        summary_queryset = managers.ResourceSummaryQuerySet(resources)
-        summary_queryset.filter(
-            service_project_link__service__settings__in=shared_settings)
-
-        (_, self.has_filters, remaining_lookup_params, filters_use_distinct) = self.get_filters(request)
-        if self.has_filters:
-            try:
-                # Finally, we apply the remaining lookup parameters from the query
-                # string (i.e. those that haven't already been processed by the
-                # filters).
-                summary_queryset = summary_queryset.filter(**remaining_lookup_params)
-            except (SuspiciousOperation, ImproperlyConfigured):
-                # Allow certain types of errors to be re-raised as-is so that the
-                # caller can treat them in a special way.
-                raise
-            except Exception as e:
-                # Every other error is caught with a naked except, because we don't
-                # have any other way of validating lookup parameters. They might be
-                # invalid if the keyword arguments are incorrect, or if the values
-                # are not in the correct type, so we might get FieldError,
-                # ValueError, ValidationError, or ?.
-                raise IncorrectLookupParameters(e)
-
-        # Apply search results
-        summary_queryset, search_use_distinct = self.model_admin.get_search_results(request,
-                                                                                    summary_queryset,
-                                                                                    self.query)
-
-        # Remove duplicates from results, if necessary
-        if filters_use_distinct | search_use_distinct:
-            return summary_queryset.distinct()
-        else:
-            return summary_queryset
-
-
-class SharedResourceModelAdmin(admin.ModelAdmin):
-    list_display = ('name', 'state', 'error_message')
-    list_filter = ('state',)
-    search_fields = ('name', 'error_message')
-    change_list = ResourceChangeList
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    def get_changelist(self, request, **kwargs):
-        return self.change_list
-
-    def get_action_choices(self, request, default_choices=BLANK_CHOICE_DASH):
-        return default_choices
-
-
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)
-admin.site.register(models.SharedResource, SharedResourceModelAdmin)
