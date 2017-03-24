@@ -88,7 +88,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_link_to_instance(self, instance):
         return {
-            'title': '%s' % instance,
+            'title': str(instance),
             'url': reverse("admin:%s_%s_change" % (instance._meta.app_label, instance._meta.model_name),
                            args=(instance.pk,)),
             'external': True,
