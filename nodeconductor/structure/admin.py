@@ -1,13 +1,9 @@
 from django.conf.urls import url
 from django.contrib import admin, messages
-from django.contrib.admin import SimpleListFilter, utils as admin_utils
-from django.contrib.admin.options import IncorrectLookupParameters
-from django.contrib.admin.views.main import ChangeList
+from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
-from django.core.exceptions import ValidationError, SuspiciousOperation, ImproperlyConfigured
-from django.core.urlresolvers import reverse
+from django.core.exceptions import ValidationError
 from django.db import models as django_models
-from django.db.models import BLANK_CHOICE_DASH
 from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, RadioSelect
 from django.http import HttpResponseRedirect
 from django.utils import six
@@ -19,7 +15,7 @@ from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core import utils
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices, executors, managers
+from nodeconductor.structure import models, SupportedServices, executors
 
 
 class FormRequestAdminMixin(object):
