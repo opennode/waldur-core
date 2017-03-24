@@ -105,7 +105,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         settings_in_erred_state = queryset.filter(state=erred_state).count()
 
         if settings_in_erred_state:
-            result_module.pre_content = 'Found %s shared service settings(s)' % settings_in_erred_state
+            result_module.pre_content = 'Found %s shared service settings' % settings_in_erred_state
             for settings in queryset.filter(state=erred_state).iterator():
                 module_child = self._get_link_to_instance(settings)
                 result_module.children.append(module_child)
@@ -118,7 +118,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         Returns a list of links to resources which are in ERRED state and linked to a shared service settings.
         """
-        result_module = modules.LinkList(title='Resources in ERRED state')
+        result_module = modules.LinkList(title='Resources in Erred state')
         erred_state = structure_models.NewResource.States.ERRED
         children = []
 
