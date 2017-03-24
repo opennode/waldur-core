@@ -81,7 +81,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_link_to_model(self, model):
         return {
-            'title': '%s(s)' % str(model._meta.verbose_name).capitalize(),
+            'title': str(model._meta.verbose_name_plural).capitalize(),
             'url': reverse("admin:%s_%s_changelist" % (model._meta.app_label, model._meta.model_name)),
             'external': True,
         }
