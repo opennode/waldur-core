@@ -1,4 +1,5 @@
 from django.core.urlresolvers import reverse
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 from fluent_dashboard.modules import AppIconList
@@ -51,6 +52,9 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_quick_access_info(self):
         quick_access_links = []
+
+        # add custom links
+        quick_access_links.extend(settings.FLUENT_DASHBOARD_QUICK_ACCESS_LINKS)
 
         for model in (structure_models.Project, structure_models.Customer, core_models.User):
             quick_access_links.append(self._get_link_to_model(model))
