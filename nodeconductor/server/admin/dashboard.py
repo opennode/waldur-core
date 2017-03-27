@@ -21,6 +21,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
                 'title': _('NodeConductor %s' % __version__),
                 'url': 'http://nodeconductor.readthedocs.org/en/stable/',
                 'external': True,
+                'attrs': {'target': '_blank'},
             },
         ]
 
@@ -84,6 +85,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
             'title': str(model._meta.verbose_name_plural).capitalize(),
             'url': reverse("admin:%s_%s_changelist" % (model._meta.app_label, model._meta.model_name)),
             'external': True,
+            'attrs': {'target': '_blank'},
         }
 
     def _get_link_to_instance(self, instance):
@@ -92,6 +94,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
             'url': reverse("admin:%s_%s_change" % (instance._meta.app_label, instance._meta.model_name),
                            args=(instance.pk,)),
             'external': True,
+            'attrs': {'target': '_blank'},
         }
 
     def _get_erred_shared_settings_module(self):
