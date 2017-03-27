@@ -76,7 +76,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
     def _get_erred_resource_link(self, model, erred_amount, erred_state):
         result = self._get_link_to_model(model)
         result['title'] = '%s %s in ERRED state' % (erred_amount, result['title'])
-        result['url'] = '%s?shared=1&state__exact=%s' % (result['url'], erred_state)
+        result['url'] = '%s?shared__exact=1&state__exact=%s' % (result['url'], erred_state)
         return result
 
     def _get_link_to_model(self, model):

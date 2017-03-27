@@ -350,7 +350,7 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
 
 class DerivedFromSharedSettingsResourceFilter(SimpleListFilter):
     title = 'service settings'
-    parameter_name = 'shared'
+    parameter_name = 'shared__exact'
 
     def lookups(self, request, model_admin):
         return ((1, 'Shared'), (0, 'Private'))
