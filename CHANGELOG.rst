@@ -3,7 +3,7 @@ CHANGELOG
 
 Next Release
 ------------
-- Nothing yet.
+- Reorganize admin dashboard. Add links to shared settings and resources.
 
 Release 0.128.0
 ---------------
