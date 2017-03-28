@@ -79,4 +79,4 @@ class ServiceFixture(ProjectFixture):
 
     @cached_property
     def resource(self):
-        return factories.TestInstanceFactory(service_project_link=self.service_project_link)
+        return factories.TestNewInstanceFactory(service_project_link=self.service_project_link)

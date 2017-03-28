@@ -14,7 +14,7 @@ class TestDetectVMCoordinatesTask(TestCase):
         ip_address = "127.0.0.1"
         expected_latitude = 20
         expected_longitude = 20
-        instance = factories.TestInstanceFactory(external_ips=ip_address)
+        instance = factories.TestNewInstanceFactory(external_ips=ip_address)
 
         mock_request_get.return_value.ok = True
         response = {"ip": ip_address, "latitude": expected_latitude, "longitude": expected_longitude}
@@ -28,7 +28,7 @@ class TestDetectVMCoordinatesTask(TestCase):
     @patch('requests.get')
     def test_task_does_not_set_coordinates_if_response_is_not_ok(self, mock_request_get):
         ip_address = "127.0.0.1"
-        instance = factories.TestInstanceFactory(external_ips=ip_address)
+        instance = factories.TestNewInstanceFactory(external_ips=ip_address)
 
         mock_request_get.return_value.ok = False
         tasks.detect_vm_coordinates(utils.serialize_instance(instance))
@@ -36,6 +36,7 @@ class TestDetectVMCoordinatesTask(TestCase):
         instance.refresh_from_db()
         self.assertIsNone(instance.latitude)
         self.assertIsNone(instance.longitude)
+
 
 @ddt
 class ThrottleProvisionTaskTest(TestCase):

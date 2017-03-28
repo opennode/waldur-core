@@ -1,7 +1,7 @@
 import datetime
 
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TransactionTestCase
 from django.utils import timezone
 from freezegun import freeze_time
 
@@ -11,7 +11,7 @@ from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.tests.models import TestNewInstance
 
 
-class ResourceUpdateTest(TestCase):
+class ResourceUpdateTest(TransactionTestCase):
 
     def setUp(self):
         CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
@@ -160,7 +160,7 @@ class ResourceUpdateTest(TestCase):
             self.assertEqual(estimate.total, expected)
 
 
-class ResourceQuotaUpdateTest(TestCase):
+class ResourceQuotaUpdateTest(TransactionTestCase):
 
     def setUp(self):
         CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
@@ -181,7 +181,7 @@ class ResourceQuotaUpdateTest(TestCase):
         self.assertEqual(consumption_details.configuration[quota_item], 5)
 
 
-class ScopeDeleteTest(TestCase):
+class ScopeDeleteTest(TransactionTestCase):
 
     def setUp(self):
         resource_content_type = ContentType.objects.get_for_model(TestNewInstance)

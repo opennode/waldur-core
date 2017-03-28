@@ -9,6 +9,7 @@ from ConfigParser import RawConfigParser
 conf_dir = '/etc/nodeconductor'
 data_dir = '/usr/share/nodeconductor'
 work_dir = '/var/lib/nodeconductor'
+templates_dir = os.path.join(conf_dir, 'templates')
 
 config = RawConfigParser()
 config.read(os.path.join(conf_dir, 'settings.ini'))
@@ -99,6 +100,9 @@ DEBUG = config.getboolean('global', 'debug')
 for tmpl in TEMPLATES:
     tmpl.setdefault('OPTIONS', {})
     tmpl['OPTIONS']['debug'] = config.getboolean('global', 'template_debug')
+
+# Allow to overwrite templates
+TEMPLATES[0]['DIRS'].insert(0, templates_dir)
 
 # For security reason disable browsable API rendering in production
 if not DEBUG:

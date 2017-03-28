@@ -18,8 +18,6 @@ from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
-from django_fsm import FSMIntegerField
-from django_fsm import transition
 from jsonfield import JSONField
 from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
@@ -968,190 +966,6 @@ class VirtualMachineMixin(CoordinatesMixin):
         return []
 
 
-class PublishableMixin(models.Model):
-    """ Provide publishing_state field """
-
-    class Meta(object):
-        abstract = True
-
-    class PublishingState(object):
-        NOT_PUBLISHED = 'not published'
-        PUBLISHED = 'published'
-        REQUESTED = 'requested'
-
-        CHOICES = ((NOT_PUBLISHED, _('Not published')), (PUBLISHED, _('Published')), (REQUESTED, _('Requested')))
-
-    publishing_state = models.CharField(
-        max_length=30, choices=PublishingState.CHOICES, default=PublishingState.NOT_PUBLISHED)
-
-
-# XXX: This class should be deleted after NC-1237 implementation
-class OldStateResourceMixin(core_models.ErrorMessageMixin, models.Model):
-    """ Provides old-style states for resources """
-
-    class Meta(object):
-        abstract = True
-
-    class States(object):
-        PROVISIONING_SCHEDULED = 1
-        PROVISIONING = 2
-
-        ONLINE = 3
-        OFFLINE = 4
-
-        STARTING_SCHEDULED = 5
-        STARTING = 6
-
-        STOPPING_SCHEDULED = 7
-        STOPPING = 8
-
-        ERRED = 9
-
-        DELETION_SCHEDULED = 10
-        DELETING = 11
-
-        RESIZING_SCHEDULED = 13
-        RESIZING = 14
-
-        RESTARTING_SCHEDULED = 15
-        RESTARTING = 16
-
-        CHOICES = (
-            (PROVISIONING_SCHEDULED, 'Provisioning Scheduled'),
-            (PROVISIONING, 'Provisioning'),
-
-            (ONLINE, 'Online'),
-            (OFFLINE, 'Offline'),
-
-            (STARTING_SCHEDULED, 'Starting Scheduled'),
-            (STARTING, 'Starting'),
-
-            (STOPPING_SCHEDULED, 'Stopping Scheduled'),
-            (STOPPING, 'Stopping'),
-
-            (ERRED, 'Erred'),
-
-            (DELETION_SCHEDULED, 'Deletion Scheduled'),
-            (DELETING, 'Deleting'),
-
-            (RESIZING_SCHEDULED, 'Resizing Scheduled'),
-            (RESIZING, 'Resizing'),
-
-            (RESTARTING_SCHEDULED, 'Restarting Scheduled'),
-            (RESTARTING, 'Restarting'),
-        )
-
-        # Stable instances are the ones for which
-        # tasks are scheduled or are in progress
-
-        STABLE_STATES = set([ONLINE, OFFLINE])
-        UNSTABLE_STATES = set([
-            s for (s, _) in CHOICES
-            if s not in STABLE_STATES
-        ])
-
-    state = FSMIntegerField(
-        default=States.PROVISIONING_SCHEDULED,
-        choices=States.CHOICES,
-        help_text="WARNING! Should not be changed manually unless you really know what you are doing.")
-
-    @transition(field=state,
-                source=States.PROVISIONING_SCHEDULED,
-                target=States.PROVISIONING)
-    def begin_provisioning(self):
-        pass
-
-    @transition(field=state,
-                source=[States.PROVISIONING, States.STOPPING, States.RESIZING],
-                target=States.OFFLINE)
-    def set_offline(self):
-        pass
-
-    @transition(field=state,
-                source=States.OFFLINE,
-                target=States.STARTING_SCHEDULED)
-    def schedule_starting(self):
-        pass
-
-    @transition(field=state,
-                source=States.STARTING_SCHEDULED,
-                target=States.STARTING)
-    def begin_starting(self):
-        pass
-
-    @transition(field=state,
-                source=[States.STARTING, States.PROVISIONING, States.RESTARTING],
-                target=States.ONLINE)
-    def set_online(self):
-        pass
-
-    @transition(field=state,
-                source=States.ONLINE,
-                target=States.STOPPING_SCHEDULED)
-    def schedule_stopping(self):
-        pass
-
-    @transition(field=state,
-                source=States.STOPPING_SCHEDULED,
-                target=States.STOPPING)
-    def begin_stopping(self):
-        pass
-
-    @transition(field=state,
-                source=[States.OFFLINE, States.ERRED],
-                target=States.DELETION_SCHEDULED)
-    def schedule_deletion(self):
-        pass
-
-    @transition(field=state,
-                source=States.DELETION_SCHEDULED,
-                target=States.DELETING)
-    def begin_deleting(self):
-        pass
-
-    @transition(field=state,
-                source=States.OFFLINE,
-                target=States.RESIZING_SCHEDULED)
-    def schedule_resizing(self):
-        pass
-
-    @transition(field=state,
-                source=States.RESIZING_SCHEDULED,
-                target=States.RESIZING)
-    def begin_resizing(self):
-        pass
-
-    @transition(field=state,
-                source=States.RESIZING,
-                target=States.OFFLINE)
-    def set_resized(self):
-        pass
-
-    @transition(field=state,
-                source=States.ONLINE,
-                target=States.RESTARTING_SCHEDULED)
-    def schedule_restarting(self):
-        pass
-
-    @transition(field=state,
-                source=States.RESTARTING_SCHEDULED,
-                target=States.RESTARTING)
-    def begin_restarting(self):
-        pass
-
-    @transition(field=state,
-                source=States.RESTARTING,
-                target=States.ONLINE)
-    def set_restarted(self):
-        pass
-
-    @transition(field=state,
-                source='*',
-                target=States.ERRED)
-    def set_erred(self):
-        pass
-
-
 @python_2_unicode_compatible
 class ResourceMixin(MonitoringModelMixin,
                     core_models.UuidMixin,
@@ -1196,7 +1010,7 @@ class ResourceMixin(MonitoringModelMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
-        return [model for model in apps.get_models() if issubclass(model, cls)]
+        return [model for model in apps.get_models() if issubclass(model, cls) and not issubclass(model, SubResource)]
 
     @classmethod
     def get_url_name(cls):
@@ -1257,20 +1071,8 @@ class ResourceMixin(MonitoringModelMixin,
         setattr(self, 'PERFORM_UNLINK', True)
 
 
-# deprecated, use NewResource instead.
-class Resource(OldStateResourceMixin, ResourceMixin):
-
-    class Meta(object):
-        abstract = True
-
-
+# TODO: rename to Resource
 class NewResource(ResourceMixin, core_models.StateMixin):
-
-    class Meta(object):
-        abstract = True
-
-
-class PublishableResource(PublishableMixin, Resource):
 
     class Meta(object):
         abstract = True
@@ -1286,5 +1088,11 @@ class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin,
 class Storage(core_models.RuntimeStateMixin, NewResource):
     size = models.PositiveIntegerField(help_text='Size in MiB')
 
+    class Meta(object):
+        abstract = True
+
+
+class SubResource(NewResource):
+    """ Resource dependent object that cannot exist without resource. """
     class Meta(object):
         abstract = True

@@ -106,7 +106,7 @@ class StructureQueryset(models.QuerySet):
     def _filter_by_custom_fields(self, **kwargs):
         # traverse over filter arguments in search of custom fields
         args = {}
-        fields = self.model._meta.get_all_field_names()
+        fields = [f.name for f in self.model._meta.get_fields()]
         for field, val in kwargs.items():
             base_field = field.split('__')[0]
             if base_field in fields:

@@ -50,13 +50,13 @@ class ServiceResourcesCounterTest(test.APITransactionTestCase):
         self.project1 = factories.ProjectFactory(customer=self.customer)
         self.project1.add_user(self.user1, ProjectRole.ADMINISTRATOR)
         self.spl1 = factories.TestServiceProjectLinkFactory(service=self.service, project=self.project1)
-        self.vm1 = factories.TestInstanceFactory(service_project_link=self.spl1)
+        self.vm1 = factories.TestNewInstanceFactory(service_project_link=self.spl1)
 
         self.user2 = factories.UserFactory()
         self.project2 = factories.ProjectFactory(customer=self.customer)
         self.project2.add_user(self.user2, ProjectRole.ADMINISTRATOR)
         self.spl2 = factories.TestServiceProjectLinkFactory(service=self.service, project=self.project2)
-        self.vm2 = factories.TestInstanceFactory(service_project_link=self.spl2)
+        self.vm2 = factories.TestNewInstanceFactory(service_project_link=self.spl2)
 
         self.service_url = factories.TestServiceFactory.get_url(self.service)
 
@@ -77,7 +77,7 @@ class ServiceResourcesCounterTest(test.APITransactionTestCase):
 
 class UnlinkServiceTest(test.APITransactionTestCase):
     def test_when_service_is_unlinked_all_related_resources_are_unlinked_too(self):
-        resource = factories.TestInstanceFactory()
+        resource = factories.TestNewInstanceFactory()
         service = resource.service_project_link.service
         unlink_url = factories.TestServiceFactory.get_url(service, 'unlink')
 

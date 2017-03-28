@@ -1,9 +1,15 @@
 CHANGELOG
 =========
 
-Next Release
+Release NEXT
 ------------
 - Nothing yet.
+
+Release 0.129.0
+---------------
+- Reorganize admin dashboard. Add links to shared settings and resources.
+- Introduce SubResources concept.
+- Remove old style Resource.
 
 Release 0.128.0
 ---------------

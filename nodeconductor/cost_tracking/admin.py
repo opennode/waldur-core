@@ -58,15 +58,7 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
 
     def init_from_registered_resources(self, request):
         """ Create default price list items for each registered resource. """
-        created_items = []
-        with transaction.atomic():
-            for resource_class in CostTrackingRegister.registered_resources:
-                resource_content_type = ContentType.objects.get_for_model(resource_class)
-                for consumable_item in CostTrackingRegister.get_consumable_items(resource_class):
-                    price_list_item, created = self._create_or_update_default_price_list_item(
-                        resource_content_type, consumable_item)
-                    if created:
-                        created_items.append(price_list_item)
+        created_items = models.DefaultPriceListItem.init_from_registered_resources()
 
         if created_items:
             message = ungettext(
@@ -79,19 +71,6 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
             self.message_user(request, "Price items for all registered resources have been updated")
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
-
-    def _create_or_update_default_price_list_item(self, resource_content_type, consumable_item):
-        default_item, created = models.DefaultPriceListItem.objects.update_or_create(
-            resource_content_type=resource_content_type,
-            item_type=consumable_item.item_type,
-            key=consumable_item.key,
-            defaults={'units': consumable_item.units},
-        )
-        if created:
-            default_item.value = consumable_item.default_price
-            default_item.name = consumable_item.name
-            default_item.save()
-        return default_item, created
 
     def delete_not_registered_items(self, request):
         deleted_items_names = []

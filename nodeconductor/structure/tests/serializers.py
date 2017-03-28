@@ -18,22 +18,6 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         }
 
 
-class InstanceSerializer(structure_serializers.BaseResourceSerializer):
-
-    service = serializers.HyperlinkedRelatedField(
-        source='service_project_link.service',
-        view_name='test-detail',
-        read_only=True,
-        lookup_field='uuid')
-
-    service_project_link = serializers.HyperlinkedRelatedField(
-        view_name='test-spl-detail',
-        queryset=models.TestServiceProjectLink.objects.all())
-
-    class Meta(structure_serializers.BaseResourceSerializer.Meta):
-        model = models.TestInstance
-
-
 class NewInstanceSerializer(structure_serializers.BaseResourceSerializer):
 
     service = serializers.HyperlinkedRelatedField(

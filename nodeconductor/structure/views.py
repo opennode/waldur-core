@@ -1108,7 +1108,7 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     Use */api/resources/* to get a list of all the resources of any type that a user can see.
     """
-    model = models.Resource  # for permissions definition.
+    model = models.NewResource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
     permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
@@ -1795,7 +1795,7 @@ class ResourceViewMetaclass(type):
     def __new__(cls, name, bases, args):
         resource_view = super(ResourceViewMetaclass, cls).__new__(cls, name, bases, args)
         queryset = args.get('queryset')
-        if hasattr(queryset, 'model'):
+        if hasattr(queryset, 'model') and not issubclass(queryset.model, models.SubResource):
             SupportedServices.register_resource_view(queryset.model, resource_view)
         return resource_view
 
@@ -1932,67 +1932,6 @@ class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
         resource.unlink()
         self.perform_destroy(resource)
     unlink.destructive = True
-
-
-# TODO: Consider renaming to BaseVirtualMachineViewSet
-class BaseResourceViewSet(_BaseResourceViewSet):
-    @safe_operation(valid_state=(models.Resource.States.OFFLINE, models.Resource.States.ERRED))
-    def destroy(self, request, resource, uuid=None):
-        self.perform_managed_resource_destroy(
-            resource, force=resource.state == models.Resource.States.ERRED)
-
-    @detail_route(methods=['post'])
-    @safe_operation(valid_state=models.Resource.States.OFFLINE)
-    def start(self, request, resource, uuid=None):
-        """
-        Schedule resource start. Resource must be in OFFLINE state.
-        """
-        backend = resource.get_backend()
-        backend.start(resource)
-        event_logger.resource.info(
-            'Resource {resource_name} has been scheduled to start.',
-            event_type='resource_start_scheduled',
-            event_context={'resource': resource})
-
-    @detail_route(methods=['post'])
-    @safe_operation(valid_state=models.Resource.States.ONLINE)
-    def stop(self, request, resource, uuid=None):
-        """
-        Schedule resource stop. Resource must be in ONLINE state.
-        """
-        backend = resource.get_backend()
-        backend.stop(resource)
-        event_logger.resource.info(
-            'Resource {resource_name} has been scheduled to stop.',
-            event_type='resource_stop_scheduled',
-            event_context={'resource': resource})
-
-    @detail_route(methods=['post'])
-    @safe_operation(valid_state=models.Resource.States.ONLINE)
-    def restart(self, request, resource, uuid=None):
-        """
-        Schedule resource restart. Resource must be in ONLINE state.
-        """
-        backend = resource.get_backend()
-        backend.restart(resource)
-        event_logger.resource.info(
-            'Resource {resource_name} has been scheduled to restart.',
-            event_type='resource_restart_scheduled',
-            event_context={'resource': resource})
-
-
-class BaseOnlineResourceViewSet(_BaseResourceViewSet):
-
-    # User can only create and delete this resource. He cannot stop them.
-    @safe_operation(valid_state=[models.Resource.States.ONLINE, models.Resource.States.ERRED])
-    def destroy(self, request, resource, uuid=None):
-        if resource.state == models.Resource.States.ONLINE:
-            resource.state = resource.States.OFFLINE
-            resource.save()
-        self.perform_managed_resource_destroy(resource, force=resource.state == models.Resource.States.ERRED)
-
-    destroy.method = 'DELETE'
-    destroy.destructive = True
 
 
 class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
