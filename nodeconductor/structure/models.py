@@ -1010,7 +1010,7 @@ class ResourceMixin(MonitoringModelMixin,
     @classmethod
     @lru_cache(maxsize=1)
     def get_all_models(cls):
-        return [model for model in apps.get_models() if issubclass(model, cls)]
+        return [model for model in apps.get_models() if issubclass(model, cls) and not issubclass(model, SubResource)]
 
     @classmethod
     def get_url_name(cls):
@@ -1093,6 +1093,6 @@ class Storage(core_models.RuntimeStateMixin, NewResource):
 
 
 class SubResource(NewResource):
-    """ TODO """
+    """ Resource dependent object that cannot exist without resource. """
     class Meta(object):
         abstract = True
