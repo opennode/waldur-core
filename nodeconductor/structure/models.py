@@ -1090,3 +1090,9 @@ class Storage(core_models.RuntimeStateMixin, NewResource):
 
     class Meta(object):
         abstract = True
+
+
+class SubResource(NewResource):
+    """ TODO """
+    class Meta(object):
+        abstract = True
