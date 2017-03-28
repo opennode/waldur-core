@@ -2,6 +2,7 @@ import json
 import logging
 
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -23,7 +24,15 @@ class Command(BaseCommand):
         # Rise logging level to prevent redundant log messages
         logging.disable(logging.CRITICAL)
 
-        client = APIClient(HTTP_HOST='localhost')
+        if not settings.DEBUG and not settings.ALLOWED_HOSTS:
+            raise CommandError('ALLOWED_HOSTS should not be empty in settings.py file.')
+
+        if settings.ALLOWED_HOSTS and settings.ALLOWED_HOSTS[0] != '*':
+            host = settings.ALLOWED_HOSTS[0]
+        else:
+            host = '127.0.0.1'
+
+        client = APIClient(HTTP_HOST=host)
         user, _ = User.objects.get_or_create(username='waldur_docs_exporter', is_staff=True)
         client.force_authenticate(user=user)
         response = client.get('/docs/?format=openapi')
