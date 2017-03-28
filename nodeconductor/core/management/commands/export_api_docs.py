@@ -16,7 +16,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '-o', '--output',
             dest='output', default=None,
-            help='Specifies file to which the output is written.',
+            help='Specifies file to which the output is written. The output will be printed to stdout by default.',
         )
 
     def handle(self, *args, **options):
