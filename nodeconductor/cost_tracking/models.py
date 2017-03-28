@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import datetime
 import logging
 
-from django.apps import apps
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -23,6 +22,8 @@ from nodeconductor.cost_tracking import managers, ConsumableItem
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
 from nodeconductor.structure import models as structure_models, SupportedServices
+
+from . import CostTrackingRegister
 
 logger = logging.getLogger(__name__)
 
@@ -380,6 +381,33 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
         price_list_items = cls.objects.filter(query, resource_content_type=resource_content_type)
         return {ConsumableItem(item_type, key): name
                 for item_type, key, name in price_list_items.values_list('item_type', 'key', 'name')}
+
+    @classmethod
+    def init_from_registered_resources(cls):
+        created_items = []
+        with transaction.atomic():
+            for resource_class in CostTrackingRegister.registered_resources:
+                resource_content_type = ContentType.objects.get_for_model(resource_class)
+                for consumable_item in CostTrackingRegister.get_consumable_items(resource_class):
+                    price_list_item, created = cls._create_or_update_default_price_list_item(
+                        resource_content_type, consumable_item)
+                    if created:
+                        created_items.append(price_list_item)
+        return created_items
+
+    @classmethod
+    def _create_or_update_default_price_list_item(self, resource_content_type, consumable_item):
+        default_item, created = DefaultPriceListItem.objects.update_or_create(
+            resource_content_type=resource_content_type,
+            item_type=consumable_item.item_type,
+            key=consumable_item.key,
+            defaults={'units': consumable_item.units},
+        )
+        if created:
+            default_item.value = consumable_item.default_price
+            default_item.name = consumable_item.name
+            default_item.save()
+        return default_item, created
 
 
 class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):

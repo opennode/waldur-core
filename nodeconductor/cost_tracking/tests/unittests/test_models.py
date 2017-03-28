@@ -1,7 +1,7 @@
 import datetime
 
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TransactionTestCase
 from freezegun import freeze_time
 
 from nodeconductor.cost_tracking import models, ConsumableItem
@@ -9,7 +9,7 @@ from nodeconductor.cost_tracking.tests import factories
 from nodeconductor.structure.tests import factories as structure_factories
 
 
-class ConsumptionDetailsTest(TestCase):
+class ConsumptionDetailsTest(TransactionTestCase):
 
     def setUp(self):
         price_estimate = factories.PriceEstimateFactory(year=2016, month=8)
@@ -79,7 +79,7 @@ class ConsumptionDetailsTest(TestCase):
             self.assertEqual(self.consumption_details.consumed_until_now[self.storage_item], expected)
 
 
-class PriceListItemTest(TestCase):
+class PriceListItemTest(TransactionTestCase):
 
     def test_get_for_resource(self):
         resource = structure_factories.TestNewInstanceFactory()
@@ -97,7 +97,7 @@ class PriceListItemTest(TestCase):
         self.assertSetEqual(models.PriceListItem.get_for_resource(resource), expected)
 
 
-class DefaultPriceListItemTest(TestCase):
+class DefaultPriceListItemTest(TransactionTestCase):
 
     def test_get_consumable_items_pretty_names(self):
         item_type, key = 'flavor', 'small'

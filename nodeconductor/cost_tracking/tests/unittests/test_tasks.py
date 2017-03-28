@@ -1,7 +1,7 @@
 import datetime
 
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TransactionTestCase
 from freezegun import freeze_time
 
 from nodeconductor.cost_tracking import models, CostTrackingRegister, tasks
@@ -10,7 +10,7 @@ from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.tests.models import TestNewInstance
 
 
-class RecalculateEstimateTest(TestCase):
+class RecalculateEstimateTest(TransactionTestCase):
 
     def setUp(self):
         resource_content_type = ContentType.objects.get_for_model(TestNewInstance)

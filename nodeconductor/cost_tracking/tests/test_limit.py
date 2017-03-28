@@ -6,7 +6,7 @@ from rest_framework import test
 
 from nodeconductor.cost_tracking.exceptions import CostLimitExceeded
 from nodeconductor.cost_tracking.models import PriceEstimate
-from nodeconductor.structure.tests.factories import ProjectFactory, TestInstanceFactory, TestServiceProjectLinkFactory
+from nodeconductor.structure.tests import factories as structure_factories
 
 
 @skip('Should be fixed or rewritten in NC-1537')
@@ -24,13 +24,13 @@ class TestProjectCostLimit(test.APITransactionTestCase):
         self.create_resource(project, cost=20)
 
     def create_project(self, limit, total):
-        project = ProjectFactory()
+        project = structure_factories.ProjectFactory()
         dt = timezone.now()
         PriceEstimate.objects.create(scope=project, year=dt.year, month=dt.month, limit=limit, total=total)
         return project
 
     def create_resource(self, project, cost):
-        link = TestServiceProjectLinkFactory(project=project)
+        link = structure_factories.TestServiceProjectLinkFactory(project=project)
         with mock.patch('nodeconductor.cost_tracking.handlers.CostTrackingRegister') as register:
             register.get_resource_backend().get_monthly_cost_estimate.return_value = cost
-            TestInstanceFactory(service_project_link=link)
+            structure_factories.TestNewInstanceFactory(service_project_link=link)

@@ -45,40 +45,6 @@ class NewResourceMetadataTest(test.APITransactionTestCase):
         self.assertEqual(actions[action]['enabled'], status)
 
 
-@ddt
-class OldResourceMetadataTest(test.APITransactionTestCase):
-    def setUp(self):
-        self.user = factories.UserFactory(is_staff=True)
-        self.client.force_authenticate(user=self.user)
-
-    @data(models.TestInstance.States.ONLINE,
-          models.TestInstance.States.ERRED)
-    def test_unlink_action_enabled_in_any_state(self, state):
-        vm = factories.TestInstanceFactory(state=state)
-        self.assert_action_status(vm, 'unlink', True)
-
-    @data((models.TestInstance.States.OFFLINE, True),
-          (models.TestInstance.States.ONLINE, False))
-    def test_start_action_enabled_for_offline_resource(self, row):
-        state, enabled = row
-        vm = factories.TestInstanceFactory(state=state)
-        self.assert_action_status(vm, 'start', enabled)
-
-    @data((models.TestInstance.States.OFFLINE, False),
-          (models.TestInstance.States.ONLINE, True))
-    def test_stop_action_enabled_for_online_resource(self, row):
-        state, enabled = row
-        vm = factories.TestInstanceFactory(state=state)
-        self.assert_action_status(vm, 'stop', enabled)
-
-    def assert_action_status(self, vm, action, status):
-        url = factories.TestInstanceFactory.get_url(vm)
-        response = self.client.options(url)
-
-        actions = response.data['actions']
-        self.assertEqual(actions[action]['enabled'], status)
-
-
 class ServiceMetadataTest(test.APITransactionTestCase):
     def test_any_user_can_get_service_metadata(self):
         self.client.force_authenticate(factories.UserFactory())

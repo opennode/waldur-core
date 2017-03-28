@@ -11,7 +11,7 @@ from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.models import (Customer, CustomerPermission, Project, ProjectPermission,
-                                            Service, ServiceSettings, Resource, NewResource)
+                                            Service, ServiceSettings, NewResource)
 
 
 logger = logging.getLogger(__name__)
@@ -215,44 +215,7 @@ def log_resource_action(sender, instance, name, source, target, **kwargs):
                 log_resource_creation_succeeded(instance)
             elif target == StateMixin.States.ERRED:
                 log_resource_creation_failed(instance)
-    elif source == Resource.States.PROVISIONING:
-        if target == Resource.States.ONLINE:
-            log_resource_creation_succeeded(instance)
-        elif target == Resource.States.ERRED:
-            log_resource_creation_failed(instance)
-    elif source == Resource.States.STARTING:
-        if target == Resource.States.ONLINE:
-            event_logger.resource.info(
-                'Resource {resource_name} has been started.',
-                event_type='resource_start_succeeded',
-                event_context={'resource': instance})
-        elif target == Resource.States.ERRED:
-            event_logger.resource.error(
-                'Resource {resource_name} start has failed.',
-                event_type='resource_start_failed',
-                event_context={'resource': instance})
-    elif source == Resource.States.STOPPING:
-        if target == Resource.States.OFFLINE:
-            event_logger.resource.info(
-                'Resource {resource_name} has been stopped.',
-                event_type='resource_stop_succeeded',
-                event_context={'resource': instance})
-        elif target == Resource.States.ERRED:
-            event_logger.resource.error(
-                'Resource {resource_name} stop has failed.',
-                event_type='resource_stop_failed',
-                event_context={'resource': instance})
-    elif source == Resource.States.RESTARTING:
-        if target == Resource.States.ONLINE:
-            event_logger.resource.info(
-                'Resource {resource_name} has been restarted.',
-                event_type='resource_restart_succeeded',
-                event_context={'resource': instance})
-        elif target == Resource.States.ERRED:
-            event_logger.resource.error(
-                'Resource {resource_name} restart has failed.',
-                event_type='resource_restart_failed',
-                event_context={'resource': instance})
+
     if isinstance(instance, StateMixin) and target == StateMixin.States.DELETION_SCHEDULED:
         event_logger.resource.info(
             'Resource {resource_name} deletion has been scheduled.',
@@ -337,9 +300,9 @@ def delete_service_settings_on_service_delete(sender, instance, **kwargs):
         service.settings.delete()
 
 
+# XXX: This handler works wrongly. Should be fixed in WAL-641
 def init_resource_start_time(sender, instance, name, source, target, **kwargs):
-    if (isinstance(instance, Resource) and target == Resource.States.ONLINE) or\
-            (isinstance(instance, NewResource) and target == NewResource.States.OK):
+    if target == NewResource.States.OK:
         instance.start_time = timezone.now()
         instance.save(update_fields=['start_time'])
 

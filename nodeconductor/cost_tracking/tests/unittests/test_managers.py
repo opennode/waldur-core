@@ -1,11 +1,11 @@
-from django.test import TestCase
+from django.test import TransactionTestCase
 from freezegun import freeze_time
 
 from nodeconductor.cost_tracking import models, ConsumableItem
 from nodeconductor.cost_tracking.tests import factories
 
 
-class ConsumptionDetailsManagerTest(TestCase):
+class ConsumptionDetailsManagerTest(TransactionTestCase):
 
     def test_create_method_get_configuration_from_previous_month_details(self):
         with freeze_time("2016-08-01"):

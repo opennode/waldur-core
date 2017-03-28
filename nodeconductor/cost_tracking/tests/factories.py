@@ -50,7 +50,7 @@ class DefaultPriceListItemFactory(AbstractPriceListItemFactory):
         model = models.DefaultPriceListItem
 
     resource_content_type = factory.LazyAttribute(
-        lambda _: ContentType.objects.get_for_model(test_models.TestInstance))
+        lambda _: ContentType.objects.get_for_model(test_models.TestNewInstance))
 
     key = factory.Sequence(lambda n: 'price list item %s' % n)
     item_type = factory.Iterator(['flavor', 'storage'])
@@ -117,7 +117,7 @@ class TestNewInstanceCostTrackingStrategy(CostTrackingStrategy):
         return consumables
 
     @classmethod
-    def get_configuration_default_prices(cls):
+    def get_consumable_items(cls):
         return [
             ConsumableItem(cls.Types.STORAGE, "1 MB", units='MB', name='Storage'),
             ConsumableItem(cls.Types.RAM, "1 MB", units='MB', name='RAM', default_price=1),

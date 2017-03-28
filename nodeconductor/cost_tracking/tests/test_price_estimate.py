@@ -143,13 +143,13 @@ class PriceEstimateDeleteTest(BaseCostTrackingTest):
 class ScopeTypeFilterTest(BaseCostTrackingTest):
     def setUp(self):
         super(ScopeTypeFilterTest, self).setUp()
-        resource = structure_factories.TestInstanceFactory(service_project_link=self.service_project_link)
+        resource = structure_factories.TestNewInstanceFactory(service_project_link=self.service_project_link)
         self.estimates = {
-            'customer': factories.PriceEstimateFactory(scope=self.customer),
-            'service': factories.PriceEstimateFactory(scope=self.service),
-            'project': factories.PriceEstimateFactory(scope=self.project),
-            'service_project_link': factories.PriceEstimateFactory(scope=self.service_project_link),
-            'resource': factories.PriceEstimateFactory(scope=resource),
+            'customer': models.PriceEstimate.objects.get(scope=self.customer),
+            'service': models.PriceEstimate.objects.get(scope=self.service),
+            'project': models.PriceEstimate.objects.get(scope=self.project),
+            'service_project_link': models.PriceEstimate.objects.get(scope=self.service_project_link),
+            'resource': models.PriceEstimate.objects.get(scope=resource),
         }
 
     def test_user_can_filter_price_estimate_by_scope_type(self):
@@ -160,16 +160,14 @@ class ScopeTypeFilterTest(BaseCostTrackingTest):
                 data={'scope_type': scope_type})
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(len(response.data), 1)
+            self.assertEqual(len(response.data), 1, response.data)
             self.assertEqual(response.data[0]['uuid'], estimate.uuid.hex)
 
 
 class CustomerFilterTest(BaseCostTrackingTest):
     def setUp(self):
         super(CustomerFilterTest, self).setUp()
-        resource = structure_factories.TestInstanceFactory()
-        resource_estimate = factories.PriceEstimateFactory(scope=resource)
-        resource_estimate.create_ancestors()
+        resource = structure_factories.TestNewInstanceFactory()
         link = resource.service_project_link
         customer = link.customer
         project = link.project
@@ -179,7 +177,7 @@ class CustomerFilterTest(BaseCostTrackingTest):
         self.estimates = {models.PriceEstimate.objects.get(scope=scope) for scope in scopes}
         self.customer = customer
 
-        resource2 = structure_factories.TestInstanceFactory()
+        resource2 = structure_factories.TestNewInstanceFactory()
         resource2_estimate = factories.PriceEstimateFactory(scope=resource2)
         resource2_estimate.create_ancestors()
 

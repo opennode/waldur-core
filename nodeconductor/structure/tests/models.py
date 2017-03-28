@@ -31,23 +31,6 @@ class TestServiceProjectLink(structure_models.ServiceProjectLink):
         return 'test-spl'
 
 
-class TestInstance(structure_models.VirtualMachineMixin, structure_models.Resource):
-
-    service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
-
-    @classmethod
-    def get_url_name(cls):
-        return 'test-instances'
-
-    @property
-    def internal_ips(self):
-        return ['127.0.0.1']
-
-    @property
-    def external_ips(self):
-        return ['8.8.8.8']
-
-
 class TestNewInstance(core_models.RuntimeStateMixin,
                       core_models.StateMixin,
                       QuotaModelMixin,
@@ -63,3 +46,11 @@ class TestNewInstance(core_models.RuntimeStateMixin,
     @classmethod
     def get_url_name(cls):
         return 'test-new-instances'
+
+    @property
+    def internal_ips(self):
+        return ['127.0.0.1']
+
+    @property
+    def external_ips(self):
+        return ['8.8.8.8']
