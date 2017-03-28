@@ -78,5 +78,5 @@ class FilterAlertsByAggregateTest(test.APITransactionTestCase):
         settings = factories.ServiceSettingsFactory(customer=customer)
         service = factories.TestServiceFactory(customer=customer, settings=settings)
         spl = factories.TestServiceProjectLinkFactory(service=service, project=project)
-        resource = factories.TestInstanceFactory(service_project_link=spl)
+        resource = factories.TestNewInstanceFactory(service_project_link=spl)
         return resource

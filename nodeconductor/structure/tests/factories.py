@@ -220,25 +220,6 @@ class TestServiceProjectLinkFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('test-spl-list')
 
 
-class TestInstanceFactory(factory.DjangoModelFactory):
-    class Meta(object):
-        model = test_models.TestInstance
-
-    name = factory.Sequence(lambda n: 'instance%s' % n)
-    service_project_link = factory.SubFactory(TestServiceProjectLinkFactory)
-
-    @classmethod
-    def get_url(cls, instance=None, action=None):
-        if instance is None:
-            instance = TestInstanceFactory()
-        url = 'http://testserver' + reverse('test-instances-detail', kwargs={'uuid': instance.uuid})
-        return url if action is None else url + action + '/'
-
-    @classmethod
-    def get_list_url(cls):
-        return 'http://testserver' + reverse('test-instances-list')
-
-
 class TestNewInstanceFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = test_models.TestNewInstance

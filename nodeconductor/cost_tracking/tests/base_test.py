@@ -3,6 +3,9 @@ from rest_framework import test
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 
+from .. import CostTrackingRegister, models
+from . import factories
+
 
 class BaseCostTrackingTest(test.APITransactionTestCase):
 
@@ -23,3 +26,6 @@ class BaseCostTrackingTest(test.APITransactionTestCase):
         self.service = structure_factories.TestServiceFactory(customer=self.customer)
         self.service_project_link = structure_factories.TestServiceProjectLinkFactory(
             project=self.project, service=self.service)
+
+        CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
+        models.DefaultPriceListItem.init_from_registered_resources()
