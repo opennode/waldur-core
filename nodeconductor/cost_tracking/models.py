@@ -425,6 +425,18 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
     class Meta:
         unique_together = ('content_type', 'object_id', 'default_price_list_item')
 
+    @property
+    def resource_type(self):
+        return self.default_price_list_item.resource_type
+
+    @property
+    def key(self):
+        return self.default_price_list_item.key
+
+    @property
+    def item_type(self):
+        return self.default_price_list_item.item_type
+
     def clean(self):
         if SupportedServices.is_public_service(self.service):
             raise ValidationError('Public service does not support price list items')
