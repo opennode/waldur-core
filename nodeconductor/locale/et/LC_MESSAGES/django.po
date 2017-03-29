@@ -389,7 +389,7 @@ msgstr ""
 
 #: core/views.py:145
 msgid "Invalid username/password."
-msgstr "Sobimatu versioon hostinimes."
+msgstr "Sobimatu kasutajatunnus/salasõna."
 
 #: core/views.py:155
 msgid "User account is disabled."
