@@ -233,6 +233,14 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         return queryset.select_related('customer').only(*related_fields)\
             .prefetch_related('quotas', 'certifications')
 
+    def get_fields(self):
+        fields = super(ProjectSerializer, self).get_fields()
+
+        if self.instance:
+            fields['certifications'].read_only = True
+
+        return fields
+
     def create(self, validated_data):
         certifications = validated_data.pop('certifications', [])
         project = super(ProjectSerializer, self).create(validated_data)
