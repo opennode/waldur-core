@@ -12,7 +12,7 @@ Here are the guidelines for specifing translation strings:
 
   **Wrong:** :code:`_('deletion was scheduled')`
 
-* Use named-string interpolation instead of positional interpolation.
+* Use named-string interpolation instead of positional interpolation if message has several parameters.
 
   **Right:** :code:`_('Operation was successfully scheduled for %(count)d instances: %(names)s.')`
 
