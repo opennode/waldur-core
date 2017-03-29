@@ -217,6 +217,7 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
+        protected_fields = ('certifications',)
 
     @staticmethod
     def eager_load(queryset):
