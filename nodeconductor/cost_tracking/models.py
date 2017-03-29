@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
+from django.utils.translation import ugettext_lazy as _
 
 from jsonfield import JSONField
 from model_utils import FieldTracker
@@ -46,13 +47,13 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
     content_type = models.ForeignKey(ContentType, null=True, related_name='+')
     object_id = models.PositiveIntegerField(null=True)
     scope = GenericForeignKey('content_type', 'object_id')
-    details = JSONField(default={}, help_text='Saved scope details. Field is populated on scope deletion.')
-    parents = models.ManyToManyField('PriceEstimate', related_name='children', help_text='Price estimate parents')
+    details = JSONField(default={}, help_text=_('Saved scope details. Field is populated on scope deletion.'))
+    parents = models.ManyToManyField('PriceEstimate', related_name='children', help_text=_('Price estimate parents'))
 
-    total = models.FloatField(default=0, help_text='Predicted price for scope for current month.')
-    consumed = models.FloatField(default=0, help_text='Price for resource until now.')
+    total = models.FloatField(default=0, help_text=_('Predicted price for scope for current month.'))
+    consumed = models.FloatField(default=0, help_text=_('Price for resource until now.'))
     limit = models.FloatField(
-        default=-1, help_text='How many funds object can consume in current month."-1" means no limit.')
+        default=-1, help_text=_('How many funds object can consume in current month."-1" means no limit.'))
 
     month = models.PositiveSmallIntegerField(validators=[MaxValueValidator(12), MinValueValidator(1)])
     year = models.PositiveSmallIntegerField()
@@ -275,10 +276,10 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         do not update them manually.
     """
     price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
-    configuration = ConsumableItemsField(default={}, help_text='Current resource configuration.')
-    last_update_time = models.DateTimeField(help_text='Last configuration change time.')
+    configuration = ConsumableItemsField(default={}, help_text=_('Current resource configuration.'))
+    last_update_time = models.DateTimeField(help_text=_('Last configuration change time.'))
     consumed_before_update = ConsumableItemsField(
-        default={}, help_text='How many consumables were used by resource before last update.')
+        default={}, help_text=_('How many consumables were used by resource before last update.'))
 
     objects = managers.ConsumptionDetailsManager()
 
@@ -351,13 +352,13 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
     It is fetched from cost tracking backend.
     Field "name" represents how price item will be represented for user.
     """
-    item_type = models.CharField(max_length=255, help_text='Type of price list item. Examples: storage, flavor.')
+    item_type = models.CharField(max_length=255, help_text=_('Type of price list item. Examples: storage, flavor.'))
     key = models.CharField(
-        max_length=255, help_text='Key that corresponds particular consumable. Example: name of flavor.')
+        max_length=255, help_text=_('Key that corresponds particular consumable. Example: name of flavor.'))
     resource_content_type = models.ForeignKey(ContentType, default=None)
     # Field "metadata" is deprecated. We decided to store objects separately from their prices.
     metadata = JSONField(
-        blank=True, help_text='Details of the item, that corresponds price list item. Example: details of flavor.')
+        blank=True, help_text=_('Details of the item, that corresponds price list item. Example: details of flavor.'))
 
     tracker = FieldTracker()
 
@@ -439,13 +440,13 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
 
     def clean(self):
         if SupportedServices.is_public_service(self.service):
-            raise ValidationError('Public service does not support price list items')
+            raise ValidationError(_('Public service does not support price list items.'))
 
         resource = self.default_price_list_item.resource_content_type.model_class()
         valid_resources = SupportedServices.get_related_models(self.service)['resources']
 
         if resource not in valid_resources:
-            raise ValidationError('Service does not support required content type')
+            raise ValidationError(_('Service does not support required content type.'))
 
     @staticmethod
     def get_for_resource(resource):

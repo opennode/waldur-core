@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import IntegrityError
 from django.utils import six
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
@@ -19,7 +20,7 @@ class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedM
     scope_type = serializers.SerializerMethodField()
     resource_type = serializers.SerializerMethodField()
     consumption_details = serializers.SerializerMethodField(
-        help_text="How much of each consumables were used by resource")
+        help_text=_('How much of each consumables were used by resource.'))
 
     def __init__(self, *args, **kwargs):
         depth = kwargs.get('context', {}).pop('depth', 0)  # allow to modify depth dynamically
@@ -81,9 +82,9 @@ class YearMonthField(serializers.CharField):
         try:
             year, month = [int(el) for el in value.split('.')]
         except ValueError:
-            raise serializers.ValidationError('Value "{}" should be valid be in format YYYY.MM'.format(value))
+            raise serializers.ValidationError(_('Value "%s" should be valid be in format YYYY.MM') % value)
         if not 0 < month < 13:
-            raise serializers.ValidationError('Month has to be from 1 to 12')
+            raise serializers.ValidationError(_('Month has to be from 1 to 12.'))
         return year, month
 
 
@@ -100,7 +101,7 @@ class PriceEstimateDateRangeFilterSerializer(serializers.Serializer):
 
     def validate(self, data):
         if 'start' in data and 'end' in data and data['start'] >= data['end']:
-            raise serializers.ValidationError('Start has to be earlier than end.')
+            raise serializers.ValidationError(_('Start has to be earlier than end.'))
         return data
 
 
@@ -125,7 +126,7 @@ class PriceListItemSerializer(AugmentedSerializerMixin,
         try:
             return super(PriceListItemSerializer, self).create(validated_data)
         except IntegrityError:
-            raise serializers.ValidationError('Price list item for service already exists')
+            raise serializers.ValidationError(_('Price list item for service already exists.'))
 
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):

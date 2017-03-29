@@ -1,4 +1,5 @@
 from django.db import IntegrityError
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 from nodeconductor.core.serializers import GenericRelatedField
@@ -27,7 +28,7 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
 
     def create(self, validated_data):
         try:
-            alert, _ = loggers.AlertLogger().process(
+            alert, created = loggers.AlertLogger().process(
                 severity=validated_data['severity'],
                 message_template=validated_data['message'],
                 scope=validated_data['scope'],
@@ -36,7 +37,7 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
         except IntegrityError:
             # In case of simultaneous requests serializer validation can pass for both alerts,
             # so we need to handle DB IntegrityError separately.
-            raise serializers.ValidationError('Alert with given type and scope already exists.')
+            raise serializers.ValidationError(_('Alert with given type and scope already exists.'))
         else:
             return alert
 
@@ -83,7 +84,7 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
 
     def validate(self, attrs):
         if not self.instance and 'event_types' not in attrs and 'event_groups' not in attrs:
-            raise serializers.ValidationError('Please specify list of event_types or event_groups.')
+            raise serializers.ValidationError(_('Please specify list of event_types or event_groups.'))
 
         if 'event_groups' in attrs:
             events = list(attrs.get('event_types', []))

@@ -10,6 +10,7 @@ from django.db import models
 from django.db.models import Sum
 from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.translation import ugettext_lazy as _
 from model_utils import FieldTracker
 from reversion import revisions as reversion
 
@@ -88,7 +89,10 @@ def _fail_silently(method):
             return method(self, quota_name, *args, **kwargs)
         except Quota.DoesNotExist:
             if not kwargs.get('fail_silently', False):
-                raise Quota.DoesNotExist('Object %s does not have quota with name %s' % (self, quota_name))
+                raise Quota.DoesNotExist(_('Object %(object)s does not have quota with name %(name)s.') % {
+                    'object': self,
+                    'name': quota_name
+                })
 
     return wrapped
 
@@ -155,7 +159,8 @@ class QuotaModelMixin(models.Model):
         quota.usage += usage_delta
         if validate and quota.usage > quota.limit:
             raise exceptions.QuotaValidationError(
-                '%s "%s" quota is over limit. Required: %s, limit: %s.' % (self, quota_name, quota.usage, quota.limit))
+                _('%(quota)s "%(name)s" quota is over limit. Required: %(usage)s, limit: %(limit)s.') % dict(
+                    quota=self, name=quota_name, usage=quota.usage, limit=quota.limit))
         quota.save()
 
     def get_quota_ancestors(self):
@@ -188,7 +193,7 @@ class QuotaModelMixin(models.Model):
             return errors
         else:
             if errors:
-                raise exceptions.QuotaExceededException('One or more quotas were exceeded: %s' % ';'.join(errors))
+                raise exceptions.QuotaExceededException(_('One or more quotas were exceeded: %s') % ';'.join(errors))
 
     def can_user_update_quotas(self, user):
         """
@@ -218,7 +223,7 @@ class QuotaModelMixin(models.Model):
 
         scope_models = set([scope._meta.model for scope in scopes])
         if len(scope_models) > 1:
-            raise exceptions.QuotaError('All scopes have to be instances of the same model')
+            raise exceptions.QuotaError(_('All scopes have to be instances of the same model.'))
 
         filter_kwargs = {
             'content_type': ct_models.ContentType.objects.get_for_model(scopes[0]),

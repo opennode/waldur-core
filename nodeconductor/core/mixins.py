@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import status, response
 
 from nodeconductor.core import models
@@ -23,7 +24,7 @@ class StateMixin(object):
         if acceptable_state:
             obj = self.get_object()
             if obj.state not in acceptable_state:
-                raise IncorrectStateException('Modification allowed in stable states only.')
+                raise IncorrectStateException(_('Modification allowed in stable states only.'))
 
         return super(StateMixin, self).initial(request, *args, **kwargs)
 
@@ -42,7 +43,7 @@ class RuntimeStateMixin(object):
         if acceptable_state:
             if obj.state != models.StateMixin.States.OK or obj.runtime_state != acceptable_state:
                 raise IncorrectStateException(
-                    'Performing %s operation is not allowed for resource in its current state.' % action)
+                    _('Performing %s operation is not allowed for resource in its current state.') % action)
 
 
 class AsyncExecutor(object):
@@ -82,7 +83,7 @@ class DeleteExecutorMixin(AsyncExecutor):
         self.delete_executor.execute(
             instance, async=self.async_executor, force=instance.state == models.StateMixin.States.ERRED)
         return response.Response(
-            {'detail': 'Deletion was scheduled'}, status=status.HTTP_202_ACCEPTED)
+            {'detail': _('Deletion was scheduled.')}, status=status.HTTP_202_ACCEPTED)
 
 
 class ExecutorMixin(CreateExecutorMixin, UpdateExecutorMixin, DeleteExecutorMixin):

@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
+import functools
 import time
 import logging
-import functools
 from collections import defaultdict
 
 from datetime import timedelta
@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.http import Http404
 from django.utils import six, timezone
 from django.utils.functional import cached_property
+from django.utils.translation import ugettext_lazy as _
 from django.views.static import serve
 from django_filters.rest_framework import DjangoFilterBackend
 from django_fsm import TransitionNotAllowed
@@ -311,7 +312,7 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
         customer = serializer.validated_data['customer']
 
         if not self.can_create_project_with(customer):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         customer.validate_quota_change({'nc_project_count': 1}, raise_exception=True)
 
@@ -536,7 +537,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user.set_password(new_password)
         user.save()
 
-        return Response({'detail': "Password has been successfully updated"},
+        return Response({'detail': _('Password has been successfully updated.')},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
@@ -552,7 +553,7 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         if instance.organization and instance.organization_approved:
-            return Response({'detail': "User has approved organization. Remove it before claiming a new one."},
+            return Response({'detail': _('User has approved organization. Remove it before claiming a new one.')},
                             status=status.HTTP_409_CONFLICT)
 
         organization = serializer.validated_data['organization']
@@ -569,7 +570,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 'affected_organization': instance.organization,
             })
 
-        return Response({'detail': "User request for joining the organization has been successfully submitted."},
+        return Response({'detail': _('User request for joining the organization has been successfully submitted.')},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
@@ -591,7 +592,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 'affected_organization': instance.organization,
             })
 
-        return Response({'detail': "User request for joining the organization has been successfully approved"},
+        return Response({'detail': _('User request for joining the organization has been successfully approved.')},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
@@ -614,7 +615,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 'affected_organization': old_organization,
             })
 
-        return Response({'detail': "User has been successfully rejected from the organization"},
+        return Response({'detail': _('User has been successfully rejected from the organization.')},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
@@ -637,7 +638,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 'affected_organization': old_organization,
             })
 
-        return Response({'detail': "User has been successfully removed from the organization"},
+        return Response({'detail': _('User has been successfully removed from the organization.')},
                         status=status.HTTP_200_OK)
 
 
@@ -711,7 +712,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         expiration_time = serializer.validated_data.get('expiration_time')
 
         if not affected_project.can_manage_role(self.request.user, role, expiration_time):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
             affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
@@ -725,7 +726,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
 
         if not affected_project.can_manage_role(self.request.user, role, expiration_time)\
                 or serializer.instance.user == self.request.user:
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         serializer.save()
 
@@ -736,7 +737,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         expiration_time = instance.expiration_time
 
         if not affected_project.can_manage_role(self.request.user, role, expiration_time):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         affected_project.remove_user(affected_user, role)
 
@@ -829,7 +830,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         expiration_time = serializer.validated_data.get('expiration_time')
 
         if not affected_customer.can_manage_role(self.request.user, expiration_time):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         if not affected_customer.get_users().filter(pk=affected_user.pk).exists():
             affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
@@ -845,7 +846,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
 
         if not affected_customer.can_manage_role(self.request.user, expiration_time) \
                 or serializer.instance.user == self.request.user:
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         serializer.save()
 
@@ -856,7 +857,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         expiration_time = instance.expiration_time
 
         if not affected_customer.can_manage_role(self.request.user, expiration_time):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         affected_customer.remove_user(affected_user, role)
 
@@ -966,7 +967,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
         name = serializer.validated_data['name']
 
         if core_models.SshPublicKey.objects.filter(user=user, name=name).exists():
-            raise rf_serializers.ValidationError({'name': ['This field must be unique.']})
+            raise rf_serializers.ValidationError({'name': [_('This field must be unique.')]})
 
         serializer.save(user=user)
 
@@ -974,7 +975,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
         try:
             instance.delete()
         except Exception as e:
-            logger.exception("Can't remove SSH public key from backend")
+            logger.exception(_("Can't remove SSH public key from backend."))
             raise APIException(e)
 
 
@@ -1488,7 +1489,7 @@ class UpdateOnlyByPaidCustomerMixin(object):
         if settings.shared:
             if customer and customer.balance is not None and customer.balance <= 0:
                 raise PermissionDenied(
-                    "Your balance is %s. Action disabled." % customer.balance)
+                    _('Your balance is %s. Action disabled.') % customer.balance)
 
     def initial(self, request, *args, **kwargs):
         if hasattr(self, 'PaidControl') and self.action and self.action not in ('list', 'retrieve', 'create'):
@@ -1631,7 +1632,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             return
 
         if obj.settings.shared and not request.user.is_staff:
-            raise PermissionDenied("Only staff users are allowed to import resources from shared services.")
+            raise PermissionDenied(_('Only staff users are allowed to import resources from shared services.'))
 
     @detail_route(methods=['get', 'post'])
     def link(self, request, uuid=None):
@@ -1697,7 +1698,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
             try:
                 spl = spl_class.objects.get(project__uuid=project_uuid, service=service)
             except:
-                raise NotFound("Can't find project %s" % project_uuid)
+                raise NotFound(_("Can't find project %s.") % project_uuid)
             else:
                 return spl.get_backend()
         else:
@@ -1756,7 +1757,7 @@ def safe_operation(valid_state=None):
 
         @functools.wraps(view_fn)
         def wrapped(self, request, *args, **kwargs):
-            message = "Performing %s operation is not allowed for resource in its current state"
+            message = _('Performing %s operation is not allowed for resource in its current state.')
             operation_name = view_fn.__name__
 
             try:
@@ -1774,7 +1775,7 @@ def safe_operation(valid_state=None):
                 raise core_exceptions.IncorrectStateException(message % operation_name)
 
             except IntegrityError:
-                return Response({'status': '%s was not scheduled' % operation_name},
+                return Response({'status': _('%s was not scheduled.') % operation_name},
                                 status=status.HTTP_400_BAD_REQUEST)
 
             if response is not None:
@@ -1783,7 +1784,7 @@ def safe_operation(valid_state=None):
             if resource.pk is None:
                 return Response(status=status.HTTP_204_NO_CONTENT)
 
-            return Response({'status': '%s was scheduled' % operation_name},
+            return Response({'status': _('%s was scheduled.') % operation_name},
                             status=status.HTTP_202_ACCEPTED)
 
         return wrapped
@@ -1853,96 +1854,11 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
             event_context={'resource': resource})
 
 
-class _BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                              ResourceViewMixin,
-                                              viewsets.ModelViewSet)):
-    filter_class = filters.BaseResourceFilter
-
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Optional `field` query parameter (can be list) allows to limit what fields are returned.
-        For example, given request /api/openstack-instances/<uuid>/?field=uuid&field=name you get response like this:
-
-        .. code-block:: javascript
-
-            {
-                "uuid": "90bcfe38b0124c9bbdadd617b5d739f5",
-                "name": "Azure Virtual Machine"
-            }
-        """
-        return super(_BaseResourceViewSet, self).retrieve(request, *args, **kwargs)
-
-    def initial(self, request, *args, **kwargs):
-        if self.action in ('update', 'partial_update'):
-            resource = self.get_object()
-            if resource.state not in resource.States.STABLE_STATES:
-                raise core_exceptions.IncorrectStateException(
-                    'Modification allowed in stable states only')
-
-        elif self.action in ('stop', 'start', 'resize'):
-            resource = self.get_object()
-            if resource.state == resource.States.PROVISIONING_SCHEDULED:
-                raise core_exceptions.IncorrectStateException(
-                    'Provisioning scheduled. Disabled modifications.')
-
-        super(_BaseResourceViewSet, self).initial(request, *args, **kwargs)
-
-    def perform_create(self, serializer):
-        service_project_link = serializer.validated_data['service_project_link']
-
-        if service_project_link.service.settings.state == core_models.SynchronizationStates.ERRED:
-            raise core_exceptions.IncorrectStateException(
-                detail='Cannot create resource if its service is in erred state.')
-
-        try:
-            self.perform_provision(serializer)
-        except ServiceBackendError as e:
-            raise APIException(e)
-
-    def perform_update(self, serializer):
-        old_name = serializer.instance.name
-        resource = serializer.save()
-
-        message = '{resource_full_name} has been updated.'
-        if old_name != resource.name:
-            message += ' Name was changed from %s to %s.' % (old_name, resource.name)
-
-        event_logger.resource.info(
-            message,
-            event_type='resource_update_succeeded',
-            event_context={'resource': resource})
-
-    def perform_provision(self, serializer):
-        raise NotImplementedError
-
-    def perform_managed_resource_destroy(self, resource, force=False):
-        if resource.backend_id:
-            backend = resource.get_backend()
-            backend.destroy(resource, force=force)
-            event_logger.resource.info(
-                '{resource_full_name} has been scheduled for deletion.',
-                event_type='resource_deletion_scheduled',
-                event_context={'resource': resource})
-        else:
-            self.perform_destroy(resource)
-
-    @detail_route(methods=['post'])
-    @safe_operation()
-    def unlink(self, request, resource, uuid=None):
-        resource.unlink()
-        self.perform_destroy(resource)
-    unlink.destructive = True
-
-
 class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
                                                      core_views.StateExecutorViewSet,
                                                      ResourceViewMixin,
                                                      viewsets.ModelViewSet)):
-
     filter_class = filters.BaseResourceFilter
-
-    def perform_create(self, serializer):
-        super(BaseResourceExecutorViewSet, self).perform_create(serializer)
 
 
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1986,7 +1902,7 @@ class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorV
             final_state=instance.RuntimeStates.ONLINE,
             async=self.async_executor,
             updated_fields=None)
-        return Response({'detail': 'starting was scheduled'}, status=status.HTTP_202_ACCEPTED)
+        return Response({'detail': _('Starting was scheduled.')}, status=status.HTTP_202_ACCEPTED)
 
     @detail_route(methods=['post'])
     def stop(self, request, uuid=None):
@@ -1997,7 +1913,7 @@ class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorV
             final_state=instance.RuntimeStates.OFFLINE,
             async=self.async_executor,
             updated_fields=None)
-        return Response({'detail': 'stopping was scheduled'}, status=status.HTTP_202_ACCEPTED)
+        return Response({'detail': _('Stopping was scheduled.')}, status=status.HTTP_202_ACCEPTED)
 
     @detail_route(methods=['post'])
     def restart(self, request, uuid=None):
@@ -2008,7 +1924,7 @@ class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorV
             final_state=instance.RuntimeStates.ONLINE,
             async=self.async_executor,
             updated_fields=None)
-        return Response({'detail': 'restarting was scheduled'}, status=status.HTTP_202_ACCEPTED)
+        return Response({'detail': _('Restarting was scheduled.')}, status=status.HTTP_202_ACCEPTED)
 
 
 class AggregatedStatsView(views.APIView):
@@ -2198,7 +2114,7 @@ class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
     @detail_route(methods=['post'])
     def pull(self, request, uuid=None):
         self.pull_executor.execute(self.get_object())
-        return Response({'detail': 'Pull operation was successfully scheduled'}, status=status.HTTP_202_ACCEPTED)
+        return Response({'detail': _('Pull operation was successfully scheduled.')}, status=status.HTTP_202_ACCEPTED)
 
     pull_executor = NotImplemented
     pull_validators = [core_validators.StateValidator(models.NewResource.States.OK, models.NewResource.States.ERRED)]

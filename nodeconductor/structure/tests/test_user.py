@@ -205,7 +205,7 @@ class UserPermissionApiTest(test.APITransactionTestCase):
 
         response = self.client.post(factories.UserFactory.get_password_url(self.users['owner']), data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual('Password has been successfully updated', response.data['detail'])
+        self.assertEqual('Password has been successfully updated.', response.data['detail'])
 
         user = User.objects.get(uuid=self.users['owner'].uuid)
         self.assertTrue(user.check_password(data['password']))
@@ -692,7 +692,7 @@ class UserUpdateTest(test.APITransactionTestCase):
         response = self.client.put(self.url, self.valid_payload)
 
         self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEquals(response.data['email'], ['User with email "%s" already exists' % email])
+        self.assertEquals(response.data['email'], ['User with email "%s" already exists.' % email])
 
     def test_token_lifetime_cannot_be_less_than_60_seconds(self):
         self.valid_payload['token_lifetime'] = 59

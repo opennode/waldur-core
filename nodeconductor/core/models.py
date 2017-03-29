@@ -164,7 +164,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
                                           help_text=_('Indicates when the user has agreed with the policy.'))
     preferred_language = models.CharField(max_length=10, blank=True)
     competence = models.CharField(max_length=255, blank=True)
-    token_lifetime = models.PositiveIntegerField(null=True, help_text='Token lifetime in seconds.',
+    token_lifetime = models.PositiveIntegerField(null=True, help_text=_('Token lifetime in seconds.'),
                                                  validators=[validators.MinValueValidator(60)])
 
     objects = UserManager()
@@ -203,7 +203,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     def clean(self):
         # User email has to be unique or empty
         if self.email and User.objects.filter(email=self.email).exclude(id=self.id).exists():
-            raise ValidationError({'email': 'User with email "%s" already exists' % self.email})
+            raise ValidationError({'email': _('User with email "%s" already exists.') % self.email})
 
     def __str__(self):
         if self.civil_number:
@@ -222,7 +222,7 @@ def validate_ssh_public_key(ssh_key):
         key_type, key_body = key_parts[0], key_parts[1]
 
         if key_type != 'ssh-rsa':
-            raise ValidationError('Invalid SSH public key type %s, only ssh-rsa is supported' % key_type)
+            raise ValidationError(_('Invalid SSH public key type %s, only ssh-rsa is supported.') % key_type)
 
         data = base64.decodestring(key_body)
         int_len = 4
@@ -232,13 +232,13 @@ def validate_ssh_public_key(ssh_key):
         encoded_key_type = data[int_len:int_len + str_len]
         # Check if the encoded key type equals to the decoded key type
         if encoded_key_type != key_type:
-            raise ValidationError("Invalid encoded SSH public key type %s within the key's body, "
-                                  "only ssh-rsa is supported" % encoded_key_type)
+            raise ValidationError(_("Invalid encoded SSH public key type %s within the key's body, "
+                                    "only ssh-rsa is supported.") % encoded_key_type)
     except IndexError:
-        raise ValidationError('Invalid SSH public key structure')
+        raise ValidationError(_('Invalid SSH public key structure.'))
 
     except (base64.binascii.Error, struct.error):
-        raise ValidationError('Invalid SSH public key body')
+        raise ValidationError(_('Invalid SSH public key body.'))
 
 
 def get_ssh_key_fingerprint(ssh_key):
@@ -270,8 +270,8 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
 
     class Meta(object):
         unique_together = ('user', 'name')
-        verbose_name = 'SSH public key'
-        verbose_name_plural = 'SSH public keys'
+        verbose_name = _('SSH public key')
+        verbose_name_plural = _('SSH public keys')
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         # Fingerprint is always set based on public_key
@@ -279,7 +279,7 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
             self.fingerprint = get_ssh_key_fingerprint(self.public_key)
         except (IndexError, TypeError):
             logger.exception('Fingerprint calculation has failed')
-            raise ValueError('Public key format is incorrect. Fingerprint calculation has failed.')
+            raise ValueError(_('Public key format is incorrect. Fingerprint calculation has failed.'))
 
         if update_fields and 'public_key' in update_fields and 'fingerprint' not in update_fields:
             update_fields.append('fingerprint')

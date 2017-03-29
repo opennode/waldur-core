@@ -7,6 +7,7 @@ import uuid
 from django.db import models
 from django.core import validators
 from django.utils.encoding import smart_text
+from django.utils.translation import ugettext_lazy as _
 import pycountry
 from rest_framework import serializers
 import six
@@ -32,17 +33,17 @@ class CronScheduleField(models.CharField):
 
 comma_separated_string_list_re = re.compile('^((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(,\s+)?)+')
 validate_comma_separated_string_list = validators.RegexValidator(comma_separated_string_list_re,
-                                                                 'Enter ips separated by commas.', 'invalid')
+                                                                 _('Enter IPs separated by commas.'), 'invalid')
 
 
 class IPsField(models.CharField):
     default_validators = [validate_comma_separated_string_list]
-    description = 'Comma-separated ips'
+    description = _('Comma-separated IPs')
 
     def formfield(self, **kwargs):
         defaults = {
             'error_messages': {
-                'invalid': 'Enter ips separated by commas.',
+                'invalid': _('Enter IPs separated by commas.'),
             }
         }
         defaults.update(kwargs)
@@ -147,7 +148,7 @@ class JsonField(serializers.Field):
         try:
             data = json.loads(data)
         except ValueError:
-            raise serializers.ValidationError('This field should a be valid JSON string.')
+            raise serializers.ValidationError(_('This field should a be valid JSON string.'))
         return data
 
 
@@ -162,7 +163,7 @@ class TimestampField(serializers.Field):
         try:
             return utils.timestamp_to_datetime(value)
         except ValueError:
-            raise serializers.ValidationError('Value "{}" should be valid UNIX timestamp.'.format(value))
+            raise serializers.ValidationError(_('Value "%s" should be valid UNIX timestamp.') % value)
 
 
 class CountryField(models.CharField):

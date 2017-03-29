@@ -123,6 +123,8 @@ TEMPLATE_LOADERS = (
 EOF
 %{__python} manage.py collectstatic --noinput --settings=tmp_settings
 
+cd nodeconductor && %{__python} ../manage.py compilemessages && cd ..
+
 mkdir -p %{buildroot}%{__log_dir}
 
 mkdir -p %{buildroot}%{__logrotate_dir}

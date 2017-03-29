@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.users import models
 
@@ -17,11 +18,11 @@ class InvitationForm(forms.ModelForm):
         customer_role = self.cleaned_data.get('customer_role')
         project_role = self.cleaned_data.get('project_role')
         if customer_role and project_role:
-            raise forms.ValidationError('Cannot create invitation to project and customer simultaneously.')
+            raise forms.ValidationError(_('Cannot create invitation to project and customer simultaneously.'))
         elif not (customer_role or project_role):
-            raise forms.ValidationError('Customer role or project role must be provided.')
+            raise forms.ValidationError(_('Customer role or project role must be provided.'))
         elif User.objects.filter(email=self.cleaned_data['email']).exists():
-            raise forms.ValidationError('User with provided email already exists.')
+            raise forms.ValidationError(_('User with provided email already exists.'))
 
 
 class InvitationAdmin(admin.ModelAdmin):

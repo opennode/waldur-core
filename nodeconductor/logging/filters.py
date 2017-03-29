@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
+from django.utils.translation import ugettext_lazy as _
 import django_filters
 from rest_framework import settings, filters
 from rest_framework.serializers import ValidationError
@@ -82,9 +83,10 @@ class EventFilterBackend(filters.BaseFilterBackend):
                 scope_type = choices[request.query_params['scope_type']]
             except KeyError:
                 raise ValidationError(
-                    'Scope type "{}" is not valid. Has to be one from list: {}'.format(
-                        request.query_params['scope_type'], ', '.join(choices.keys()))
-                )
+                    _('Scope type "%(value)s" is not valid. Has to be one from list: %(items)s.') % dict(
+                        value=request.query_params['scope_type'],
+                        items=', '.join(choices.keys())
+                    ))
             else:
                 permitted_items = scope_type.get_permitted_objects_uuids(request.user).items()
                 if not permitted_items:
@@ -192,9 +194,10 @@ class AdditionalAlertFilterBackend(filters.BaseFilterBackend):
                 scope_type = choices[request.query_params['scope_type']]
             except KeyError:
                 raise ValidationError(
-                    'Scope type "{}" is not valid. Has to be one from list: {}'.format(
-                        request.query_params['scope_type'], ', '.join(choices.keys()))
-                )
+                    _('Scope type "%(value)s" is not valid. Has to be one from list: %(items)s.') % dict(
+                        value=request.query_params['scope_type'],
+                        items=', '.join(choices.keys())
+                    ))
             else:
                 ct = ContentType.objects.get_for_model(scope_type)
                 queryset = queryset.filter(content_type=ct)
