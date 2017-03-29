@@ -32,13 +32,13 @@ class Invitation(core_models.UuidMixin, TimeStampedModel, core_models.ErrorMessa
     project_role = structure_models.ProjectRole(null=True, blank=True)
 
     state = models.CharField(max_length=8, choices=State.CHOICES, default=State.PENDING)
-    link_template = models.CharField(max_length=255, help_text='The template must include {uuid} parameter '
-                                                               'e.g. http://example.com/invitation/{uuid}')
-    email = models.EmailField(help_text='Invitation link will be sent to this email. Note that user can accept '
-                                        'invitation with different email.')
+    link_template = models.CharField(max_length=255, help_text=_('The template must include {uuid} parameter '
+                                                                 'e.g. http://example.com/invitation/{uuid}'))
+    email = models.EmailField(help_text=_('Invitation link will be sent to this email. Note that user can accept '
+                                          'invitation with different email.'))
     civil_number = models.CharField(
         max_length=50, blank=True,
-        help_text='Civil number of invited user. If civil number is not defined any user can accept invitation.')
+        help_text=_('Civil number of invited user. If civil number is not defined any user can accept invitation.'))
 
     def get_expiration_time(self):
         return self.created + settings.NODECONDUCTOR['INVITATION_LIFETIME']

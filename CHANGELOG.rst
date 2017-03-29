@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Enable i18n.
 
 Release 0.129.0
 ---------------

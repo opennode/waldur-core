@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
 from nodeconductor.structure import models as structure_models
@@ -52,7 +53,7 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
     def validate(self, attrs):
         link_template = attrs['link_template']
         if '{uuid}' not in link_template:
-            raise serializers.ValidationError({'link_template': "Link template must include '{uuid}' parameter."})
+            raise serializers.ValidationError({'link_template': _("Link template must include '{uuid}' parameter.")})
 
         project = attrs.get('project')
         customer = attrs.get('customer')
@@ -61,13 +62,13 @@ class InvitationSerializer(serializers.HyperlinkedModelSerializer):
         customer_role = attrs.get('customer_role', '')
 
         if customer and project:
-            raise serializers.ValidationError('Cannot create invitation to project and customer simultaneously.')
+            raise serializers.ValidationError(_('Cannot create invitation to project and customer simultaneously.'))
         elif not (customer or project):
-            raise serializers.ValidationError('Customer or project must be provided.')
+            raise serializers.ValidationError(_('Customer or project must be provided.'))
         elif (customer and not customer_role) or (customer_role and not customer):
-            raise serializers.ValidationError({'customer_role': 'Customer and its role must be provided.'})
+            raise serializers.ValidationError({'customer_role': _('Customer and its role must be provided.')})
         elif (project and not project_role) or (project_role and not project):
-            raise serializers.ValidationError({'project_role': 'Project and its role must be provided.'})
+            raise serializers.ValidationError({'project_role': _('Project and its role must be provided.')})
 
         return attrs
 

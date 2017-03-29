@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core.models import NameMixin
 from nodeconductor.monitoring.managers import ResourceSlaManager, ResourceItemManager, ResourceSlaStateTransitionManager
@@ -38,7 +39,7 @@ class ResourceSla(ScopeMixin):
 class ResourceSlaStateTransition(ScopeMixin):
     period = models.CharField(max_length=10)
     timestamp = models.IntegerField()
-    state = models.BooleanField(default=False, help_text="If state is True resource became available")
+    state = models.BooleanField(default=False, help_text=_('If state is True resource became available'))
     objects = ResourceSlaStateTransitionManager()
 
     class Meta:

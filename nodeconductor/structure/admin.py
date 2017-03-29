@@ -8,6 +8,7 @@ from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, Radio
 from django.http import HttpResponseRedirect
 from django.utils import six
 from django.utils.translation import ungettext
+from django.utils.translation import ugettext_lazy as _
 from django.shortcuts import render
 
 from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
@@ -63,24 +64,24 @@ class ResourceCounterFormMixin(object):
     def get_vm_count(self, obj):
         return obj.quotas.get(name=obj.Quotas.nc_vm_count).usage
 
-    get_vm_count.short_description = 'VM count'
+    get_vm_count.short_description = _('VM count')
 
     def get_app_count(self, obj):
         return obj.quotas.get(name=obj.Quotas.nc_app_count).usage
 
-    get_app_count.short_description = 'Application count'
+    get_app_count.short_description = _('Application count')
 
     def get_private_cloud_count(self, obj):
         return obj.quotas.get(name=obj.Quotas.nc_private_cloud_count).usage
 
-    get_private_cloud_count.short_description = 'Private cloud count'
+    get_private_cloud_count.short_description = _('Private cloud count')
 
 
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                       widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
     support_users = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                             widget=FilteredSelectMultiple(verbose_name='Support users',
+                                             widget=FilteredSelectMultiple(verbose_name=_('Support users'),
                                                                            is_stacked=False))
 
     def __init__(self, *args, **kwargs):
@@ -137,11 +138,11 @@ class CustomerAdmin(FormRequestAdminMixin,
 
 class ProjectAdminForm(ModelForm):
     admins = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                      widget=FilteredSelectMultiple(verbose_name='Admins', is_stacked=False))
+                                      widget=FilteredSelectMultiple(verbose_name=_('Admins'), is_stacked=False))
     managers = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                        widget=FilteredSelectMultiple(verbose_name='Managers', is_stacked=False))
+                                        widget=FilteredSelectMultiple(verbose_name=_('Managers'), is_stacked=False))
     support_users = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                             widget=FilteredSelectMultiple(verbose_name='Support users',
+                                             widget=FilteredSelectMultiple(verbose_name=_('Support users'),
                                                                            is_stacked=False))
 
     def __init__(self, *args, **kwargs):
@@ -289,22 +290,22 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     class Pull(ExecutorAdminAction):
         executor = executors.ServiceSettingsPullExecutor
-        short_description = 'Pull'
+        short_description = _('Pull')
 
         def validate(self, service_settings):
             States = models.ServiceSettings.States
             if service_settings.state not in (States.OK, States.ERRED):
-                raise ValidationError('Service settings has to be OK or erred.')
+                raise ValidationError(_('Service settings has to be OK or erred.'))
 
     pull = Pull()
 
     class ConnectShared(ExecutorAdminAction):
         executor = executors.ServiceSettingsConnectSharedExecutor
-        short_description = 'Create SPLs and services for shared service settings'
+        short_description = _('Create SPLs and services for shared service settings')
 
         def validate(self, service_settings):
             if not service_settings.shared:
-                raise ValidationError('It is impossible to connect not shared settings')
+                raise ValidationError(_('It is impossible to connect not shared settings.'))
 
     connect_shared = ConnectShared()
 
@@ -335,25 +336,25 @@ class ServiceProjectLinkAdmin(admin.ModelAdmin):
     def get_service_name(self, obj):
         return obj.service.settings.name
 
-    get_service_name.short_description = 'Service'
+    get_service_name.short_description = _('Service')
 
     def get_project_name(self, obj):
         return obj.project.name
 
-    get_project_name.short_description = 'Project'
+    get_project_name.short_description = _('Project')
 
     def get_customer_name(self, obj):
         return obj.service.customer.name
 
-    get_customer_name.short_description = 'Customer'
+    get_customer_name.short_description = _('Customer')
 
 
 class DerivedFromSharedSettingsResourceFilter(SimpleListFilter):
-    title = 'service settings'
+    title = _('service settings')
     parameter_name = 'shared__exact'
 
     def lookups(self, request, model_admin):
-        return ((1, 'Shared'), (0, 'Private'))
+        return ((1, _('Shared')), (0, _('Private')))
 
     def queryset(self, request, queryset):
         if self.value() is not None:
@@ -371,18 +372,18 @@ class ResourceAdmin(admin.ModelAdmin):
     def get_settings_shared(self, obj):
         return obj.service_project_link.service.settings.shared
 
-    get_settings_shared.short_description = 'Are service settings shared'
+    get_settings_shared.short_description = _('Are service settings shared')
 
     def get_service(self, obj):
         return obj.service_project_link.service
 
-    get_service.short_description = 'Service'
+    get_service.short_description = _('Service')
     get_service.admin_order_field = 'service_project_link__service__settings__name'
 
     def get_project(self, obj):
         return obj.service_project_link.project
 
-    get_project.short_description = 'Project'
+    get_project.short_description = _('Project')
     get_project.admin_order_field = 'service_project_link__project__name'
 
 
@@ -400,15 +401,15 @@ class VirtualMachineAdmin(ResourceAdmin):
 
         tasks_scheduled = queryset.count()
         message = ungettext(
-            'Coordinates detection has been scheduled for one virtual machine',
-            'Coordinates detection has been scheduled for %(tasks_scheduled)d virtual machines',
+            'Coordinates detection has been scheduled for one virtual machine.',
+            'Coordinates detection has been scheduled for %(tasks_scheduled)d virtual machines.',
             tasks_scheduled
         )
         message = message % {'tasks_scheduled': tasks_scheduled}
 
         self.message_user(request, message)
 
-    detect_coordinates.short_description = "Detect coordinates of virtual machines"
+    detect_coordinates.short_description = _('Detect coordinates of virtual machines')
 
 
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)

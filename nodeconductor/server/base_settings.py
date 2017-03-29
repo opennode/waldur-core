@@ -57,6 +57,7 @@ INSTALLED_APPS += ADMIN_INSTALLED_APPS
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -155,6 +156,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_L10N = True
+
+LOCALE_PATHS = (
+    os.path.join(BASE_DIR, 'nodeconductor', 'locale'),
+)
+
+LANGUAGES = (
+    ('en', 'English'),
+    ('et', 'Estonian'),
+)
 
 USE_TZ = True
 

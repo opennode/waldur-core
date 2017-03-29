@@ -40,7 +40,7 @@ class MinCronValueValidator(BaseValidator):
 
 def validate_name(value):
     if len(value.strip()) == 0:
-        raise ValidationError('Ensure that name has at least one non-whitespace character')
+        raise ValidationError(_('Ensure that name has at least one non-whitespace character.'))
 
 
 class StateValidator(object):
@@ -54,11 +54,11 @@ class StateValidator(object):
         if resource.state not in self.valid_states:
             states_names = dict(models.StateMixin.States.CHOICES)
             valid_states_names = [str(states_names[state]) for state in self.valid_states]
-            raise exceptions.IncorrectStateException('Valid states for operation: %s' % ', '.join(valid_states_names))
+            raise exceptions.IncorrectStateException(_('Valid states for operation: %s.') % ', '.join(valid_states_names))
 
 
 class RuntimeStateValidator(StateValidator):
 
     def __call__(self, resource):
         if resource.runtime_state not in self.valid_states:
-            raise exceptions.IncorrectStateException('Valid runtime states for operation: %s' % ', '.join(self.valid_states))
+            raise exceptions.IncorrectStateException(_('Valid runtime states for operation: %s.') % ', '.join(self.valid_states))

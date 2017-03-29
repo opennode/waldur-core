@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
+from django.utils.translation import ugettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import response, viewsets, permissions, status, decorators, mixins
 
@@ -278,7 +279,7 @@ class AlertViewSet(mixins.CreateModelMixin,
             alert.acknowledge()
             return response.Response(status=status.HTTP_200_OK)
         else:
-            return response.Response({'detail': 'Alert is already acknowledged'}, status=status.HTTP_409_CONFLICT)
+            return response.Response({'detail': _('Alert is already acknowledged.')}, status=status.HTTP_409_CONFLICT)
 
     @decorators.detail_route(methods=['post'])
     def cancel_acknowledgment(self, request, *args, **kwargs):
@@ -292,7 +293,7 @@ class AlertViewSet(mixins.CreateModelMixin,
             alert.cancel_acknowledgment()
             return response.Response(status=status.HTTP_200_OK)
         else:
-            return response.Response({'detail': 'Alert is not acknowledged'}, status=status.HTTP_409_CONFLICT)
+            return response.Response({'detail': _('Alert is not acknowledged.')}, status=status.HTTP_409_CONFLICT)
 
     @decorators.list_route()
     def stats(self, request, *args, **kwargs):
@@ -326,7 +327,7 @@ class AlertViewSet(mixins.CreateModelMixin,
 
     def perform_create(self, serializer):
         if not self.request.user.is_staff:
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         super(AlertViewSet, self).perform_create(serializer)
 

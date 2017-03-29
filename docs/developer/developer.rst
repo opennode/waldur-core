@@ -9,3 +9,4 @@
 .. include:: how-to-write-imports.rst
 .. include:: how-to-write-tests.rst
 .. include:: how-to-write-docs.rst
+.. include:: i18n.rst

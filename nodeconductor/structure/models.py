@@ -45,7 +45,7 @@ from nodeconductor.structure.utils import get_coordinates_by_ip, sort_dependenci
 def validate_service_type(service_type):
     from django.core.exceptions import ValidationError
     if not SupportedServices.has_service_type(service_type):
-        raise ValidationError('Invalid service type')
+        raise ValidationError(_('Invalid service type.'))
 
 
 class StructureModel(models.Model):
@@ -123,13 +123,13 @@ class VATMixin(models.Model):
     class Meta(object):
         abstract = True
 
-    vat_code = models.CharField(max_length=20, blank=True, help_text='VAT number')
+    vat_code = models.CharField(max_length=20, blank=True, help_text=_('VAT number'))
     vat_name = models.CharField(max_length=255, blank=True,
-                                help_text='Optional business name retrieved for the VAT number.')
+                                help_text=_('Optional business name retrieved for the VAT number.'))
     vat_address = models.CharField(max_length=255, blank=True,
-                                   help_text='Optional business address retrieved for the VAT number.')
+                                   help_text=_('Optional business address retrieved for the VAT number.'))
 
-    is_company = models.BooleanField(default=False, help_text="Is company or private person")
+    is_company = models.BooleanField(default=False, help_text=_('Is company or private person'))
     country = core_fields.CountryField(blank=True)
 
     def get_vat_rate(self):
@@ -141,11 +141,11 @@ class VATMixin(models.Model):
 
     def get_vat_charge(self):
         if not self.country:
-            raise VATException('Unable to get VAT charge because buyer country code is not specified.')
+            raise VATException(_('Unable to get VAT charge because buyer country code is not specified.'))
 
         seller_country = settings.NODECONDUCTOR.get('SELLER_COUNTRY_CODE')
         if not seller_country:
-            raise VATException('Unable to get VAT charge because seller country code is not specified.')
+            raise VATException(_('Unable to get VAT charge because seller country code is not specified.'))
 
         return pyvat.get_sale_vat_charge(
             datetime.date.today(),
@@ -639,9 +639,11 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     token = models.CharField(max_length=255, blank=True, null=True)
     certificate = models.FileField(upload_to='certs', blank=True, null=True)
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
-    options = JSONField(default={}, help_text='Extra options', blank=True)
-    geolocations = JSONField(default=[], help_text='List of latitudes and longitudes. For example: [{"latitude": 123, "longitude": 345}, {"latitude": 456, "longitude": 678}]', blank=True)
-    shared = models.BooleanField(default=False, help_text='Anybody can use it')
+    options = JSONField(default={}, help_text=_('Extra options'), blank=True)
+    geolocations = JSONField(default=[], blank=True,
+                             help_text=_('List of latitudes and longitudes. For example: '
+                                         '[{"latitude": 123, "longitude": 345}, {"latitude": 456, "longitude": 678}]'))
+    shared = models.BooleanField(default=False, help_text=_('Anybody can use it'))
     homepage = models.URLField(max_length=255, blank=True)
     terms_of_services = models.URLField(max_length=255, blank=True)
     certifications = models.ManyToManyField(to='ServiceCertification', related_name='service_settings', blank=True)
@@ -710,7 +712,7 @@ class Service(core_models.UuidMixin,
     customer = models.ForeignKey(Customer, verbose_name=_('organization'))
     available_for_all = models.BooleanField(
         default=False,
-        help_text="Service will be automatically added to all customers projects if it is available for all"
+        help_text=_('Service will be automatically added to all customers projects if it is available for all')
     )
     projects = NotImplemented
 
@@ -878,7 +880,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
             service_certifications = self.service.settings.certifications.all()
             project_certifications = self.project.certifications.all()
             missing_certifications = set(project_certifications) - set(service_certifications)
-            return 'Next certifications are missing: "%s"' % ', '.join([c.name for c in missing_certifications])
+            return _('Next certifications are missing: "%s"') % ', '.join([c.name for c in missing_certifications])
         else:
             return ''
 
@@ -890,7 +892,7 @@ def validate_yaml(value):
     try:
         yaml.load(value)
     except yaml.error.YAMLError:
-        raise ValidationError('A valid YAML value is required.')
+        raise ValidationError(_('A valid YAML value is required.'))
 
 
 class ApplicationMixin(models.Model):
@@ -909,11 +911,11 @@ class VirtualMachineMixin(CoordinatesMixin):
         AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
         super(VirtualMachineMixin, self).__init__(*args, **kwargs)
 
-    cores = models.PositiveSmallIntegerField(default=0, help_text='Number of cores in a VM')
-    ram = models.PositiveIntegerField(default=0, help_text='Memory size in MiB')
-    disk = models.PositiveIntegerField(default=0, help_text='Disk size in MiB')
-    min_ram = models.PositiveIntegerField(default=0, help_text='Minimum memory size in MiB')
-    min_disk = models.PositiveIntegerField(default=0, help_text='Minimum disk size in MiB')
+    cores = models.PositiveSmallIntegerField(default=0, help_text=_('Number of cores in a VM'))
+    ram = models.PositiveIntegerField(default=0, help_text=_('Memory size in MiB'))
+    disk = models.PositiveIntegerField(default=0, help_text=_('Disk size in MiB'))
+    min_ram = models.PositiveIntegerField(default=0, help_text=_('Minimum memory size in MiB'))
+    min_disk = models.PositiveIntegerField(default=0, help_text=_('Minimum disk size in MiB'))
 
     image_name = models.CharField(max_length=150, blank=True)
 
@@ -922,7 +924,7 @@ class VirtualMachineMixin(CoordinatesMixin):
 
     user_data = models.TextField(
         blank=True, validators=[validate_yaml],
-        help_text='Additional data that will be added to instance on provisioning')
+        help_text=_('Additional data that will be added to instance on provisioning'))
 
     class Meta(object):
         abstract = True
@@ -1079,14 +1081,15 @@ class NewResource(ResourceMixin, core_models.StateMixin):
 
 
 class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin, NewResource):
-    extra_configuration = JSONField(default={}, help_text='Configuration details that are not represented on backend.')
+    extra_configuration = JSONField(default={},
+                                    help_text=_('Configuration details that are not represented on backend.'))
 
     class Meta(object):
         abstract = True
 
 
 class Storage(core_models.RuntimeStateMixin, NewResource):
-    size = models.PositiveIntegerField(help_text='Size in MiB')
+    size = models.PositiveIntegerField(help_text=_('Size in MiB'))
 
     class Meta(object):
         abstract = True
