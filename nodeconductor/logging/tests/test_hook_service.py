@@ -2,6 +2,7 @@ import logging
 import mock
 import time
 
+from django.conf import settings
 from django.core import mail
 from rest_framework import test
 
@@ -90,4 +91,5 @@ class TestHookService(test.APITransactionTestCase):
         process_event(self.event)
 
         # Event is captured and POST request is triggererd because event_type and user_uuid match
-        requests_post.assert_called_once_with(self.web_hook.destination_url, json=mock.ANY, verify=False)
+        requests_post.assert_called_once_with(
+            self.web_hook.destination_url, json=mock.ANY, verify=settings.VERIFY_WEBHOOK_REQUESTS)
