@@ -217,6 +217,7 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
+        protected_fields = ('certifications',)
 
     @staticmethod
     def eager_load(queryset):
@@ -232,14 +233,6 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         )
         return queryset.select_related('customer').only(*related_fields)\
             .prefetch_related('quotas', 'certifications')
-
-    def get_fields(self):
-        fields = super(ProjectSerializer, self).get_fields()
-
-        if self.instance:
-            fields['certifications'].read_only = True
-
-        return fields
 
     def create(self, validated_data):
         certifications = validated_data.pop('certifications', [])
