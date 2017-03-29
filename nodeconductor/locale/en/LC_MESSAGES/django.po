@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-03-29 10:09+0000\n"
+"POT-Creation-Date: 2017-03-29 12:11+0000\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -272,56 +272,8 @@ msgstr ""
 msgid "Public key format is incorrect. Fingerprint calculation has failed."
 msgstr ""
 
-#: core/models.py:303
-msgid "New"
-msgstr ""
-
-#: core/models.py:304 core/models.py:385
-msgid "Creation Scheduled"
-msgstr ""
-
-#: core/models.py:305 core/models.py:386
-msgid "Creating"
-msgstr ""
-
-#: core/models.py:306
-msgid "Sync Scheduled"
-msgstr ""
-
-#: core/models.py:307
-msgid "Syncing"
-msgstr ""
-
-#: core/models.py:308
-msgid "In Sync"
-msgstr ""
-
-#: core/models.py:309 core/models.py:392
-msgid "Erred"
-msgstr ""
-
 #: core/models.py:369
 msgid "runtime state"
-msgstr ""
-
-#: core/models.py:387
-msgid "Update Scheduled"
-msgstr ""
-
-#: core/models.py:388
-msgid "Updating"
-msgstr ""
-
-#: core/models.py:389
-msgid "Deletion Scheduled"
-msgstr ""
-
-#: core/models.py:390
-msgid "Deleting"
-msgstr ""
-
-#: core/models.py:391
-msgid "OK"
 msgstr ""
 
 #: core/serializers.py:46
@@ -541,7 +493,7 @@ msgid "Alert is not acknowledged."
 msgstr ""
 
 #: monitoring/models.py:42
-msgid "If state is True resource became available."
+msgid "If state is True resource became available"
 msgstr ""
 
 #: quotas/exceptions.py:18
@@ -749,6 +701,11 @@ msgstr ""
 msgid ""
 "Service will be automatically added to all customers projects if it is "
 "available for all"
+msgstr ""
+
+#: structure/models.py:883
+#, python-format
+msgid "Next certifications are missing: \"%s\""
 msgstr ""
 
 #: structure/models.py:895
@@ -965,19 +922,19 @@ msgstr ""
 msgid "%s was scheduled."
 msgstr ""
 
-#: structure/views.py:1905
+#: structure/views.py:1892
 msgid "Starting was scheduled."
 msgstr ""
 
-#: structure/views.py:1916
+#: structure/views.py:1903
 msgid "Stopping was scheduled."
 msgstr ""
 
-#: structure/views.py:1927
+#: structure/views.py:1914
 msgid "Restarting was scheduled."
 msgstr ""
 
-#: structure/views.py:2117
+#: structure/views.py:2104
 msgid "Pull operation was successfully scheduled."
 msgstr ""
 

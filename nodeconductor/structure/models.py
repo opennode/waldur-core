@@ -880,7 +880,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
             service_certifications = self.service.settings.certifications.all()
             project_certifications = self.project.certifications.all()
             missing_certifications = set(project_certifications) - set(service_certifications)
-            return 'Next certifications are missing: "%s"' % ', '.join([c.name for c in missing_certifications])
+            return _('Next certifications are missing: "%s"') % ', '.join([c.name for c in missing_certifications])
         else:
             return ''
 

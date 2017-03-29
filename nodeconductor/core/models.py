@@ -300,13 +300,13 @@ class SynchronizationStates(object):
     CREATING = 6
 
     CHOICES = (
-        (NEW, _('New')),
-        (CREATION_SCHEDULED, _('Creation Scheduled')),
-        (CREATING, _('Creating')),
-        (SYNCING_SCHEDULED, _('Sync Scheduled')),
-        (SYNCING, _('Syncing')),
-        (IN_SYNC, _('In Sync')),
-        (ERRED, _('Erred')),
+        (NEW, 'New'),
+        (CREATION_SCHEDULED, 'Creation Scheduled'),
+        (CREATING, 'Creating'),
+        (SYNCING_SCHEDULED, 'Sync Scheduled'),
+        (SYNCING, 'Syncing'),
+        (IN_SYNC, 'In Sync'),
+        (ERRED, 'Erred'),
     )
 
     STABLE_STATES = {IN_SYNC}
@@ -382,14 +382,14 @@ class StateMixin(ErrorMessageMixin):
         ERRED = 4
 
         CHOICES = (
-            (CREATION_SCHEDULED, _('Creation Scheduled')),
-            (CREATING, _('Creating')),
-            (UPDATE_SCHEDULED, _('Update Scheduled')),
-            (UPDATING, _('Updating')),
-            (DELETION_SCHEDULED, _('Deletion Scheduled')),
-            (DELETING, _('Deleting')),
-            (OK, _('OK')),
-            (ERRED, _('Erred')),
+            (CREATION_SCHEDULED, 'Creation Scheduled'),
+            (CREATING, 'Creating'),
+            (UPDATE_SCHEDULED, 'Update Scheduled'),
+            (UPDATING, 'Updating'),
+            (DELETION_SCHEDULED, 'Deletion Scheduled'),
+            (DELETING, 'Deleting'),
+            (OK, 'OK'),
+            (ERRED, 'Erred'),
         )
 
     class Meta(object):

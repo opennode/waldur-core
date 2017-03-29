@@ -20,9 +20,3 @@ Here are the guidelines for specifing translation strings:
 
 * help_text, verbose_name, exception message and response message should be marked,
   but don't mark message template for event or alert logger.
-
-Note that in order to customize error messages defined in DRF itself, you should merge
-the REST framework source django.po file into nodeconductor/locale folder.
-
-Please note that status codes should **not** be translated, as it would break output format rendering.
-This inconsistency should be fixed in further releases.
