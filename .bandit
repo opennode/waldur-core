@@ -1,0 +1,3 @@
+[bandit]
+exclude: tests,venv
+skips: B101

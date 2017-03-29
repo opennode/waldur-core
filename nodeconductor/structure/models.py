@@ -888,7 +888,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
 
 def validate_yaml(value):
     try:
-        yaml.load(value)
+        yaml.safe_load(value)
     except yaml.error.YAMLError:
         raise ValidationError('A valid YAML value is required.')
 

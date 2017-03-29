@@ -20,7 +20,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__
 
 DEBUG = False
 
-MEDIA_ROOT = '/tmp/'
+MEDIA_ROOT = '/media_root/'
 
 MEDIA_URL = '/media/'
 
@@ -162,6 +162,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 STATIC_URL = '/static/'
 
+# Celery
 BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
 
@@ -231,6 +232,12 @@ CELERYBEAT_SCHEDULE = {
     },
 }
 
+# Logging
+# Send verified request on webhook processing
+VERIFY_WEBHOOK_REQUESTS = True
+
+
+# Extensions
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
     'TOKEN_KEY': 'x-auth-token',
@@ -260,6 +267,7 @@ for ext in NodeConductorExtension.get_extensions():
     ext.update_settings(globals())
 
 
+# Swagger
 SWAGGER_SETTINGS = {
     # USE_SESSION_AUTH parameter should be equal to DEBUG parameter.
     # If it is True, LOGIN_URL and LOGOUT_URL must be specified.

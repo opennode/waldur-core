@@ -170,11 +170,11 @@ class WebHook(BaseHook):
 
         # encode event as JSON
         if self.content_type == WebHook.ContentTypeChoices.JSON:
-            requests.post(self.destination_url, json=event, verify=False)
+            requests.post(self.destination_url, json=event, verify=settings.VERIFY_WEBHOOK_REQUESTS)
 
         # encode event as form
         elif self.content_type == WebHook.ContentTypeChoices.FORM:
-            requests.post(self.destination_url, data=event, verify=False)
+            requests.post(self.destination_url, data=event, verify=settings.VERIFY_WEBHOOK_REQUESTS)
 
 
 class PushHook(BaseHook):

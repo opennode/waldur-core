@@ -1,6 +1,7 @@
 # The dancing with the function and its deletion is done
 # to keep the namespace clean: only __version__ is going to be exposed.
 
+
 # https://gist.github.com/edufelipe/1027906
 def _check_output(*popenargs, **kwargs):
     r"""Run command with arguments and return its output as a byte string.
@@ -10,8 +11,8 @@ def _check_output(*popenargs, **kwargs):
     >>> _check_output(['/usr/bin/python', '--version'])
     Python 2.6.2
     """
-    import subprocess
-    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    import subprocess  # nosec
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)  # nosec
     output, unused_err = process.communicate()
     retcode = process.poll()
     if retcode:
@@ -35,7 +36,7 @@ def _get_version(package_name='nodeconductor'):
     except pkg_resources.DistributionNotFound:
         import os.path
         import re
-        import subprocess
+        import subprocess  # nosec
 
         repo_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
 
@@ -58,5 +59,6 @@ def _get_version(package_name='nodeconductor'):
             return description
         except (OSError, subprocess.CalledProcessError):
             return 'unknown'
+
 
 __version__ = _get_version()
