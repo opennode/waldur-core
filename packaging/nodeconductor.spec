@@ -68,6 +68,7 @@ BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framewo
 BuildRequires: python-django-rest-swagger = 2.1.1
 BuildRequires: python-setuptools
 BuildRequires: systemd
+BuildRequires: gettext
 
 %description
 NodeConductor is an infrastructure and application management server developed by OpenNode.
@@ -77,6 +78,7 @@ NodeConductor is an infrastructure and application management server developed b
 
 %build
 cp packaging/settings.py nodeconductor/server/settings.py
+django-admin compilemessages
 %{__python} setup.py build
 
 %install
@@ -122,8 +124,6 @@ TEMPLATE_LOADERS = (
 )
 EOF
 %{__python} manage.py collectstatic --noinput --settings=tmp_settings
-
-cd nodeconductor && %{__python} ../manage.py compilemessages && cd ..
 
 mkdir -p %{buildroot}%{__log_dir}
 
