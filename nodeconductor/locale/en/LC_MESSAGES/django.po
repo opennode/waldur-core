@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-03-29 12:11+0000\n"
+"POT-Creation-Date: 2017-03-30 13:46+0000\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -705,7 +705,9 @@ msgstr ""
 
 #: structure/models.py:883
 #, python-format
-msgid "Next certifications are missing: \"%s\""
+msgid ""
+"Provider does not match with project's security policy. Certifications are "
+"missing: \"%s\""
 msgstr ""
 
 #: structure/models.py:895
@@ -759,108 +761,108 @@ msgid ""
 "requirements."
 msgstr ""
 
-#: structure/serializers.py:336
+#: structure/serializers.py:337
 msgid "VAT number is not supported for private persons."
 msgstr ""
 
-#: structure/serializers.py:340
+#: structure/serializers.py:341
 msgid "VAT number has invalid format."
 msgstr ""
 
-#: structure/serializers.py:352
+#: structure/serializers.py:353
 msgid "VAT number is invalid."
 msgstr ""
 
-#: structure/serializers.py:356
+#: structure/serializers.py:357
 msgid "Unable to check VAT number."
 msgstr ""
 
-#: structure/serializers.py:451
+#: structure/serializers.py:452
 msgid "It is impossible to edit permissions for yourself."
 msgstr ""
 
-#: structure/serializers.py:493
+#: structure/serializers.py:494
 msgid "The fields customer and user must make a unique set."
 msgstr ""
 
-#: structure/serializers.py:510 structure/serializers.py:579
+#: structure/serializers.py:511 structure/serializers.py:580
 msgid "Expiration time should be greater than current time."
 msgstr ""
 
-#: structure/serializers.py:562
+#: structure/serializers.py:563
 msgid "The fields project and user must make a unique set."
 msgstr ""
 
-#: structure/serializers.py:598
+#: structure/serializers.py:599
 msgid "User must agree with the policy to register."
 msgstr ""
 
-#: structure/serializers.py:674
+#: structure/serializers.py:675
 msgid "User must agree with the policy."
 msgstr ""
 
-#: structure/serializers.py:721
+#: structure/serializers.py:722
 msgid "Ensure this field has at least one digit."
 msgstr ""
 
-#: structure/serializers.py:725
+#: structure/serializers.py:726
 msgid "Ensure this field has at least one latin letter."
 msgstr ""
 
-#: structure/serializers.py:745
+#: structure/serializers.py:746
 msgid "Key is not valid: cannot generate fingerprint from it."
 msgstr ""
 
-#: structure/serializers.py:747
+#: structure/serializers.py:748
 msgid "Key with same fingerprint already exists."
 msgstr ""
 
-#: structure/serializers.py:994
+#: structure/serializers.py:995
 msgid "VM that contains service"
 msgstr ""
 
-#: structure/serializers.py:1034
+#: structure/serializers.py:1035
 msgid ""
 "Service cannot be connected to project that does not belong to services "
 "customer."
 msgstr ""
 
-#: structure/serializers.py:1042
+#: structure/serializers.py:1043
 msgid "Customer must match settings customer."
 msgstr ""
 
-#: structure/serializers.py:1053
+#: structure/serializers.py:1054
 msgid "Either service settings or credentials must be supplied."
 msgstr ""
 
-#: structure/serializers.py:1072
+#: structure/serializers.py:1073
 msgid "Name field is required."
 msgstr ""
 
-#: structure/serializers.py:1084
+#: structure/serializers.py:1085
 #, python-format
 msgid "Wrong settings: %s."
 msgstr ""
 
-#: structure/serializers.py:1172
+#: structure/serializers.py:1173
 msgid "Service customer doesn't match project customer."
 msgstr ""
 
-#: structure/serializers.py:1176
+#: structure/serializers.py:1177
 msgid "This service project link already exists."
 msgstr ""
 
-#: structure/serializers.py:1268
+#: structure/serializers.py:1269
 msgid ""
 "True if resource is originated from a service that satisfies an associated "
 "project requirements."
 msgstr ""
 
-#: structure/serializers.py:1367
+#: structure/serializers.py:1368
 msgid "Import historical resource usage."
 msgstr ""
 
-#: structure/serializers.py:1394
+#: structure/serializers.py:1395
 msgid "This resource is already linked to Waldur."
 msgstr ""
 
