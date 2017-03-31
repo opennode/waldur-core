@@ -214,6 +214,13 @@ class ServiceSettingsAdminForm(ModelForm):
         self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
                                           widget=RadioSelect)
 
+    def clean(self):
+        shared = self.cleaned_data.get('shared', False)
+        if shared and self.cleaned_data.get('customer') is not None:
+            raise ValidationError(_('Shared service settings should not be connected to any customer.'))
+
+        return super(ServiceSettingsAdminForm, self).clean()
+
 
 class ServiceTypeFilter(SimpleListFilter):
     title = 'type'
