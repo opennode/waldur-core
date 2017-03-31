@@ -12,7 +12,7 @@ User = get_user_model()
 USER_COLUMNS = OrderedDict([
     # (Column name, User fields)
     ('Full name, Civil number', ('full_name', 'civil_number')),
-    ('Email, Job title, Phone nr.', ('email', 'phone_number')),
+    ('Email, Phone nr.', ('email', 'phone_number')),
     ('Job title', ('job_title',)),
     ('Staff, Support', ('is_staff', 'is_support',)),
 ])
