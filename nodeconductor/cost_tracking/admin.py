@@ -2,9 +2,9 @@ from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
-from django.db import transaction
 from django.shortcuts import redirect
 from django.utils.translation import ungettext
+from django.utils.translation import ugettext_lazy as _
 
 from nodeconductor.core import admin as core_admin, utils as core_utils
 from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError, tasks
@@ -62,13 +62,13 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
 
         if created_items:
             message = ungettext(
-                'Price item was created: {}'.format(created_items[0].name),
-                'Price items were created: {}'.format(', '.join(item.name for item in created_items)),
+                _('Price item was created: %s.') % created_items[0].name,
+                _('Price items were created: %s.') % ', '.join(item.name for item in created_items),
                 len(created_items)
             )
             self.message_user(request, message)
         else:
-            self.message_user(request, "Price items for all registered resources have been updated")
+            self.message_user(request, _('Price items for all registered resources have been updated.'))
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
@@ -87,19 +87,19 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
 
         if deleted_items_names:
             message = ungettext(
-                'Price item was deleted: {}'.format(deleted_items_names[0]),
-                'Price items were deleted: {}'.format(', '.join(item for item in deleted_items_names)),
+                _('Price item was deleted: %s.') % deleted_items_names[0],
+                _('Price items were deleted: %s.') % ', '.join(item for item in deleted_items_names),
                 len(deleted_items_names)
             )
             self.message_user(request, message)
         else:
-            self.message_user(request, "Nothing to delete. All default price items are registered.")
+            self.message_user(request, _('Nothing to delete. All default price items are registered.'))
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
     def recalulate_current_estimates(self, request):
         tasks.recalculate_estimate(recalculate_total=True)
-        self.message_user(request, "Total and consumed value were successfully recalculated for all price estimates.")
+        self.message_user(request, _('Total and consumed value were successfully recalculated for all price estimates.'))
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
 

@@ -1,0 +1,1061 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-03-30 13:46+0000\n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: core/admin.py:74
+msgid "Personal info"
+msgstr ""
+
+#: core/admin.py:78
+msgid "Organization"
+msgstr ""
+
+#: core/admin.py:79
+msgid "Permissions"
+msgstr ""
+
+#: core/admin.py:80
+msgid "Important dates"
+msgstr ""
+
+#: core/admin.py:95
+#, python-format
+msgid ""
+"Please enter the correct %(username)s and password for a staff or a support "
+"account. Note that both fields may be case-sensitive."
+msgstr ""
+
+#: core/admin.py:106
+msgid "Waldur MasterMind admin"
+msgstr ""
+
+#: core/admin.py:107 core/admin.py:108
+msgid "Waldur MasterMind administration"
+msgstr ""
+
+#: core/admin.py:174
+#, python-format
+msgid "Operation was successfully scheduled for %(count)d instances: %(names)s"
+msgstr ""
+
+#: core/admin.py:181
+#, python-format
+msgid ""
+"Failed to schedule operation for %(count)d instances: %(names)s. Error: "
+"%(message)s"
+msgstr ""
+
+#: core/authentication.py:33
+msgid "Invalid token."
+msgstr ""
+
+#: core/authentication.py:36
+msgid "User inactive or deleted."
+msgstr ""
+
+#: core/authentication.py:42
+msgid "Token has expired."
+msgstr ""
+
+#: core/authentication.py:53
+msgid "Invalid token. No credentials provided."
+msgstr ""
+
+#: core/authentication.py:56
+msgid "Invalid token. Token string should not contain spaces."
+msgstr ""
+
+#: core/authentication.py:62
+msgid ""
+"Invalid token header. Token string should not contain invalid characters."
+msgstr ""
+
+#: core/exceptions.py:10
+msgid "Cannot modify an object in its current state."
+msgstr ""
+
+#: core/fields.py:36 core/fields.py:46
+msgid "Enter IPs separated by commas."
+msgstr ""
+
+#: core/fields.py:41
+msgid "Comma-separated IPs"
+msgstr ""
+
+#: core/fields.py:151
+msgid "This field should a be valid JSON string."
+msgstr ""
+
+#: core/fields.py:166
+#, python-format
+msgid "Value \"%s\" should be valid UNIX timestamp."
+msgstr ""
+
+#: core/mixins.py:27
+msgid "Modification allowed in stable states only."
+msgstr ""
+
+#: core/mixins.py:46 structure/metadata.py:237 structure/views.py:1760
+#, python-format
+msgid ""
+"Performing %s operation is not allowed for resource in its current state."
+msgstr ""
+
+#: core/mixins.py:86
+msgid "Deletion was scheduled."
+msgstr ""
+
+#: core/models.py:41
+msgid "description"
+msgstr ""
+
+#: core/models.py:52 structure/models.py:599
+msgid "name"
+msgstr ""
+
+#: core/models.py:62
+msgid "icon url"
+msgstr ""
+
+#: core/models.py:134
+msgid "username"
+msgstr ""
+
+#: core/models.py:135
+msgid ""
+"Required. 30 characters or fewer. Letters, numbers and @/./+/-/_ characters"
+msgstr ""
+
+#: core/models.py:138
+msgid "Enter a valid username."
+msgstr ""
+
+#: core/models.py:142
+msgid "civil number"
+msgstr ""
+
+#: core/models.py:143
+msgid "full name"
+msgstr ""
+
+#: core/models.py:144
+msgid "native name"
+msgstr ""
+
+#: core/models.py:145
+msgid "phone number"
+msgstr ""
+
+#: core/models.py:146 structure/models.py:286 structure/models.py:324
+#: structure/models.py:451 structure/models.py:540 structure/models.py:631
+#: structure/models.py:712 users/models.py:28
+msgid "organization"
+msgstr ""
+
+#: core/models.py:147
+msgid "organization approved"
+msgstr ""
+
+#: core/models.py:148
+msgid "Designates whether user organization was approved."
+msgstr ""
+
+#: core/models.py:149
+msgid "job title"
+msgstr ""
+
+#: core/models.py:150
+msgid "email address"
+msgstr ""
+
+#: core/models.py:152
+msgid "staff status"
+msgstr ""
+
+#: core/models.py:153
+msgid "Designates whether the user can log into this admin site."
+msgstr ""
+
+#: core/models.py:155
+msgid "active"
+msgstr ""
+
+#: core/models.py:156
+msgid ""
+"Designates whether this user should be treated as active. Unselect this "
+"instead of deleting accounts."
+msgstr ""
+
+#: core/models.py:158
+msgid "support status"
+msgstr ""
+
+#: core/models.py:159
+msgid "Designates whether the user is a global support user."
+msgstr ""
+
+#: core/models.py:160
+msgid "date joined"
+msgstr ""
+
+#: core/models.py:161
+msgid "registration method"
+msgstr ""
+
+#: core/models.py:162
+msgid "Indicates what registration method were used."
+msgstr ""
+
+#: core/models.py:163
+msgid "agreement date"
+msgstr ""
+
+#: core/models.py:164
+msgid "Indicates when the user has agreed with the policy."
+msgstr ""
+
+#: core/models.py:167
+msgid "Token lifetime in seconds."
+msgstr ""
+
+#: core/models.py:176
+msgid "user"
+msgstr ""
+
+#: core/models.py:177
+msgid "users"
+msgstr ""
+
+#: core/models.py:206
+#, python-format
+msgid "User with email \"%s\" already exists."
+msgstr ""
+
+#: core/models.py:225
+#, python-format
+msgid "Invalid SSH public key type %s, only ssh-rsa is supported."
+msgstr ""
+
+#: core/models.py:235
+#, python-format
+msgid ""
+"Invalid encoded SSH public key type %s within the key's body, only ssh-rsa "
+"is supported."
+msgstr ""
+
+#: core/models.py:238
+msgid "Invalid SSH public key structure."
+msgstr ""
+
+#: core/models.py:241
+msgid "Invalid SSH public key body."
+msgstr ""
+
+#: core/models.py:273
+msgid "SSH public key"
+msgstr ""
+
+#: core/models.py:274
+msgid "SSH public keys"
+msgstr ""
+
+#: core/models.py:282
+msgid "Public key format is incorrect. Fingerprint calculation has failed."
+msgstr ""
+
+#: core/models.py:369
+msgid "runtime state"
+msgstr ""
+
+#: core/serializers.py:46
+msgid "This field should a be valid Base64 encoded string."
+msgstr ""
+
+#: core/serializers.py:132
+#, python-format
+msgid "Can't restore object from url: %s"
+msgstr ""
+
+#: core/serializers.py:134
+#, python-format
+msgid "%s object does not support such relationship."
+msgstr ""
+
+#: core/serializers.py:359
+msgid "URL has to be defined for related object."
+msgstr ""
+
+#: core/serializers.py:387
+msgid "End must occur after start."
+msgstr ""
+
+#: core/serializers.py:419
+msgid ""
+"Not enough parameters for historical data. (Either \"point\" or \"start\" + "
+"\"end\" + \"points_count\" parameters have to be provided)."
+msgstr ""
+
+#: core/serializers.py:423
+msgid ""
+"Too many parameters for historical data. (Either \"point\" or \"start\" + "
+"\"end\" + \"points_count\" parameters have to be provided)."
+msgstr ""
+
+#: core/serializers.py:426
+msgid "Start timestamps have to be later than end timestamps."
+msgstr ""
+
+#: core/validators.py:27
+#, python-format
+msgid ""
+"Ensure schedule period is greater than or equal to %(limit_value)s hour(s)."
+msgstr ""
+
+#: core/validators.py:43
+msgid "Ensure that name has at least one non-whitespace character."
+msgstr ""
+
+#: core/validators.py:57
+#, python-format
+msgid "Valid states for operation: %s."
+msgstr ""
+
+#: core/validators.py:64
+#, python-format
+msgid "Valid runtime states for operation: %s."
+msgstr ""
+
+#: core/views.py:126
+#, python-format
+msgid "Username is locked out. Try in %s minutes."
+msgstr ""
+
+#: core/views.py:145
+msgid "Invalid username/password."
+msgstr ""
+
+#: core/views.py:155
+msgid "User account is disabled."
+msgstr ""
+
+#: core/views.py:196
+#, python-brace-format
+msgid "Cannot delete {instance_name} with existing {dependant_objects}"
+msgstr ""
+
+#: cost_tracking/admin.py:65
+#, python-format
+msgid "Price item was created: %s."
+msgstr ""
+
+#: cost_tracking/admin.py:66
+#, python-format
+msgid "Price items were created: %s."
+msgstr ""
+
+#: cost_tracking/admin.py:71
+msgid "Price items for all registered resources have been updated."
+msgstr ""
+
+#: cost_tracking/admin.py:90
+#, python-format
+msgid "Price item was deleted: %s."
+msgstr ""
+
+#: cost_tracking/admin.py:91
+#, python-format
+msgid "Price items were deleted: %s."
+msgstr ""
+
+#: cost_tracking/admin.py:96
+msgid "Nothing to delete. All default price items are registered."
+msgstr ""
+
+#: cost_tracking/admin.py:102
+msgid ""
+"Total and consumed value were successfully recalculated for all price "
+"estimates."
+msgstr ""
+
+#: cost_tracking/models.py:50
+msgid "Saved scope details. Field is populated on scope deletion."
+msgstr ""
+
+#: cost_tracking/models.py:51
+msgid "Price estimate parents"
+msgstr ""
+
+#: cost_tracking/models.py:53
+msgid "Predicted price for scope for current month."
+msgstr ""
+
+#: cost_tracking/models.py:54
+msgid "Price for resource until now."
+msgstr ""
+
+#: cost_tracking/models.py:56
+msgid ""
+"How many funds object can consume in current month.\"-1\" means no limit."
+msgstr ""
+
+#: cost_tracking/models.py:279
+msgid "Current resource configuration."
+msgstr ""
+
+#: cost_tracking/models.py:280
+msgid "Last configuration change time."
+msgstr ""
+
+#: cost_tracking/models.py:282
+msgid "How many consumables were used by resource before last update."
+msgstr ""
+
+#: cost_tracking/models.py:355
+msgid "Type of price list item. Examples: storage, flavor."
+msgstr ""
+
+#: cost_tracking/models.py:357
+msgid "Key that corresponds particular consumable. Example: name of flavor."
+msgstr ""
+
+#: cost_tracking/models.py:361
+msgid ""
+"Details of the item, that corresponds price list item. Example: details of "
+"flavor."
+msgstr ""
+
+#: cost_tracking/models.py:443
+msgid "Public service does not support price list items."
+msgstr ""
+
+#: cost_tracking/models.py:449
+msgid "Service does not support required content type."
+msgstr ""
+
+#: cost_tracking/serializers.py:23
+msgid "How much of each consumables were used by resource."
+msgstr ""
+
+#: cost_tracking/serializers.py:85
+#, python-format
+msgid "Value \"%s\" should be valid be in format YYYY.MM"
+msgstr ""
+
+#: cost_tracking/serializers.py:87
+msgid "Month has to be from 1 to 12."
+msgstr ""
+
+#: cost_tracking/serializers.py:104
+msgid "Start has to be earlier than end."
+msgstr ""
+
+#: cost_tracking/serializers.py:129
+msgid "Price list item for service already exists."
+msgstr ""
+
+#: cost_tracking/views.py:110
+msgid "Threshold for price estimate is updated."
+msgstr ""
+
+#: cost_tracking/views.py:148
+msgid "Limit for price estimate is updated."
+msgstr ""
+
+#: logging/filters.py:86 logging/filters.py:197
+#, python-format
+msgid ""
+"Scope type \"%(value)s\" is not valid. Has to be one from list: %(items)s."
+msgstr ""
+
+#: logging/serializers.py:40
+msgid "Alert with given type and scope already exists."
+msgstr ""
+
+#: logging/serializers.py:87
+msgid "Please specify list of event_types or event_groups."
+msgstr ""
+
+#: logging/views.py:282
+msgid "Alert is already acknowledged."
+msgstr ""
+
+#: logging/views.py:296
+msgid "Alert is not acknowledged."
+msgstr ""
+
+#: monitoring/models.py:42
+msgid "If state is True resource became available"
+msgstr ""
+
+#: quotas/exceptions.py:18
+msgid "One or more quotas are over limit."
+msgstr ""
+
+#: quotas/exceptions.py:23
+msgid "It is impossible to modify backend quota through this endpoint."
+msgstr ""
+
+#: quotas/models.py:92
+#, python-format
+msgid "Object %(object)s does not have quota with name %(name)s."
+msgstr ""
+
+#: quotas/models.py:162
+#, python-format
+msgid ""
+"%(quota)s \"%(name)s\" quota is over limit. Required: %(usage)s, limit: "
+"%(limit)s."
+msgstr ""
+
+#: quotas/models.py:196
+#, python-format
+msgid "One or more quotas were exceeded: %s"
+msgstr ""
+
+#: quotas/models.py:226
+msgid "All scopes have to be instances of the same model."
+msgstr ""
+
+#: server/admin/dashboard.py:21
+#, python-format
+msgid "NodeConductor %s"
+msgstr ""
+
+#: server/admin/dashboard.py:72
+msgid "Shared service settings"
+msgstr ""
+
+#: server/admin/dashboard.py:157
+msgid "Billing"
+msgstr ""
+
+#: server/admin/dashboard.py:160
+msgid "Installed components"
+msgstr ""
+
+#: server/admin/dashboard.py:170
+msgid "Quick access"
+msgstr ""
+
+#: server/admin/menu.py:90
+msgid "Dashboard"
+msgstr ""
+
+#: server/admin/menu.py:92
+msgid "Core"
+msgstr ""
+
+#: server/admin/menu.py:100
+msgid "Structure"
+msgstr ""
+
+#: server/admin/menu.py:108
+msgid "IaaS clouds"
+msgstr ""
+
+#: server/admin/menu.py:112
+msgid "Applications"
+msgstr ""
+
+#: server/admin/menu.py:116
+msgid "Subscriptions and support"
+msgstr ""
+
+#: structure/admin.py:67
+msgid "VM count"
+msgstr ""
+
+#: structure/admin.py:72
+msgid "Application count"
+msgstr ""
+
+#: structure/admin.py:77
+msgid "Private cloud count"
+msgstr ""
+
+#: structure/admin.py:84 structure/admin.py:145
+msgid "Support users"
+msgstr ""
+
+#: structure/admin.py:141
+msgid "Admins"
+msgstr ""
+
+#: structure/admin.py:143
+msgid "Managers"
+msgstr ""
+
+#: structure/admin.py:293
+msgid "Pull"
+msgstr ""
+
+#: structure/admin.py:298
+msgid "Service settings has to be OK or erred."
+msgstr ""
+
+#: structure/admin.py:304
+msgid "Create SPLs and services for shared service settings"
+msgstr ""
+
+#: structure/admin.py:308
+msgid "It is impossible to connect not shared settings."
+msgstr ""
+
+#: structure/admin.py:339 structure/admin.py:380
+msgid "Service"
+msgstr ""
+
+#: structure/admin.py:344 structure/admin.py:386
+msgid "Project"
+msgstr ""
+
+#: structure/admin.py:349
+msgid "Customer"
+msgstr ""
+
+#: structure/admin.py:353
+msgid "service settings"
+msgstr ""
+
+#: structure/admin.py:357
+msgid "Shared"
+msgstr ""
+
+#: structure/admin.py:357
+msgid "Private"
+msgstr ""
+
+#: structure/admin.py:375
+msgid "Are service settings shared"
+msgstr ""
+
+#: structure/admin.py:404
+#, python-format
+msgid "Coordinates detection has been scheduled for one virtual machine."
+msgid_plural ""
+"Coordinates detection has been scheduled for %(tasks_scheduled)d virtual "
+"machines."
+msgstr[0] ""
+msgstr[1] ""
+
+#: structure/admin.py:412
+msgid "Detect coordinates of virtual machines"
+msgstr ""
+
+#: structure/metadata.py:232
+msgid "Only project administrator or staff allowed to perform this action."
+msgstr ""
+
+#: structure/models.py:48
+msgid "Invalid service type."
+msgstr ""
+
+#: structure/models.py:126
+msgid "VAT number"
+msgstr ""
+
+#: structure/models.py:128
+msgid "Optional business name retrieved for the VAT number."
+msgstr ""
+
+#: structure/models.py:130
+msgid "Optional business address retrieved for the VAT number."
+msgstr ""
+
+#: structure/models.py:132
+msgid "Is company or private person"
+msgstr ""
+
+#: structure/models.py:144
+msgid "Unable to get VAT charge because buyer country code is not specified."
+msgstr ""
+
+#: structure/models.py:148
+msgid "Unable to get VAT charge because seller country code is not specified."
+msgstr ""
+
+#: structure/models.py:642
+msgid "Extra options"
+msgstr ""
+
+#: structure/models.py:644
+msgid ""
+"List of latitudes and longitudes. For example: [{\"latitude\": 123, "
+"\"longitude\": 345}, {\"latitude\": 456, \"longitude\": 678}]"
+msgstr ""
+
+#: structure/models.py:646
+msgid "Anybody can use it"
+msgstr ""
+
+#: structure/models.py:715
+msgid ""
+"Service will be automatically added to all customers projects if it is "
+"available for all"
+msgstr ""
+
+#: structure/models.py:883
+#, python-format
+msgid ""
+"Provider does not match with project's security policy. Certifications are "
+"missing: \"%s\""
+msgstr ""
+
+#: structure/models.py:895
+msgid "A valid YAML value is required."
+msgstr ""
+
+#: structure/models.py:914
+msgid "Number of cores in a VM"
+msgstr ""
+
+#: structure/models.py:915
+msgid "Memory size in MiB"
+msgstr ""
+
+#: structure/models.py:916
+msgid "Disk size in MiB"
+msgstr ""
+
+#: structure/models.py:917
+msgid "Minimum memory size in MiB"
+msgstr ""
+
+#: structure/models.py:918
+msgid "Minimum disk size in MiB"
+msgstr ""
+
+#: structure/models.py:927
+msgid "Additional data that will be added to instance on provisioning"
+msgstr ""
+
+#: structure/models.py:1085
+msgid "Configuration details that are not represented on backend."
+msgstr ""
+
+#: structure/models.py:1092
+msgid "Size in MiB"
+msgstr ""
+
+#: structure/serializers.py:34
+#, python-format
+msgid "Only %(limit_value)s ip address is supported."
+msgstr ""
+
+#: structure/serializers.py:134
+msgid "A state of service compliance with project requirements."
+msgstr ""
+
+#: structure/serializers.py:136
+msgid ""
+"An error message for a service that is non-compliant with project "
+"requirements."
+msgstr ""
+
+#: structure/serializers.py:337
+msgid "VAT number is not supported for private persons."
+msgstr ""
+
+#: structure/serializers.py:341
+msgid "VAT number has invalid format."
+msgstr ""
+
+#: structure/serializers.py:353
+msgid "VAT number is invalid."
+msgstr ""
+
+#: structure/serializers.py:357
+msgid "Unable to check VAT number."
+msgstr ""
+
+#: structure/serializers.py:452
+msgid "It is impossible to edit permissions for yourself."
+msgstr ""
+
+#: structure/serializers.py:494
+msgid "The fields customer and user must make a unique set."
+msgstr ""
+
+#: structure/serializers.py:511 structure/serializers.py:580
+msgid "Expiration time should be greater than current time."
+msgstr ""
+
+#: structure/serializers.py:563
+msgid "The fields project and user must make a unique set."
+msgstr ""
+
+#: structure/serializers.py:599
+msgid "User must agree with the policy to register."
+msgstr ""
+
+#: structure/serializers.py:675
+msgid "User must agree with the policy."
+msgstr ""
+
+#: structure/serializers.py:722
+msgid "Ensure this field has at least one digit."
+msgstr ""
+
+#: structure/serializers.py:726
+msgid "Ensure this field has at least one latin letter."
+msgstr ""
+
+#: structure/serializers.py:746
+msgid "Key is not valid: cannot generate fingerprint from it."
+msgstr ""
+
+#: structure/serializers.py:748
+msgid "Key with same fingerprint already exists."
+msgstr ""
+
+#: structure/serializers.py:995
+msgid "VM that contains service"
+msgstr ""
+
+#: structure/serializers.py:1035
+msgid ""
+"Service cannot be connected to project that does not belong to services "
+"customer."
+msgstr ""
+
+#: structure/serializers.py:1043
+msgid "Customer must match settings customer."
+msgstr ""
+
+#: structure/serializers.py:1054
+msgid "Either service settings or credentials must be supplied."
+msgstr ""
+
+#: structure/serializers.py:1073
+msgid "Name field is required."
+msgstr ""
+
+#: structure/serializers.py:1085
+#, python-format
+msgid "Wrong settings: %s."
+msgstr ""
+
+#: structure/serializers.py:1173
+msgid "Service customer doesn't match project customer."
+msgstr ""
+
+#: structure/serializers.py:1177
+msgid "This service project link already exists."
+msgstr ""
+
+#: structure/serializers.py:1269
+msgid ""
+"True if resource is originated from a service that satisfies an associated "
+"project requirements."
+msgstr ""
+
+#: structure/serializers.py:1368
+msgid "Import historical resource usage."
+msgstr ""
+
+#: structure/serializers.py:1395
+msgid "This resource is already linked to Waldur."
+msgstr ""
+
+#: structure/views.py:540
+msgid "Password has been successfully updated."
+msgstr ""
+
+#: structure/views.py:556
+msgid "User has approved organization. Remove it before claiming a new one."
+msgstr ""
+
+#: structure/views.py:573
+msgid ""
+"User request for joining the organization has been successfully submitted."
+msgstr ""
+
+#: structure/views.py:595
+msgid ""
+"User request for joining the organization has been successfully approved."
+msgstr ""
+
+#: structure/views.py:618
+msgid "User has been successfully rejected from the organization."
+msgstr ""
+
+#: structure/views.py:641
+msgid "User has been successfully removed from the organization."
+msgstr ""
+
+#: structure/views.py:970
+msgid "This field must be unique."
+msgstr ""
+
+#: structure/views.py:978
+msgid "Can't remove SSH public key from backend."
+msgstr ""
+
+#: structure/views.py:1492
+#, python-format
+msgid "Your balance is %s. Action disabled."
+msgstr ""
+
+#: structure/views.py:1635
+msgid "Only staff users are allowed to import resources from shared services."
+msgstr ""
+
+#: structure/views.py:1701
+#, python-format
+msgid "Can't find project %s."
+msgstr ""
+
+#: structure/views.py:1778
+#, python-format
+msgid "%s was not scheduled."
+msgstr ""
+
+#: structure/views.py:1787
+#, python-format
+msgid "%s was scheduled."
+msgstr ""
+
+#: structure/views.py:1892
+msgid "Starting was scheduled."
+msgstr ""
+
+#: structure/views.py:1903
+msgid "Stopping was scheduled."
+msgstr ""
+
+#: structure/views.py:1914
+msgid "Restarting was scheduled."
+msgstr ""
+
+#: structure/views.py:2104
+msgid "Pull operation was successfully scheduled."
+msgstr ""
+
+#: templates/admin/base.html:28
+msgid "Welcome,"
+msgstr ""
+
+#: templates/admin/base.html:34
+msgid "Documentation"
+msgstr ""
+
+#: templates/admin/base.html:37
+msgid "Change password"
+msgstr ""
+
+#: templates/admin/base.html:39
+msgid "Log out"
+msgstr ""
+
+#: templates/admin/base.html:48
+msgid "Home"
+msgstr ""
+
+#: templates/admin/base_site.html:5
+msgid "Waldur"
+msgstr ""
+
+#: templates/admin/base_site.html:17
+msgid "Waldur administration"
+msgstr ""
+
+#: templates/rest_framework/api.html:5 templates/rest_framework/api.html:10
+msgid "Waldur MasterMind REST API"
+msgstr ""
+
+#: users/admin.py:21 users/serializers.py:65
+msgid "Cannot create invitation to project and customer simultaneously."
+msgstr ""
+
+#: users/admin.py:23
+msgid "Customer role or project role must be provided."
+msgstr ""
+
+#: users/admin.py:25
+msgid "User with provided email already exists."
+msgstr ""
+
+#: users/models.py:29
+msgid "organization role"
+msgstr ""
+
+#: users/models.py:35
+#, python-brace-format
+msgid ""
+"The template must include {uuid} parameter e.g. http://example.com/"
+"invitation/{uuid}"
+msgstr ""
+
+#: users/models.py:37
+msgid ""
+"Invitation link will be sent to this email. Note that user can accept "
+"invitation with different email."
+msgstr ""
+
+#: users/models.py:41
+msgid ""
+"Civil number of invited user. If civil number is not defined any user can "
+"accept invitation."
+msgstr ""
+
+#: users/serializers.py:56
+#, python-brace-format
+msgid "Link template must include '{uuid}' parameter."
+msgstr ""
+
+#: users/serializers.py:67
+msgid "Customer or project must be provided."
+msgstr ""
+
+#: users/serializers.py:69
+msgid "Customer and its role must be provided."
+msgstr ""
+
+#: users/serializers.py:71
+msgid "Project and its role must be provided."
+msgstr ""
+
+#: users/views.py:54
+msgid "Only pending invitation can be resent."
+msgstr ""
+
+#: users/views.py:57
+msgid "Invitation sending has been successfully scheduled."
+msgstr ""
+
+#: users/views.py:67
+msgid "Only pending invitation can be canceled."
+msgstr ""
+
+#: users/views.py:70
+msgid "Invitation has been successfully canceled."
+msgstr ""
+
+#: users/views.py:78
+msgid "Only pending invitation can be accepted."
+msgstr ""
+
+#: users/views.py:80
+msgid "User has an invalid civil number."
+msgstr ""
+
+#: users/views.py:84
+msgid "User already has role within this project."
+msgstr ""
+
+#: users/views.py:86
+msgid "User already has role within this customer."
+msgstr ""
+
+#: users/views.py:89
+msgid "Invitation has been successfully accepted."
+msgstr ""

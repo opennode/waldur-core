@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.129.0
+Version: 0.130.0
 Release: 1.el7
 License: MIT
 
@@ -68,6 +68,7 @@ BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framewo
 BuildRequires: python-django-rest-swagger = 2.1.1
 BuildRequires: python-setuptools
 BuildRequires: systemd
+BuildRequires: gettext
 
 %description
 NodeConductor is an infrastructure and application management server developed by OpenNode.
@@ -77,6 +78,7 @@ NodeConductor is an infrastructure and application management server developed b
 
 %build
 cp packaging/settings.py nodeconductor/server/settings.py
+django-admin compilemessages
 %{__python} setup.py build
 
 %install
@@ -219,6 +221,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Sat Apr 1 2017 Jenkins <jenkins@opennodecloud.com> - 0.130.0-1.el7
+- New upstream release
+
 * Tue Mar 28 2017 Jenkins <jenkins@opennodecloud.com> - 0.129.0-1.el7
 - New upstream release
 

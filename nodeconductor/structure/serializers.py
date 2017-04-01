@@ -13,6 +13,7 @@ from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models, transaction
 from django.utils import six, timezone
 from django.utils.functional import cached_property
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class IpCountValidator(MaxLengthValidator):
-    message = 'Only %(limit_value)s ip address is supported.'
+    message = _('Only %(limit_value)s ip address is supported.')
 
 
 class PermissionFieldFilteringMixin(object):
@@ -130,9 +131,9 @@ class NestedServiceProjectLinkSerializer(serializers.Serializer):
     validation_state = serializers.ChoiceField(
         choices=models.ServiceProjectLink.States.CHOICES,
         read_only=True,
-        help_text='A state of service compliance with project requirements.')
+        help_text=_('A state of service compliance with project requirements.'))
     validation_message = serializers.ReadOnlyField(
-        help_text='An error message for a service that is non-compliant with project requirements.')
+        help_text=_('An error message for a service that is non-compliant with project requirements.'))
 
     def get_settings(self, link):
         """
@@ -216,6 +217,7 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
         related_paths = {
             'customer': ('uuid', 'name', 'native_name', 'abbreviation')
         }
+        protected_fields = ('certifications',)
 
     @staticmethod
     def eager_load(queryset):
@@ -332,11 +334,11 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
         if vat_code:
             if not is_company:
                 raise serializers.ValidationError({
-                    'vat_code': 'VAT number is not supported for private persons.'})
+                    'vat_code': _('VAT number is not supported for private persons.')})
 
             # Check VAT format
             if not pyvat.is_vat_number_format_valid(vat_code, country):
-                raise serializers.ValidationError({'vat_code': 'VAT number has invalid format.'})
+                raise serializers.ValidationError({'vat_code': _('VAT number has invalid format.')})
 
             # Check VAT number in EU VAT Information Exchange System
             # if customer is new or either VAT number or country of the customer has changed
@@ -348,11 +350,11 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
                     if not attrs.get('contact_details'):
                         attrs['contact_details'] = attrs['vat_address']
                 elif check_result.is_valid is False:
-                    raise serializers.ValidationError({'vat_code': 'VAT number is invalid.'})
+                    raise serializers.ValidationError({'vat_code': _('VAT number is invalid.')})
                 else:
                     logger.debug('Unable to check VAT number %s for country %s. Error message: %s',
                                  vat_code, country, check_result.log_lines)
-                    raise serializers.ValidationError({'vat_code': 'Unable to check VAT number.'})
+                    raise serializers.ValidationError({'vat_code': _('Unable to check VAT number.')})
         return attrs
 
 
@@ -447,7 +449,7 @@ class BasePermissionSerializer(core_serializers.AugmentedSerializerMixin, serial
 
     def validate_user(self, user):
         if self.context['request'].user == user:
-            raise serializers.ValidationError('It is impossible to edit permissions for yourself.')
+            raise serializers.ValidationError(_('It is impossible to edit permissions for yourself.'))
         return user
 
 
@@ -489,7 +491,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermission
             user = data['user']
 
             if customer.has_user(user):
-                raise serializers.ValidationError('The fields customer and user must make a unique set.')
+                raise serializers.ValidationError(_('The fields customer and user must make a unique set.'))
 
         return data
 
@@ -506,7 +508,7 @@ class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermission
 
     def validate_expiration_time(self, value):
         if value is not None and value < timezone.now():
-            raise serializers.ValidationError('Expiration time should be greater than current time')
+            raise serializers.ValidationError(_('Expiration time should be greater than current time.'))
         return value
 
     def get_filtered_field_names(self):
@@ -558,7 +560,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionS
             user = data['user']
 
             if project.has_user(user):
-                raise serializers.ValidationError('The fields project and user must make a unique set.')
+                raise serializers.ValidationError(_('The fields project and user must make a unique set.'))
 
         return data
 
@@ -575,7 +577,7 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionS
 
     def validate_expiration_time(self, value):
         if value is not None and value < timezone.now():
-            raise serializers.ValidationError('Expiration time should be greater than current time')
+            raise serializers.ValidationError(_('Expiration time should be greater than current time.'))
         return value
 
     def get_filtered_field_names(self):
@@ -594,7 +596,7 @@ class UserOrganizationSerializer(serializers.Serializer):
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     email = serializers.EmailField()
     agree_with_policy = serializers.BooleanField(write_only=True, required=False,
-                                                 help_text='User must agree with the policy to register.')
+                                                 help_text=_('User must agree with the policy to register.'))
     preferred_language = serializers.ChoiceField(choices=settings.LANGUAGES, allow_blank=True, required=False)
     competence = serializers.ChoiceField(choices=settings.NODECONDUCTOR.get('USER_COMPETENCE_LIST', []),
                                          allow_blank=True,
@@ -670,7 +672,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         agree_with_policy = attrs.pop('agree_with_policy', False)
         if self.instance and not self.instance.agreement_date:
             if not agree_with_policy:
-                raise serializers.ValidationError({'agree_with_policy': 'User must agree with the policy.'})
+                raise serializers.ValidationError({'agree_with_policy': _('User must agree with the policy.')})
             else:
                 attrs['agreement_date'] = timezone.now()
 
@@ -717,11 +719,11 @@ class PasswordSerializer(serializers.Serializer):
     password = serializers.CharField(min_length=7, validators=[
         RegexValidator(
             regex='\d',
-            message='Ensure this field has at least one digit.',
+            message=_('Ensure this field has at least one digit.'),
         ),
         RegexValidator(
             regex='[a-zA-Z]',
-            message='Ensure this field has at least one latin letter.',
+            message=_('Ensure this field has at least one latin letter.'),
         ),
     ])
 
@@ -741,9 +743,9 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
         try:
             fingerprint = core_models.get_ssh_key_fingerprint(attrs['public_key'])
         except (IndexError, TypeError):
-            raise serializers.ValidationError('Key is not valid: cannot generate fingerprint from it.')
+            raise serializers.ValidationError(_('Key is not valid: cannot generate fingerprint from it.'))
         if core_models.SshPublicKey.objects.filter(fingerprint=fingerprint).exists():
-            raise serializers.ValidationError('Key with same fingerprint already exists')
+            raise serializers.ValidationError(_('Key with same fingerprint already exists.'))
         return attrs
 
     def get_fields(self):
@@ -990,7 +992,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
         if self.SERVICE_ACCOUNT_FIELDS is not NotImplemented:
             # each service settings could be connected to scope
-            self.SERVICE_ACCOUNT_FIELDS['scope'] = 'VM that contains service'
+            self.SERVICE_ACCOUNT_FIELDS['scope'] = _('VM that contains service')
             for field in self.Meta.settings_fields:
                 if field not in fields:
                     continue
@@ -1030,7 +1032,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
         project = attrs.get('project')
         if project and project.customer != customer:
             raise serializers.ValidationError(
-                'Service cannot be connected to project that does not belong to services customer.')
+                _('Service cannot be connected to project that does not belong to services customer.'))
 
         settings = attrs.get('settings')
         if not user.is_staff:
@@ -1038,7 +1040,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 raise exceptions.PermissionDenied()
             if not self.instance and settings and not settings.shared:
                 if attrs.get('customer') != settings.customer:
-                    raise serializers.ValidationError('Customer must match settings customer.')
+                    raise serializers.ValidationError(_('Customer must match settings customer.'))
 
         if self.context['request'].method == 'POST':
             name = self.initial_data.get('name')
@@ -1049,7 +1051,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             create_settings = any([attrs.get(f) for f in settings_fields])
             if not settings and not create_settings:
                 raise serializers.ValidationError(
-                    "Either service settings or credentials must be supplied.")
+                    _('Either service settings or credentials must be supplied.'))
 
             extra_fields = tuple()
             if self.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented:
@@ -1068,7 +1070,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
                 name = self.initial_data.get('name')
                 if name is None:
-                    raise serializers.ValidationError({'name': 'Name field is required.'})
+                    raise serializers.ValidationError({'name': _('Name field is required.')})
 
                 settings = models.ServiceSettings(
                     type=SupportedServices.get_model_key(self.Meta.model),
@@ -1080,7 +1082,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                     backend = settings.get_backend()
                     backend.ping(raise_exception=True)
                 except ServiceBackendError as e:
-                    raise serializers.ValidationError("Wrong settings: %s" % e)
+                    raise serializers.ValidationError(_('Wrong settings: %s.') % e)
                 except ServiceBackendNotImplemented:
                     pass
 
@@ -1168,11 +1170,11 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
 
     def validate(self, attrs):
         if attrs['service'].customer != attrs['project'].customer:
-            raise serializers.ValidationError("Service customer doesn't match project customer")
+            raise serializers.ValidationError(_("Service customer doesn't match project customer."))
 
         # XXX: Consider adding unique key (service, project) to the model instead
         if self.Meta.model.objects.filter(service=attrs['service'], project=attrs['project']).exists():
-            raise serializers.ValidationError("This service project link already exists")
+            raise serializers.ValidationError(_('This service project link already exists.'))
 
         return attrs
 
@@ -1264,7 +1266,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     is_link_valid = serializers.BooleanField(
         source='service_project_link.is_valid',
         read_only=True,
-        help_text='True if resource is originated from a service that satisfies an associated project requirements.')
+        help_text=_('True if resource is originated from a service that satisfies an associated project requirements.'))
 
     class Meta(object):
         model = NotImplemented
@@ -1363,7 +1365,7 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
     state = serializers.ReadOnlyField(source='get_state_display')
     created = serializers.DateTimeField(read_only=True)
     import_history = serializers.BooleanField(
-        default=True, write_only=True, help_text='Import historical resource usage')
+        default=True, write_only=True, help_text=_('Import historical resource usage.'))
 
     class Meta(object):
         model = NotImplemented
@@ -1390,7 +1392,7 @@ class BaseResourceImportSerializer(PermissionFieldFilteringMixin,
     def validate(self, attrs):
         if self.Meta.model.objects.filter(backend_id=attrs['backend_id']).exists():
             raise serializers.ValidationError(
-                {'backend_id': "This resource is already linked to NodeConductor"})
+                {'backend_id': _('This resource is already linked to Waldur.')})
 
         spl_class = SupportedServices.get_related_models(self.Meta.model)['service_project_link']
         spl = spl_class.objects.get(service=self.context['service'], project=attrs['project'])

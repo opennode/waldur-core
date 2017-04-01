@@ -1,4 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import permissions, status
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -38,7 +39,7 @@ class InvitationViewSet(ProtectedViewSet):
             customer = serializer.validated_data.get('customer')
 
         if not self.can_manage_invitation_with(customer):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
 
         invitation = serializer.save()
         tasks.send_invitation.delay(invitation.uuid.hex, self.request.user.full_name or self.request.user.username)
@@ -48,12 +49,12 @@ class InvitationViewSet(ProtectedViewSet):
         invitation = self.get_object()
 
         if not self.can_manage_invitation_with(invitation.customer):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
         elif invitation.state != models.Invitation.State.PENDING:
-            raise ValidationError('Only pending invitation can be resent.')
+            raise ValidationError(_('Only pending invitation can be resent.'))
 
         tasks.send_invitation.delay(invitation.uuid.hex, self.request.user.full_name or self.request.user.username)
-        return Response({'detail': "Invitation sending has been successfully scheduled."},
+        return Response({'detail': _('Invitation sending has been successfully scheduled.')},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'])
@@ -61,12 +62,12 @@ class InvitationViewSet(ProtectedViewSet):
         invitation = self.get_object()
 
         if not self.can_manage_invitation_with(invitation.customer):
-            raise PermissionDenied('You do not have permission to perform this action.')
+            raise PermissionDenied()
         elif invitation.state != models.Invitation.State.PENDING:
-            raise ValidationError('Only pending invitation can be canceled.')
+            raise ValidationError(_('Only pending invitation can be canceled.'))
 
         invitation.cancel()
-        return Response({'detail': "Invitation has been successfully canceled."},
+        return Response({'detail': _('Invitation has been successfully canceled.')},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'], filter_backends=[], permission_classes=[permissions.IsAuthenticated])
@@ -74,18 +75,18 @@ class InvitationViewSet(ProtectedViewSet):
         invitation = self.get_object()
 
         if invitation.state != models.Invitation.State.PENDING:
-            raise ValidationError('Only pending invitation can be accepted.')
+            raise ValidationError(_('Only pending invitation can be accepted.'))
         elif invitation.civil_number and invitation.civil_number != request.user.civil_number:
-            raise ValidationError('User has an invalid civil number.')
+            raise ValidationError(_('User has an invalid civil number.'))
 
         if invitation.project:
             if invitation.project.has_user(request.user):
-                raise ValidationError('User already has role within this project.')
+                raise ValidationError(_('User already has role within this project.'))
         elif invitation.customer.has_user(request.user):
-            raise ValidationError('User already has role within this customer.')
+            raise ValidationError(_('User already has role within this customer.'))
 
         invitation.accept(request.user)
-        return Response({'detail': "Invitation has been successfully accepted."},
+        return Response({'detail': _('Invitation has been successfully accepted.')},
                         status=status.HTTP_200_OK)
 
     @detail_route(methods=['post'], filter_backends=[], permission_classes=[])

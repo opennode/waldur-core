@@ -20,7 +20,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__
 
 DEBUG = False
 
-MEDIA_ROOT = '/tmp/'
+MEDIA_ROOT = '/media_root/'
 
 MEDIA_URL = '/media/'
 
@@ -57,6 +57,7 @@ INSTALLED_APPS += ADMIN_INSTALLED_APPS
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -156,12 +157,22 @@ USE_I18N = True
 
 USE_L10N = True
 
+LOCALE_PATHS = (
+    os.path.join(BASE_DIR, 'nodeconductor', 'locale'),
+)
+
+LANGUAGES = (
+    ('en', 'English'),
+    ('et', 'Estonian'),
+)
+
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 STATIC_URL = '/static/'
 
+# Celery
 BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
 
@@ -231,6 +242,12 @@ CELERYBEAT_SCHEDULE = {
     },
 }
 
+# Logging
+# Send verified request on webhook processing
+VERIFY_WEBHOOK_REQUESTS = True
+
+
+# Extensions
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
     'TOKEN_KEY': 'x-auth-token',
@@ -260,6 +277,7 @@ for ext in NodeConductorExtension.get_extensions():
     ext.update_settings(globals())
 
 
+# Swagger
 SWAGGER_SETTINGS = {
     # USE_SESSION_AUTH parameter should be equal to DEBUG parameter.
     # If it is True, LOGIN_URL and LOGOUT_URL must be specified.

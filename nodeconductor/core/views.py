@@ -1,11 +1,11 @@
 import logging
 
-from django.conf import settings
 from django.contrib import auth
 from django.core.cache import cache
 from django.db.models import ProtectedError
 from django.utils import timezone
 from django.utils.encoding import force_text
+from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status, mixins as rf_mixins, viewsets, permissions as rf_permissions, exceptions
 from rest_framework.authtoken.models import Token
@@ -123,7 +123,7 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
             logger.debug('Not returning auth token: '
                          'username %s from %s is locked out' % (username, source_ip))
             return Response(
-                data={'detail': 'Username is locked out. Try in %s minutes.' % lockout_time_in_mins},
+                data={'detail': _('Username is locked out. Try in %s minutes.') % lockout_time_in_mins},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -142,7 +142,7 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
                 event_context={'username': username})
 
             return Response(
-                data={'detail': 'Invalid username/password'},
+                data={'detail': _('Invalid username/password.')},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         else:
@@ -152,7 +152,7 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
             logger.debug('Not returning auth token: '
                          'user %s is disabled', username)
             return Response(
-                data={'detail': 'User account is disabled'},
+                data={'detail': _('User account is disabled.')},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -193,7 +193,7 @@ def exception_handler(exc, context):
         else:
             instance_name = force_text(instance_meta.verbose_name)
 
-        detail = 'Cannot delete {instance_name} with existing {dependant_objects}'.format(
+        detail = _('Cannot delete {instance_name} with existing {dependant_objects}').format(
             instance_name=instance_name,
             dependant_objects=force_text(dependent_meta.verbose_name_plural),
         )

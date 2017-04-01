@@ -73,7 +73,7 @@ class QuotaViewSet(mixins.UpdateModelMixin,
 
     def perform_update(self, serializer):
         if not serializer.instance.scope.can_user_update_quotas(self.request.user):
-            raise rf_exceptions.PermissionDenied('You do not have permission to perform this action.')
+            raise rf_exceptions.PermissionDenied()
         quota = self.get_object()
         quota_field = quota.get_field()
         # old style quotas do not have quota_field

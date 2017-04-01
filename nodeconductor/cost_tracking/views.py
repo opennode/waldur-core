@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
+from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import viewsets, permissions, exceptions, decorators, response, status
 
@@ -106,7 +107,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewS
             models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
         price_estimate.threshold = threshold
         price_estimate.save(update_fields=['threshold'])
-        return response.Response({'detail': 'Threshold for price estimate is updated'},
+        return response.Response({'detail': _('Threshold for price estimate is updated.')},
                                  status=status.HTTP_200_OK)
 
     @decorators.list_route(methods=['post'])
@@ -144,7 +145,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewS
             models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
         price_estimate.limit = limit
         price_estimate.save(update_fields=['limit'])
-        return response.Response({'detail': 'Limit for price estimate is updated'},
+        return response.Response({'detail': _('Limit for price estimate is updated.')},
                                  status=status.HTTP_200_OK)
 
 
@@ -207,13 +208,13 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
         if self.action in ('partial_update', 'update', 'destroy'):
             price_list_item = self.get_object()
             if not self.can_user_modify_price_object(price_list_item.service):
-                raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+                raise exceptions.PermissionDenied()
 
         return super(PriceListItemViewSet, self).initial(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         if not self.can_user_modify_price_object(serializer.validated_data['service']):
-            raise exceptions.PermissionDenied('You do not have permission to perform this action.')
+            raise exceptions.PermissionDenied()
 
         super(PriceListItemViewSet, self).perform_create(serializer)
 

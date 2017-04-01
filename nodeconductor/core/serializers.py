@@ -5,6 +5,7 @@ import logging
 
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
 from django.core.urlresolvers import reverse, Resolver404
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.fields import Field, ReadOnlyField
 
@@ -42,7 +43,7 @@ class Base64Field(serializers.CharField):
             base64.b64decode(value)
             return value
         except TypeError:
-            raise serializers.ValidationError('This field should a be valid Base64 encoded string.')
+            raise serializers.ValidationError(_('This field should a be valid Base64 encoded string.'))
 
     def to_representation(self, value):
         value = super(Base64Field, self).to_representation(value)
@@ -128,9 +129,9 @@ class GenericRelatedField(Field):
             obj = core_utils.instance_from_url(data, user=user)
             model = obj.__class__
         except (Resolver404, AttributeError, MultipleObjectsReturned, ObjectDoesNotExist):
-            raise serializers.ValidationError("Can`t restore object from url: %s" % data)
+            raise serializers.ValidationError(_("Can't restore object from url: %s") % data)
         if model not in self.related_models:
-            raise serializers.ValidationError('%s object does not support such relationship' % str(obj))
+            raise serializers.ValidationError(_('%s object does not support such relationship.') % str(obj))
         return obj
 
 
@@ -355,7 +356,7 @@ class HyperlinkedRelatedModelSerializer(serializers.HyperlinkedModelSerializer):
 
     def to_internal_value(self, data):
         if 'url' not in data:
-            raise serializers.ValidationError('URL has to be defined for related object')
+            raise serializers.ValidationError(_('URL has to be defined for related object.'))
         url_field = self.fields['url']
 
         # This is tricky: self.fields['url'] is the one generated
@@ -383,7 +384,7 @@ class TimestampIntervalSerializer(serializers.Serializer):
         Check that the start is before the end.
         """
         if 'start' in data and 'end' in data and data['start'] >= data['end']:
-            raise serializers.ValidationError("End must occur after start")
+            raise serializers.ValidationError(_('End must occur after start.'))
         return data
 
     # TimeInterval serializer is used for validation only. We are providing custom method for such serializers
@@ -415,14 +416,14 @@ class HistorySerializer(serializers.Serializer):
         autosplit_fields = {'start', 'end', 'points_count'}
         if ('point_list' not in attrs or not attrs['point_list']) and not autosplit_fields == set(attrs.keys()):
             raise serializers.ValidationError(
-                'Not enough parameters for historical data. '
-                '(Either "point" or "start" + "end" + "points_count" parameters have to be provided)')
+                _('Not enough parameters for historical data. '
+                  '(Either "point" or "start" + "end" + "points_count" parameters have to be provided).'))
         if 'point_list' in attrs and autosplit_fields & set(attrs.keys()):
             raise serializers.ValidationError(
-                'Too many parameters for historical data. '
-                '(Either "point" or "start" + "end" + "points_count" parameters have to be provided)')
+                _('Too many parameters for historical data. '
+                  '(Either "point" or "start" + "end" + "points_count" parameters have to be provided).'))
         if 'point_list' not in attrs and not attrs['start'] < attrs['end']:
-            raise serializers.ValidationError('Start timestamps have to be later than end timestamps')
+            raise serializers.ValidationError(_('Start timestamps have to be later than end timestamps.'))
         return attrs
 
     # History serializer is used for validation only. We are providing custom method for such serializers

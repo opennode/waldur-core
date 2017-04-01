@@ -3,7 +3,13 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Nothing yet
+
+Release 0.130.0
+---------------
+- Enable i18n.
+- Added "export_api_docs" management command for creating offline API Swagger descriptions.
+- Bugfixes.
 
 Release 0.129.0
 ---------------

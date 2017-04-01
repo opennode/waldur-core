@@ -1,4 +1,5 @@
 include *.md *.rst
+recursive-include nodeconductor/locale *.mo *.po
 recursive-include nodeconductor/core/templates *.html
 recursive-include nodeconductor/templates *.html
 recursive-include nodeconductor/landing/templates *.html

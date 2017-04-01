@@ -171,13 +171,18 @@ class ExecutorAdminAction(object):
                 successfully_executed.append(instance)
 
         if successfully_executed:
-            message = 'Operation was successfully scheduled for %s instances: %s' % (
-                len(successfully_executed), ', '.join([str(i) for i in successfully_executed]))
+            message = _('Operation was successfully scheduled for %(count)d instances: %(names)s') % dict(
+                count=len(successfully_executed),
+                names=', '.join([str(i) for i in successfully_executed])
+            )
             admin_class.message_user(request, message)
 
         for error, instances in errors.items():
-            message = 'Failed to schedule operation for %s instances: %s. Error: %s' % (
-                len(instances), ', '.join([str(i) for i in instances]), error)
+            message = _('Failed to schedule operation for %(count)d instances: %(names)s. Error: %(message)s') % dict(
+                count=len(instances),
+                names=', '.join([str(i) for i in instances]),
+                message=error,
+            )
             admin_class.message_user(request, message, level=messages.ERROR)
 
     def validate(self, instance):

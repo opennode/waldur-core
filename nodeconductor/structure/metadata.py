@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 from django.utils.encoding import force_text
 from django.utils.http import urlencode
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.request import clone_request
@@ -228,10 +229,10 @@ def check_operation(user, resource, operation_name, valid_state=None):
 
     if not has_access:
         raise exceptions.PermissionDenied(
-            "Only project administrator or staff allowed to perform this action.")
+            _('Only project administrator or staff allowed to perform this action.'))
 
     if valid_state is not None:
         state = valid_state if isinstance(valid_state, (list, tuple)) else [valid_state]
         if state and resource.state not in state:
-            message = "Performing %s operation is not allowed for resource in its current state"
+            message = _('Performing %s operation is not allowed for resource in its current state.')
             raise IncorrectStateException(message % operation_name)
