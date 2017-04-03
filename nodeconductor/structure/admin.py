@@ -1,22 +1,25 @@
+import json
+
 from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
 from django.db import models as django_models
-from django.forms import ModelForm, ModelMultipleChoiceField, ChoiceField, RadioSelect
+from django.forms import ModelMultipleChoiceField, ModelForm, TypedChoiceField, RadioSelect, ChoiceField
 from django.http import HttpResponseRedirect
-from django.utils import six
-from django.utils.translation import ungettext
-from django.utils.translation import ugettext_lazy as _
 from django.shortcuts import render
+from django.utils import six
+from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ungettext
+from jsoneditor.forms import JSONEditor
 
+from nodeconductor.core import utils as core_utils
 from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
 from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core import utils
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices, executors
+from nodeconductor.structure import models, SupportedServices, executors, utils
 
 
 class FormRequestAdminMixin(object):
@@ -79,7 +82,7 @@ class ResourceCounterFormMixin(object):
 
 class CustomerAdminForm(ModelForm):
     owners = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
-                                      widget=FilteredSelectMultiple(verbose_name='Owners', is_stacked=False))
+                                      widget=FilteredSelectMultiple(verbose_name=_('Owners'), is_stacked=False))
     support_users = ModelMultipleChoiceField(User.objects.all().order_by('full_name'), required=False,
                                              widget=FilteredSelectMultiple(verbose_name=_('Support users'),
                                                                            is_stacked=False))
@@ -209,6 +212,18 @@ class ServiceCertificationAdmin(admin.ModelAdmin):
 
 
 class ServiceSettingsAdminForm(ModelForm):
+    shared = TypedChoiceField(
+        coerce=lambda x: x == 'True',
+        choices=((True, _('Yes (Anybody can use it)')), (False, _('No (Only available to me)'))),
+        widget=RadioSelect,
+    )
+
+    class Meta:
+        widgets = {
+            'options': JSONEditor(),
+            'geolocations': JSONEditor(),
+        }
+
     def __init__(self, *args, **kwargs):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
         self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
@@ -243,12 +258,13 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     change_readonly_fields = ('shared', 'customer')
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
-    fields = ('type', 'name', 'backend_url', 'username', 'password',
+    fields = ('type', 'name', 'shared', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer',
-              'shared', 'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
+              'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
               'certifications', 'geolocations')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
+    common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications')
 
     def get_type_display(self, obj):
         return obj.get_type_display()
@@ -257,6 +273,13 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def add_view(self, *args, **kwargs):
         self.exclude = getattr(self, 'add_exclude', ())
         return super(ServiceSettingsAdmin, self).add_view(*args, **kwargs)
+
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        service_field_names = utils.get_all_services_field_names()
+        [service_field_names[service_name].extend(self.common_fields) for service_name in service_field_names]
+        extra_context['service_fields'] = json.dumps(service_field_names)
+        return super(ServiceSettingsAdmin, self).changeform_view(request, object_id, form_url, extra_context)
 
     def get_readonly_fields(self, request, obj=None):
         fields = super(ServiceSettingsAdmin, self).get_readonly_fields(request, obj)
@@ -404,7 +427,7 @@ class VirtualMachineAdmin(ResourceAdmin):
     actions = ['detect_coordinates']
 
     def detect_coordinates(self, request, queryset):
-        send_task('structure', 'detect_vm_coordinates_batch')([utils.serialize_instance(vm) for vm in queryset])
+        send_task('structure', 'detect_vm_coordinates_batch')([core_utils.serialize_instance(vm) for vm in queryset])
 
         tasks_scheduled = queryset.count()
         message = ungettext(

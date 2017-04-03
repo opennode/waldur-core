@@ -52,6 +52,7 @@ INSTALLED_APPS = (
     'django_fsm',
     'reversion',
     'taggit',
+    'jsoneditor',
 )
 INSTALLED_APPS += ADMIN_INSTALLED_APPS
 

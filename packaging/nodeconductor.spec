@@ -53,6 +53,7 @@ Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
 Requires: PyYAML
 Requires: uwsgi-plugin-python
+Requires: django-jsoneditor >= 0.0.5
 
 Source0: %{name}-%{version}.tar.gz
 
