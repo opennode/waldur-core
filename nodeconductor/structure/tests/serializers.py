@@ -14,7 +14,7 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
     class Meta(structure_serializers.BaseServiceProjectLinkSerializer.Meta):
         model = models.TestServiceProjectLink
         extra_kwargs = {
-            'service': {'lookup_field': 'uuid', 'view_name': 'oracle-detail'},
+            'service': {'lookup_field': 'uuid', 'view_name': 'test-detail'},
         }
 
 
