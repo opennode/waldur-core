@@ -1,4 +1,5 @@
 {% for name, service in services %}
+    <div id="id_{{ name }}" class="service-fields">
 	<h4>{{ name }}</h4>
 
 	<p>Fields:</p>
@@ -27,4 +28,5 @@
 			{% endfor %}
 		</ul>
 	{% endif %}
+    </div>
 {% endfor %}

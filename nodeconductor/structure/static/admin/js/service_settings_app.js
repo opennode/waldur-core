@@ -25,7 +25,13 @@ var service_settings_module = (function(self, jQuery){
         $(".field-type").change(function(){
             var selectedServiceType = $(".field-type input:checked").val();
             displayOnlyServiceFields(selectedServiceType);
+            diplayOnlyServiceRelatedHints(selectedServiceType);
         });
+    }
+
+    function diplayOnlyServiceRelatedHints(serviceName) {
+        $(".service-fields").hide();
+        $("#id_" + serviceName).show();
     }
 
     function displayOnlyServiceFields(serviceName) {
