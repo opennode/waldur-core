@@ -22,17 +22,10 @@ var service_settings_module = (function(self, jQuery){
             $(this).parent().before(this);
         });
 
-        var serviceTypeChoiceField = $("div.field-type li > label");
-        serviceTypeChoiceField.click(function(e){
-            var serviceType = $(e.target).text().trim();
-            displayOnlyServiceFields(serviceType);
+        $(".field-type").change(function(){
+            var selectedServiceType = $(".field-type input:checked").val();
+            displayOnlyServiceFields(selectedServiceType);
         });
-
-        var selectedServiceType = $(".field-type input:checked").val();
-        if (selectedServiceType !== undefined) {
-            var serviceType = selectedServiceType.trim();
-            displayOnlyServiceFields(serviceType);
-        }
     }
 
     function displayOnlyServiceFields(serviceName) {
