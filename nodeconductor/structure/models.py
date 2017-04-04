@@ -888,13 +888,6 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
 
 
-def validate_yaml(value):
-    try:
-        yaml.safe_load(value)
-    except yaml.error.YAMLError:
-        raise ValidationError(_('A valid YAML value is required.'))
-
-
 class ApplicationMixin(models.Model):
 
     class Meta(object):
@@ -923,7 +916,7 @@ class VirtualMachineMixin(CoordinatesMixin):
     key_fingerprint = models.CharField(max_length=47, blank=True)
 
     user_data = models.TextField(
-        blank=True, validators=[validate_yaml],
+        blank=True,
         help_text=_('Additional data that will be added to instance on provisioning'))
 
     class Meta(object):

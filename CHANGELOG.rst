@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet
+- VirtualMachine user_data is no longer validated against safe yml format.
 
 Release 0.130.0
 ---------------
