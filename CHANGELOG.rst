@@ -3,8 +3,14 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Enable i18n.
+- VirtualMachine user_data is no longer validated against safe yml format.
 - Mark subresources as SPL children.
+
+Release 0.130.0
+---------------
+- Enable i18n.
+- Added "export_api_docs" management command for creating offline API Swagger descriptions.
+- Bugfixes.
 
 Release 0.129.0
 ---------------
