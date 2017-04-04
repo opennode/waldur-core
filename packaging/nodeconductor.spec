@@ -43,7 +43,7 @@ Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
-Requires: python-prettytable >=0.7.1, python-prettytable < 0.8
+Requires: python-prettytable >= 0.7.1, python-prettytable < 0.8
 Requires: python-psycopg2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-vat >= 1.3.1, python-vat < 2.0
