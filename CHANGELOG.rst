@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - VirtualMachine user_data is no longer validated against safe yml format.
+- Mark subresources as SPL children.
 
 Release 0.130.0
 ---------------
