@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Enable i18n.
+- Mark subresources as SPL children.
 
 Release 0.129.0
 ---------------
