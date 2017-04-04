@@ -852,7 +852,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return [self.project, self.service]
 
     def get_children(self):
-        resource_models = [m for m in ResourceMixin.get_all_models()
+        resource_models = [m for m in ResourceMixin.get_all_models() + SubResource.get_all_models()
                            if m.service_project_link.field.related_model == self.__class__]
         return itertools.chain.from_iterable(
             m.objects.filter(service_project_link=self) for m in resource_models)
@@ -1099,3 +1099,8 @@ class SubResource(NewResource):
     """ Resource dependent object that cannot exist without resource. """
     class Meta(object):
         abstract = True
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
