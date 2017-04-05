@@ -277,7 +277,8 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         extra_context = extra_context or {}
         service_field_names = utils.get_all_services_field_names()
-        [service_field_names[service_name].extend(self.common_fields) for service_name in service_field_names]
+        for service_name in service_field_names:
+            service_field_names[service_name].extend(self.common_fields)
         extra_context['service_fields'] = json.dumps(service_field_names)
         return super(ServiceSettingsAdmin, self).changeform_view(request, object_id, form_url, extra_context)
 
