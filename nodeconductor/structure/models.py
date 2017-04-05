@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import datetime
 import itertools
-import yaml
 
 from django.apps import apps
 from django.core.cache import cache
@@ -10,7 +9,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
 from django.db import models, transaction
 from django.db.models import Q, F
@@ -205,7 +203,7 @@ class PermissionMixin(object):
         if timestamp is None:
             permissions = permissions.filter(expiration_time=None)
         elif timestamp:
-            permissions = permissions.filter(expiration_time__gte=timestamp)
+            permissions = permissions.filter(Q(expiration_time=None) | Q(expiration_time__gte=timestamp))
 
         return permissions.exists()
 
@@ -422,7 +420,10 @@ class Customer(core_models.UuidMixin,
             - None - check whether user can permanently manage permissions.
             - Datetime object - check whether user will be able to manage permissions at specific timestamp.
         """
-        return user.is_staff or self.has_user(user, CustomerRole.OWNER, timestamp)
+        return user.is_staff or (
+            self.has_user(user, CustomerRole.OWNER, timestamp) and
+            settings.NODECONDUCTOR['OWNERS_CAN_MANAGE_OWNERS']
+        )
 
     def get_children(self):
         return itertools.chain.from_iterable(
