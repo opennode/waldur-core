@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.130.0
+Version: 0.131.0
 Release: 1.el7
 License: MIT
 
@@ -43,6 +43,7 @@ Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
 Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
+Requires: python-prettytable >= 0.7.1, python-prettytable < 0.8
 Requires: python-psycopg2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-vat >= 1.3.1, python-vat < 2.0
@@ -222,6 +223,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Tue Apr 4 2017 Jenkins <jenkins@opennodecloud.com> - 0.131.0-1.el7
+- New upstream release
+
 * Sat Apr 1 2017 Jenkins <jenkins@opennodecloud.com> - 0.130.0-1.el7
 - New upstream release
 

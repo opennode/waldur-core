@@ -35,6 +35,7 @@ install_requires = [
     'hiredis>=0.2.0',
     'iptools>=0.6.1',
     'jsonfield==1.0.0',
+    'PrettyTable<0.8,>=0.7.1',
     'Pillow>=2.0.0',
     'PyYAML>=3.10',
     'pycountry>=1.20,<2.0',
@@ -48,7 +49,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.130.0',
+    version='0.131.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

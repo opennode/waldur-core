@@ -7,6 +7,11 @@ Release NEXT
 - Make shared field more visible on service settings creation form.
 - Hide non-relevant fields for selected service on service settings creation form.
 
+Release 0.131.0
+---------------
+- VirtualMachine user_data is no longer validated against safe yml format.
+- Mark subresources as SPL children.
+
 Release 0.130.0
 ---------------
 - Enable i18n.

@@ -852,7 +852,7 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return [self.project, self.service]
 
     def get_children(self):
-        resource_models = [m for m in ResourceMixin.get_all_models()
+        resource_models = [m for m in ResourceMixin.get_all_models() + SubResource.get_all_models()
                            if m.service_project_link.field.related_model == self.__class__]
         return itertools.chain.from_iterable(
             m.objects.filter(service_project_link=self) for m in resource_models)
@@ -888,13 +888,6 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
 
 
-def validate_yaml(value):
-    try:
-        yaml.safe_load(value)
-    except yaml.error.YAMLError:
-        raise ValidationError(_('A valid YAML value is required.'))
-
-
 class ApplicationMixin(models.Model):
 
     class Meta(object):
@@ -923,7 +916,7 @@ class VirtualMachineMixin(CoordinatesMixin):
     key_fingerprint = models.CharField(max_length=47, blank=True)
 
     user_data = models.TextField(
-        blank=True, validators=[validate_yaml],
+        blank=True,
         help_text=_('Additional data that will be added to instance on provisioning'))
 
     class Meta(object):
@@ -1099,3 +1092,8 @@ class SubResource(NewResource):
     """ Resource dependent object that cannot exist without resource. """
     class Meta(object):
         abstract = True
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
