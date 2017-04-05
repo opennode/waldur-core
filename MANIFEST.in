@@ -6,3 +6,4 @@ recursive-include nodeconductor/landing/templates *.html
 recursive-include nodeconductor/logging/templates *.html
 recursive-include nodeconductor/structure/templates *.html
 recursive-include nodeconductor/users/templates *.html *.txt
+recursive-include nodeconductor/structure/static *.js

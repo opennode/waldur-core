@@ -3,7 +3,9 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Integrate JSONEditor widgets from django-jsoneditor for JSON fields in admin.
+- Make shared field more visible on service settings creation form.
+- Hide non-relevant fields for selected service on service settings creation form.
 
 Release 0.131.0
 ---------------

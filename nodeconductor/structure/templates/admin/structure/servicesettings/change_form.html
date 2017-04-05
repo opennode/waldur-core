@@ -1,5 +1,6 @@
 {% extends 'admin/change_form.html' %}
 {% load nodeconductor_structure %}
+{% load static %}
 {% block form_top %}
 <style type="text/css">
     ul#id_type > li {
@@ -43,22 +44,9 @@
     <a href="#">Connected services and projects</a>
     <div>Loading...</div>
 </div>
+<script src="{% static 'admin/js/service_settings_app.js' %}"></script>
 <script type="text/javascript">
-(function($) {
-    $('.services>div').hide();
-    $('.services>a').click(function(){
-        $(this).next('div').show().load('services/');
-    });
-    $("#service-settings-content").hide();
-    $("#service-settings-toggle").click(function() {
-      $("#service-settings-content").slideToggle("slow");
-    });
-    $(function() {
-        $('ul#id_type input').each(function() {
-            $(this).parent().before(this);
-        });
-    })
-
-})(django.jQuery);
+var service_fields = {{ service_fields|safe }};
+service_settings_module.initialize(service_fields);
 </script>
 {% endblock %}
