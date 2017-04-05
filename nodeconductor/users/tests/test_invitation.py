@@ -5,6 +5,7 @@ from django.conf import settings
 from django.utils import timezone
 from rest_framework import test, status
 
+from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure import models as structure_models
 from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.users import models, tasks
@@ -83,6 +84,14 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=False)
+    def test_owner_can_create_project_manager_invitation_if_settings_are_tweaked(self):
+        self.client.force_authenticate(user=self.customer_owner)
+        payload = self._get_valid_project_invitation_payload(
+            self.project_invitation, project_role=structure_models.ProjectRole.MANAGER)
+        response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     @data('project_admin', 'project_manager', 'user')
     def test_user_without_access_cannot_create_project_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
@@ -97,6 +106,13 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         payload = self._get_valid_customer_invitation_payload(self.customer_invitation)
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=False)
+    def test_owner_can_not_create_customer_owner_invitation_if_settings_are_tweaked(self):
+        self.client.force_authenticate(user=self.customer_owner)
+        payload = self._get_valid_customer_invitation_payload(self.customer_invitation)
+        response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @data('staff', 'customer_owner')
     def test_user_which_created_invitation_is_stored_in_inviatation(self, user):
@@ -146,6 +162,13 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.customer_invitation.refresh_from_db()
         self.assertEqual(self.customer_invitation.state, models.Invitation.State.CANCELED)
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=False)
+    def test_owner_can_not_cancel_customer_invitation_if_settings_are_tweaked(self):
+        self.client.force_authenticate(user=self.customer_owner)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(self.customer_invitation,
+                                                                                action='cancel'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_authenticated_user_can_accept_project_invitation(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.post(factories.ProjectInvitationFactory.get_url(
@@ -194,6 +217,40 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, ['User already has role within this project.'])
+
+    @data('staff', 'customer_owner')
+    def test_user_with_access_can_send_customer_invitation(self, user):
+        self.client.force_authenticate(user=getattr(self, user))
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(self.customer_invitation,
+                                                                                action='send'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=False)
+    def test_owner_can_not_send_customer_invitation_if_settings_are_tweaked(self):
+        self.client.force_authenticate(user=self.customer_owner)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(self.customer_invitation,
+                                                                                action='send'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @data('staff', 'customer_owner')
+    def test_user_with_access_can_send_project_invitation(self, user):
+        self.client.force_authenticate(user=getattr(self, user))
+        response = self.client.post(factories.ProjectInvitationFactory.get_url(self.project_invitation,
+                                                                               action='send'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_owner_can_send_project_invitation_if_settings_are_tweaked(self):
+        self.client.force_authenticate(user=self.customer_owner)
+        response = self.client.post(factories.ProjectInvitationFactory.get_url(self.project_invitation,
+                                                                               action='send'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @data('project_admin', 'project_manager', 'user')
+    def test_user_without_access_cannot_send_project_invitation(self, user):
+        self.client.force_authenticate(user=getattr(self, user))
+        response = self.client.post(factories.ProjectInvitationFactory.get_url(self.project_invitation,
+                                                                               action='send'))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     # API tests
     def test_user_cannot_create_invitation_with_invalid_link_template(self):
