@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.contrib.contenttypes import models as ct_models
-from django.forms import ModelForm
+from django.forms import ModelForm, CharField, FloatField
 
 from nodeconductor.core.admin import ReversionAdmin, ReadonlyTextWidget
 from nodeconductor.quotas import models, utils
@@ -36,28 +36,41 @@ class QuotaFieldTypeLimit(object):
 
 
 class QuotaForm(ModelForm):
+    name = CharField(required=False, widget=ReadonlyTextWidget())
+    usage = CharField(required=False, widget=ReadonlyTextWidget())
+    limit = FloatField(required=False)
 
     class Meta:
         model = models.Quota
         fields = ('name', 'limit', 'usage')
-        readonly_fields = ('name', 'usage')
 
     def __init__(self, *args, **kwargs):
         super(QuotaForm, self).__init__(*args, **kwargs)
 
-        if self.instance:
-            for field in self.Meta.readonly_fields:
-                self.fields[field].widget = ReadonlyTextWidget()
+        if (self.instance
+                and self._should_quota_be_hidden(self.instance)
+                and self._is_backend_quota_field(self.instance)):
+            self.fields['limit'].widget = ReadonlyTextWidget()
 
-            if self._is_backend_quota_field(self.instance):
-                self.fields['limit'].widget = ReadonlyTextWidget()
+    def _should_quota_be_hidden(self, quota):
+        if not quota.scope:
+            return False
 
-    def _is_backend_quota_field(self, quota):
-        if quota.scope:
-            field = getattr(quota.scope.Quotas, quota.name)
-            return field.is_backend
+        if hasattr(quota.scope, 'settings'):
+            return not quota.scope.settings.allow_backend_fields_editing
+        elif hasattr(quota.scope, 'service_project_link'):
+            return not quota.scope.service_project_link.service.settings.allow_backend_fields_editing
+        elif hasattr(quota.scope, 'allow_backend_fields_editing'):
+            return not quota.scope.allow_backend_fields_editing
         else:
             return False
+
+    def _is_backend_quota_field(self, quota):
+        if not quota.scope:
+            return False
+
+        field = getattr(quota.scope.Quotas, quota.name)
+        return field.is_backend
 
 
 class QuotaAdmin(QuotaFieldTypeLimit, ReversionAdmin):
