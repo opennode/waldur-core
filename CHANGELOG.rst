@@ -7,6 +7,7 @@ Release NEXT
 - Make shared field more visible on service settings creation form.
 - Hide non-relevant fields for selected service on service settings creation form.
 - Make ability for org owners to manage other org owners configurable.
+- Allow to enable/disable backend fields and quotas editing on admin.
 
 Release 0.131.0
 ---------------
