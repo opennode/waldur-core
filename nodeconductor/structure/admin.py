@@ -22,6 +22,29 @@ from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors, utils
 
 
+class BackendModelAdmin(admin.ModelAdmin):
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = super(BackendModelAdmin, self).get_readonly_fields(request, obj)
+
+        if not obj:
+            return fields
+
+        if self._disable_backend_fields(obj):
+            instance_class = type(obj)
+            fields = fields + instance_class.get_backend_fields()
+
+        return fields
+
+    def _disable_backend_fields(self, instance):
+        if isinstance(instance, models.ServiceProperty):
+            return not instance.settings.allow_backend_fields_editing
+        elif isinstance(instance, models.ResourceMixin):
+            return not instance.service_project_link.service.settings.allow_backend_fields_editing
+        else:
+            raise NotImplementedError("Backend fields editing toggling is not supported for : %s" % type(instance))
+
+
 class FormRequestAdminMixin(object):
     """
     This mixin allows you to get current request user in the model admin form,
@@ -261,10 +284,11 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     fields = ('type', 'name', 'shared', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer',
               'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
-              'certifications', 'geolocations')
+              'certifications', 'geolocations', 'allow_backend_fields_editing')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
-    common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications')
+    common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications',
+                     'allow_backend_fields_editing')
 
     def get_type_display(self, obj):
         return obj.get_type_display()
@@ -394,7 +418,7 @@ class DerivedFromSharedSettingsResourceFilter(SimpleListFilter):
             return queryset
 
 
-class ResourceAdmin(admin.ModelAdmin):
+class ResourceAdmin(BackendModelAdmin):
     readonly_fields = ('error_message',)
     list_display = ('uuid', 'name', 'backend_id', 'state', 'created',
                     'get_service', 'get_project', 'error_message', 'get_settings_shared')

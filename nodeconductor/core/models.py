@@ -525,3 +525,13 @@ class AbstractFieldTracker(FieldTracker):
         self.attname = '_%s' % name
         if not hasattr(sender, name):
             super(AbstractFieldTracker, self).finalize_class(sender, **kwargs)
+
+
+class BackendModelMixin(object):
+    """
+    Adds a 'get_backend_fields' method which returns a list of fields that are handled on backend.
+    """
+
+    @classmethod
+    def get_backend_fields(cls):
+        return ()
