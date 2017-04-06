@@ -258,6 +258,7 @@ NODECONDUCTOR = {
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
     'INVITATION_LIFETIME': timedelta(weeks=1),
     'OWNERS_CAN_MANAGE_OWNERS': True,
+    'BACKEND_FIELDS_EDITABLE': True,
 }
 
 

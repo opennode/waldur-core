@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.contrib.contenttypes import models as ct_models
@@ -48,22 +49,9 @@ class QuotaForm(ModelForm):
         super(QuotaForm, self).__init__(*args, **kwargs)
 
         if (self.instance
-                and self._should_quota_be_hidden(self.instance)
-                and self._is_backend_quota_field(self.instance)):
+                and self._is_backend_quota_field(self.instance)
+                and not settings.NODECONDUCTOR['BACKEND_FIELDS_EDITABLE']):
             self.fields['limit'].widget = ReadonlyTextWidget()
-
-    def _should_quota_be_hidden(self, quota):
-        if not quota.scope:
-            return False
-
-        if hasattr(quota.scope, 'settings'):
-            return not quota.scope.settings.allow_backend_fields_editing
-        elif hasattr(quota.scope, 'service_project_link'):
-            return not quota.scope.service_project_link.service.settings.allow_backend_fields_editing
-        elif hasattr(quota.scope, 'allow_backend_fields_editing'):
-            return not quota.scope.allow_backend_fields_editing
-        else:
-            return False
 
     def _is_backend_quota_field(self, quota):
         if not quota.scope:

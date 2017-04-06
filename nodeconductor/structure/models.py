@@ -648,7 +648,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
     homepage = models.URLField(max_length=255, blank=True)
     terms_of_services = models.URLField(max_length=255, blank=True)
     certifications = models.ManyToManyField(to='ServiceCertification', related_name='service_settings', blank=True)
-    allow_backend_fields_editing = models.BooleanField(default=True)
 
     tracker = FieldTracker()
 

@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
@@ -30,19 +31,11 @@ class BackendModelAdmin(admin.ModelAdmin):
         if not obj:
             return fields
 
-        if self._disable_backend_fields(obj):
+        if not settings.NODECONDUCTOR['BACKEND_FIELDS_EDITABLE']:
             instance_class = type(obj)
             fields = fields + instance_class.get_backend_fields()
 
         return fields
-
-    def _disable_backend_fields(self, instance):
-        if isinstance(instance, models.ServiceProperty):
-            return not instance.settings.allow_backend_fields_editing
-        elif isinstance(instance, models.ResourceMixin):
-            return not instance.service_project_link.service.settings.allow_backend_fields_editing
-        else:
-            raise NotImplementedError("Backend fields editing toggling is not supported for : %s" % type(instance))
 
 
 class FormRequestAdminMixin(object):
@@ -284,11 +277,10 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     fields = ('type', 'name', 'shared', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer',
               'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
-              'certifications', 'geolocations', 'allow_backend_fields_editing')
+              'certifications', 'geolocations')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
-    common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications',
-                     'allow_backend_fields_editing')
+    common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications')
 
     def get_type_display(self, obj):
         return obj.get_type_display()
