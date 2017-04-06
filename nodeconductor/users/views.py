@@ -1,3 +1,4 @@
+from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import permissions, status
@@ -23,13 +24,19 @@ class InvitationViewSet(ProtectedViewSet):
     filter_class = filters.InvitationFilter
     lookup_field = 'uuid'
 
-    def can_manage_invitation_with(self, customer):
+    def can_manage_invitation_with(self, customer, customer_role=None, project_role=None):
         user = self.request.user
-
         if user.is_staff:
             return True
 
-        return customer.has_user(user, structure_models.CustomerRole.OWNER)
+        is_owner = customer.has_user(user, structure_models.CustomerRole.OWNER)
+        can_manage_owners = settings.NODECONDUCTOR['OWNERS_CAN_MANAGE_OWNERS']
+
+        # It is assumed that either customer_role or project_role is not None
+        if customer_role:
+            return is_owner and can_manage_owners
+        if project_role:
+            return is_owner
 
     def perform_create(self, serializer):
         project = serializer.validated_data.get('project')
@@ -38,7 +45,10 @@ class InvitationViewSet(ProtectedViewSet):
         else:
             customer = serializer.validated_data.get('customer')
 
-        if not self.can_manage_invitation_with(customer):
+        customer_role = serializer.validated_data.get('customer_role')
+        project_role = serializer.validated_data.get('project_role')
+
+        if not self.can_manage_invitation_with(customer, customer_role, project_role):
             raise PermissionDenied()
 
         invitation = serializer.save()
@@ -48,7 +58,9 @@ class InvitationViewSet(ProtectedViewSet):
     def send(self, request, uuid=None):
         invitation = self.get_object()
 
-        if not self.can_manage_invitation_with(invitation.customer):
+        if not self.can_manage_invitation_with(invitation.customer,
+                                               invitation.customer_role,
+                                               invitation.project_role):
             raise PermissionDenied()
         elif invitation.state != models.Invitation.State.PENDING:
             raise ValidationError(_('Only pending invitation can be resent.'))
@@ -61,7 +73,9 @@ class InvitationViewSet(ProtectedViewSet):
     def cancel(self, request, uuid=None):
         invitation = self.get_object()
 
-        if not self.can_manage_invitation_with(invitation.customer):
+        if not self.can_manage_invitation_with(invitation.customer,
+                                               invitation.customer_role,
+                                               invitation.project_role):
             raise PermissionDenied()
         elif invitation.state != models.Invitation.State.PENDING:
             raise ValidationError(_('Only pending invitation can be canceled.'))
