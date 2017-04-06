@@ -31,6 +31,7 @@ Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
+Requires: python-django-jsoneditor >= 0.0.5
 Requires: python-django-model-utils = 2.5.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
@@ -54,7 +55,6 @@ Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
 Requires: PyYAML
 Requires: uwsgi-plugin-python
-Requires: django-jsoneditor >= 0.0.5
 
 Source0: %{name}-%{version}.tar.gz
 
