@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.contrib.contenttypes import models as ct_models
+from django.forms import ModelForm
 
-from nodeconductor.core.admin import ReversionAdmin
+from nodeconductor.core.admin import ReversionAdmin, ReadonlyTextWidget
 from nodeconductor.quotas import models, utils
 
 
@@ -34,6 +35,31 @@ class QuotaFieldTypeLimit(object):
         return ''
 
 
+class QuotaForm(ModelForm):
+
+    class Meta:
+        model = models.Quota
+        fields = ('name', 'limit', 'usage')
+        readonly_fields = ('name', 'usage')
+
+    def __init__(self, *args, **kwargs):
+        super(QuotaForm, self).__init__(*args, **kwargs)
+
+        if self.instance:
+            for field in self.Meta.readonly_fields:
+                self.fields[field].widget = ReadonlyTextWidget()
+
+            if self._is_backend_quota_field(self.instance):
+                self.fields['limit'].widget = ReadonlyTextWidget()
+
+    def _is_backend_quota_field(self, quota):
+        if quota.scope:
+            field = getattr(quota.scope.Quotas, quota.name)
+            return field.is_backend
+        else:
+            return False
+
+
 class QuotaAdmin(QuotaFieldTypeLimit, ReversionAdmin):
     list_display = ['scope', 'name', 'limit', 'usage']
     list_filter = ['name', QuotaScopeClassListFilter]
@@ -41,8 +67,7 @@ class QuotaAdmin(QuotaFieldTypeLimit, ReversionAdmin):
 
 class QuotaInline(QuotaFieldTypeLimit, GenericTabularInline):
     model = models.Quota
-    fields = ('name', 'limit', 'usage', 'quota_field_type')
-    readonly_fields = ('name', 'usage') + QuotaFieldTypeLimit.readonly_fields
+    form = QuotaForm
     extra = 0
     can_delete = False
 

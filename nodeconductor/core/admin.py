@@ -21,6 +21,18 @@ def get_admin_url(obj):
     return reverse('admin:%s_%s_change' % (obj._meta.app_label, obj._meta.model_name), args=[obj.id])
 
 
+def render_to_readonly(value):
+    return "<p>{0}</p>".format(value)
+
+
+class ReadonlyTextWidget(forms.TextInput):
+    def _format_value(self, value):
+        return value
+
+    def render(self, name, value, attrs=None):
+        return render_to_readonly(self._format_value(value))
+
+
 class OptionalChoiceField(forms.ChoiceField):
     def __init__(self, choices=(), *args, **kwargs):
         empty = [('', '---------')]
