@@ -25,6 +25,9 @@ from nodeconductor.structure import models, SupportedServices, executors, utils
 
 class BackendModelAdmin(admin.ModelAdmin):
 
+    def has_add_permission(self, request):
+        return False
+
     def get_readonly_fields(self, request, obj=None):
         fields = super(BackendModelAdmin, self).get_readonly_fields(request, obj)
 
