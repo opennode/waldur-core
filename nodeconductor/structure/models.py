@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import datetime
 import itertools
-import yaml
 
 from django.apps import apps
 from django.core.cache import cache
@@ -10,7 +9,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator
 from django.db import models, transaction
 from django.db.models import Q, F
@@ -205,7 +203,7 @@ class PermissionMixin(object):
         if timestamp is None:
             permissions = permissions.filter(expiration_time=None)
         elif timestamp:
-            permissions = permissions.filter(expiration_time__gte=timestamp)
+            permissions = permissions.filter(Q(expiration_time=None) | Q(expiration_time__gte=timestamp))
 
         return permissions.exists()
 
@@ -422,7 +420,10 @@ class Customer(core_models.UuidMixin,
             - None - check whether user can permanently manage permissions.
             - Datetime object - check whether user will be able to manage permissions at specific timestamp.
         """
-        return user.is_staff or self.has_user(user, CustomerRole.OWNER, timestamp)
+        return user.is_staff or (
+            self.has_user(user, CustomerRole.OWNER, timestamp) and
+            settings.NODECONDUCTOR['OWNERS_CAN_MANAGE_OWNERS']
+        )
 
     def get_children(self):
         return itertools.chain.from_iterable(
@@ -764,7 +765,7 @@ class Service(core_models.UuidMixin,
             descendant.delete()
 
 
-class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
+class BaseServiceProperty(core_models.BackendModelMixin, core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
         which are usually used for Resource provisioning.
     """
@@ -776,6 +777,10 @@ class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.M
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
+
+    @classmethod
+    def get_backend_fields(cls):
+        return super(BaseServiceProperty, cls).get_backend_fields() + ('backend_id', 'name')
 
 
 @python_2_unicode_compatible
@@ -967,6 +972,7 @@ class ResourceMixin(MonitoringModelMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
                     core_models.DescendantMixin,
+                    core_models.BackendModelMixin,
                     LoggableMixin,
                     TagMixin,
                     TimeStampedModel,
@@ -987,6 +993,10 @@ class ResourceMixin(MonitoringModelMixin,
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
     start_time = models.DateTimeField(blank=True, null=True)
+
+    @classmethod
+    def get_backend_fields(cls):
+        return super(ResourceMixin, cls).get_backend_fields() + ('backend_id',)
 
     def get_backend(self, **kwargs):
         return self.service_project_link.get_backend(**kwargs)

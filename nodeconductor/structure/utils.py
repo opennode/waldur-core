@@ -5,6 +5,8 @@ from django.db import models
 from django.db.migrations.topological_sort import stable_topological_sort
 from django.utils.lru_cache import lru_cache
 
+from . import SupportedServices
+
 
 Coordinates = collections.namedtuple('Coordinates', ('latitude', 'longitude'))
 
@@ -53,3 +55,20 @@ def sort_dependencies(service_model, resources):
     ordering = get_sorted_dependencies(service_model)
     resources.sort(key=lambda resource: ordering.index(resource._meta.model))
     return resources
+
+
+@lru_cache(maxsize=1)
+def get_all_services_field_names():
+    result = dict()
+    service_models = SupportedServices.get_service_models()
+
+    for service_name in service_models:
+        service_model = service_models[service_name]['service']
+        service_serializer = SupportedServices.get_service_serializer(service_model)
+        fields = service_serializer.SERVICE_ACCOUNT_FIELDS
+        if fields is NotImplemented:
+            fields = {}
+
+        result[service_name] = fields.keys()
+
+    return result

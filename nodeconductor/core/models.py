@@ -525,3 +525,18 @@ class AbstractFieldTracker(FieldTracker):
         self.attname = '_%s' % name
         if not hasattr(sender, name):
             super(AbstractFieldTracker, self).finalize_class(sender, **kwargs)
+
+
+class BackendModelMixin(object):
+    """
+    Represents model that is connected to backend object. 
+
+    This model cannot be created or updated via admin, because we do not support queries to backend from admin interface.   
+    """
+
+    @classmethod
+    def get_backend_fields(cls):
+        """
+        Returns a list of fields that are handled on backend.
+        """
+        return ()

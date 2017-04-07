@@ -14,7 +14,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.131.0
+Version: 0.132.0
 Release: 1.el7
 License: MIT
 
@@ -31,6 +31,7 @@ Requires: python-django-cors-headers
 Requires: python-django-filter = 0.15.3
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
+Requires: python-django-jsoneditor >= 0.0.5
 Requires: python-django-model-utils = 2.5.2
 Requires: python-django-permission = 0.9.2
 Requires: python-django-redis-cache >= 1.6.5
@@ -65,6 +66,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # systemd package provides _unitdir RPM macro
 BuildRequires: python-django >= 1.9, python-django < 1.10
 BuildRequires: python-django-fluent-dashboard
+BuildRequires: python-django-jsoneditor >= 0.0.5
 BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
 BuildRequires: python-django-rest-swagger = 2.1.1
 BuildRequires: python-setuptools
@@ -111,6 +113,7 @@ INSTALLED_APPS = (
     'nodeconductor.landing',
     'rest_framework',
     'rest_framework_swagger',
+    'jsoneditor',
 )
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
@@ -222,6 +225,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Fri Apr 7 2017 Jenkins <jenkins@opennodecloud.com> - 0.132.0-1.el7
+- New upstream release
+
 * Tue Apr 4 2017 Jenkins <jenkins@opennodecloud.com> - 0.131.0-1.el7
 - New upstream release
 

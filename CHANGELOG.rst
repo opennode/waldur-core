@@ -5,6 +5,14 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.132.0
+---------------
+- Integrate JSONEditor widgets from django-jsoneditor for JSON fields in admin.
+- Make shared field more visible on service settings creation form.
+- Hide non-relevant fields for selected service on service settings creation form.
+- Make ability for org owners to manage other org owners configurable.
+- Allow to enable/disable backend fields and quotas editing on admin.
+
 Release 0.131.0
 ---------------
 - VirtualMachine user_data is no longer validated against safe yml format.

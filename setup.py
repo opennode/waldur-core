@@ -44,11 +44,12 @@ install_requires = [
     'requests>=2.6.0,!=2.12.2,!=2.13.0',
     'sqlparse>=0.1.11',
     'urllib3<1.18',
+    'django-jsoneditor>=0.0.5',
 ]
 
 setup(
     name='nodeconductor',
-    version='0.131.0',
+    version='0.132.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

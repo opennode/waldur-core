@@ -52,6 +52,7 @@ INSTALLED_APPS = (
     'django_fsm',
     'reversion',
     'taggit',
+    'jsoneditor',
 )
 INSTALLED_APPS += ADMIN_INSTALLED_APPS
 
@@ -256,6 +257,8 @@ NODECONDUCTOR = {
     'SUSPEND_UNPAID_CUSTOMERS': False,
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
     'INVITATION_LIFETIME': timedelta(weeks=1),
+    'OWNERS_CAN_MANAGE_OWNERS': True,
+    'BACKEND_FIELDS_EDITABLE': True,
 }
 
 

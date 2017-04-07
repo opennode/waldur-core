@@ -10,6 +10,7 @@ from rest_framework import status
 from rest_framework import test
 from rest_framework.reverse import reverse
 
+from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure import serializers
 from nodeconductor.structure import tasks
 from nodeconductor.structure import views
@@ -168,6 +169,15 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             }
         )
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=False)
+    def test_customer_owner_can_not_grant_new_role_within_his_customer_if_settings_are_tweaked(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='first',
+            affected_user='no_role',
+            affected_customer='first',
+            expected_status=status.HTTP_403_FORBIDDEN,
+        )
+
     def test_project_admin_cannot_grant_role_within_his_customer(self):
         self.assert_user_access_to_permission_granting(
             login_user='first_admin',
@@ -254,6 +264,15 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_user='second',
             affected_customer='second',
             expected_status=status.HTTP_404_NOT_FOUND,
+        )
+
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=False)
+    def test_customer_owner_can_not_revoke_role_within_his_customer_if_settings_are_tweaked(self):
+        self.assert_user_access_to_permission_revocation(
+            login_user='first',
+            affected_user='first',
+            affected_customer='first',
+            expected_status=status.HTTP_403_FORBIDDEN,
         )
 
     def test_project_admin_cannot_revoke_role_within_his_customer(self):
@@ -424,6 +443,7 @@ class CustomerPermissionExpirationTest(test.APITransactionTestCase):
     def setUp(self):
         permission = factories.CustomerPermissionFactory()
         self.user = permission.user
+        self.customer = permission.customer
         self.url = factories.CustomerPermissionFactory.get_url(permission)
 
     def test_user_can_not_update_permission_expiration_time_for_himself(self):
@@ -445,6 +465,30 @@ class CustomerPermissionExpirationTest(test.APITransactionTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
+
+    def test_owner_can_update_permission_expiration_time_for_other_owner_in_same_customer(self):
+        owner = factories.UserFactory()
+        self.customer.add_user(owner, CustomerRole.OWNER)
+        self.client.force_authenticate(user=owner)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.put(self.url, {
+            'expiration_time': expiration_time
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
+
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=False)
+    def test_owner_can_not_update_permission_expiration_time_for_other_owner_if_settings_are_tweaked(self):
+        owner = factories.UserFactory()
+        self.customer.add_user(owner, CustomerRole.OWNER)
+        self.client.force_authenticate(user=owner)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.put(self.url, {
+            'expiration_time': expiration_time
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_user_can_not_set_permission_expiration_time_lower_than_current(self):
         staff_user = factories.UserFactory(is_staff=True)
@@ -468,7 +512,7 @@ class CustomerPermissionExpirationTest(test.APITransactionTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_can_set_expiration_time_role_when_role_is_created(self):
+    def test_user_can_set_expiration_time_when_role_is_created(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)
 
