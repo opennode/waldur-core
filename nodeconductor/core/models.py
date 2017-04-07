@@ -529,9 +529,14 @@ class AbstractFieldTracker(FieldTracker):
 
 class BackendModelMixin(object):
     """
-    Adds a 'get_backend_fields' method which returns a list of fields that are handled on backend.
+    Represents model that is connected to backend object. 
+
+    This model cannot be created or updated via admin, because we do not support queries to backend from admin interface.   
     """
 
     @classmethod
     def get_backend_fields(cls):
+        """
+        Returns a list of fields that are handled on backend.
+        """
         return ()
