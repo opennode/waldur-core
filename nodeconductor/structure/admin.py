@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
@@ -20,6 +21,24 @@ from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors, utils
+
+
+class BackendModelAdmin(admin.ModelAdmin):
+
+    def has_add_permission(self, request):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = super(BackendModelAdmin, self).get_readonly_fields(request, obj)
+
+        if not obj:
+            return fields
+
+        if not settings.NODECONDUCTOR['BACKEND_FIELDS_EDITABLE']:
+            instance_class = type(obj)
+            fields = fields + instance_class.get_backend_fields()
+
+        return fields
 
 
 class FormRequestAdminMixin(object):
@@ -394,7 +413,7 @@ class DerivedFromSharedSettingsResourceFilter(SimpleListFilter):
             return queryset
 
 
-class ResourceAdmin(admin.ModelAdmin):
+class ResourceAdmin(BackendModelAdmin):
     readonly_fields = ('error_message',)
     list_display = ('uuid', 'name', 'backend_id', 'state', 'created',
                     'get_service', 'get_project', 'error_message', 'get_settings_shared')

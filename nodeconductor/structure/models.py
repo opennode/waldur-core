@@ -765,7 +765,7 @@ class Service(core_models.UuidMixin,
             descendant.delete()
 
 
-class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.Model):
+class BaseServiceProperty(core_models.BackendModelMixin, core_models.UuidMixin, core_models.NameMixin, models.Model):
     """ Base service properties like image, flavor, region,
         which are usually used for Resource provisioning.
     """
@@ -777,6 +777,10 @@ class BaseServiceProperty(core_models.UuidMixin, core_models.NameMixin, models.M
     def get_url_name(cls):
         """ This name will be used by generic relationships to membership model for URL creation """
         return '{}-{}'.format(cls._meta.app_label, cls.__name__.lower())
+
+    @classmethod
+    def get_backend_fields(cls):
+        return super(BaseServiceProperty, cls).get_backend_fields() + ('backend_id', 'name')
 
 
 @python_2_unicode_compatible
@@ -968,6 +972,7 @@ class ResourceMixin(MonitoringModelMixin,
                     core_models.DescribableMixin,
                     core_models.NameMixin,
                     core_models.DescendantMixin,
+                    core_models.BackendModelMixin,
                     LoggableMixin,
                     TagMixin,
                     TimeStampedModel,
@@ -988,6 +993,10 @@ class ResourceMixin(MonitoringModelMixin,
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
     start_time = models.DateTimeField(blank=True, null=True)
+
+    @classmethod
+    def get_backend_fields(cls):
+        return super(ResourceMixin, cls).get_backend_fields() + ('backend_id',)
 
     def get_backend(self, **kwargs):
         return self.service_project_link.get_backend(**kwargs)
