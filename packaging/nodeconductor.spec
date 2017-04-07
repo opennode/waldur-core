@@ -66,6 +66,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # systemd package provides _unitdir RPM macro
 BuildRequires: python-django >= 1.9, python-django < 1.10
 BuildRequires: python-django-fluent-dashboard
+BuildRequires: python-django-jsoneditor >= 0.0.5
 BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
 BuildRequires: python-django-rest-swagger = 2.1.1
 BuildRequires: python-setuptools
@@ -112,6 +113,7 @@ INSTALLED_APPS = (
     'nodeconductor.landing',
     'rest_framework',
     'rest_framework_swagger',
+    'jsoneditor',
 )
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
