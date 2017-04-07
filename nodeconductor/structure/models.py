@@ -996,7 +996,7 @@ class ResourceMixin(MonitoringModelMixin,
 
     @classmethod
     def get_backend_fields(cls):
-        return ('backend_id',)
+        return super(ResourceMixin, cls).get_backend_fields() + ('backend_id',)
 
     def get_backend(self, **kwargs):
         return self.service_project_link.get_backend(**kwargs)
