@@ -368,6 +368,10 @@ class RuntimeStateMixin(models.Model):
 
     runtime_state = models.CharField(_('runtime state'), max_length=150, blank=True)
 
+    @classmethod
+    def get_active_state(cls):
+        return cls.RuntimeStates.ONLINE
+
 
 # This Mixin should replace SynchronizableMixin after NC-1237 implementation.
 class StateMixin(ErrorMessageMixin):

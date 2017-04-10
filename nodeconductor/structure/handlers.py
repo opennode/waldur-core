@@ -11,7 +11,7 @@ from nodeconductor.core.models import SynchronizationStates, StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.models import (Customer, CustomerPermission, Project, ProjectPermission,
-                                            Service, ServiceSettings, NewResource)
+                                            Service, ServiceSettings)
 
 
 logger = logging.getLogger(__name__)
@@ -300,11 +300,18 @@ def delete_service_settings_on_service_delete(sender, instance, **kwargs):
         service.settings.delete()
 
 
-# XXX: This handler works wrongly. Should be fixed in WAL-641
-def init_resource_start_time(sender, instance, name, source, target, **kwargs):
-    if target == NewResource.States.OK:
-        instance.start_time = timezone.now()
-        instance.save(update_fields=['start_time'])
+def init_resource_start_time(sender, instance, created=False, **kwargs):
+    if created:
+        return
+
+    if not instance.tracker.has_changed('runtime_state'):
+        return
+
+    if instance.runtime_state != instance.get_active_state():
+        return
+
+    instance.start_time = timezone.now()
+    instance.save(update_fields=['start_time'])
 
 
 def delete_service_settings_on_scope_delete(sender, instance, **kwargs):

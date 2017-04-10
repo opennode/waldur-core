@@ -346,7 +346,7 @@ class Customer(core_models.UuidMixin,
             path_to_scope='project.customer',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: VirtualMachineMixin.get_all_models(),
+            target_models=lambda: VirtualMachine.get_all_models(),
             path_to_scope='project.customer',
         )
         nc_private_cloud_count = quotas_fields.CounterQuotaField(
@@ -520,7 +520,7 @@ class Project(core_models.DescribableMixin,
             path_to_scope='project',
         )
         nc_vm_count = quotas_fields.CounterQuotaField(
-            target_models=lambda: VirtualMachineMixin.get_all_models(),
+            target_models=lambda: VirtualMachine.get_all_models(),
             path_to_scope='project',
         )
         nc_private_cloud_count = quotas_fields.CounterQuotaField(
@@ -904,6 +904,7 @@ class ApplicationMixin(models.Model):
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
 
+# Deprecated: use VirtualMachine class instead
 class VirtualMachineMixin(CoordinatesMixin):
     def __init__(self, *args, **kwargs):
         AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
@@ -923,6 +924,7 @@ class VirtualMachineMixin(CoordinatesMixin):
     user_data = models.TextField(
         blank=True,
         help_text=_('Additional data that will be added to instance on provisioning'))
+    start_time = models.DateTimeField(blank=True, null=True)
 
     class Meta(object):
         abstract = True
@@ -992,7 +994,6 @@ class ResourceMixin(MonitoringModelMixin,
 
     service_project_link = NotImplemented
     backend_id = models.CharField(max_length=255, blank=True)
-    start_time = models.DateTimeField(blank=True, null=True)
 
     @classmethod
     def get_backend_fields(cls):
@@ -1078,6 +1079,12 @@ class ResourceMixin(MonitoringModelMixin,
 
 # TODO: rename to Resource
 class NewResource(ResourceMixin, core_models.StateMixin):
+
+    class Meta(object):
+        abstract = True
+
+
+class VirtualMachine(VirtualMachineMixin, core_models.RuntimeStateMixin, NewResource):
 
     class Meta(object):
         abstract = True

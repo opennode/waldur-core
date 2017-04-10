@@ -1131,7 +1131,7 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     def _filter_by_category(self, resource_models):
         choices = {
             'apps': models.ApplicationMixin.get_all_models(),
-            'vms': models.VirtualMachineMixin.get_all_models(),
+            'vms': models.VirtualMachine.get_all_models(),
             'private_clouds': models.PrivateCloud.get_all_models(),
             'storages': models.Storage.get_all_models(),
         }
@@ -1425,7 +1425,7 @@ class ProjectCountersView(BaseCounterView):
         })
 
     def get_vms(self):
-        return self._total_count(models.VirtualMachineMixin.get_all_models())
+        return self._total_count(models.VirtualMachine.get_all_models())
 
     def get_apps(self):
         return self._total_count(models.ApplicationMixin.get_all_models())
@@ -1819,7 +1819,6 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
         SlaFilter,
         MonitoringItemFilter,
         filters.TagsFilter,
-        filters.StartTimeFilter
     )
     metadata_class = ActionsMetadata
 
@@ -1864,6 +1863,9 @@ class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
 
 
 class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
+    filter_backends = BaseResourceExecutorViewSet.filter_backends + (
+        filters.StartTimeFilter,
+    )
     filter_class = filters.BaseResourceFilter
     runtime_state_executor = NotImplemented
     runtime_acceptable_states = {
@@ -2092,7 +2094,7 @@ class QuotaTimelineCollector(object):
 class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
     """ Basic view set for all resource view sets. """
     lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend, filters.StartTimeFilter)
+    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
     metadata_class = ActionsMetadata
     unsafe_methods_permissions = [permissions.is_administrator]
     update_validators = partial_update_validators = [core_validators.StateValidator(models.NewResource.States.OK)]
