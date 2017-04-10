@@ -272,8 +272,8 @@ class ServiceTypeFilter(SimpleListFilter):
 
 class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
-    list_filter = (ServiceTypeFilter, 'state', 'shared')
+    list_display = ('name', 'customer', 'get_type_display', 'state', 'error_message')
+    list_filter = (ServiceTypeFilter, 'state')
     change_readonly_fields = ('shared', 'customer')
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
@@ -284,6 +284,9 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
     common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications')
+
+    # must be specified explicitly not to be constructed from model name by default.
+    change_form_template = 'admin/structure/servicesettings/change_form.html'
 
     def get_type_display(self, obj):
         return obj.get_type_display()
@@ -311,7 +314,9 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         # filter out certain fields from the creation form
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         if 'shared' in form.base_fields:
-            form.base_fields['shared'].initial = True
+            form.base_fields['shared'].initial = True if self.model is models.SharedServiceSettings else False
+            form.base_fields['shared'].widget.attrs['disabled'] = True
+
         return form
 
     def get_urls(self):
@@ -465,4 +470,5 @@ class VirtualMachineAdmin(ResourceAdmin):
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)
+admin.site.register(models.PrivateServiceSettings, ServiceSettingsAdmin)
+admin.site.register(models.SharedServiceSettings, ServiceSettingsAdmin)

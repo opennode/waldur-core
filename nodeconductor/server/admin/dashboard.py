@@ -64,13 +64,11 @@ class CustomIndexDashboard(FluentIndexDashboard):
         # add custom links
         quick_access_links.extend(settings.FLUENT_DASHBOARD_QUICK_ACCESS_LINKS)
 
-        for model in (structure_models.Project, structure_models.Customer, core_models.User):
+        for model in (structure_models.Project,
+                      structure_models.Customer,
+                      core_models.User,
+                      structure_models.SharedServiceSettings):
             quick_access_links.append(self._get_link_to_model(model))
-
-        shared_service_setttings = self._get_link_to_model(structure_models.ServiceSettings)
-        shared_service_setttings['url'] = '%s?shared__exact=1' % shared_service_setttings['url']
-        shared_service_setttings['title'] = _('Shared service settings')
-        quick_access_links.append(shared_service_setttings)
 
         return quick_access_links
 
@@ -103,9 +101,9 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         result_module = modules.LinkList(title='Shared service settings in erred state')
         result_module.template = 'admin/dashboard/erred_link_list.html'
-        erred_state = structure_models.ServiceSettings.States.ERRED
+        erred_state = structure_models.SharedServiceSettings.States.ERRED
 
-        queryset = structure_models.ServiceSettings.objects.filter(shared=True)
+        queryset = structure_models.SharedServiceSettings.objects
         settings_in_erred_state = queryset.filter(state=erred_state).count()
 
         if settings_in_erred_state:

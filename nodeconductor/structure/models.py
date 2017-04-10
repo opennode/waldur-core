@@ -32,7 +32,8 @@ from nodeconductor.core.validators import validate_name
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
-from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user, ServiceSettingsManager
+from nodeconductor.structure.managers import (StructureManager, filter_queryset_for_user, ServiceSettingsManager,
+                                              SharedServiceSettingsManager, PrivateServiceSettingsManager)
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
@@ -691,6 +692,26 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
         for service in self.get_services():
             service.unlink_descendants()
             service.delete()
+
+
+class SharedServiceSettings(ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = SharedServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = 'Shared service settings'
+
+
+class PrivateServiceSettings(ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = PrivateServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = 'Private service settings'
 
 
 @python_2_unicode_compatible
