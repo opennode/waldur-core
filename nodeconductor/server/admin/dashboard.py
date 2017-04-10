@@ -6,7 +6,7 @@ from fluent_dashboard.modules import AppIconList
 
 from nodeconductor import __version__
 from nodeconductor.core import NodeConductorExtension, models as core_models
-from nodeconductor.structure import models as structure_models, SupportedServices
+from nodeconductor.structure import models as structure_models, SupportedServices, admin as structure_admin
 
 
 class CustomIndexDashboard(FluentIndexDashboard):
@@ -67,7 +67,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         for model in (structure_models.Project,
                       structure_models.Customer,
                       core_models.User,
-                      structure_models.SharedServiceSettings):
+                      structure_admin.SharedServiceSettings):
             quick_access_links.append(self._get_link_to_model(model))
 
         return quick_access_links
@@ -101,9 +101,9 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         result_module = modules.LinkList(title='Shared service settings in erred state')
         result_module.template = 'admin/dashboard/erred_link_list.html'
-        erred_state = structure_models.SharedServiceSettings.States.ERRED
+        erred_state = structure_admin.SharedServiceSettings.States.ERRED
 
-        queryset = structure_models.SharedServiceSettings.objects
+        queryset = structure_admin.SharedServiceSettings.objects
         settings_in_erred_state = queryset.filter(state=erred_state).count()
 
         if settings_in_erred_state:

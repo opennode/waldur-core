@@ -20,7 +20,7 @@ from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
 from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices, executors, utils
+from nodeconductor.structure import models, SupportedServices, executors, utils, managers
 
 
 class BackendModelAdmin(admin.ModelAdmin):
@@ -467,8 +467,28 @@ class VirtualMachineAdmin(ResourceAdmin):
     detect_coordinates.short_description = _('Detect coordinates of virtual machines')
 
 
+class SharedServiceSettings(models.ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = managers.SharedServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = 'Shared service settings'
+
+
+class PrivateServiceSettings(models.ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = managers.PrivateServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = 'Private service settings'
+
+
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.PrivateServiceSettings, ServiceSettingsAdmin)
-admin.site.register(models.SharedServiceSettings, ServiceSettingsAdmin)
+admin.site.register(PrivateServiceSettings, ServiceSettingsAdmin)
+admin.site.register(SharedServiceSettings, ServiceSettingsAdmin)

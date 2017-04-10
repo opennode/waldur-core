@@ -694,26 +694,6 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
             service.delete()
 
 
-class SharedServiceSettings(ServiceSettings):
-    """Required for a clear separation of shared/unshared service settings on admin."""
-
-    objects = SharedServiceSettingsManager()
-
-    class Meta(object):
-        proxy = True
-        verbose_name_plural = 'Shared service settings'
-
-
-class PrivateServiceSettings(ServiceSettings):
-    """Required for a clear separation of shared/unshared service settings on admin."""
-
-    objects = PrivateServiceSettingsManager()
-
-    class Meta(object):
-        proxy = True
-        verbose_name_plural = 'Private service settings'
-
-
 @python_2_unicode_compatible
 class Service(core_models.UuidMixin,
               core_models.DescendantMixin,
