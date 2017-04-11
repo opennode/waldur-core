@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Restructure admin menu.
 
 Release 0.133.0
 ---------------
