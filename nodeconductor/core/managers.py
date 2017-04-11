@@ -94,6 +94,9 @@ class SummaryQuerySet(object):
         self.querysets = [qs.order_by(copy.deepcopy(order_by)) for qs in self.querysets]
         return self
 
+    def count(self):
+        return sum([qs.count() for qs in self.querysets])
+
     def all(self):
         return self
 
