@@ -20,7 +20,7 @@ from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
 from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices, executors, utils
+from nodeconductor.structure import models, SupportedServices, executors, utils, managers
 
 
 class BackendModelAdmin(admin.ModelAdmin):
@@ -272,8 +272,8 @@ class ServiceTypeFilter(SimpleListFilter):
 
 class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     readonly_fields = ('error_message',)
-    list_display = ('name', 'customer', 'get_type_display', 'shared', 'state', 'error_message')
-    list_filter = (ServiceTypeFilter, 'state', 'shared')
+    list_display = ('name', 'customer', 'get_type_display', 'state', 'error_message')
+    list_filter = (ServiceTypeFilter, 'state')
     change_readonly_fields = ('shared', 'customer')
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
@@ -284,6 +284,9 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
     common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications')
+
+    # must be specified explicitly not to be constructed from model name by default.
+    change_form_template = 'admin/structure/servicesettings/change_form.html'
 
     def get_type_display(self, obj):
         return obj.get_type_display()
@@ -311,7 +314,9 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         # filter out certain fields from the creation form
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         if 'shared' in form.base_fields:
-            form.base_fields['shared'].initial = True
+            form.base_fields['shared'].initial = True if self.model is models.SharedServiceSettings else False
+            form.base_fields['shared'].widget.attrs['disabled'] = True
+
         return form
 
     def get_urls(self):
@@ -462,7 +467,28 @@ class VirtualMachineAdmin(ResourceAdmin):
     detect_coordinates.short_description = _('Detect coordinates of virtual machines')
 
 
+class SharedServiceSettings(models.ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = managers.SharedServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = 'Shared service settings'
+
+
+class PrivateServiceSettings(models.ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = managers.PrivateServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = 'Private service settings'
+
+
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.ServiceSettings, ServiceSettingsAdmin)
+admin.site.register(PrivateServiceSettings, ServiceSettingsAdmin)
+admin.site.register(SharedServiceSettings, ServiceSettingsAdmin)

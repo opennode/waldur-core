@@ -1,6 +1,5 @@
 from django.db import models
 
-from nodeconductor.core import models as core_models
 from nodeconductor.quotas.fields import QuotaField
 from nodeconductor.quotas.models import QuotaModelMixin
 from nodeconductor.structure import models as structure_models
@@ -31,11 +30,7 @@ class TestServiceProjectLink(structure_models.ServiceProjectLink):
         return 'test-spl'
 
 
-class TestNewInstance(core_models.RuntimeStateMixin,
-                      core_models.StateMixin,
-                      QuotaModelMixin,
-                      structure_models.VirtualMachineMixin,
-                      structure_models.ResourceMixin):
+class TestNewInstance(QuotaModelMixin, structure_models.VirtualMachine):
 
     service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
     flavor_name = models.CharField(max_length=255, blank=True)

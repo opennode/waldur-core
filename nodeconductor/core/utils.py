@@ -107,24 +107,6 @@ def month_end(date):
     return timezone.make_aware(last_second_of_month, timezone.get_current_timezone())
 
 
-def request_api(request, url_or_view_name, method='GET', data=None, params=None, verify=False):
-    """ Make a request to API internally.
-        Use 'request.user' for authentication.
-        Return a JSON response.
-    """
-
-    token = Token.objects.get(user=request.user)
-    method = getattr(requests, method.lower())
-    if url_or_view_name.startswith('http'):
-        url = url_or_view_name
-    else:
-        url = request.build_absolute_uri(reverse(url_or_view_name))
-
-    response = method(url, headers={'Authorization': 'Token %s' % token.key}, data=data, params=params, verify=verify)
-    setattr(response, 'total', int(response.headers.get('X-Result-Count', 0)))
-    return response
-
-
 def pwgen(pw_len=16):
     """ Generate a random password with the given length.
         Allowed chars does not have "I" or "O" or letters and
