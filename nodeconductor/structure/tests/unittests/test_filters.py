@@ -12,10 +12,10 @@ class AggregateFilterTest(TestCase):
     def setUp(self):
         self.customer = factories.CustomerFactory()
         self.project = factories.ProjectFactory()
-        self.sut = AggregateFilter()
+        self.aggregate_filter = AggregateFilter()
         self.queryset = logging_models.Alert.objects
 
-    def test_service_alert_is_included_when_customer_is_the_same(self):
+    def test_service_alert_is_returned_when_aggregate_customer_is_the_same_as_its_scope_customer(self):
         scope = factories.TestServiceFactory(customer=self.customer)
         alert = logging_factories.AlertFactory(scope=scope)
 
@@ -24,29 +24,28 @@ class AggregateFilterTest(TestCase):
         self.assertEqual(len(result), 1)
         self.assertTrue(result.filter(uuid=alert.uuid).exists())
 
-    def test_project_alert_is_not_included_when_it_belongs_to_another_customer(self):
+    def test_project_alert_is_not_returned_when_its_scope_belongs_to_another_customer(self):
         alert = logging_factories.AlertFactory(scope=factories.ProjectFactory())
 
         result = self._make_aggregate_request('customer', self.customer.uuid.hex)
 
         self.assertFalse(result.filter(uuid=alert.uuid).exists())
 
-    def test_only_customer_related_scopes_are_returned(self):
+    def test_only_alerts_where_scopes_customer_is_the_aggregated_one_are_returned(self):
         customer_related_alerts = []
-        invalid_alert = logging_factories.AlertFactory(scope=factories.ProjectFactory())
+        logging_factories.AlertFactory(scope=factories.ProjectFactory())
         spl = factories.TestServiceProjectLinkFactory(service__customer=self.customer)
         customer_related_alerts.append(logging_factories.AlertFactory(scope=spl))
         service = factories.TestServiceFactory(customer=self.customer)
         customer_related_alerts.append(logging_factories.AlertFactory(scope=service))
-        customer_related_alerts_ids = [a.uuid for a in customer_related_alerts]
+        expected_alerts_ids = [alert.uuid for alert in customer_related_alerts]
 
         result = self._make_aggregate_request('customer', self.customer.uuid.hex)
+        actual_alerts_ids = [alert.uuid for alert in result]
 
-        self.assertEqual(len(result), len(customer_related_alerts))
-        self.assertEqual(result.filter(uuid__in=customer_related_alerts_ids).count(), len(customer_related_alerts_ids))
-        self.assertFalse(result.filter(uuid=invalid_alert.uuid).exists())
+        self.assertItemsEqual(expected_alerts_ids, actual_alerts_ids)
 
-    def test_service_project_link_alert_is_not_returned_when_it_is_related_to_another_project(self):
+    def test_service_project_link_alert_is_not_returned_when_its_scope_is_related_to_another_project(self):
         not_owned_alert = logging_factories.AlertFactory(scope=factories.TestServiceProjectLinkFactory())
         spl = factories.TestServiceProjectLinkFactory(project=self.project)
         owned_alert = logging_factories.AlertFactory(scope=spl)
@@ -63,8 +62,4 @@ class AggregateFilterTest(TestCase):
             'uuid': uuid,
         }
 
-        return self.sut.filter(request, self.queryset, None)
-
-
-
-
+        return self.aggregate_filter.filter(request, self.queryset, None)

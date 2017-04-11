@@ -599,7 +599,7 @@ def filter_alerts_by_aggregate(queryset, aggregate, user, uuid=None):
     if uuid:
         aggregate_query = aggregate_query.filter(uuid=uuid)
 
-    aggregates_ids = list(aggregate_query.values_list('id', flat=True))
+    aggregates_ids = aggregate_query.values_list('id', flat=True)
     query = {'%s__in' % aggregate: aggregates_ids}
 
     all_models = models.ResourceMixin.get_all_models() + models.ServiceProjectLink.get_all_models()
