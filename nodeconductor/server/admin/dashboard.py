@@ -98,7 +98,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         Returns a LinkList based module which contains link to shared service setting instances in ERRED state.
         """
-        result_module = modules.LinkList(title='Shared service settings in erred state')
+        result_module = modules.LinkList(title='Shared provider settings in erred state')
         result_module.template = 'admin/dashboard/erred_link_list.html'
         erred_state = structure_admin.SharedServiceSettings.States.ERRED
 
