@@ -12,6 +12,28 @@ import nodeconductor.logging.middleware
 TOKEN_KEY = settings.NODECONDUCTOR.get('TOKEN_KEY', 'x-auth-token')
 
 
+class AuthenticationBackend(object):
+    """
+    Enables only active superuser and staff to execute any action via admin site.
+    """
+
+    def authenticate(self, username, password):
+        """
+        Always return ``None`` to prevent authentication within this backend.
+        """
+        return None
+
+    def has_perm(self, user_obj, perm, obj=None):
+        if not user_obj.is_active:
+            return False
+        return user_obj.is_superuser or user_obj.is_staff
+
+    def has_module_perms(self, user_obj, app_label):
+        if not user_obj.is_active:
+            return False
+        return user_obj.is_superuser or user_obj.is_staff
+
+
 class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
     """
     Custom token-based authentication.
