@@ -904,70 +904,6 @@ class ApplicationMixin(models.Model):
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
 
-# Deprecated: use VirtualMachine class instead
-class VirtualMachineMixin(CoordinatesMixin):
-    def __init__(self, *args, **kwargs):
-        AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
-        super(VirtualMachineMixin, self).__init__(*args, **kwargs)
-
-    cores = models.PositiveSmallIntegerField(default=0, help_text=_('Number of cores in a VM'))
-    ram = models.PositiveIntegerField(default=0, help_text=_('Memory size in MiB'))
-    disk = models.PositiveIntegerField(default=0, help_text=_('Disk size in MiB'))
-    min_ram = models.PositiveIntegerField(default=0, help_text=_('Minimum memory size in MiB'))
-    min_disk = models.PositiveIntegerField(default=0, help_text=_('Minimum disk size in MiB'))
-
-    image_name = models.CharField(max_length=150, blank=True)
-
-    key_name = models.CharField(max_length=50, blank=True)
-    key_fingerprint = models.CharField(max_length=47, blank=True)
-
-    user_data = models.TextField(
-        blank=True,
-        help_text=_('Additional data that will be added to instance on provisioning'))
-    start_time = models.DateTimeField(blank=True, null=True)
-
-    class Meta(object):
-        abstract = True
-
-    def detect_coordinates(self):
-        if self.external_ips:
-            return get_coordinates_by_ip(self.external_ips)
-
-    def get_access_url(self):
-        if self.external_ips:
-            return self.external_ips
-        if self.internal_ips:
-            return self.internal_ips
-        return None
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def get_all_models(cls):
-        return [model for model in apps.get_models() if issubclass(model, cls)]
-
-    @property
-    def external_ips(self):
-        """
-        Returns a list of external IPs.
-        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
-        For instance:
-         - SaltStack (aws) handles IPs as private and public IP addresses;
-         - DigitalOcean has only 1 external ip called ip_address.
-        """
-        return []
-
-    @property
-    def internal_ips(self):
-        """
-        Returns a list of internal IPs.
-        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
-        For instance:
-         - SaltStack (aws) handles IPs as private and public IP addresses;
-         - DigitalOcean does not support internal IP at the moment.
-        """
-        return []
-
-
 @python_2_unicode_compatible
 class ResourceMixin(MonitoringModelMixin,
                     core_models.UuidMixin,
@@ -1084,10 +1020,68 @@ class NewResource(ResourceMixin, core_models.StateMixin):
         abstract = True
 
 
-class VirtualMachine(VirtualMachineMixin, core_models.RuntimeStateMixin, NewResource):
+class VirtualMachine(CoordinatesMixin, core_models.RuntimeStateMixin, NewResource):
+
+    def __init__(self, *args, **kwargs):
+        AbstractFieldTracker().finalize_class(self.__class__, 'tracker')
+        super(VirtualMachine, self).__init__(*args, **kwargs)
+
+    cores = models.PositiveSmallIntegerField(default=0, help_text=_('Number of cores in a VM'))
+    ram = models.PositiveIntegerField(default=0, help_text=_('Memory size in MiB'))
+    disk = models.PositiveIntegerField(default=0, help_text=_('Disk size in MiB'))
+    min_ram = models.PositiveIntegerField(default=0, help_text=_('Minimum memory size in MiB'))
+    min_disk = models.PositiveIntegerField(default=0, help_text=_('Minimum disk size in MiB'))
+
+    image_name = models.CharField(max_length=150, blank=True)
+
+    key_name = models.CharField(max_length=50, blank=True)
+    key_fingerprint = models.CharField(max_length=47, blank=True)
+
+    user_data = models.TextField(
+        blank=True,
+        help_text=_('Additional data that will be added to instance on provisioning'))
+    start_time = models.DateTimeField(blank=True, null=True)
 
     class Meta(object):
         abstract = True
+
+    def detect_coordinates(self):
+        if self.external_ips:
+            return get_coordinates_by_ip(self.external_ips)
+
+    def get_access_url(self):
+        if self.external_ips:
+            return self.external_ips
+        if self.internal_ips:
+            return self.internal_ips
+        return None
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_models(cls):
+        return [model for model in apps.get_models() if issubclass(model, cls)]
+
+    @property
+    def external_ips(self):
+        """
+        Returns a list of external IPs.
+        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
+        For instance:
+         - SaltStack (aws) handles IPs as private and public IP addresses;
+         - DigitalOcean has only 1 external ip called ip_address.
+        """
+        return []
+
+    @property
+    def internal_ips(self):
+        """
+        Returns a list of internal IPs.
+        Implementation of this method in all derived classes guarantees all virtual machine have the same interface.
+        For instance:
+         - SaltStack (aws) handles IPs as private and public IP addresses;
+         - DigitalOcean does not support internal IP at the moment.
+        """
+        return []
 
 
 class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin, NewResource):

@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Update start time of virtual machine if runtime state changed.
+- Drop VirtualMachineMixin.
 
 Release 0.132.0
 ---------------
