@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Remove inner HEAD requests from counter views.
+- Restructure admin menu.
 
 Release 0.132.0
 ---------------
