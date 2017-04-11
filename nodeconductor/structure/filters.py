@@ -591,8 +591,8 @@ def filter_alerts_by_aggregate(queryset, aggregate, user, uuid=None):
         'customer': models.Customer,
     }
 
-    if aggregate not in valid_model_choices:
-        return queryset
+    error = '"%s" parameter is not found. Valid choices are: %s.' % (aggregate, ', '.join(valid_model_choices.keys()))
+    assert (aggregate in valid_model_choices), error
 
     aggregate_query = filter_queryset_for_user(valid_model_choices[aggregate].objects, user)
 
