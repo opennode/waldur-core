@@ -74,6 +74,10 @@ var service_settings_module = (function(self, jQuery) {
             displayOnlyServiceFields(selectedServiceType);
             diplayOnlyServiceRelatedHints(selectedServiceType);
         });
+
+        if ($(".field-type input:checked").val() !== undefined) {
+            $(".field-type").trigger("change");
+        }
     }
 
     function diplayOnlyServiceRelatedHints(serviceName) {
