@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import permission
-
 from django.conf import settings
 from django.conf.urls import include
 from django.conf.urls import url
@@ -21,7 +19,6 @@ from nodeconductor.users import urls as users_urls
 
 
 admin.autodiscover()
-permission.autodiscover()
 CostTrackingRegister.autodiscover()
 
 router = DefaultRouter()

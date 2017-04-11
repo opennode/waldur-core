@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Drop django-permission.
 
 Release 0.133.0
 ---------------
