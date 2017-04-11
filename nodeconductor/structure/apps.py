@@ -137,9 +137,9 @@ class StructureConfig(AppConfig):
 
         for index, model in enumerate(VirtualMachine.get_all_models()):
             signals.post_save.connect(
-                handlers.init_resource_start_time,
+                handlers.update_resource_start_time,
                 sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.init_resource_start_time_{}_{}'.format(
+                dispatch_uid='nodeconductor.structure.handlers.update_resource_start_time_{}_{}'.format(
                     model.__name__, index),
             )
 

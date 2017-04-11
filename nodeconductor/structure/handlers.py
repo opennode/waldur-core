@@ -300,18 +300,22 @@ def delete_service_settings_on_service_delete(sender, instance, **kwargs):
         service.settings.delete()
 
 
-def init_resource_start_time(sender, instance, created=False, **kwargs):
+def update_resource_start_time(sender, instance, created=False, **kwargs):
     if created:
         return
 
     if not instance.tracker.has_changed('runtime_state'):
         return
 
-    if instance.runtime_state != instance.get_active_state():
-        return
+    # queryset is needed in order to call update method which does not
+    # emit post_save signal, otherwise it's called recursively
+    queryset = instance._meta.model.objects.filter(pk=instance.pk)
 
-    instance.start_time = timezone.now()
-    instance.save(update_fields=['start_time'])
+    if instance.runtime_state == instance.get_online_state():
+        queryset.update(start_time=timezone.now())
+
+    if instance.runtime_state == instance.get_offline_state():
+        queryset.update(start_time=None)
 
 
 def delete_service_settings_on_scope_delete(sender, instance, **kwargs):

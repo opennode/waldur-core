@@ -369,8 +369,12 @@ class RuntimeStateMixin(models.Model):
     runtime_state = models.CharField(_('runtime state'), max_length=150, blank=True)
 
     @classmethod
-    def get_active_state(cls):
+    def get_online_state(cls):
         return cls.RuntimeStates.ONLINE
+
+    @classmethod
+    def get_offline_state(cls):
+        return cls.RuntimeStates.OFFLINE
 
 
 # This Mixin should replace SynchronizableMixin after NC-1237 implementation.

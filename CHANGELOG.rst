@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Update start time of virtual machine when it enters active runtime state.
+- Update start time of virtual machine if runtime state changed.
 
 Release 0.132.0
 ---------------
