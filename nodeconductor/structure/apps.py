@@ -11,7 +11,7 @@ class StructureConfig(AppConfig):
 
     def ready(self):
         from nodeconductor.core.models import CoordinatesMixin
-        from nodeconductor.structure.models import ResourceMixin, Service, TagMixin
+        from nodeconductor.structure.models import ResourceMixin, Service, TagMixin, VirtualMachine
         from nodeconductor.structure import handlers
         from nodeconductor.structure import signals as structure_signals
 
@@ -120,13 +120,6 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
-            fsm_signals.post_transition.connect(
-                handlers.init_resource_start_time,
-                sender=model,
-                dispatch_uid='nodeconductor.structure.handlers.init_resource_start_time_{}_{}'.format(
-                    model.__name__, index),
-            )
-
             signals.pre_delete.connect(
                 handlers.delete_service_settings_on_scope_delete,
                 sender=model,
@@ -141,6 +134,14 @@ class StructureConfig(AppConfig):
                     dispatch_uid='nodeconductor.structure.handlers.detect_vm_coordinates_{}_{}'.format(
                         model.__name__, index),
                 )
+
+        for index, model in enumerate(VirtualMachine.get_all_models()):
+            signals.post_save.connect(
+                handlers.update_resource_start_time,
+                sender=model,
+                dispatch_uid='nodeconductor.structure.handlers.update_resource_start_time_{}_{}'.format(
+                    model.__name__, index),
+            )
 
         structure_signals.customer_account_credited.connect(
             handlers.log_customer_account_credited,

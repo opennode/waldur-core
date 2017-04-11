@@ -3,8 +3,13 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Remove inner HEAD requests from counter views.
 - Restructure admin menu.
+
+Release 0.133.0
+---------------
+- Remove inner HEAD requests from counter views.
+- Update start time of virtual machine if runtime state changed.
+- Drop VirtualMachineMixin.
 
 Release 0.132.0
 ---------------
