@@ -3,6 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Remove inner HEAD requests from counter views.
 - Update start time of virtual machine if runtime state changed.
 - Drop VirtualMachineMixin.
 
