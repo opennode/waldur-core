@@ -474,7 +474,7 @@ class SharedServiceSettings(models.ServiceSettings):
 
     class Meta(object):
         proxy = True
-        verbose_name_plural = 'Shared service settings'
+        verbose_name_plural = 'Shared provider settings'
 
 
 class PrivateServiceSettings(models.ServiceSettings):
@@ -484,7 +484,7 @@ class PrivateServiceSettings(models.ServiceSettings):
 
     class Meta(object):
         proxy = True
-        verbose_name_plural = 'Private service settings'
+        verbose_name_plural = 'Private provider settings'
 
 
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)

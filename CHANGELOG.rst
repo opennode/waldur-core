@@ -4,6 +4,7 @@ CHANGELOG
 Release NEXT
 ------------
 - Drop django-permission.
+- Restructure admin menu.
 
 Release 0.133.0
 ---------------

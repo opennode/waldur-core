@@ -115,6 +115,6 @@ class InvitationViewSet(ProtectedViewSet):
         if invitation.state != models.Invitation.State.PENDING:
             return Response(status=status.HTTP_404_NOT_FOUND)
         elif invitation.civil_number:
-            return Response({'civil_number_required': True}, status=status.HTTP_200_OK)
+            return Response({'email': invitation.email, 'civil_number_required': True}, status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_200_OK)
+            return Response({'email': invitation.email}, status=status.HTTP_200_OK)
