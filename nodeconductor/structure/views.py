@@ -979,13 +979,6 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 
         serializer.save(user=user)
 
-    def perform_destroy(self, instance):
-        try:
-            instance.delete()
-        except Exception as e:
-            logger.exception(_("Can't remove SSH public key from backend."))
-            raise APIException(e)
-
 
 class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
                              core_views.ActionsViewSet):
@@ -1823,29 +1816,16 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
             event_context={'resource': resource})
 
 
-class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                                     core_views.StateExecutorViewSet,
-                                                     ResourceViewMixin,
-                                                     viewsets.ModelViewSet)):
-    filter_class = filters.BaseResourceFilter
-
-
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.BaseServicePropertyFilter
 
 
-class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
-                                          core_mixins.UpdateExecutorMixin,
-                                          core_mixins.DeleteExecutorMixin,
-                                          viewsets.ModelViewSet):
-    queryset = NotImplemented
-    serializer_class = NotImplemented
-    lookup_field = 'uuid'
-    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
-
-
-class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
-    filter_backends = BaseResourceExecutorViewSet.filter_backends + (
+class VirtualMachineViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                               core_mixins.RuntimeStateMixin,
+                                               core_views.StateExecutorViewSet,
+                                               ResourceViewMixin,
+                                               viewsets.ModelViewSet)):
+    filter_backends = ResourceViewMixin.filter_backends + (
         filters.StartTimeFilter,
     )
     filter_class = filters.BaseResourceFilter
