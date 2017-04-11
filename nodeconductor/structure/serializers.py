@@ -1271,7 +1271,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     class Meta(object):
         model = NotImplemented
         fields = MonitoringSerializerMixin.Meta.fields + (
-            'url', 'uuid', 'name', 'description', 'start_time',
+            'url', 'uuid', 'name', 'description',
             'service', 'service_name', 'service_uuid',
             'service_settings', 'service_settings_uuid',
             'service_settings_state', 'service_settings_error_message',
@@ -1282,7 +1282,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'access_url', 'is_link_valid',
         )
         protected_fields = ('service', 'service_project_link')
-        read_only_fields = ('start_time', 'error_message', 'backend_id')
+        read_only_fields = ('error_message', 'backend_id')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -1424,12 +1424,12 @@ class VirtualMachineSerializer(BaseResourceSerializer):
 
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + (
-            'cores', 'ram', 'disk', 'min_ram', 'min_disk',
+            'start_time', 'cores', 'ram', 'disk', 'min_ram', 'min_disk',
             'ssh_public_key', 'user_data', 'external_ips', 'internal_ips',
             'latitude', 'longitude', 'key_name', 'key_fingerprint', 'image_name'
         )
         read_only_fields = BaseResourceSerializer.Meta.read_only_fields + (
-            'cores', 'ram', 'disk', 'min_ram', 'min_disk',
+            'start_time', 'cores', 'ram', 'disk', 'min_ram', 'min_disk',
             'external_ips', 'internal_ips',
             'latitude', 'longitude', 'key_name', 'key_fingerprint', 'image_name'
         )
