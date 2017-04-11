@@ -345,6 +345,15 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
 
+    def test_user_can_rewrite_his_email_on_invitation_accept(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email='invitation@i.ua')
+        self.client.force_authenticate(user=self.user)
+
+        self.client.post(
+            factories.CustomerInvitationFactory.get_url(invitation, action='accept'), {'replace_email': True})
+
+        self.assertEqual(self.user.email, invitation.email)
+
     # Helper methods
     def _get_valid_project_invitation_payload(self, invitation=None, project_role=None):
         invitation = invitation or factories.ProjectInvitationFactory.build()
