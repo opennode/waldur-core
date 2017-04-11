@@ -18,10 +18,8 @@ from nodeconductor.core import models as core_models
 from nodeconductor.core.filters import BaseExternalFilter
 from nodeconductor.logging.filters import ExternalAlertFilterBackend
 from nodeconductor.structure import models
-from nodeconductor.structure import serializers
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.managers import filter_queryset_for_user
-
 
 User = auth.get_user_model()
 
@@ -581,32 +579,46 @@ class AggregateFilter(BaseExternalFilter):
         if 'aggregate' not in request.query_params:
             return queryset
 
-        serializer = serializers.AggregateSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
+        aggregate = request.query_params['aggregate']
+        uuid = request.query_params.get('uuid')
 
-        aggregates = serializer.get_aggregates(request.user)
-        projects = serializer.get_projects(request.user)
-        querysets = [aggregates, projects]
-        aggregates_ids = list(aggregates.values_list('id', flat=True))
-        query = {serializer.data['aggregate'] + '__in': aggregates_ids}
+        return filter_alerts_by_aggregate(queryset, aggregate, request.user, uuid)
 
-        all_models = (models.ResourceMixin.get_all_models() +
-                      models.ServiceProjectLink.get_all_models())
 
-        if serializer.data['aggregate'] == 'customer':
-            all_models += models.Service.get_all_models()
+def filter_alerts_by_aggregate(queryset, aggregate, user, uuid=None):
+    valid_model_choices = {
+        'project': models.Project,
+        'customer': models.Customer,
+    }
 
-        for model in all_models:
-            qs = model.objects.filter(**query).all()
-            querysets.append(filter_queryset_for_user(qs, request.user))
+    error = '"%s" parameter is not found. Valid choices are: %s.' % (aggregate, ', '.join(valid_model_choices.keys()))
+    assert (aggregate in valid_model_choices), error
 
-        aggregate_query = Q()
-        for qs in querysets:
-            content_type = ContentType.objects.get_for_model(qs.model)
-            ids = qs.values_list('id', flat=True)
-            aggregate_query |= Q(content_type=content_type, object_id__in=ids)
+    aggregate_query = filter_queryset_for_user(valid_model_choices[aggregate].objects, user)
 
-        return queryset.filter(aggregate_query)
+    if uuid:
+        aggregate_query = aggregate_query.filter(uuid=uuid)
+
+    aggregates_ids = aggregate_query.values_list('id', flat=True)
+    query = {'%s__in' % aggregate: aggregates_ids}
+
+    all_models = models.ResourceMixin.get_all_models() + models.ServiceProjectLink.get_all_models()
+    if aggregate == 'customer':
+        all_models += models.Service.get_all_models()
+        all_models.append(models.Project)
+
+    querysets = [aggregate_query]
+    for model in all_models:
+        qs = model.objects.filter(**query).all()
+        querysets.append(filter_queryset_for_user(qs, user))
+
+    aggregate_query = Q()
+    for qs in querysets:
+        content_type = ContentType.objects.get_for_model(qs.model)
+        ids = qs.values_list('id', flat=True)
+        aggregate_query |= Q(content_type=content_type, object_id__in=ids)
+
+    return queryset.filter(aggregate_query)
 
 ExternalAlertFilterBackend.register(AggregateFilter())
 

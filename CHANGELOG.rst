@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Remove inner HEAD requests from counter views.
 
 Release 0.132.0
 ---------------

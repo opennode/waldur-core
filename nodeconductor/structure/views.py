@@ -33,8 +33,10 @@ from reversion import revisions as reversion
 
 from nodeconductor.core import (
     filters as core_filters, mixins as core_mixins, models as core_models, exceptions as core_exceptions,
-    serializers as core_serializers, views as core_views, validators as core_validators)
-from nodeconductor.core.utils import request_api, datetime_to_timestamp, sort_dict
+    serializers as core_serializers, views as core_views, validators as core_validators, managers as core_managers)
+from nodeconductor.core.utils import datetime_to_timestamp, sort_dict
+from nodeconductor.logging import models as logging_models
+from nodeconductor.logging.loggers import expand_alert_groups
 from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import (
@@ -1316,17 +1318,19 @@ class BaseCounterView(viewsets.GenericViewSet):
     def get_fields(self):
         raise NotImplementedError()
 
+    def _get_alerts(self, aggregate_by):
+        alert_types_to_exclude = expand_alert_groups(self.request.query_params.getlist('exclude_features'))
+
+        return filters.filter_alerts_by_aggregate(
+            logging_models.Alert.objects,
+            aggregate_by,
+            self.request.user,
+            self.object.uuid.hex,
+        ).filter(closed__isnull=True).exclude(alert_type__in=alert_types_to_exclude).count()
+
     @cached_property
     def object(self):
         return self.get_object()
-
-    def get_count(self, url, params=None):
-        response = request_api(self.request, url, method='HEAD', params=params)
-        if response.ok:
-            return response.total
-        else:
-            logger.warning('Unable to execute API request with URL %s and error %s', url, response.reason)
-        return 0
 
 
 class CustomerCountersView(BaseCounterView):
@@ -1355,16 +1359,11 @@ class CustomerCountersView(BaseCounterView):
             'users': self.get_users
         }
 
+    def get_alerts(self):
+        return self._get_alerts('customer')
+
     def get_users(self):
         return self.object.get_users().count()
-
-    def get_alerts(self):
-        return self.get_count('alert-list', {
-            'aggregate': 'customer',
-            'uuid': self.object.uuid.hex,
-            'exclude_features': self.request.query_params.getlist('exclude_features'),
-            'opened': True
-        })
 
     def get_projects(self):
         return self._count_model(models.Project)
@@ -1395,7 +1394,6 @@ class ProjectCountersView(BaseCounterView):
             "vms": 1,
             "private_clouds": 1,
             "storages": 2,
-            "premium_support_contracts": 0,
         }
     """
     lookup_field = 'uuid'
@@ -1412,17 +1410,11 @@ class ProjectCountersView(BaseCounterView):
             'storages': self.get_storages,
             'users': self.get_users
         }
-        if 'nodeconductor_plus.premium_support' in django_settings.INSTALLED_APPS:
-            fields['premium_support_contracts'] = self.get_premium_support_contracts
+
         return fields
 
     def get_alerts(self):
-        return self.get_count('alert-list', {
-            'aggregate': 'project',
-            'uuid': self.object.uuid.hex,
-            'exclude_features': self.request.query_params.getlist('exclude_features'),
-            'opened': True
-        })
+        return self._get_alerts('project')
 
     def get_vms(self):
         return self._total_count(models.VirtualMachineMixin.get_all_models())
@@ -1438,11 +1430,6 @@ class ProjectCountersView(BaseCounterView):
 
     def get_users(self):
         return self.object.get_users().count()
-
-    def get_premium_support_contracts(self):
-        return self.get_count('premium-support-contract-list', {
-            'project_uuid': self.object.uuid.hex
-        })
 
     def _total_count(self, models):
         return sum(self._count_model(model) for model in models)
@@ -1472,12 +1459,10 @@ class UserCountersView(BaseCounterView):
         }
 
     def get_keys(self):
-        return self.get_count('sshpublickey-list', {
-            'user_uuid': self.request.user.uuid.hex
-        })
+        return core_models.SshPublicKey.objects.filter(user_uuid=self.request.user.uuid.hex).count()
 
     def get_hooks(self):
-        return self.get_count('hooks-list')
+        return core_managers.SummaryQuerySet(logging_models.BaseHook.get_all_models()).count()
 
 
 class UpdateOnlyByPaidCustomerMixin(object):
