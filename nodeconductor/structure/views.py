@@ -4,7 +4,6 @@ import functools
 import time
 import logging
 from collections import defaultdict
-
 from datetime import timedelta
 
 from django.conf import settings as django_settings
@@ -18,7 +17,6 @@ from django.utils.translation import ugettext_lazy as _
 from django.views.static import serve
 from django_filters.rest_framework import DjangoFilterBackend
 from django_fsm import TransitionNotAllowed
-
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import serializers as rf_serializers
@@ -56,8 +54,6 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     queryset = models.Customer.objects.all()
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated,
-                          rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericUserFilter, filters.GenericRoleFilter, DjangoFilterBackend)
     filter_class = filters.CustomerFilter
 
@@ -135,10 +131,32 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
             context['customer'] = self.get_object()
         return context
 
+    def check_customer_permissions(self, customer=None):
+        if self.request.user.is_staff:
+            return
+
+        if not django_settings.NODECONDUCTOR.get('OWNER_CAN_MANAGE_CUSTOMER'):
+            raise PermissionDenied()
+
+        if not customer:
+            return
+
+        if not customer.has_user(self.request.user, models.CustomerRole.OWNER):
+            raise PermissionDenied()
+
     def perform_create(self, serializer):
+        self.check_customer_permissions()
         customer = serializer.save()
         if not self.request.user.is_staff:
             customer.add_user(self.request.user, models.CustomerRole.OWNER, self.request.user)
+
+    def perform_update(self, serializer):
+        self.check_customer_permissions(serializer.instance)
+        return super(CustomerViewSet, self).perform_update(serializer)
+
+    def perform_destroy(self, instance):
+        self.check_customer_permissions(instance)
+        return super(CustomerViewSet, self).perform_destroy(instance)
 
     @detail_route()
     def balance_history(self, request, uuid=None):
@@ -661,7 +679,6 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
 
     queryset = models.ProjectPermission.objects.filter(is_active=True)
     serializer_class = serializers.ProjectPermissionSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
@@ -749,7 +766,6 @@ class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
                                   viewsets.GenericViewSet):
     queryset = models.ProjectPermission.objects.filter(is_active=None)
     serializer_class = serializers.ProjectPermissionLogSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
 
@@ -765,11 +781,6 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
     """
     queryset = models.CustomerPermission.objects.filter(is_active=True)
     serializer_class = serializers.CustomerPermissionSerializer
-    permission_classes = (
-        rf_permissions.IsAuthenticated,
-        # DjangoObjectPermissions not used on purpose, see below.
-        # rf_permissions.DjangoObjectPermissions,
-    )
     filter_class = filters.CustomerPermissionFilter
 
     def get_queryset(self):
@@ -822,10 +833,6 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
         """
         return super(CustomerPermissionViewSet, self).retrieve(request, *args, **kwargs)
 
-    # DjangoObjectPermissions is not used because it cannot enforce
-    # create permissions based on the body of the request.
-    # Another reason is to foster symmetry: check for both granting
-    # and revocation are kept in one place - the view.
     def perform_create(self, serializer):
         affected_customer = serializer.validated_data['customer']
         affected_user = serializer.validated_data['user']
@@ -869,7 +876,6 @@ class CustomerPermissionLogViewSet(mixins.RetrieveModelMixin,
                                    viewsets.GenericViewSet):
     queryset = models.CustomerPermission.objects.filter(is_active=None)
     serializer_class = serializers.CustomerPermissionLogSerializer
-    permission_classes = (rf_permissions.IsAuthenticated,)
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.CustomerPermissionFilter
 
@@ -972,13 +978,6 @@ class SshKeyViewSet(mixins.CreateModelMixin,
             raise rf_serializers.ValidationError({'name': [_('This field must be unique.')]})
 
         serializer.save(user=user)
-
-    def perform_destroy(self, instance):
-        try:
-            instance.delete()
-        except Exception as e:
-            logger.exception(_("Can't remove SSH public key from backend."))
-            raise APIException(e)
 
 
 class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
@@ -1113,7 +1112,6 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     model = models.NewResource  # for permissions definition.
     serializer_class = serializers.SummaryResourceSerializer
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, filters.ResourceSummaryFilterBackend, filters.TagsFilter)
 
     def get_queryset(self):
@@ -1274,7 +1272,6 @@ class ServicesViewSet(mixins.ListModelMixin,
 
     model = models.Service
     serializer_class = serializers.SummaryServiceSerializer
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
     filter_backends = (filters.GenericRoleFilter, filters.ServiceSummaryFilterBackend)
 
     def get_queryset(self):
@@ -1320,7 +1317,6 @@ class BaseCounterView(viewsets.GenericViewSet):
 
     def _get_alerts(self, aggregate_by):
         alert_types_to_exclude = expand_alert_groups(self.request.query_params.getlist('exclude_features'))
-
         return filters.filter_alerts_by_aggregate(
             logging_models.Alert.objects,
             aggregate_by,
@@ -1410,7 +1406,6 @@ class ProjectCountersView(BaseCounterView):
             'storages': self.get_storages,
             'users': self.get_users
         }
-
         return fields
 
     def get_alerts(self):
@@ -1794,10 +1789,6 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
     queryset = NotImplemented
     serializer_class = NotImplemented
     lookup_field = 'uuid'
-    permission_classes = (
-        rf_permissions.IsAuthenticated,
-        rf_permissions.DjangoObjectPermissions
-    )
     filter_backends = (
         filters.GenericRoleFilter,
         DjangoFilterBackend,
@@ -1825,30 +1816,16 @@ class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixi
             event_context={'resource': resource})
 
 
-class BaseResourceExecutorViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                                     core_views.StateExecutorViewSet,
-                                                     ResourceViewMixin,
-                                                     viewsets.ModelViewSet)):
-    filter_class = filters.BaseResourceFilter
-
-
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.BaseServicePropertyFilter
 
 
-class BaseResourcePropertyExecutorViewSet(core_mixins.CreateExecutorMixin,
-                                          core_mixins.UpdateExecutorMixin,
-                                          core_mixins.DeleteExecutorMixin,
-                                          viewsets.ModelViewSet):
-    queryset = NotImplemented
-    serializer_class = NotImplemented
-    lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated, rf_permissions.DjangoObjectPermissions)
-    filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
-
-
-class VirtualMachineViewSet(core_mixins.RuntimeStateMixin, BaseResourceExecutorViewSet):
-    filter_backends = BaseResourceExecutorViewSet.filter_backends + (
+class VirtualMachineViewSet(six.with_metaclass(ResourceViewMetaclass,
+                                               core_mixins.RuntimeStateMixin,
+                                               core_views.StateExecutorViewSet,
+                                               ResourceViewMixin,
+                                               viewsets.ModelViewSet)):
+    filter_backends = ResourceViewMixin.filter_backends + (
         filters.StartTimeFilter,
     )
     filter_class = filters.BaseResourceFilter

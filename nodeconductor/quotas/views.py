@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from rest_framework import permissions as rf_permissions, exceptions as rf_exceptions, decorators, response, status
+from rest_framework import exceptions as rf_exceptions, decorators, response, status
 from rest_framework import mixins
 from rest_framework import viewsets
 from reversion import revisions as reversion
@@ -17,7 +17,6 @@ class QuotaViewSet(mixins.UpdateModelMixin,
     queryset = models.Quota.objects.all()
     serializer_class = serializers.QuotaSerializer
     lookup_field = 'uuid'
-    permission_classes = (rf_permissions.IsAuthenticated,)
     # XXX: Remove a custom pagination class once the quota calculation has been made more efficient
     pagination_class = UnlimitedLinkHeaderPagination
     filter_class = filters.QuotaFilterSet

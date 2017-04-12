@@ -147,7 +147,6 @@ class AlertViewSet(mixins.CreateModelMixin,
     queryset = models.Alert.objects.all()
     serializer_class = serializers.AlertSerializer
     lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (
         DjangoFilterBackend,
         filters.AdditionalAlertFilterBackend,
@@ -345,7 +344,6 @@ class BaseHookViewSet(viewsets.ModelViewSet):
     Hooks API allows user to receive event notifications via different channel, like email or webhook.
     To get a list of all your hooks, run **GET** against */api/hooks/* as an authenticated user.
     """
-    permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (core_filters.StaffOrUserFilter, DjangoFilterBackend)
     lookup_field = 'uuid'
 
@@ -482,7 +480,6 @@ class HookSummary(mixins.ListModelMixin, viewsets.GenericViewSet):
     Use */api/hooks/* to get a list of all the hooks of any type that a user can see.
     """
     serializer_class = serializers.SummaryHookSerializer
-    permission_classes = (permissions.IsAuthenticated,)
     filter_backends = (core_filters.StaffOrUserFilter, filters.HookSummaryFilterBackend)
 
     def get_queryset(self):

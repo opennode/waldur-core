@@ -12,6 +12,28 @@ import nodeconductor.logging.middleware
 TOKEN_KEY = settings.NODECONDUCTOR.get('TOKEN_KEY', 'x-auth-token')
 
 
+def can_access_admin_site(user):
+    return user.is_active and (user.is_staff or user.is_support)
+
+
+class AuthenticationBackend(object):
+    """
+    Enables only support and staff to access admin site.
+    """
+
+    def authenticate(self, username, password):
+        """
+        Always return ``None`` to prevent authentication within this backend.
+        """
+        return None
+
+    def has_perm(self, user_obj, perm, obj=None):
+        return can_access_admin_site(user_obj)
+
+    def has_module_perms(self, user_obj, app_label):
+        return can_access_admin_site(user_obj)
+
+
 class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
     """
     Custom token-based authentication.

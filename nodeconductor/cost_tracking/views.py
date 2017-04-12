@@ -5,7 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
 from django.utils.translation import ugettext_lazy as _
 
-from rest_framework import viewsets, permissions, exceptions, decorators, response, status
+from rest_framework import viewsets, exceptions, decorators, response, status
 
 from nodeconductor.cost_tracking import models, serializers, filters
 from nodeconductor.structure import SupportedServices
@@ -34,7 +34,6 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, viewsets.ReadOnlyModelViewS
         filters.PriceEstimateScopeFilterBackend,
         ScopeTypeFilterBackend,
     )
-    permission_classes = (permissions.IsAuthenticated,)
 
     def get_serializer_class(self):
         if self.action == 'threshold':
@@ -154,7 +153,6 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     serializer_class = serializers.PriceListItemSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.PriceListItemServiceFilterBackend,)
-    permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
         return models.PriceListItem.objects.filtered_for_user(self.request.user)
@@ -222,7 +220,6 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.DefaultPriceListItem.objects.all()
     lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated,)
     filter_class = filters.DefaultPriceListItemFilter
     serializer_class = serializers.DefaultPriceListItemSerializer
 
@@ -242,7 +239,6 @@ class DefaultPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
 
 class MergedPriceListItemViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'uuid'
-    permission_classes = (permissions.IsAuthenticated,)
     filter_class = filters.DefaultPriceListItemFilter
     serializer_class = serializers.MergedPriceListItemSerializer
 

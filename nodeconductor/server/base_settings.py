@@ -48,7 +48,6 @@ INSTALLED_APPS = (
     'rest_framework.authtoken',
     'rest_framework_swagger',
 
-    'permission',
     'django_fsm',
     'reversion',
     'taggit',
@@ -93,7 +92,7 @@ REST_FRAMEWORK = {
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'permission.backends.PermissionBackend',
+    'nodeconductor.core.authentication.AuthenticationBackend',
 )
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -132,7 +131,6 @@ TEMPLATES = [
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader',
             ) + ADMIN_TEMPLATE_LOADERS,
-            'builtins': ['permission.templatetags.permissionif'],
         },
     },
 ]

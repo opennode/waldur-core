@@ -3,10 +3,8 @@ from __future__ import unicode_literals
 import functools
 import importlib
 import logging
-import sys
 
 from django.conf import settings
-from django.utils import six
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
