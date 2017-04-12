@@ -12,9 +12,13 @@ import nodeconductor.logging.middleware
 TOKEN_KEY = settings.NODECONDUCTOR.get('TOKEN_KEY', 'x-auth-token')
 
 
+def can_access_admin_site(user):
+    return user.is_active and (user.is_staff or user.is_support)
+
+
 class AuthenticationBackend(object):
     """
-    Enables only active superuser and staff to execute any action via admin site.
+    Enables only support and staff to access admin site.
     """
 
     def authenticate(self, username, password):
@@ -24,14 +28,10 @@ class AuthenticationBackend(object):
         return None
 
     def has_perm(self, user_obj, perm, obj=None):
-        if not user_obj.is_active:
-            return False
-        return user_obj.is_superuser or user_obj.is_staff
+        return can_access_admin_site(user_obj)
 
     def has_module_perms(self, user_obj, app_label):
-        if not user_obj.is_active:
-            return False
-        return user_obj.is_superuser or user_obj.is_staff
+        return can_access_admin_site(user_obj)
 
 
 class TokenAuthentication(rest_framework.authentication.TokenAuthentication):
