@@ -5,12 +5,11 @@ from ddt import data, ddt
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver
-from permission.utils.logics import add_permission_logic, remove_permission_logic
 from rest_framework import status, test
 
+from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure import signals
 from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole
-from nodeconductor.structure.perms import OWNER_CAN_MANAGE_CUSTOMER_LOGICS
 from nodeconductor.structure.tests import factories, fixtures
 
 
@@ -242,8 +241,8 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APITransactionTestCase)
         response = self.client.post(factories.CustomerFactory.get_list_url(), self._get_valid_payload())
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @override_nodeconductor_settings(OWNER_CAN_MANAGE_CUSTOMER=True)
     def test_user_can_create_customer_if_he_is_not_staff_if_settings_are_tweaked(self):
-        add_permission_logic(Customer, OWNER_CAN_MANAGE_CUSTOMER_LOGICS)
         self.client.force_authenticate(user=self.fixture.user)
         response = self.client.post(factories.CustomerFactory.get_list_url(), self._get_valid_payload())
 
@@ -251,7 +250,6 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APITransactionTestCase)
 
         # User became owner of created customer
         self.assertEqual(response.data['owners'][0]['uuid'], self.fixture.user.uuid.hex)
-        remove_permission_logic(Customer, OWNER_CAN_MANAGE_CUSTOMER_LOGICS)
 
     def test_user_can_create_customer_if_he_is_staff(self):
         self.client.force_authenticate(user=self.fixture.staff)

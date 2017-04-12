@@ -314,7 +314,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         # filter out certain fields from the creation form
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         if 'shared' in form.base_fields:
-            form.base_fields['shared'].initial = True if self.model is models.SharedServiceSettings else False
+            form.base_fields['shared'].initial = True if self.model is SharedServiceSettings else False
             form.base_fields['shared'].widget.attrs['disabled'] = True
 
         return form
@@ -474,7 +474,7 @@ class SharedServiceSettings(models.ServiceSettings):
 
     class Meta(object):
         proxy = True
-        verbose_name_plural = 'Shared service settings'
+        verbose_name_plural = 'Shared provider settings'
 
 
 class PrivateServiceSettings(models.ServiceSettings):
@@ -484,7 +484,7 @@ class PrivateServiceSettings(models.ServiceSettings):
 
     class Meta(object):
         proxy = True
-        verbose_name_plural = 'Private service settings'
+        verbose_name_plural = 'Private provider settings'
 
 
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)

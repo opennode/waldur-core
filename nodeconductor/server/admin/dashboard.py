@@ -2,7 +2,6 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
-from fluent_dashboard.modules import AppIconList
 
 from nodeconductor import __version__
 from nodeconductor.core import NodeConductorExtension, models as core_models
@@ -99,7 +98,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         Returns a LinkList based module which contains link to shared service setting instances in ERRED state.
         """
-        result_module = modules.LinkList(title='Shared service settings in erred state')
+        result_module = modules.LinkList(title='Shared provider settings in erred state')
         result_module.template = 'admin/dashboard/erred_link_list.html'
         erred_state = structure_admin.SharedServiceSettings.States.ERRED
 
@@ -145,14 +144,6 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def __init__(self, **kwargs):
         FluentIndexDashboard.__init__(self, **kwargs)
-
-        billing_models = ['nodeconductor.cost_tracking.*']
-        if NodeConductorExtension.is_installed('nodeconductor_killbill'):
-            billing_models.append('nodeconductor_killbill.models.Invoice')
-        if NodeConductorExtension.is_installed('nodeconductor_paypal'):
-            billing_models.append('nodeconductor_paypal.models.Payment')
-
-        self.children.append(AppIconList(_('Billing'), models=billing_models))
 
         self.children.append(modules.LinkList(
             _('Installed components'),

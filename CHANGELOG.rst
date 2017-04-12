@@ -5,6 +5,11 @@ Release NEXT
 ------------
 - Nothing yet.
 
+Release 0.134.0
+---------------
+- Drop django-permission.
+- Restructure admin menu.
+
 Release 0.133.0
 ---------------
 - Remove inner HEAD requests from counter views.

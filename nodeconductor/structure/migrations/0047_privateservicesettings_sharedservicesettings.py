@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'proxy': True,
-                'verbose_name_plural': 'Private service settings',
+                'verbose_name_plural': 'Private provider settings',
             },
             bases=('structure.servicesettings',),
         ),
@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'proxy': True,
-                'verbose_name_plural': 'Shared service settings',
+                'verbose_name_plural': 'Shared provider settings',
             },
             bases=('structure.servicesettings',),
         ),

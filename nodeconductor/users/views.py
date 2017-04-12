@@ -1,7 +1,7 @@
 from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import permissions, status
+from rest_framework import status
 from rest_framework.decorators import detail_route
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -15,7 +15,6 @@ from nodeconductor.users import models, filters, serializers, tasks
 class InvitationViewSet(ProtectedViewSet):
     queryset = models.Invitation.objects.all()
     serializer_class = serializers.InvitationSerializer
-    permission_classes = (permissions.IsAuthenticated, permissions.DjangoObjectPermissions)
     filter_backends = (
         structure_filters.GenericRoleFilter,
         DjangoFilterBackend,
@@ -84,7 +83,7 @@ class InvitationViewSet(ProtectedViewSet):
         return Response({'detail': _('Invitation has been successfully canceled.')},
                         status=status.HTTP_200_OK)
 
-    @detail_route(methods=['post'], filter_backends=[], permission_classes=[permissions.IsAuthenticated])
+    @detail_route(methods=['post'], filter_backends=[])
     def accept(self, request, uuid=None):
         """ Accept invitation for current user.
 
@@ -116,6 +115,6 @@ class InvitationViewSet(ProtectedViewSet):
         if invitation.state != models.Invitation.State.PENDING:
             return Response(status=status.HTTP_404_NOT_FOUND)
         elif invitation.civil_number:
-            return Response({'civil_number_required': True}, status=status.HTTP_200_OK)
+            return Response({'email': invitation.email, 'civil_number_required': True}, status=status.HTTP_200_OK)
         else:
-            return Response(status=status.HTTP_200_OK)
+            return Response({'email': invitation.email}, status=status.HTTP_200_OK)

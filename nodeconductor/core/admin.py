@@ -15,6 +15,7 @@ from rest_framework import permissions as rf_permissions
 from reversion.admin import VersionAdmin
 
 from nodeconductor.core import models
+from nodeconductor.core.authentication import can_access_admin_site
 
 
 def get_admin_url(obj):
@@ -110,7 +111,7 @@ class CustomAdminAuthenticationForm(admin_forms.AdminAuthenticationForm):
     }
 
     def confirm_login_allowed(self, user):
-        if not user.is_active or not user.is_support:
+        if not can_access_admin_site(user):
             return super(CustomAdminAuthenticationForm, self).confirm_login_allowed(user)
 
 
@@ -121,10 +122,8 @@ class CustomAdminSite(admin.AdminSite):
     login_form = CustomAdminAuthenticationForm
 
     def has_permission(self, request):
-        if request.method in rf_permissions.SAFE_METHODS:
-            return request.user.is_active and (request.user.is_staff or request.user.is_support)
-
-        return request.user.is_active and request.user.is_staff
+        is_safe = request.method in rf_permissions.SAFE_METHODS
+        return can_access_admin_site(request.user) and (is_safe or request.user.is_staff)
 
     @classmethod
     def clone_default(cls):
