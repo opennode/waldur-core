@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Introduce ram, vcpu, storage quotas to service project link. Allow settings them through API.
 
 Release 0.134.0
 ---------------

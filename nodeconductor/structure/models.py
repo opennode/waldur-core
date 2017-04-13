@@ -894,6 +894,20 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
 
 
+class CloudServiceProjectLink(ServiceProjectLink):
+    """
+    Represents a link between a project and a cloud service that provides VPS or VPC (e.g. Amazon, DO, OpenStack).
+    """
+
+    class Meta(ServiceProjectLink.Meta):
+        abstract = True
+
+    class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        vcpu = quotas_fields.QuotaField(default_limit=100)
+        ram = quotas_fields.QuotaField(default_limit=256000)
+        storage = quotas_fields.QuotaField(default_limit=5120000)
+
+
 class ApplicationMixin(models.Model):
 
     class Meta(object):
