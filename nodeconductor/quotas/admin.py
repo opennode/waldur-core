@@ -37,9 +37,9 @@ class QuotaFieldTypeLimit(object):
 
 
 class QuotaForm(ModelForm):
-    name = CharField(required=False, widget=ReadonlyTextWidget())
-    usage = CharField(required=False, widget=ReadonlyTextWidget())
-    limit = FloatField(required=False)
+    name = CharField(required=False, label='Name', widget=ReadonlyTextWidget())
+    usage = CharField(required=False, label='Usage', widget=ReadonlyTextWidget())
+    limit = FloatField(required=False, label='Limit')
 
     class Meta:
         model = models.Quota
