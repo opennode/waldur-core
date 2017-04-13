@@ -13,10 +13,13 @@ class TestService(structure_models.Service):
         return 'test'
 
 
-class TestServiceProjectLink(structure_models.CloudServiceProjectLink):
+class TestServiceProjectLink(structure_models.ServiceProjectLink):
     service = models.ForeignKey(TestService)
 
-    class Quotas(structure_models.CloudServiceProjectLink.Quotas):
+    class Quotas(QuotaModelMixin.Quotas):
+        vcpu = QuotaField(default_limit=20, is_backend=True)
+        ram = QuotaField(default_limit=51200, is_backend=True)
+        storage = QuotaField(default_limit=1024000, is_backend=True)
         instances = QuotaField(default_limit=30, is_backend=True)
         security_group_count = QuotaField(default_limit=100, is_backend=True)
         security_group_rule_count = QuotaField(default_limit=100, is_backend=True)
