@@ -214,6 +214,17 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             for grandchild in child.collect_children():
                 yield grandchild
 
+    @staticmethod
+    def update_resource_estimate(resource, new_configuration):
+        """ Create or update price estimate for resource based on its current configuration """
+        price_estimate, created = PriceEstimate.objects.get_or_create_current(scope=resource)
+        if created:
+            price_estimate.create_ancestors()
+        consumption_details, _ = ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
+        consumption_details.update_configuration(new_configuration)
+        price_estimate.update_total()
+        return price_estimate
+
 
 class ConsumptionDetailUpdateError(Exception):
     pass
