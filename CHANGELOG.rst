@@ -3,7 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Drop SynchronizationStates, SynchronizationStateFilter, SynchronizableMixin.
 
 Release 0.134.0
 ---------------

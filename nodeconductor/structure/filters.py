@@ -337,7 +337,7 @@ class ServiceTypeFilter(django_filters.Filter):
 class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_type='icontains')
     type = ServiceTypeFilter()
-    state = core_filters.SynchronizationStateFilter()
+    state = core_filters.StateFilter()
 
     class Meta(object):
         model = models.ServiceSettings
