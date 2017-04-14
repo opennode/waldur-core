@@ -110,7 +110,7 @@ def _resource_deletion(resource):
     if resource.__class__ not in CostTrackingRegister.registered_resources:
         return
     new_configuration = {}
-    price_estimate = _update_resource_estimate(resource, new_configuration)
+    price_estimate = models.PriceEstimate.update_resource_estimate(resource, new_configuration)
     price_estimate.init_details()
 
 
@@ -123,7 +123,7 @@ def resource_update(sender, instance, created=False, **kwargs):
         new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
-    _update_resource_estimate(resource, new_configuration)
+    models.PriceEstimate.update_resource_estimate(resource, new_configuration)
     # Try to create historical price estimates
     if created:
         _create_historical_estimates(resource, new_configuration)
@@ -137,7 +137,7 @@ def resource_quota_update(sender, instance, **kwargs):
         new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
-    _update_resource_estimate(resource, new_configuration)
+    models.PriceEstimate.update_resource_estimate(resource, new_configuration)
 
 
 def _create_historical_estimates(resource, configuration):
@@ -150,13 +150,3 @@ def _create_historical_estimates(resource, configuration):
     while month_start > resource.created:
         month_start -= relativedelta(months=1)
         models.PriceEstimate.create_historical(resource, configuration, max(month_start, resource.created))
-
-
-def _update_resource_estimate(resource, new_configuration):
-    price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope=resource)
-    if created:
-        price_estimate.create_ancestors()
-    consumption_details, _ = models.ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
-    consumption_details.update_configuration(new_configuration)
-    price_estimate.update_total()
-    return price_estimate

@@ -3,8 +3,8 @@ from django.contrib.admin import SimpleListFilter
 from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
-from django.utils.translation import ungettext
-from django.utils.translation import ugettext_lazy as _
+from django.utils import timezone
+from django.utils.translation import ungettext, ugettext_lazy as _
 
 from nodeconductor.core import admin as core_admin, utils as core_utils
 from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError, tasks
@@ -51,12 +51,13 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
 
     def get_extra_actions(self):
         return [
-            self.init_from_registered_resources,
-            self.delete_not_registered_items,
+            self.init_registered,
+            self.delete_not_registered,
             self.recalulate_current_estimates,
+            self.reinit_configurations,
         ]
 
-    def init_from_registered_resources(self, request):
+    def init_registered(self, request):
         """ Create default price list items for each registered resource. """
         created_items = models.DefaultPriceListItem.init_from_registered_resources()
 
@@ -72,7 +73,7 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
-    def delete_not_registered_items(self, request):
+    def delete_not_registered(self, request):
         deleted_items_names = []
 
         for price_list_item in models.DefaultPriceListItem.objects.all():
@@ -100,6 +101,35 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
     def recalulate_current_estimates(self, request):
         tasks.recalculate_estimate(recalculate_total=True)
         self.message_user(request, _('Total and consumed value were successfully recalculated for all price estimates.'))
+        return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
+
+    def reinit_configurations(self, request):
+        """ Re-initialize configuration for resource if it has been changed.
+
+            This method should be called if resource consumption strategy was changed.
+        """
+        now = timezone.now()
+
+        # Step 1. Collect all resources with changed configuration.
+        changed_resources = []
+        for resource_model in CostTrackingRegister.registered_resources:
+            for resource in resource_model.objects.all():
+                try:
+                    pe = models.PriceEstimate.objects.get(scope=resource, month=now.month, year=now.year)
+                except models.PriceEstimate.DoesNotExist:
+                    changed_resources.append(resource)
+                else:
+                    new_configuration = CostTrackingRegister.get_configuration(resource)
+                    if new_configuration != pe.consumption_details.configuration:
+                        changed_resources.append(resource)
+
+        # Step 2. Re-init configuration and recalculate estimate for changed resources.
+        for resource in changed_resources:
+            models.PriceEstimate.update_resource_estimate(resource, CostTrackingRegister.get_configuration(resource))
+
+        message = _('Configuration was reinitialized for %(count)s resources') % {'count': len(changed_resources)}
+        self.message_user(request, message)
+
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
 
 
