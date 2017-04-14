@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from nodeconductor.core import utils
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.models import SynchronizationStates, StateMixin
+from nodeconductor.core.models import StateMixin
 from nodeconductor.structure import SupportedServices, signals
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.models import (Customer, CustomerPermission, Project, ProjectPermission,
@@ -250,22 +250,6 @@ def connect_customer_to_shared_service_settings(sender, instance, created=False,
                                          available_for_all=True)
         except KeyError:
             logger.warning("Unregistered service of type %s" % shared_settings.type)
-
-
-def connect_shared_service_settings_to_customers(sender, instance, name, source, target, **kwargs):
-    """ Connected service settings with all customers if they were created or become shared """
-    service_settings = instance
-    if (target != SynchronizationStates.IN_SYNC or
-            source not in (SynchronizationStates.ERRED, SynchronizationStates.CREATING) or
-            not service_settings.shared):
-        return
-
-    service_model = SupportedServices.get_service_models()[service_settings.type]['service']
-    for customer in Customer.objects.all():
-        if not service_model.objects.filter(customer=customer, settings=service_settings).exists():
-            service_model.objects.create(customer=customer,
-                                         settings=service_settings,
-                                         available_for_all=True)
 
 
 def connect_project_to_all_available_services(sender, instance, created=False, **kwargs):

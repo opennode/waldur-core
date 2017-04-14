@@ -214,6 +214,18 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             for grandchild in child.collect_children():
                 yield grandchild
 
+    @staticmethod
+    def update_resource_estimate(resource, new_configuration):
+        """ Create or update price estimate for resource based on its current configuration """
+        price_estimate, created = PriceEstimate.objects.get_or_create_current(scope=resource)
+        if created:
+            price_estimate.create_ancestors()
+        consumption_details, _ = ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
+        is_updated = consumption_details.update_configuration(new_configuration)
+        if is_updated:
+            price_estimate.update_total()
+        return price_estimate
+
 
 class ConsumptionDetailUpdateError(Exception):
     pass
@@ -284,9 +296,12 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
     objects = managers.ConsumptionDetailsManager()
 
     def update_configuration(self, new_configuration):
-        """ Save how much consumables were used and update current configuration. """
+        """ Save how much consumables were used and update current configuration.
+
+            Return True if configuration changed.
+        """
         if new_configuration == self.configuration:
-            return
+            return False
         now = timezone.now()
         if now.month != self.price_estimate.month:
             raise ConsumptionDetailUpdateError('It is possible to update consumption details only for current month.')
@@ -298,6 +313,7 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         self.configuration = new_configuration
         self.last_update_time = now
         self.save()
+        return True
 
     @property
     def consumed_in_month(self):
