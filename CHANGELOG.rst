@@ -3,6 +3,10 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Nothing yet.
+
+Release 0.135.0
+---------------
 - Introduce ram, vcpu, storage quotas to service project link.
 - Drop SynchronizationStates, SynchronizationStateFilter, SynchronizableMixin.
 - Add Default Price List Items action "Reinit configurations".
