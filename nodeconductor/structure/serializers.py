@@ -1162,13 +1162,14 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         read_only=True)
 
     service_name = serializers.ReadOnlyField(source='service.settings.name')
+    quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     class Meta(object):
         model = NotImplemented
         fields = (
             'url',
             'project', 'project_name', 'project_uuid',
-            'service', 'service_uuid', 'service_name',
+            'service', 'service_uuid', 'service_name', 'quotas',
         )
         related_paths = ('project', 'service')
         extra_kwargs = {

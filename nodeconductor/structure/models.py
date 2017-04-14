@@ -32,8 +32,7 @@ from nodeconductor.core.validators import validate_name
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
-from nodeconductor.structure.managers import (StructureManager, filter_queryset_for_user, ServiceSettingsManager,
-                                              SharedServiceSettingsManager, PrivateServiceSettingsManager)
+from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user, ServiceSettingsManager
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
@@ -892,6 +891,23 @@ class ServiceProjectLink(quotas_models.QuotaModelMixin,
 
     def __str__(self):
         return '{0} | {1}'.format(self.service.settings.name, self.project.name)
+
+
+class CloudServiceProjectLink(ServiceProjectLink):
+    """
+    Represents a link between a project and a cloud service that provides VPS or VPC (e.g. Amazon, DO, OpenStack).
+    """
+
+    class Meta(ServiceProjectLink.Meta):
+        abstract = True
+
+    class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        vcpu = quotas_fields.QuotaField(default_limit=100)
+        ram = quotas_fields.QuotaField(default_limit=256000)
+        storage = quotas_fields.QuotaField(default_limit=5120000)
+
+    def can_user_update_quotas(self, user):
+        return user.is_staff or self.service.customer.has_user(user, CustomerRole.OWNER)
 
 
 class ApplicationMixin(models.Model):
