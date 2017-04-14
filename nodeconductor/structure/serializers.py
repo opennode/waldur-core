@@ -790,8 +790,8 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
                                 serializers.HyperlinkedModelSerializer):
     customer_native_name = serializers.ReadOnlyField(source='customer.native_name')
     state = MappedChoiceField(
-        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
-        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
+        choices=[(v, k) for k, v in core_models.StateMixin.States.CHOICES],
+        choice_mappings={v: k for k, v in core_models.StateMixin.States.CHOICES},
         read_only=True)
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
@@ -1155,11 +1155,6 @@ class BaseServiceProjectLinkSerializer(PermissionFieldFilteringMixin,
         queryset=models.Project.objects.all(),
         view_name='project-detail',
         lookup_field='uuid')
-
-    state = MappedChoiceField(
-        choices=[(v, k) for k, v in core_models.SynchronizationStates.CHOICES],
-        choice_mappings={v: k for k, v in core_models.SynchronizationStates.CHOICES},
-        read_only=True)
 
     service_name = serializers.ReadOnlyField(source='service.settings.name')
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)

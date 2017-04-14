@@ -202,8 +202,6 @@ def get_field_type(field):
         return ' | '.join(['"%s"' % f for f in SupportedServices.get_filter_mapping().keys()])
     if isinstance(field, ResourceTypeFilter):
         return ' | '.join(['"%s"' % f for f in SupportedServices.get_resource_models().keys()])
-    if isinstance(field, core_filters.SynchronizationStateFilter):
-        return ' | '.join(['"%s"' % f[0] for f in field.DEFAULT_CHOICES])
     if isinstance(field, core_serializers.GenericRelatedField):
         links = []
         for model in field.related_models:
