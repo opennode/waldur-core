@@ -127,7 +127,7 @@ class DefaultPriceListItemAdmin(core_admin.ExtraActionsMixin, structure_admin.Ch
         for resource in changed_resources:
             models.PriceEstimate.update_resource_estimate(resource, CostTrackingRegister.get_configuration(resource))
 
-        message = _('Configuration was reinitialized for %(count)s resources' % {'count': len(changed_resources)})
+        message = _('Configuration was reinitialized for %(count)s resources') % {'count': len(changed_resources)}
         self.message_user(request, message)
 
         return redirect(reverse('admin:cost_tracking_defaultpricelistitem_changelist'))
