@@ -166,7 +166,7 @@ class ServiceSettingsFactory(factory.DjangoModelFactory):
         model = models.ServiceSettings
 
     name = factory.Sequence(lambda n: 'Settings %s' % n)
-    state = core_models.SynchronizationStates.IN_SYNC
+    state = core_models.StateMixin.States.OK
     shared = False
     type = TestConfig.service_name
 

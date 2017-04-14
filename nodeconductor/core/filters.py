@@ -92,33 +92,6 @@ class MappedMultipleChoiceFilter(MappedFilterMixin, django_filters.MultipleChoic
         return super(MappedMultipleChoiceFilter, self).filter(qs, value)
 
 
-class SynchronizationStateFilter(MappedMultipleChoiceFilter):
-    DEFAULT_CHOICES = (
-        ('New', 'New'),
-        ('Creation Scheduled', 'Creation Scheduled'),
-        ('Creating', 'Creating'),
-        ('Sync Scheduled', 'Sync Scheduled'),
-        ('Syncing', 'Syncing'),
-        ('In Sync', 'In Sync'),
-        ('Erred', 'Erred'),
-    )
-
-    DEFAULT_CHOICE_MAPPING = {
-        'New': core_models.SynchronizationStates.NEW,
-        'Creation Scheduled': core_models.SynchronizationStates.CREATION_SCHEDULED,
-        'Creating': core_models.SynchronizationStates.CREATING,
-        'Sync Scheduled': core_models.SynchronizationStates.SYNCING_SCHEDULED,
-        'Syncing': core_models.SynchronizationStates.SYNCING,
-        'In Sync': core_models.SynchronizationStates.IN_SYNC,
-        'Erred': core_models.SynchronizationStates.ERRED,
-    }
-
-    def __init__(self, choices=DEFAULT_CHOICES, choice_mappings=None, **kwargs):
-        if choice_mappings is None:
-            choice_mappings = self.DEFAULT_CHOICE_MAPPING
-        super(SynchronizationStateFilter, self).__init__(choices=choices, choice_mappings=choice_mappings, **kwargs)
-
-
 class StateFilter(MappedMultipleChoiceFilter):
 
     DEFAULT_CHOICES = (

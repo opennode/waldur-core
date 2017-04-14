@@ -290,73 +290,6 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
         return '%s - %s, user: %s, %s' % (self.name, self.fingerprint, self.user.username, self.user.full_name)
 
 
-class SynchronizationStates(object):
-    NEW = 0
-    SYNCING_SCHEDULED = 1
-    SYNCING = 2
-    IN_SYNC = 3
-    ERRED = 4
-    CREATION_SCHEDULED = 5
-    CREATING = 6
-
-    CHOICES = (
-        (NEW, 'New'),
-        (CREATION_SCHEDULED, 'Creation Scheduled'),
-        (CREATING, 'Creating'),
-        (SYNCING_SCHEDULED, 'Sync Scheduled'),
-        (SYNCING, 'Syncing'),
-        (IN_SYNC, 'In Sync'),
-        (ERRED, 'Erred'),
-    )
-
-    STABLE_STATES = {IN_SYNC}
-    UNSTABLE_STATES = set(dict(CHOICES).keys()) - STABLE_STATES
-
-
-class SynchronizableMixin(ErrorMessageMixin):
-    class Meta(object):
-        abstract = True
-
-    state = FSMIntegerField(
-        default=SynchronizationStates.CREATION_SCHEDULED,
-        choices=SynchronizationStates.CHOICES,
-    )
-
-    @property
-    def human_readable_state(self):
-        return force_text(dict(SynchronizationStates.CHOICES)[self.state])
-
-    @transition(field=state, source=SynchronizationStates.CREATION_SCHEDULED, target=SynchronizationStates.CREATING)
-    def begin_creating(self):
-        pass
-
-    @transition(field=state, source=SynchronizationStates.SYNCING_SCHEDULED, target=SynchronizationStates.SYNCING)
-    def begin_syncing(self):
-        pass
-
-    @transition(field=state, source=[SynchronizationStates.IN_SYNC, SynchronizationStates.ERRED],
-                target=SynchronizationStates.SYNCING_SCHEDULED)
-    def schedule_syncing(self):
-        pass
-
-    @transition(field=state, source=SynchronizationStates.NEW, target=SynchronizationStates.CREATION_SCHEDULED)
-    def schedule_creating(self):
-        pass
-
-    @transition(field=state, source=[SynchronizationStates.SYNCING, SynchronizationStates.CREATING],
-                target=SynchronizationStates.IN_SYNC)
-    def set_in_sync(self):
-        pass
-
-    @transition(field=state, source='*', target=SynchronizationStates.ERRED)
-    def set_erred(self):
-        pass
-
-    @transition(field=state, source=SynchronizationStates.ERRED, target=SynchronizationStates.IN_SYNC)
-    def set_in_sync_from_erred(self):
-        self.error_message = ''
-
-
 class RuntimeStateMixin(models.Model):
     """ Provide runtime_state field """
     class RuntimeStates(object):
@@ -377,7 +310,6 @@ class RuntimeStateMixin(models.Model):
         return cls.RuntimeStates.OFFLINE
 
 
-# This Mixin should replace SynchronizableMixin after NC-1237 implementation.
 class StateMixin(ErrorMessageMixin):
     class States(object):
         CREATION_SCHEDULED = 5
@@ -539,7 +471,7 @@ class BackendModelMixin(object):
     """
     Represents model that is connected to backend object. 
 
-    This model cannot be created or updated via admin, because we do not support queries to backend from admin interface.   
+    This model cannot be created or updated via admin, because we do not support queries to backend from admin interface.
     """
 
     @classmethod

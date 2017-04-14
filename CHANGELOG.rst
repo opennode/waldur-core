@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Introduce ram, vcpu, storage quotas to service project link.
+- Drop SynchronizationStates, SynchronizationStateFilter, SynchronizableMixin.
 
 Release 0.134.0
 ---------------
