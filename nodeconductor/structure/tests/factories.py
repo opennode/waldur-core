@@ -30,7 +30,6 @@ class UserFactory(factory.DjangoModelFactory):
     job_title = factory.Sequence(lambda n: 'Job %s' % n)
     is_staff = False
     is_active = True
-    is_superuser = False
 
     @factory.post_generation
     def customers(self, create, extracted, **kwargs):
