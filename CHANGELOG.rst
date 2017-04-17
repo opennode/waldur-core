@@ -3,7 +3,8 @@ CHANGELOG
 
 Release NEXT
 ------------
-- Nothing yet.
+- Allow to filter user by civil number.
+- Don't render superuser status. Drop unused viewsets.
 
 Release 0.135.0
 ---------------
