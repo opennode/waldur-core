@@ -305,7 +305,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects',
-            'owners', 'support_users', 'balance',
+            'owners', 'support_users',
             'registration_code',
             'quotas',
             'image',
@@ -314,8 +314,6 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
-        # Balance should be modified by nodeconductor_paypal app
-        read_only_fields = ('balance',)
 
     def get_image(self, customer):
         if not customer.image:
@@ -432,12 +430,6 @@ class ProjectUserSerializer(serializers.ModelSerializer):
         setattr(user, 'perm', permission)
         setattr(user, 'role', permission and permission.role)
         return super(ProjectUserSerializer, self).to_representation(user)
-
-
-class BalanceHistorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.BalanceHistory
-        fields = ['created', 'amount']
 
 
 class BasePermissionSerializer(core_serializers.AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):

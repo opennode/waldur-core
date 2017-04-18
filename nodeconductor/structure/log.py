@@ -17,15 +17,6 @@ class CustomerEventLogger(EventLogger):
         }
 
 
-class BalanceEventLogger(EventLogger):
-    customer = models.Customer
-    amount = float
-
-    class Meta:
-        event_types = ('customer_account_credited',
-                       'customer_account_debited')
-
-
 class ProjectEventLogger(EventLogger):
     project = models.Project
     project_previous_name = six.text_type
@@ -118,5 +109,4 @@ event_logger.register('project_role', ProjectRoleEventLogger)
 event_logger.register('user_organization', UserOrganizationEventLogger)
 event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
-event_logger.register('balance', BalanceEventLogger)
 event_logger.register('resource', ResourceEventLogger)

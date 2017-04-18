@@ -316,8 +316,6 @@ class Customer(core_models.UuidMixin,
 
     registration_code = models.CharField(max_length=160, default='', blank=True)
 
-    balance = models.DecimalField(max_digits=9, decimal_places=3, null=True, blank=True)
-
     class Meta(object):
         verbose_name = _('organization')
 
@@ -360,31 +358,6 @@ class Customer(core_models.UuidMixin,
 
     def get_log_fields(self):
         return ('uuid', 'name', 'abbreviation', 'contact_details')
-
-    def credit_account(self, amount):
-        # Increase customer's balance by specified amount
-        new_balance = (self.balance or 0) + amount
-        self._meta.model.objects.filter(uuid=self.uuid).update(
-            balance=new_balance if self.balance is None else F('balance') + amount)
-
-        self.balance = new_balance
-        BalanceHistory.objects.create(customer=self, amount=self.balance)
-        customer_account_credited.send(sender=Customer, instance=self, amount=float(amount))
-
-    def debit_account(self, amount):
-        # Reduce customer's balance at specified amount
-        new_balance = (self.balance or 0) - amount
-        self._meta.model.objects.filter(uuid=self.uuid).update(
-            balance=new_balance if self.balance is None else F('balance') - amount)
-
-        self.balance = new_balance
-        BalanceHistory.objects.create(customer=self, amount=self.balance)
-        customer_account_debited.send(sender=Customer, instance=self, amount=float(amount))
-
-        # Fully prepaid mode
-        # TODO: Introduce threshold value to allow over-usage
-        if new_balance <= 0:
-            send_task('structure', 'stop_customer_resources')(self.uuid.hex)
 
     def get_owners(self):
         return get_user_model().objects.filter(
@@ -446,12 +419,6 @@ class Customer(core_models.UuidMixin,
             'name': self.name,
             'abbreviation': self.abbreviation
         }
-
-
-class BalanceHistory(models.Model):
-    customer = models.ForeignKey(Customer, verbose_name=_('organization'))
-    created = AutoCreatedField()
-    amount = models.DecimalField(max_digits=9, decimal_places=3)
 
 
 class ProjectRole(models.CharField):

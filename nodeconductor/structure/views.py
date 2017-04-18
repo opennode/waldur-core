@@ -158,23 +158,6 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         self.check_customer_permissions(instance)
         return super(CustomerViewSet, self).perform_destroy(instance)
 
-    @detail_route()
-    def balance_history(self, request, uuid=None):
-        default_start = timezone.now() - timedelta(days=30)  # one month ago
-        timestamp_interval_serializer = core_serializers.TimestampIntervalSerializer(data={
-            'start': request.query_params.get('from', datetime_to_timestamp(default_start)),
-            'end': request.query_params.get('to', datetime_to_timestamp(timezone.now()))
-        })
-        timestamp_interval_serializer.is_valid(raise_exception=True)
-        filter_data = timestamp_interval_serializer.get_filter_data()
-
-        customer = self.get_object()
-        queryset = models.BalanceHistory.objects.filter(customer=customer).order_by('created')
-        queryset = queryset.filter(created__gte=filter_data['start'], created__lte=filter_data['end'])
-
-        serializer = serializers.BalanceHistorySerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
     @detail_route(filter_backends=[filters.GenericRoleFilter])
     def users(self, request, uuid=None):
         """ A list of users connected to the customer. """
@@ -1460,60 +1443,7 @@ class UserCountersView(BaseCounterView):
         return core_managers.SummaryQuerySet(logging_models.BaseHook.get_all_models()).count()
 
 
-class UpdateOnlyByPaidCustomerMixin(object):
-    """ Allow modification of entities if their customer's balance is positive. """
-
-    @staticmethod
-    def _check_paid_status(settings, customer):
-        # Check for shared settings only
-        if settings.shared:
-            if customer and customer.balance is not None and customer.balance <= 0:
-                raise PermissionDenied(
-                    _('Your balance is %s. Action disabled.') % customer.balance)
-
-    def initial(self, request, *args, **kwargs):
-        if hasattr(self, 'PaidControl') and self.action and self.action not in ('list', 'retrieve', 'create'):
-            if django_settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
-                entity = self.get_object()
-
-                def get_obj(name):
-                    try:
-                        args = getattr(self.PaidControl, '%s_path' % name).split('__')
-                    except AttributeError:
-                        return None
-                    return reduce(getattr, args, entity)
-
-                self._check_paid_status(get_obj('settings'), get_obj('customer'))
-
-        return super(UpdateOnlyByPaidCustomerMixin, self).initial(request, *args, **kwargs)
-
-    def create(self, request, *args, **kwargs):
-        if django_settings.NODECONDUCTOR.get('SUSPEND_UNPAID_CUSTOMERS'):
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-
-            def get_obj(name):
-                try:
-                    args = getattr(self.PaidControl, '%s_path' % name).split('__')
-                except AttributeError:
-                    return None
-                obj = serializer.validated_data[args[0]]
-                if len(args) > 1:
-                    obj = reduce(getattr, args[1:], obj)
-                return obj
-
-            self._check_paid_status(get_obj('settings'), get_obj('customer'))
-
-        return super(UpdateOnlyByPaidCustomerMixin, self).create(request, *args, **kwargs)
-
-
-class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
-                         core_mixins.EagerLoadMixin,
-                         core_views.ActionsViewSet):
-    class PaidControl:
-        customer_path = 'customer'
-        settings_path = 'settings'
-
+class BaseServiceViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
     queryset = NotImplemented
     serializer_class = NotImplemented
     import_serializer_class = NotImplemented
@@ -1699,12 +1629,7 @@ class BaseServiceViewSet(UpdateOnlyByPaidCustomerMixin,
     unlink.destructive = True
 
 
-class BaseServiceProjectLinkViewSet(UpdateOnlyByPaidCustomerMixin,
-                                    core_views.ActionsViewSet):
-    class PaidControl:
-        customer_path = 'service__customer'
-        settings_path = 'service__settings'
-
+class BaseServiceProjectLinkViewSet(core_views.ActionsViewSet):
     queryset = NotImplemented
     serializer_class = NotImplemented
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
@@ -1781,11 +1706,7 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
-class ResourceViewMixin(core_mixins.EagerLoadMixin, UpdateOnlyByPaidCustomerMixin):
-    class PaidControl:
-        customer_path = 'service_project_link__service__customer'
-        settings_path = 'service_project_link__service__settings'
-
+class ResourceViewMixin(core_mixins.EagerLoadMixin):
     queryset = NotImplemented
     serializer_class = NotImplemented
     lookup_field = 'uuid'
