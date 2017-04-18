@@ -36,7 +36,7 @@ class CostTrackingConfig(AppConfig):
         )
 
         signals.post_save.connect(
-            handlers.copy_threshold_from_previous_price_estimate,
+            handlers.copy_from_previous_price_estimate,
             sender=PriceEstimate,
-            dispatch_uid='nodeconductor.cost_tracking.handlers.copy_threshold_from_previous_price_estimate'
+            dispatch_uid='nodeconductor.cost_tracking.handlers.copy_from_previous_price_estimate'
         )

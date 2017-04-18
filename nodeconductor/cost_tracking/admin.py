@@ -169,8 +169,8 @@ class ConsumptionDetailsInline(admin.StackedInline):
 
 class PriceEstimateAdmin(admin.ModelAdmin):
     inlines = [ConsumptionDetailsInline]
-    fields = ('content_type', 'object_id', ('total', 'consumed'), ('month', 'year'))
-    list_display = ('content_type', 'object_id', 'total', 'month', 'year')
+    fields = ('content_type', 'object_id', ('total', 'consumed', 'limit'), ('month', 'year'))
+    list_display = ('content_type', 'object_id', 'total', 'limit', 'month', 'year')
     list_filter = (ScopeTypeFilter, 'year', 'month')
     search_fields = ('month', 'year', 'object_id', 'total')
 

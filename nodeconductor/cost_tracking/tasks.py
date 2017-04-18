@@ -1,4 +1,4 @@
-from celery import shared_task
+from celery import shared_task, current_task
 
 from nodeconductor.cost_tracking import CostTrackingRegister, models
 from nodeconductor.structure import models as structure_models

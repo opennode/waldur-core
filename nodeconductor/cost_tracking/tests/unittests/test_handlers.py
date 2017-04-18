@@ -5,9 +5,10 @@ from django.test import TransactionTestCase
 from django.utils import timezone
 from freezegun import freeze_time
 
-from nodeconductor.cost_tracking import CostTrackingRegister, models, ConsumableItem, tasks
+from nodeconductor.core import utils as core_utils
+from nodeconductor.cost_tracking import CostTrackingRegister, models, ConsumableItem, tasks, exceptions
 from nodeconductor.cost_tracking.tests import factories
-from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.structure.tests import factories as structure_factories, tasks as structure_test_tasks
 from nodeconductor.structure.tests.models import TestNewInstance
 
 
@@ -15,6 +16,9 @@ class ResourceUpdateTest(TransactionTestCase):
 
     def setUp(self):
         CostTrackingRegister.register_strategy(factories.TestNewInstanceCostTrackingStrategy)
+        resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
+        self.price_list_item = models.DefaultPriceListItem.objects.create(
+            item_type='storage', key='1 MB', value=0.5, resource_content_type=resource_content_type)
 
     @freeze_time('2016-08-08 11:00:00', tick=True)  # freeze time to avoid bugs in the end of a month.
     def test_consumption_details_of_resource_is_keeped_up_to_date(self):
@@ -54,12 +58,6 @@ class ResourceUpdateTest(TransactionTestCase):
         self.assertEqual(consumption_details.configuration[ConsumableItem('flavor', 'small')], 1)
 
     def test_price_estimate_of_resource_is_keeped_up_to_date(self):
-        resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
-        price_list_item = models.DefaultPriceListItem.objects.create(
-            item_type='storage', key='1 MB', resource_content_type=resource_content_type)
-        price_list_item.value = 0.5
-        price_list_item.save()
-
         start_time = datetime.datetime(2016, 8, 8, 11, 0)
         with freeze_time(start_time):
             today = timezone.now()
@@ -70,7 +68,7 @@ class ResourceUpdateTest(TransactionTestCase):
             # after resource creation price estimate should be calculate for whole month
             month_end = datetime.datetime(2016, 8, 31, 23, 59, 59)
             expected = (
-                int((month_end - start_time).total_seconds() / 60) * price_list_item.minute_rate * old_disk)
+                int((month_end - start_time).total_seconds() / 60) * self.price_list_item.minute_rate * old_disk)
             self.assertAlmostEqual(price_estimate.total, expected)
 
         # after some time resource disk was updated - resource price should be recalculated
@@ -82,18 +80,12 @@ class ResourceUpdateTest(TransactionTestCase):
 
             price_estimate.refresh_from_db()
             expected = (
-                int((change_time - start_time).total_seconds() / 60) * price_list_item.minute_rate * old_disk +
-                int((month_end - change_time).total_seconds() / 60) * price_list_item.minute_rate * new_disk)
+                int((change_time - start_time).total_seconds() / 60) * self.price_list_item.minute_rate * old_disk +
+                int((month_end - change_time).total_seconds() / 60) * self.price_list_item.minute_rate * new_disk)
             self.assertAlmostEqual(price_estimate.total, expected)
 
     def test_price_estimate_of_resource_ancestors_is_keeped_up_to_date(self):
         """ On resource configuration tests handlers should update resource ancestors estimates """
-        resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
-        price_list_item = models.DefaultPriceListItem.objects.create(
-            item_type='storage', key='1 MB', resource_content_type=resource_content_type)
-        price_list_item.value = 0.5
-        price_list_item.save()
-
         start_time = datetime.datetime(2016, 8, 8, 11, 0)
         with freeze_time(start_time):
             today = timezone.now()
@@ -105,7 +97,7 @@ class ResourceUpdateTest(TransactionTestCase):
             # after resource creation price for it ancestors should be calculate for whole month
             month_end = datetime.datetime(2016, 8, 31, 23, 59, 59)
             expected = (
-                int((month_end - start_time).total_seconds() / 60) * price_list_item.minute_rate * old_disk)
+                int((month_end - start_time).total_seconds() / 60) * self.price_list_item.minute_rate * old_disk)
             for ancestor in ancestors:
                 ancestor_estimate = models.PriceEstimate.objects.get(scope=ancestor, month=today.month, year=today.year)
                 self.assertAlmostEqual(ancestor_estimate.total, expected)
@@ -118,17 +110,13 @@ class ResourceUpdateTest(TransactionTestCase):
             resource.save()
 
             expected = (
-                int((change_time - start_time).total_seconds() / 60) * price_list_item.minute_rate * old_disk +
-                int((month_end - change_time).total_seconds() / 60) * price_list_item.minute_rate * new_disk)
+                int((change_time - start_time).total_seconds() / 60) * self.price_list_item.minute_rate * old_disk +
+                int((month_end - change_time).total_seconds() / 60) * self.price_list_item.minute_rate * new_disk)
             for ancestor in ancestors:
                 ancestor_estimate = models.PriceEstimate.objects.get(scope=ancestor, month=today.month, year=today.year)
                 self.assertAlmostEqual(ancestor_estimate.total, expected)
 
     def test_historical_estimates_are_initialized(self):
-        resource_content_type = ContentType.objects.get_for_model(TestNewInstance)
-        price_list_item = models.DefaultPriceListItem.objects.create(
-            item_type='storage', key='1 MB', resource_content_type=resource_content_type, value=0.1)
-
         creation_time = timezone.make_aware(datetime.datetime(2016, 7, 15, 11, 0))
         import_time = timezone.make_aware(datetime.datetime(2016, 9, 2, 10, 0))
         with freeze_time(import_time):
@@ -145,7 +133,7 @@ class ResourceUpdateTest(TransactionTestCase):
         # Check price estimates total calculation for month #7
         month_end = timezone.make_aware(datetime.datetime(2016, 7, 31, 23, 59, 59))
         work_minutes = int((month_end - creation_time).total_seconds() / 60)
-        expected = work_minutes * price_list_item.minute_rate * resource.disk
+        expected = work_minutes * self.price_list_item.minute_rate * resource.disk
         for scope in [resource] + ancestors:
             estimate = models.PriceEstimate.objects.get(scope=scope, month=7, year=2016)
             self.assertEqual(estimate.total, expected)
@@ -154,10 +142,50 @@ class ResourceUpdateTest(TransactionTestCase):
         month_start = timezone.make_aware(datetime.datetime(2016, 8, 1))
         month_end = timezone.make_aware(datetime.datetime(2016, 8, 31, 23, 59, 59))
         work_minutes = int((month_end - month_start).total_seconds() / 60)
-        expected = work_minutes * price_list_item.minute_rate * resource.disk
+        expected = work_minutes * self.price_list_item.minute_rate * resource.disk
         for scope in [resource] + ancestors:
             estimate = models.PriceEstimate.objects.get(scope=scope, month=8, year=2016)
-            self.assertEqual(estimate.total, expected)
+            self.assertAlmostEqual(estimate.total, expected)
+
+    def test_error_is_raised_if_resource_cost_is_over_limit(self):
+        resource = structure_factories.TestNewInstanceFactory(
+            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
+        models.PriceEstimate.objects.filter(scope=resource).update(limit=0)
+
+        resource.disk += 10 * 1024
+
+        self.assertRaises(exceptions.CostLimitExceeded, resource.save)
+
+    def test_error_is_raised_if_resource_ancestor_cost_is_over_limit(self):
+        resource = structure_factories.TestNewInstanceFactory(
+            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
+        models.PriceEstimate.objects.filter(scope=resource.service_project_link.project).update(limit=0)
+
+        resource.disk += 10 * 1024
+
+        self.assertRaises(exceptions.CostLimitExceeded, resource.save)
+
+    def test_error_is_not_raise_if_resource_price_has_been_decreased(self):
+        resource = structure_factories.TestNewInstanceFactory(
+            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
+        models.PriceEstimate.objects.filter(scope=resource).update(limit=0)
+
+        resource.disk -= 10 * 1024
+
+        try:
+            resource.save()
+        except exceptions.CostLimitExceeded:
+            self.fail('Resource price has been decreased, error should not be raised.')
+
+    def test_error_is_not_raised_inside_celery_task(self):
+        resource = structure_factories.TestNewInstanceFactory(
+            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
+        models.PriceEstimate.objects.filter(scope=resource).update(limit=0)
+
+        try:
+            structure_test_tasks.pull_instance(core_utils.serialize_instance(resource), pulled_disk=40 * 1024)
+        except exceptions.CostLimitExceeded:
+            self.fail('Resource was updated in celery task, error should not be raised.')
 
 
 class ResourceQuotaUpdateTest(TransactionTestCase):
@@ -244,3 +272,17 @@ class ScopeDeleteTest(TransactionTestCase):
         for scope in (self.spl, self.service, self.project, self.customer):
             for price_estimate in models.PriceEstimate.objects.filter(scope=scope):
                 self.assertEqual(price_estimate.total, 0)
+
+
+class CopyFromPreviousEstimateTest(TransactionTestCase):
+
+    def test_threshold_and_limit_were_copied_from_previous_month_estimate(self):
+        previous_month, previous_year = 3, 2017
+        previous_estimate = factories.PriceEstimateFactory(
+            month=previous_month, year=previous_year, limit=100, threshold=80)
+
+        current_estimate = factories.PriceEstimateFactory(
+            month=previous_month + 1, year=previous_year, scope=previous_estimate.scope)
+
+        self.assertEqual(current_estimate.limit, previous_estimate.limit)
+        self.assertEqual(current_estimate.threshold, previous_estimate.threshold)

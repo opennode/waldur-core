@@ -24,7 +24,7 @@ from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
 from nodeconductor.structure import models as structure_models, SupportedServices
 
-from . import CostTrackingRegister
+from . import CostTrackingRegister, exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,11 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
     def is_resource_estimate(self):
         return issubclass(self.content_type.model_class(), structure_models.ResourceMixin)
 
+    def is_over_limit(self):
+        if self.limit == -1:
+            return False
+        return self.total > self.limit
+
     def get_previous(self):
         """ Get estimate for the same scope for previous month. """
         month, year = (self.month - 1, self.year) if self.month != 1 else (12, self.year - 1)
@@ -128,7 +133,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             self.details['project_name'] = self.scope.service_project_link.project.name
         self.save(update_fields=['details'])
 
-    def update_total(self, update_ancestors=True):
+    def update_total(self, update_ancestors=True, raise_exception=False):
         """ Re-calculate price of resource and its ancestors for the whole month,
             based on its configuration and consumption details.
         """
@@ -137,13 +142,17 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         diff = new_total - self.total
         with transaction.atomic():
             self.total = new_total
+            if diff > 0 and raise_exception and self.is_over_limit():
+                raise exceptions.CostLimitExceeded(self)
             self.save(update_fields=['total'])
             if update_ancestors:
-                self.update_ancestors_total(diff)
+                self.update_ancestors_total(diff, raise_exception=raise_exception)
 
-    def update_ancestors_total(self, diff):
+    def update_ancestors_total(self, diff, raise_exception=False):
         for ancestor in self.get_ancestors():
             ancestor.total += diff
+            if diff > 0 and raise_exception and ancestor.is_over_limit():
+                raise exceptions.CostLimitExceeded(ancestor)
             ancestor.save(update_fields=['total'])
 
     def update_consumed(self):
@@ -215,7 +224,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
                 yield grandchild
 
     @staticmethod
-    def update_resource_estimate(resource, new_configuration):
+    def update_resource_estimate(resource, new_configuration, raise_exception=False):
         """ Create or update price estimate for resource based on its current configuration """
         price_estimate, created = PriceEstimate.objects.get_or_create_current(scope=resource)
         if created:
@@ -223,7 +232,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         consumption_details, _ = ConsumptionDetails.objects.get_or_create(price_estimate=price_estimate)
         is_updated = consumption_details.update_configuration(new_configuration)
         if is_updated:
-            price_estimate.update_total()
+            price_estimate.update_total(raise_exception=raise_exception)
         return price_estimate
 
 

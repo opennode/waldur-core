@@ -1,19 +1,20 @@
 import datetime
 import logging
 
+from celery import current_task
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.cost_tracking import exceptions, models, CostTrackingRegister, ResourceNotRegisteredError
-from nodeconductor.structure import ServiceBackendNotImplemented, ServiceBackendError, models as structure_models
+from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError
+from nodeconductor.structure import models as structure_models
 
 
 logger = logging.getLogger(__name__)
 
 
-# XXX: Should we copy limit too?
-def copy_threshold_from_previous_price_estimate(sender, instance, created=False, **kwargs):
+def copy_from_previous_price_estimate(sender, instance, created=False, **kwargs):
+    """ Copy limit and threshold from previous price estimate """
     if created and instance.scope:
         current_date = datetime.date.today().replace(year=instance.year, month=instance.month, day=1)
         prev_date = current_date - relativedelta(months=1)
@@ -22,51 +23,13 @@ def copy_threshold_from_previous_price_estimate(sender, instance, created=False,
                 year=prev_date.year,
                 month=prev_date.month,
                 scope=instance.scope,
-                threshold__gt=0
             )
-            instance.threshold = prev_estimate.threshold
-            instance.save(update_fields=['threshold'])
         except models.PriceEstimate.DoesNotExist:
             pass
-
-
-# XXX: Why is this only for project, but not for customer?
-#      Looks strange that we are checking project separately.
-#      I think this error should be raised for each price estimate independently
-#      from object. NC-1537
-def check_project_cost_limit_on_resource_provision(sender, instance, **kwargs):
-    resource = instance
-
-    try:
-        project = resource.service_project_link.project
-        estimate = models.PriceEstimate.objects.get_current(project)
-    except models.PriceEstimate.DoesNotExist:
-        return
-
-    # Project cost is unlimited
-    if estimate.limit == -1:
-        return
-
-    # Early check
-    if estimate.total > estimate.limit:
-        raise exceptions.CostLimitExceeded(
-            detail='Estimated cost of project is over limit.')
-
-    try:
-        cost_tracking_backend = CostTrackingRegister.get_resource_backend(resource)
-        monthly_cost = float(cost_tracking_backend.get_monthly_cost_estimate(resource))
-    except ServiceBackendNotImplemented:
-        return
-    except ServiceBackendError as e:
-        logger.error("Failed to get cost estimate for resource %s: %s", resource, e)
-        return
-    except Exception as e:
-        logger.exception("Failed to get cost estimate for resource %s: %s", resource, e)
-        return
-
-    if estimate.total + monthly_cost > estimate.limit:
-        raise exceptions.CostLimitExceeded(
-            detail='Total estimated cost of resource and project is over limit.')
+        else:
+            instance.threshold = prev_estimate.threshold
+            instance.limit = prev_estimate.limit
+            instance.save(update_fields=['threshold', 'limit'])
 
 
 def scope_deletion(sender, instance, **kwargs):
@@ -114,6 +77,11 @@ def _resource_deletion(resource):
     price_estimate.init_details()
 
 
+def _is_in_celery_task():
+    """ Return True if current code is executed in celery task """
+    return bool(current_task)
+
+
 def resource_update(sender, instance, created=False, **kwargs):
     """ Update resource consumption details and price estimate if its configuration has changed.
         Create estimates for previous months if resource was created not in current month.
@@ -123,7 +91,8 @@ def resource_update(sender, instance, created=False, **kwargs):
         new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
-    models.PriceEstimate.update_resource_estimate(resource, new_configuration)
+    models.PriceEstimate.update_resource_estimate(
+        resource, new_configuration, raise_exception=not _is_in_celery_task())
     # Try to create historical price estimates
     if created:
         _create_historical_estimates(resource, new_configuration)
@@ -137,7 +106,8 @@ def resource_quota_update(sender, instance, **kwargs):
         new_configuration = CostTrackingRegister.get_configuration(resource)
     except ResourceNotRegisteredError:
         return
-    models.PriceEstimate.update_resource_estimate(resource, new_configuration)
+    models.PriceEstimate.update_resource_estimate(
+        resource, new_configuration, raise_exception=not _is_in_celery_task())
 
 
 def _create_historical_estimates(resource, configuration):
