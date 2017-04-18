@@ -1,4 +1,4 @@
-from celery import shared_task
+from celery import shared_task, current_task
 
 from nodeconductor.cost_tracking import CostTrackingRegister, models
 from nodeconductor.structure import models as structure_models
@@ -46,3 +46,21 @@ def _update_ancestor_consumed(ancestor):
                             if isinstance(descendant.scope, structure_models.ResourceMixin)]
     price_estimate.consumed = sum([descendant.consumed for descendant in resource_descendants])
     price_estimate.save(update_fields=['consumed'])
+
+
+def serializer_method():
+    print 'serializer method'
+    print 'Current task', current_task
+    test_task()
+
+
+@shared_task
+def test_task():
+    print 'Test task'
+    print 'Current task', current_task
+    backend_method()
+
+
+def backend_method():
+    print 'Backend method'
+    print 'Current task', current_task
