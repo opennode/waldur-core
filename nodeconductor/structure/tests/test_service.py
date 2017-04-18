@@ -1,38 +1,8 @@
-from django.core.urlresolvers import reverse
 from django.db import models
-from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
-from nodeconductor.structure import signals
-from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole
+from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories, fixtures, models as test_models
-
-
-class SuspendServiceTest(test.APITransactionTestCase):
-
-    def setUp(self):
-        self.user = factories.UserFactory()
-        self.customer = factories.CustomerFactory(balance=-10)
-        self.customer.add_user(self.user, CustomerRole.OWNER)
-
-    def _get_url(self, view_name, **kwargs):
-        return 'http://testserver' + reverse(view_name, kwargs=kwargs)
-
-    def test_credit_customer(self):
-        amount = 7.45
-        customer = factories.CustomerFactory()
-
-        with mock_signal_receiver(signals.customer_account_credited) as receiver:
-            customer.credit_account(amount)
-
-            receiver.assert_called_once_with(
-                instance=customer,
-                amount=amount,
-                sender=Customer,
-                signal=signals.customer_account_credited,
-            )
-
-            self.assertEqual(customer.balance, amount)
 
 
 class ServiceResourcesCounterTest(test.APITransactionTestCase):
