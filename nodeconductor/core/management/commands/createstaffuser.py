@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
@@ -19,8 +19,7 @@ class Command(BaseCommand):
         user, created = User.objects.get_or_create(
             username=username, defaults=dict(last_login=timezone.now(), is_staff=True))
         if not created:
-            self.stderr.write(self.style.ERROR('Username %s is already taken.' % username))
-            exit(1)
+            raise CommandError('Username %s is already taken.' % username)
 
         user.set_password(password)
         self.stdout.write(self.style.SUCCESS('User %s has been created.' % username))
