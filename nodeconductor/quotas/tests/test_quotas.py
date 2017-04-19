@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from ddt import ddt, data
 from django.utils import timezone
 from rest_framework import test, status
 from reversion import revisions as reversion
@@ -7,7 +8,37 @@ from reversion import revisions as reversion
 from nodeconductor.core import utils as core_utils
 from nodeconductor.quotas.tests import factories
 from nodeconductor.structure import models as structure_models
-from nodeconductor.structure.tests import factories as structure_factories
+from nodeconductor.structure.tests import (factories as structure_factories,
+                                           fixtures as structure_fixtures)
+
+
+@ddt
+class QuotaUpdateTest(test.APITransactionTestCase):
+    def setUp(self):
+        super(QuotaUpdateTest, self).setUp()
+        self.fixture = structure_fixtures.ServiceFixture()
+        self.quota_name = structure_models.Customer.Quotas.nc_project_count
+        self.quota = self.fixture.customer.quotas.get(name=self.quota_name)
+        self.quota.usage = 10
+        self.quota.save()
+        self.url = factories.QuotaFactory.get_url(self.quota)
+
+    def test_staff_can_set_quota_limit(self):
+        self.client.force_authenticate(self.fixture.staff)
+        response = self.client.put(self.url, {'limit': self.quota.usage + 1})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['limit'], self.quota.usage + 1)
+
+    @data('global_support', 'owner')
+    def test_other_users_can_not_set_quota_limit(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.put(self.url, {'limit': self.quota.usage + 1})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_quota_limit_should_not_be_less_than_usage(self):
+        self.client.force_authenticate(self.fixture.staff)
+        response = self.client.put(self.url, {'limit': self.quota.usage - 1})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class QuotaHistoryTest(test.APITransactionTestCase):
