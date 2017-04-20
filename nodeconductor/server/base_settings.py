@@ -250,9 +250,9 @@ VERIFY_WEBHOOK_REQUESTS = True
 NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
     'TOKEN_KEY': 'x-auth-token',
-    'TOKEN_LIFETIME': timedelta(hours=1),
 
-    'SUSPEND_UNPAID_CUSTOMERS': False,
+    # wiki: https://opennode.atlassian.net/wiki/display/WD/MasterMind+configuration
+    'TOKEN_LIFETIME': timedelta(hours=1),
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
     'INVITATION_LIFETIME': timedelta(weeks=1),
     'OWNERS_CAN_MANAGE_OWNERS': True,
