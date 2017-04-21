@@ -1,4 +1,5 @@
 import datetime
+import unittest
 
 from rest_framework import status, test
 from rest_framework.reverse import reverse
@@ -19,6 +20,7 @@ class BaseMonitoringTest(test.APITransactionTestCase):
         self.client.force_authenticate(UserFactory(is_staff=True))
 
 
+@unittest.skip('Monitoring is not supported by structure yet.')
 class SlaTest(BaseMonitoringTest):
     def setUp(self):
         super(SlaTest, self).setUp()
@@ -50,6 +52,7 @@ class SlaTest(BaseMonitoringTest):
         self.assertEqual(90, response.data['sla']['value'])
 
 
+@unittest.skip('Monitoring is not supported by structure yet.')
 class EventsTest(BaseMonitoringTest):
     def setUp(self):
         super(EventsTest, self).setUp()
@@ -86,6 +89,7 @@ class EventsTest(BaseMonitoringTest):
         self.assertEqual(0, len(response.data))
 
 
+@unittest.skip('Monitoring is not supported by structure yet.')
 class ItemTest(BaseMonitoringTest):
     def setUp(self):
         super(ItemTest, self).setUp()
