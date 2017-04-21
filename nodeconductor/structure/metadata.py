@@ -2,13 +2,11 @@ from collections import OrderedDict
 
 from django.utils.encoding import force_text
 from django.utils.http import urlencode
-from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.request import clone_request
 from rest_framework.reverse import reverse
 
-from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.utils import sort_dict
 
 
@@ -44,16 +42,10 @@ class ActionSerializer(object):
             return self.name.replace('_', ' ').title()
 
     def get_reason(self):
-        if hasattr(self.view, 'check_operation'):
-            try:
-                self.view.check_operation(self.request, self.resource, self.name)
-            except exceptions.APIException as e:
-                return force_text(e)
-        else:
-            try:
-                self.view.initial(self.request)
-            except exceptions.APIException as e:
-                return force_text(e)
+        try:
+            self.view.initial(self.request)
+        except exceptions.APIException as e:
+            return force_text(e)
 
     def get_method(self):
         if self.name == 'destroy':
@@ -215,24 +207,3 @@ class ActionsMetadata(SimpleMetadata):
             ]
 
         return field_info
-
-
-# TODO: Allow to define permissions based on user and object
-def check_operation(user, resource, operation_name, valid_state=None):
-    from nodeconductor.structure import models
-
-    project = resource.service_project_link.project
-    has_access = user.is_staff or \
-                 project.customer.has_user(user, models.CustomerRole.OWNER) or \
-                 project.has_user(user, models.ProjectRole.ADMINISTRATOR) or \
-                 project.has_user(user, models.ProjectRole.MANAGER)
-
-    if not has_access:
-        raise exceptions.PermissionDenied(
-            _('Only project administrator or staff allowed to perform this action.'))
-
-    if valid_state is not None:
-        state = valid_state if isinstance(valid_state, (list, tuple)) else [valid_state]
-        if state and resource.state not in state:
-            message = _('Performing %s operation is not allowed for resource in its current state.')
-            raise IncorrectStateException(message % operation_name)
