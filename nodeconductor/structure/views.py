@@ -1,22 +1,17 @@
 from __future__ import unicode_literals
 
-import functools
 import time
 import logging
 from collections import defaultdict
-from datetime import timedelta
 
 from django.conf import settings as django_settings
 from django.contrib import auth
-from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
-from django.utils import six, timezone
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 from django.views.static import serve
 from django_filters.rest_framework import DjangoFilterBackend
-from django_fsm import TransitionNotAllowed
 from rest_framework import mixins
 from rest_framework import permissions as rf_permissions
 from rest_framework import serializers as rf_serializers
@@ -30,12 +25,11 @@ from rest_framework.response import Response
 from reversion import revisions as reversion
 
 from nodeconductor.core import (
-    filters as core_filters, mixins as core_mixins, models as core_models, exceptions as core_exceptions,
+    filters as core_filters, mixins as core_mixins, models as core_models,
     serializers as core_serializers, views as core_views, validators as core_validators, managers as core_managers)
 from nodeconductor.core.utils import datetime_to_timestamp, sort_dict
 from nodeconductor.logging import models as logging_models
 from nodeconductor.logging.loggers import expand_alert_groups
-from nodeconductor.monitoring.filters import SlaFilter, MonitoringItemFilter
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import (
     SupportedServices, ServiceBackendError, ServiceBackendNotImplemented, filters, permissions, models, serializers,
@@ -43,7 +37,7 @@ from nodeconductor.structure import (
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.signals import resource_imported
 from nodeconductor.structure.managers import filter_queryset_for_user
-from nodeconductor.structure.metadata import check_operation, ActionsMetadata
+from nodeconductor.structure.metadata import ActionsMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -1656,46 +1650,6 @@ class BaseServiceProjectLinkViewSet(core_views.ActionsViewSet):
         return super(BaseServiceProjectLinkViewSet, self).retrieve(request, *args, **kwargs)
 
 
-def safe_operation(valid_state=None):
-    def decorator(view_fn):
-        view_fn.valid_state = valid_state
-
-        @functools.wraps(view_fn)
-        def wrapped(self, request, *args, **kwargs):
-            message = _('Performing %s operation is not allowed for resource in its current state.')
-            operation_name = view_fn.__name__
-
-            try:
-                with transaction.atomic():
-                    resource = self.get_object()
-                    check_operation(request.user, resource, operation_name, valid_state)
-
-                    # Important! We are passing back the instance from current transaction to a view
-                    try:
-                        response = view_fn(self, request, resource, *args, **kwargs)
-                    except ServiceBackendNotImplemented:
-                        raise MethodNotAllowed(operation_name)
-
-            except TransitionNotAllowed:
-                raise core_exceptions.IncorrectStateException(message % operation_name)
-
-            except IntegrityError:
-                return Response({'status': _('%s was not scheduled.') % operation_name},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-            if response is not None:
-                return response
-
-            if resource.pk is None:
-                return Response(status=status.HTTP_204_NO_CONTENT)
-
-            return Response({'status': _('%s was scheduled.') % operation_name},
-                            status=status.HTTP_202_ACCEPTED)
-
-        return wrapped
-    return decorator
-
-
 class ResourceViewMetaclass(type):
     """ Store view in registry """
     def __new__(cls, name, bases, args):
@@ -1706,97 +1660,8 @@ class ResourceViewMetaclass(type):
         return resource_view
 
 
-class ResourceViewMixin(core_mixins.EagerLoadMixin):
-    queryset = NotImplemented
-    serializer_class = NotImplemented
-    lookup_field = 'uuid'
-    filter_backends = (
-        filters.GenericRoleFilter,
-        DjangoFilterBackend,
-        SlaFilter,
-        MonitoringItemFilter,
-        filters.TagsFilter,
-    )
-    metadata_class = ActionsMetadata
-
-    def initial(self, request, *args, **kwargs):
-        super(ResourceViewMixin, self).initial(request, *args, **kwargs)
-        if 'uuid' in kwargs and self.action != 'metadata':
-            self.check_operation(request, self.get_object(), self.action)
-
-    def check_operation(self, request, resource, action):
-        if action:
-            func = getattr(self, action)
-            valid_state = getattr(func, 'valid_state', None)
-            return check_operation(request.user, resource, action, valid_state)
-
-    def log_resource_creation_scheduled(self, resource):
-        event_logger.resource.info(
-            '{resource_full_name} creation has been scheduled.',
-            event_type='resource_creation_scheduled',
-            event_context={'resource': resource})
-
-
 class BaseServicePropertyViewSet(viewsets.ReadOnlyModelViewSet):
     filter_class = filters.BaseServicePropertyFilter
-
-
-class VirtualMachineViewSet(six.with_metaclass(ResourceViewMetaclass,
-                                               core_mixins.RuntimeStateMixin,
-                                               core_views.StateExecutorViewSet,
-                                               ResourceViewMixin,
-                                               viewsets.ModelViewSet)):
-    filter_backends = ResourceViewMixin.filter_backends + (
-        filters.StartTimeFilter,
-    )
-    filter_class = filters.BaseResourceFilter
-    runtime_state_executor = NotImplemented
-    runtime_acceptable_states = {
-        'stop': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
-        'start': core_models.RuntimeStateMixin.RuntimeStates.OFFLINE,
-        'restart': core_models.RuntimeStateMixin.RuntimeStates.ONLINE,
-    }
-
-    @detail_route(methods=['post'])
-    def unlink(self, request, uuid=None):
-        instance = self.get_object()
-        instance.unlink()
-        self.perform_destroy(instance)
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    unlink.destructive = True
-
-    @detail_route(methods=['post'])
-    def start(self, request, uuid=None):
-        instance = self.get_object()
-        self.runtime_state_executor.execute(
-            instance,
-            method='start',
-            final_state=instance.RuntimeStates.ONLINE,
-            async=self.async_executor,
-            updated_fields=None)
-        return Response({'detail': _('Starting was scheduled.')}, status=status.HTTP_202_ACCEPTED)
-
-    @detail_route(methods=['post'])
-    def stop(self, request, uuid=None):
-        instance = self.get_object()
-        self.runtime_state_executor.execute(
-            instance,
-            method='stop',
-            final_state=instance.RuntimeStates.OFFLINE,
-            async=self.async_executor,
-            updated_fields=None)
-        return Response({'detail': _('Stopping was scheduled.')}, status=status.HTTP_202_ACCEPTED)
-
-    @detail_route(methods=['post'])
-    def restart(self, request, uuid=None):
-        instance = self.get_object()
-        self.runtime_state_executor.execute(
-            instance,
-            method='restart',
-            final_state=instance.RuntimeStates.ONLINE,
-            async=self.async_executor,
-            updated_fields=None)
-        return Response({'detail': _('Restarting was scheduled.')}, status=status.HTTP_202_ACCEPTED)
 
 
 class AggregatedStatsView(views.APIView):
