@@ -258,7 +258,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
             'native_name': account.native_name,
             'is_staff': account.is_staff,
             'is_active': account.is_active,
-            'is_superuser': account.is_superuser,
         }
 
     def _get_null_payload(self, account=None):
@@ -273,7 +272,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
             'description': None,
             'is_staff': account.is_staff,
             'is_active': account.is_active,
-            'is_superuser': account.is_superuser,
         }
 
     def _ensure_user_can_change_field(self, user, field_name, data):

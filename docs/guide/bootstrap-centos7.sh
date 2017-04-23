@@ -18,13 +18,12 @@ systemctl start redis
 systemctl enable redis
 
 # Set up NodeConductor
-yum -y install nodeconductor-wsgi
+yum -y install nodeconductor
 
 su - nodeconductor -c "nodeconductor migrate --noinput"
 
-systemctl start httpd
-systemctl enable httpd
-curl --head http://localhost/api/
+systemctl start nodeconductor-uwsgi
+systemctl enable nodeconductor-uwsgi
 
 systemctl start nodeconductor-celery
 systemctl enable nodeconductor-celery

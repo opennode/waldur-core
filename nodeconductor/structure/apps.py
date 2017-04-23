@@ -143,18 +143,6 @@ class StructureConfig(AppConfig):
                     model.__name__, index),
             )
 
-        structure_signals.customer_account_credited.connect(
-            handlers.log_customer_account_credited,
-            sender=Customer,
-            dispatch_uid='nodeconductor.structure.handlers.log_customer_account_credited',
-        )
-
-        structure_signals.customer_account_debited.connect(
-            handlers.log_customer_account_debited,
-            sender=Customer,
-            dispatch_uid='nodeconductor.structure.handlers.log_customer_account_debited',
-        )
-
         signals.post_save.connect(
             handlers.connect_customer_to_shared_service_settings,
             sender=Customer,

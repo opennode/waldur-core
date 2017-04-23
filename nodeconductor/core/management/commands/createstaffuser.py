@@ -1,43 +1,25 @@
-from __future__ import unicode_literals
-from datetime import datetime
-
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 
 class Command(BaseCommand):
-    args = '<username password>'
-    help = """Create a user with a specified username and password. User will be created as staff.
+    help = "Create a user with a specified username and password. User will be created as staff."
 
-Arguments:
-  username       username of the newly created user
-  password       password of the newly created user"""
-
-    def __init__(self, *args, **kwargs):
-        # Options are defined in an __init__ method to support swapping out
-        # custom user models in tests.
-        super(Command, self).__init__(*args, **kwargs)
-        self.UserModel = get_user_model()
+    def add_arguments(self, parser):
+        parser.add_argument('-u', '--username', dest='username', required=True)
+        parser.add_argument('-p', '--password', dest='password', required=True)
 
     def handle(self, *args, **options):
-        if len(args) < 2:
-            raise CommandError('Missing arguments.')
-            return
+        User = get_user_model()
 
-        self.stdout.write('NB! This is administrative command. '
-                          'Passing password in plaintext on command line is not safe!')
-        username = args[0]
-        password = args[1]
-        try:
-            self.UserModel.objects.get(username=username)
-        except self.UserModel.DoesNotExist:
-            pass
-        else:
-            self.stderr.write("Error: username is already taken.")
-            return
+        username = options['username']
+        password = options['password']
 
-        self.stdout.write('Creating a user %s...' % username)
-        user = self.UserModel.objects.create(username=username, last_login=datetime.now())
+        user, created = User.objects.get_or_create(
+            username=username, defaults=dict(last_login=timezone.now(), is_staff=True))
+        if not created:
+            raise CommandError('Username %s is already taken.' % username)
+
         user.set_password(password)
-        user.is_staff = True
-        user.save()
+        self.stdout.write(self.style.SUCCESS('User %s has been created.' % username))

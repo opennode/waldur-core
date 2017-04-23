@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
 
 from nodeconductor import __version__
-from nodeconductor.core import mixins, permissions
+from nodeconductor.core import permissions
 from nodeconductor.core.exceptions import IncorrectStateException
 from nodeconductor.core.serializers import AuthTokenSerializer
 from nodeconductor.logging.loggers import event_logger
@@ -203,32 +203,6 @@ def exception_handler(exc, context):
         exc = IncorrectStateException(detail=detail)
 
     return rf_exception_handler(exc, context)
-
-
-class StateExecutorViewSet(mixins.StateMixin,
-                           mixins.CreateExecutorMixin,
-                           mixins.UpdateExecutorMixin,
-                           mixins.DeleteExecutorMixin,
-                           viewsets.ModelViewSet):
-    """ Create/Update/Delete operations via executors """
-    pass
-
-
-class UpdateOnlyViewSet(rf_mixins.RetrieveModelMixin,
-                        rf_mixins.UpdateModelMixin,
-                        rf_mixins.DestroyModelMixin,
-                        rf_mixins.ListModelMixin,
-                        viewsets.GenericViewSet):
-    """ All default operations except create """
-    pass
-
-
-class UpdateOnlyStateExecutorViewSet(mixins.StateMixin,
-                                     mixins.UpdateExecutorMixin,
-                                     mixins.DeleteExecutorMixin,
-                                     UpdateOnlyViewSet):
-    """ Update/Delete operations via executors """
-    pass
 
 
 class ProtectedViewSet(rf_mixins.CreateModelMixin,

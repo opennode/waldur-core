@@ -1,3 +1,5 @@
+# BuildRequiresRepo: https://opennodecloud.com/centos/7/nodeconductor-release.rpm
+
 %define __conf_dir %{_sysconfdir}/%{name}
 %define __data_dir %{_datadir}/%{name}
 %define __log_dir %{_localstatedir}/log/%{name}
@@ -14,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.135.0
+Version: 0.136.0
 Release: 1.el7
 License: MIT
 
@@ -142,9 +144,9 @@ rm -rf %{buildroot}
 %{_unitdir}/*
 %{_bindir}/*
 %{__data_dir}
-%{__log_dir}
+%attr(0750,%{name},%{name}) %{__log_dir}
 %{__logrotate_dir}/*
-%{__work_dir}
+%attr(0750,%{name},%{name}) %{__work_dir}
 %config(noreplace) %{__celery_conf_file}
 %config(noreplace) %{__conf_file}
 %config(noreplace) %{__uwsgi_conf_file}
@@ -166,11 +168,6 @@ elif [ "$1" = 2 ]; then
     # Applicable to nodeconductor-0.103.0 and before
     [ "$(getent passwd nodeconductor | cut -d: -f7)" = "/sbin/nologin" ] && usermod -s /bin/sh nodeconductor
 fi
-
-echo "[%{name}] Setting directory permissions..."
-chown -R %{name}:%{name} %{__log_dir}
-chmod -R g+w %{__log_dir}
-chown -R %{name}:%{name} %{__work_dir}
 
 cat <<EOF
 ------------------------------------------------------------------------
@@ -222,6 +219,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Sun Apr 23 2017 Jenkins <jenkins@opennodecloud.com> - 0.136.0-1.el7
+- New upstream release
+
 * Fri Apr 14 2017 Jenkins <jenkins@opennodecloud.com> - 0.135.0-1.el7
 - New upstream release
 

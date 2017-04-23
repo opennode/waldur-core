@@ -80,8 +80,8 @@ class UserChangeForm(auth_admin.UserChangeForm):
 
 class UserAdmin(auth_admin.UserAdmin):
     list_display = ('username', 'uuid', 'email', 'full_name', 'native_name', 'is_active', 'is_staff', 'is_support')
-    search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email')
-    list_filter = ('is_active', 'is_staff', 'is_superuser', 'is_support')
+    search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email', 'civil_number')
+    list_filter = ('is_active', 'is_staff', 'is_support')
     fieldsets = (
         (None, {'fields': ('username', 'password', 'registration_method')}),
         (_('Personal info'), {'fields': (
@@ -89,7 +89,7 @@ class UserAdmin(auth_admin.UserAdmin):
             'preferred_language', 'competence', 'phone_number'
         )}),
         (_('Organization'), {'fields': ('organization', 'organization_approved')}),
-        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'is_support')}),
+        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_support')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined', 'agreement_date')}),
     )
     readonly_fields = ('registration_method', 'agreement_date')

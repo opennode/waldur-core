@@ -13,6 +13,6 @@ class TestServiceProjectLinkViewSet(structure_views.BaseServiceProjectLinkViewSe
     serializer_class = serializers.ServiceProjectLinkSerializer
 
 
-class TestNewInstanceViewSet(structure_views.VirtualMachineViewSet):
+class TestNewInstanceViewSet(structure_views.ResourceViewSet):
     queryset = models.TestNewInstance.objects.all()
     serializer_class = serializers.NewInstanceSerializer

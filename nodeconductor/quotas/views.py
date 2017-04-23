@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions as rf_exceptions, decorators, response, status
 from rest_framework import mixins
 from rest_framework import viewsets
@@ -81,7 +82,10 @@ class QuotaViewSet(mixins.UpdateModelMixin,
 
         if 'limit' in serializer.validated_data:
             limit = serializer.validated_data['limit']
+            if limit != -1 and quota.usage > limit:
+                raise rf_exceptions.ValidationError(_('Current quota usage exceeds new limit.'))
             quota.scope.set_quota_limit(quota.name, limit)
+            serializer.instance.refresh_from_db()
 
         if 'threshold' in serializer.validated_data:
             threshold = serializer.validated_data['threshold']
