@@ -314,6 +314,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         if 'shared' in form.base_fields:
             form.base_fields['shared'].initial = True if self.model is SharedServiceSettings else False
+            form.base_fields['shared'].disabled = True
             form.base_fields['shared'].widget.attrs['disabled'] = True
 
         return form
