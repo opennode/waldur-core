@@ -4,29 +4,6 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import status, response
 
 from nodeconductor.core import models
-from nodeconductor.core.exceptions import IncorrectStateException
-
-
-class StateMixin(object):
-    """ Raise exception if object is not in correct state for action """
-
-    acceptable_states = {}
-
-    def initial(self, request, *args, **kwargs):
-        States = models.StateMixin.States
-        acceptable_states = {
-            'update': [States.OK],
-            'partial_update': [States.OK],
-            'destroy': [States.OK, States.ERRED],
-        }
-        acceptable_states.update(self.acceptable_states)
-        acceptable_state = acceptable_states.get(self.action)
-        if acceptable_state:
-            obj = self.get_object()
-            if obj.state not in acceptable_state:
-                raise IncorrectStateException(_('Modification allowed in stable states only.'))
-
-        return super(StateMixin, self).initial(request, *args, **kwargs)
 
 
 class AsyncExecutor(object):
