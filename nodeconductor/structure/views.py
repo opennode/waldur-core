@@ -1745,7 +1745,7 @@ class QuotaTimelineStatsView(views.APIView):
 
     def get_all_spls_quotas(self):
         # XXX: quick and dirty hack for OpenStack: use tenants instead of SPLs as quotas scope.
-        spl_models = [m if m.__name__ != 'OpenStackServiceProjectLink' else m.tenants.model
+        spl_models = [m if m.__name__ != 'OpenStackServiceProjectLink' else m.tenants.field.model
                       for m in models.ServiceProjectLink.get_all_models()]
         return sum([spl_model.get_quotas_names() for spl_model in spl_models], [])
 
