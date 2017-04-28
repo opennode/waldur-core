@@ -22,7 +22,7 @@ License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # python-psycopg2 is needed to use PostgreSQL as database backend
-# mailcap is required for mime.types of static served by uwsgi
+# mailcap is required for /etc/mime.types of static files served by uwsgi
 Requires: logrotate
 Requires: mailcap
 Requires: python-celery >= 3.1.23, python-celery < 3.2
