@@ -11,7 +11,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.validators import MaxLengthValidator
 from django.db import models, transaction
-from django.db.models import Q, F
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
@@ -27,14 +27,12 @@ from nodeconductor.core import fields as core_fields
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
-from nodeconductor.core.tasks import send_task
 from nodeconductor.core.validators import validate_name
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user, ServiceSettingsManager
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
-from nodeconductor.structure.signals import customer_account_credited, customer_account_debited
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
 from nodeconductor.structure.utils import get_coordinates_by_ip, sort_dependencies
