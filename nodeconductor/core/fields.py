@@ -13,7 +13,7 @@ from rest_framework import serializers
 import six
 
 from nodeconductor.core.validators import validate_cron_schedule
-from nodeconductor.core import utils
+from nodeconductor.core import utils, validators as core_validators
 
 
 # XXX: This field is left only for migrations compatibility.
@@ -220,3 +220,7 @@ class UUIDField(models.UUIDField):
 
     def to_python(self, value):
         return self._parse_uuid(value)
+
+
+class ExtendedURLField(models.URLField):
+    default_validators = [core_validators.LDAPURLValidator()]

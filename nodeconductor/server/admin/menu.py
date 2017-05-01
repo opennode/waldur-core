@@ -44,6 +44,7 @@ class CustomMenu(Menu):
         'nodeconductor_openstack.*',
         'nodeconductor_aws.*',
         'nodeconductor_digitalocean.*',
+        'nodeconductor_ldap.*',
     )
 
     USERS = (

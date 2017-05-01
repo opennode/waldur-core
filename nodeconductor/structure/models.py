@@ -598,7 +598,7 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                                  related_name='service_settings',
                                  blank=True,
                                  null=True)
-    backend_url = models.URLField(max_length=200, blank=True, null=True)
+    backend_url = core_fields.ExtendedURLField(max_length=200, blank=True, null=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100, blank=True, null=True)
     domain = models.CharField(max_length=200, blank=True, null=True)

@@ -5,9 +5,10 @@ from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.core.validators import MaxLengthValidator, URLValidator
 from django.core.exceptions import ValidationError
 from django.db import models as django_models
-from django.forms import ModelMultipleChoiceField, ModelForm, TypedChoiceField, RadioSelect, ChoiceField
+from django.forms import ModelMultipleChoiceField, ModelForm, TypedChoiceField, RadioSelect, ChoiceField, CharField
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils import six
@@ -19,6 +20,7 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
 from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
+from nodeconductor.core.validators import LDAPURLValidator
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors, utils, managers
 
@@ -235,6 +237,8 @@ class ServiceSettingsAdminForm(ModelForm):
         choices=((True, _('Yes (Anybody can use it)')), (False, _('No (Only available to me)'))),
         widget=RadioSelect,
     )
+    # reuqired by nodeconductor-ldap plugin
+    backend_url = CharField(max_length=200, required=False, validators=[LDAPURLValidator()])
 
     class Meta:
         widgets = {
