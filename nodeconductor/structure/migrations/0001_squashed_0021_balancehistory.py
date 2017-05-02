@@ -121,7 +121,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=150, verbose_name='name', validators=[nodeconductor.core.validators.validate_name])),
                 ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('state', django_fsm.FSMIntegerField(default=1, choices=[(1, 'Sync Scheduled'), (2, 'Syncing'), (3, 'In Sync'), (4, 'Erred')])),
-                ('backend_url', models.URLField(null=True, blank=True)),
+                ('backend_url', nodeconductor.core.fields.BackendURLField(null=True, blank=True)),
                 ('username', models.CharField(max_length=100, null=True, blank=True)),
                 ('password', models.CharField(max_length=100, null=True, blank=True)),
                 ('certificate', models.FileField(null=True, upload_to='certs', blank=True)),
