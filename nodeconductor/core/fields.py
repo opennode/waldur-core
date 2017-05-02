@@ -222,5 +222,5 @@ class UUIDField(models.UUIDField):
         return self._parse_uuid(value)
 
 
-class ExtendedURLField(models.URLField):
-    default_validators = [core_validators.LDAPURLValidator()]
+class BackendURLField(models.URLField):
+    default_validators = [core_validators.BackendURLValidator()]

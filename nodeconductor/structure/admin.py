@@ -20,7 +20,7 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
 from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
-from nodeconductor.core.validators import LDAPURLValidator
+from nodeconductor.core.validators import BackendURLValidator
 from nodeconductor.quotas.admin import QuotaInline
 from nodeconductor.structure import models, SupportedServices, executors, utils, managers
 
@@ -238,7 +238,7 @@ class ServiceSettingsAdminForm(ModelForm):
         widget=RadioSelect,
     )
     # reuqired by nodeconductor-ldap plugin
-    backend_url = CharField(max_length=200, required=False, validators=[LDAPURLValidator()])
+    backend_url = CharField(max_length=200, required=False, validators=[BackendURLValidator()])
 
     class Meta:
         widgets = {

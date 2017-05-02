@@ -64,6 +64,5 @@ class RuntimeStateValidator(StateValidator):
             raise exceptions.IncorrectStateException(_('Valid runtime states for operation: %s.') % ', '.join(self.valid_states))
 
 
-# required by nodeconductor-ldap plugin
-class LDAPURLValidator(URLValidator):
-    schemes = ['ldap'] + URLValidator.schemes
+class BackendURLValidator(URLValidator):
+    schemes = ['ldap', 'ldaps', 'http', 'https']
