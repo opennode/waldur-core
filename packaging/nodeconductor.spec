@@ -17,7 +17,7 @@
 Name: nodeconductor
 Summary: NodeConductor
 Version: 0.136.2
-Release: 1.el7
+Release: 2.el7
 License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
@@ -62,9 +62,11 @@ Source0: %{name}-%{version}.tar.gz
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
+# gettext package is needed to run 'django-admin compilemessages'
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
+BuildRequires: gettext
 BuildRequires: python-django >= 1.9, python-django < 1.10
 BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-jsoneditor >= 0.0.5
@@ -72,7 +74,6 @@ BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framewo
 BuildRequires: python-django-rest-swagger = 2.1.1
 BuildRequires: python-setuptools
 BuildRequires: systemd
-BuildRequires: gettext
 
 %description
 NodeConductor is an infrastructure and application management server developed by OpenNode.
@@ -111,10 +112,10 @@ INSTALLED_APPS = (
     'django.contrib.contenttypes',
     'django.contrib.admin',
     'django.contrib.staticfiles',
+    'jsoneditor',
     'nodeconductor.landing',
     'rest_framework',
     'rest_framework_swagger',
-    'jsoneditor',
 )
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
@@ -143,8 +144,8 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{python_sitelib}/*
-%{_unitdir}/*
 %{_bindir}/*
+%{_unitdir}/*
 %{__data_dir}
 %attr(0750,%{name},%{name}) %{__log_dir}
 %{__logrotate_dir}/*
@@ -152,6 +153,13 @@ rm -rf %{buildroot}
 %config(noreplace) %{__celery_conf_file}
 %config(noreplace) %{__conf_file}
 %config(noreplace) %{__uwsgi_conf_file}
+
+%pre
+# User must exist in the system before package installation, otherwise setting file permissions will fail
+if ! id %{name} 2> /dev/null > /dev/null; then
+    echo "[%{name}] Adding new system user %{name}..."
+    useradd --home %{__work_dir} --shell /bin/sh --system --user-group %{name}
+fi
 
 %post
 %systemd_post %{name}-celery.service
@@ -162,13 +170,6 @@ if [ "$1" = 1 ]; then
     # This package is being installed for the first time
     echo "[%{name}] Generating secret key..."
     sed -i "s,{{ secret_key }},$(head -c32 /dev/urandom | base64)," %{__conf_file}
-
-    echo "[%{name}] Adding new system user %{name}..."
-    useradd --home %{__work_dir} --shell /bin/sh --system --user-group %{name}
-elif [ "$1" = 2 ]; then
-    # This package is being upgraded
-    # Applicable to nodeconductor-0.103.0 and before
-    [ "$(getent passwd nodeconductor | cut -d: -f7)" = "/sbin/nologin" ] && usermod -s /bin/sh nodeconductor
 fi
 
 cat <<EOF
@@ -221,6 +222,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Tue May 2 2017 Juri Hudolejev <juri@opennodecloud.com> - 0.136.2-2.el7
+- Fix user creation on package installation
+
 * Tue May 2 2017 Jenkins <jenkins@opennodecloud.com> - 0.136.2-1.el7
 - New upstream release
 
