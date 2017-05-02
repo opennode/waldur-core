@@ -5,6 +5,7 @@ Release NEXT
 ------------
 - Allow to filter user by civil number.
 - Don't render superuser status. Drop unused viewsets.
+- Add LDAP scheme to service settings backend_url validator.
 
 Release 0.135.0
 ---------------
