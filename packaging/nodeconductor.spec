@@ -16,13 +16,15 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.136.1
+Version: 0.136.2
 Release: 1.el7
 License: MIT
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # python-psycopg2 is needed to use PostgreSQL as database backend
+# mailcap is required for /etc/mime.types of static files served by uwsgi
 Requires: logrotate
+Requires: mailcap
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.9, python-django < 1.10
@@ -219,6 +221,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Tue May 2 2017 Jenkins <jenkins@opennodecloud.com> - 0.136.2-1.el7
+- New upstream release
+
 * Thu Apr 27 2017 Jenkins <jenkins@opennodecloud.com> - 0.136.1-1.el7
 - New upstream release
 

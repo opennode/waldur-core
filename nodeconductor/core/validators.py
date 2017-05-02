@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from croniter import croniter
 from django.core.exceptions import ValidationError
-from django.core.validators import BaseValidator
+from django.core.validators import BaseValidator, URLValidator
 from django.utils import timezone
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import ugettext_lazy as _
@@ -62,3 +62,7 @@ class RuntimeStateValidator(StateValidator):
     def __call__(self, resource):
         if resource.runtime_state not in self.valid_states:
             raise exceptions.IncorrectStateException(_('Valid runtime states for operation: %s.') % ', '.join(self.valid_states))
+
+
+class BackendURLValidator(URLValidator):
+    schemes = ['ldap', 'ldaps', 'http', 'https']
