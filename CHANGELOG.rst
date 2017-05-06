@@ -3,6 +3,7 @@ CHANGELOG
 
 Release NEXT
 ------------
+- Raise an ElasticsearchClientError if ELASTICSEARCH configuration keys are missing or empty.
 - Allow to filter user by civil number.
 - Don't render superuser status. Drop unused viewsets.
 - Add LDAP scheme to service settings backend_url validator.

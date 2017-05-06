@@ -276,11 +276,24 @@ class ElasticsearchClient(object):
 
     def _get_elastisearch_settings(self):
         try:
-            return settings.NODECONDUCTOR['ELASTICSEARCH']
+            elasticsearch_settings = settings.NODECONDUCTOR['ELASTICSEARCH']
         except (KeyError, AttributeError):
             raise ElasticsearchClientError(
                 'Can not get elasticsearch settings. ELASTICSEARCH item in settings.NODECONDUCTOR has '
                 'to be defined.')
+
+        required_configuration_fields = {'port', 'host', 'protocol'}
+        if not required_configuration_fields.issubset(elasticsearch_settings):
+            missing_fields = ','.join(required_configuration_fields - set(elasticsearch_settings))
+            raise ElasticsearchClientError(
+                'Following configuration items are missing in the "ELASTICSEARCH" section: %s' % missing_fields)
+
+        empty_fields = [field for field in required_configuration_fields if not elasticsearch_settings[field]]
+        if empty_fields:
+            raise ElasticsearchClientError(
+                'Following configuration items are empty in the "ELASTICSEARCH" section: %s' % empty_fields)
+
+        return elasticsearch_settings
 
     def _get_client(self):
         elasticsearch_settings = self._get_elastisearch_settings()

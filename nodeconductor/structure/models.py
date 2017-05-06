@@ -309,7 +309,7 @@ class Customer(core_models.UuidMixin,
         project_path = 'projects'
 
     native_name = models.CharField(max_length=160, default='', blank=True)
-    abbreviation = models.CharField(max_length=8, blank=True)
+    abbreviation = models.CharField(max_length=12, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
 
     registration_code = models.CharField(max_length=160, default='', blank=True)
