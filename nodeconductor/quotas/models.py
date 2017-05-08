@@ -156,12 +156,12 @@ class QuotaModelMixin(models.Model):
     @_fail_silently
     def add_quota_usage(self, quota_name, usage_delta, fail_silently=False, validate=False):
         quota = self.quotas.get(name=quota_name)
-        quota.usage += usage_delta
-        if validate and quota.usage > quota.limit:
+        if validate and quota.is_exceeded(usage_delta):
             raise exceptions.QuotaValidationError(
                 _('%(quota)s "%(name)s" quota is over limit. Required: %(usage)s, limit: %(limit)s.') % dict(
-                    quota=self, name=quota_name, usage=quota.usage, limit=quota.limit))
-        quota.save()
+                    quota=self, name=quota_name, usage=quota.usage + usage_delta, limit=quota.limit))
+        quota.usage += usage_delta
+        quota.save(update_fields=['usage'])
 
     def get_quota_ancestors(self):
         if isinstance(self, DescendantMixin):
