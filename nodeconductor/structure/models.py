@@ -867,9 +867,9 @@ class CloudServiceProjectLink(ServiceProjectLink):
         abstract = True
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
-        vcpu = quotas_fields.QuotaField(default_limit=100)
-        ram = quotas_fields.QuotaField(default_limit=256000)
-        storage = quotas_fields.QuotaField(default_limit=5120000)
+        vcpu = quotas_fields.QuotaField()
+        ram = quotas_fields.QuotaField()
+        storage = quotas_fields.QuotaField()
 
     def can_user_update_quotas(self, user):
         return user.is_staff or self.service.customer.has_user(user, CustomerRole.OWNER)
