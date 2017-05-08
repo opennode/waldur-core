@@ -3,9 +3,33 @@ import random
 from django.test import TestCase
 
 from ..models import GrandparentModel
+from ... import exceptions
 
 
 class QuotaModelMixinTest(TestCase):
+
+    def test_default_quota_is_unlimited(self):
+        instance = GrandparentModel.objects.create()
+        self.assertEqual(instance.quotas.get(name='regular_quota').limit, -1)
+
+    def test_quota_with_default_limit(self):
+        instance = GrandparentModel.objects.create()
+        self.assertEqual(instance.quotas.get(name='quota_with_default_limit').limit, 100)
+
+    def test_add_usage_validates_with_unlimited_quota(self):
+        instance = GrandparentModel.objects.create()
+        try:
+            instance.add_quota_usage('regular_quota', 10, validate=True)
+        except exceptions.QuotaValidationError:
+            self.fail('add_quota_usage should not raise exception if quota is unlimited')
+
+    def test_add_usage_fails_if_quota_is_over_limit(self):
+        instance = GrandparentModel.objects.create()
+        self.assertRaises(exceptions.QuotaValidationError,
+                          instance.add_quota_usage,
+                          quota_name='quota_with_default_limit',
+                          usage_delta=200,
+                          validate=True)
 
     def test_quotas_sum_calculation_if_all_values_are_positive(self):
         # we have 3 memberships:
