@@ -188,8 +188,7 @@ class PriceEstimateLimitSerializer(serializers.Serializer):
             project = attrs['scope']
             customer = project.customer
             try:
-                now = timezone.now()
-                price_estimate = models.PriceEstimate.objects.get(scope=customer, month=now.month, year=now.year)
+                price_estimate = models.PriceEstimate.objects.get_current(scope=customer)
             except models.PriceEstimate.DoesNotExist:
                 pass
             else:
