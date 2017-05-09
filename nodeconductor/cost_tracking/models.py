@@ -60,6 +60,8 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
 
     objects = managers.PriceEstimateManager('scope')
 
+    tracker = FieldTracker()
+
     class Meta:
         unique_together = ('content_type', 'object_id', 'month', 'year',)
 
@@ -85,7 +87,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         return self.children.all()
 
     def get_log_fields(self):  # For LoggableMixin
-        return 'uuid', 'scope', 'threshold', 'total', 'consumed'
+        return 'uuid', 'scope', 'threshold', 'total', 'consumed', 'limit'
 
     def is_over_threshold(self):  # For AlertThresholdMixin
         return self.total > self.threshold

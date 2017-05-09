@@ -9,6 +9,8 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError
 from nodeconductor.structure import models as structure_models
 
+from . import log
+
 
 logger = logging.getLogger(__name__)
 
@@ -120,3 +122,16 @@ def _create_historical_estimates(resource, configuration):
     while month_start > resource.created:
         month_start -= relativedelta(months=1)
         models.PriceEstimate.create_historical(resource, configuration, max(month_start, resource.created))
+
+
+def log_price_estimate_limit_update(sender, instance, created=False, **kwargs):
+    if created:
+        return
+
+    if instance.tracker.has_changed('limit'):
+        log.event_logger.price_estimate.info(
+            'Price estimation limit for "%s" has been updated to {price_estimate_limit}.' % instance,
+            event_type='price_estimate_limit_updated',
+            event_context={
+                'price_estimate': instance,
+            })

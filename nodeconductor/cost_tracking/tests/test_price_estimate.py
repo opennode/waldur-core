@@ -1,4 +1,6 @@
 from ddt import ddt, data
+from django.conf import settings
+from django.utils import timezone
 from rest_framework import status
 
 from nodeconductor.structure.tests import factories as structure_factories
@@ -10,7 +12,6 @@ from .base_test import BaseCostTrackingTest
 
 @ddt
 class PriceEstimateListTest(BaseCostTrackingTest):
-
     def setUp(self):
         super(PriceEstimateListTest, self).setUp()
 
@@ -95,7 +96,6 @@ class PriceEstimateListTest(BaseCostTrackingTest):
 
 
 class PriceEstimateUpdateTest(BaseCostTrackingTest):
-
     def setUp(self):
         super(PriceEstimateUpdateTest, self).setUp()
 
@@ -128,7 +128,6 @@ class PriceEstimateUpdateTest(BaseCostTrackingTest):
 
 
 class PriceEstimateDeleteTest(BaseCostTrackingTest):
-
     def setUp(self):
         super(PriceEstimateDeleteTest, self).setUp()
         self.project_price_estimate = factories.PriceEstimateFactory(scope=self.project)
@@ -138,6 +137,118 @@ class PriceEstimateDeleteTest(BaseCostTrackingTest):
         response = self.client.delete(factories.PriceEstimateFactory.get_url(self.project_price_estimate))
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+@ddt
+class PriceEstimateLimitTest(BaseCostTrackingTest):
+    def setUp(self):
+        super(PriceEstimateLimitTest, self).setUp()
+        self.now = timezone.now()
+        self.project_price_estimate = factories.PriceEstimateFactory(scope=self.project,
+                                                                     month=self.now.month,
+                                                                     year=self.now.year)
+        self.url = factories.PriceEstimateFactory.get_list_url('limit')
+        self.scope_url = structure_factories.ProjectFactory.get_url(self.project_price_estimate.scope)
+
+    @data('owner')
+    def test_user_can_update_limit_if_it_is_allowed_by_configuration(self, user):
+        self.client.force_authenticate(self.users.get(user))
+        nodeconductor_section = settings.NODECONDUCTOR.copy()
+        nodeconductor_section['OWNER_CAN_MODIFY_COST_LIMIT'] = True
+        new_limit = self.project_price_estimate.limit + 10
+
+        with self.settings(NODECONDUCTOR=nodeconductor_section):
+            response = self.client.post(self.url, {'limit': new_limit, 'scope': self.scope_url})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project_price_estimate.refresh_from_db()
+        self.assertEqual(self.project_price_estimate.limit, new_limit)
+
+    @data('owner')
+    def test_owner_cannot_update_limit_if_it_is_not_allowed_by_configuration(self, user):
+        self.client.force_authenticate(self.users.get(user))
+        nodeconductor_section = settings.NODECONDUCTOR.copy()
+        nodeconductor_section['OWNER_CAN_MODIFY_COST_LIMIT'] = False
+        new_limit = self.project_price_estimate.limit + 10
+
+        with self.settings(NODECONDUCTOR=nodeconductor_section):
+            response = self.client.post(self.url, {'limit': new_limit, 'scope': self.scope_url})
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.project_price_estimate.refresh_from_db()
+        self.assertNotEqual(self.project_price_estimate.limit, new_limit)
+
+    def test_staff_can_update_limit_even_if_it_is_not_allowed_by_configuration(self):
+        self.client.force_authenticate(self.users['staff'])
+        nodeconductor_section = settings.NODECONDUCTOR.copy()
+        nodeconductor_section['OWNER_CAN_MODIFY_COST_LIMIT'] = False
+        new_limit = self.project_price_estimate.limit + 10
+
+        with self.settings(NODECONDUCTOR=nodeconductor_section):
+            response = self.client.post(self.url, {'limit': new_limit, 'scope': self.scope_url})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project_price_estimate.refresh_from_db()
+        self.assertEqual(self.project_price_estimate.limit, new_limit)
+
+    def test_it_is_not_possible_to_set_project_limit_larger_than_organization_limit(self):
+        self.client.force_authenticate(self.users['staff'])
+        self.project_price_estimate.limit = 100
+        self.project_price_estimate.save()
+        factories.PriceEstimateFactory(scope=self.customer, limit=self.project_price_estimate.limit,
+                                       month=self.now.month,
+                                       year=self.now.year)
+        new_limit = self.project_price_estimate.limit + 10
+
+        response = self.client.post(self.url, {'limit': new_limit, 'scope': self.scope_url})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('limit', response.data)
+        self.project_price_estimate.refresh_from_db()
+        self.assertNotEqual(self.project_price_estimate.limit, new_limit)
+
+    def test_it_is_not_possible_to_increase_project_limit_if_all_customer_projects_limit_reached_customer_limit(self):
+        self.client.force_authenticate(self.users['staff'])
+        self.project_price_estimate.limit = 10
+        self.project_price_estimate.save()
+        customer_price_estimate = factories.PriceEstimateFactory(scope=self.customer, limit=100,
+                                                                 month=self.now.month, year=self.now.year)
+        factories.PriceEstimateFactory(scope=structure_factories.ProjectFactory(customer=self.customer),
+                                       limit=customer_price_estimate.limit - self.project_price_estimate.limit,
+                                       month=self.now.month, year=self.now.year)
+        # less than customer limit, projects total larger than customer limit
+        new_limit = self.project_price_estimate.limit + 10
+
+        response = self.client.post(self.url, {'limit': new_limit, 'scope': self.scope_url})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('limit', response.data)
+        self.project_price_estimate.refresh_from_db()
+        self.assertNotEqual(self.project_price_estimate.limit, new_limit)
+
+    def test_it_is_not_possible_to_set_organization_limit_lower_than_total_limit_of_its_projects(self):
+        self.client.force_authenticate(self.users['staff'])
+        self.project_price_estimate.limit = 100
+        self.project_price_estimate.save()
+        new_limit = self.project_price_estimate.limit - 10
+        scope_url = structure_factories.CustomerFactory.get_url(self.customer)
+        response = self.client.post(self.url, {'limit': new_limit, 'scope': scope_url})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('limit', response.data)
+        self.project_price_estimate.refresh_from_db()
+        self.assertNotEqual(self.project_price_estimate.limit, new_limit)
+
+    def test_it_is_possible_to_set_project_limit_if_customer_price_limit_is_default(self):
+        factories.PriceEstimateFactory(scope=self.customer, month=self.now.month, year=self.now.year)
+        self.client.force_authenticate(self.users['staff'])
+        new_limit = self.project_price_estimate.limit + 100
+
+        response = self.client.post(self.url, {'limit': new_limit, 'scope': self.scope_url})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project_price_estimate.refresh_from_db()
+        self.assertEqual(self.project_price_estimate.limit, new_limit)
 
 
 class ScopeTypeFilterTest(BaseCostTrackingTest):

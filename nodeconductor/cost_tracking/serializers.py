@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
 from django.db import IntegrityError
-from django.utils import six
+from django.db.models import Sum
+from django.utils import six, timezone
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.reverse import reverse
@@ -11,7 +12,7 @@ from nodeconductor.core.signals import pre_serializer_fields
 from nodeconductor.cost_tracking import models
 from nodeconductor.structure import SupportedServices, models as structure_models
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
-from nodeconductor.structure.serializers import ProjectSerializer
+from nodeconductor.structure.serializers import ProjectSerializer, CustomerSerializer
 
 
 class PriceEstimateSerializer(AugmentedSerializerMixin, serializers.HyperlinkedModelSerializer):
@@ -182,6 +183,38 @@ class PriceEstimateLimitSerializer(serializers.Serializer):
     limit = serializers.FloatField(required=True)
     scope = GenericRelatedField(related_models=models.PriceEstimate.get_estimated_models(), required=True)
 
+    def validate(self, attrs):
+        if isinstance(attrs['scope'], structure_models.Project):
+            project = attrs['scope']
+            customer = project.customer
+            try:
+                now = timezone.now()
+                price_estimate = models.PriceEstimate.objects.get(scope=customer, month=now.month, year=now.year)
+            except models.PriceEstimate.DoesNotExist:
+                pass
+            else:
+                total_limit = attrs['limit']
+                if customer.projects.exclude(uuid=project.uuid).exists():
+                    total_limit = models.PriceEstimate.objects.filter(
+                        scope__in=customer.projects.exclude(uuid=project.uuid)).aggregate(
+                        Sum('limit'))['limit__sum'] + total_limit
+
+                if price_estimate.limit != -1 and price_estimate.limit < total_limit:
+                    message = _('A sum of organization projects price limit must be less '
+                                'than a price limit set for organization. Total limit: %d > Organization limit: %d')
+                    raise serializers.ValidationError({'limit': message % (total_limit, price_estimate.limit)})
+
+        if isinstance(attrs['scope'], structure_models.Customer):
+            customer = attrs['scope']
+            if customer.projects.exists():
+                projects_estimates = models.PriceEstimate.objects.filter(scope__in=customer.projects.all())
+                total_limit = projects_estimates.aggregate(Sum('limit'))['limit__sum']
+                if attrs['limit'] != -1 and total_limit > attrs['limit']:
+                    message = _('Organization limit must be greater than or equals to its projects limit: %d')
+                    raise serializers.ValidationError({'limit': message % total_limit})
+
+        return attrs
+
 
 class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -189,9 +222,9 @@ class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('threshold', 'total', 'limit')
 
 
-def get_price_estimate_for_project(serializer, project):
+def get_price_estimate(serializer, resource):
     try:
-        estimate = models.PriceEstimate.objects.get_current(project)
+        estimate = models.PriceEstimate.objects.get_current(resource)
     except models.PriceEstimate.DoesNotExist:
         return {
             'threshold': 0.0,
@@ -203,9 +236,10 @@ def get_price_estimate_for_project(serializer, project):
         return serializer.data
 
 
-def add_price_estimate_for_project(sender, fields, **kwargs):
+def add_price_estimate(sender, fields, **kwargs):
     fields['price_estimate'] = serializers.SerializerMethodField()
-    setattr(sender, 'get_price_estimate', get_price_estimate_for_project)
+    setattr(sender, 'get_price_estimate', get_price_estimate)
 
 
-pre_serializer_fields.connect(add_price_estimate_for_project, sender=ProjectSerializer)
+pre_serializer_fields.connect(add_price_estimate, sender=ProjectSerializer)
+pre_serializer_fields.connect(add_price_estimate, sender=CustomerSerializer)
