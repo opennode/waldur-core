@@ -11,20 +11,17 @@ from rest_framework import viewsets, exceptions, decorators, response, status
 from nodeconductor.core import views as core_views
 from nodeconductor.cost_tracking import models, serializers, filters
 from nodeconductor.structure import SupportedServices
-from nodeconductor.structure import models as structure_models
+from nodeconductor.structure import models as structure_models, permissions as structure_permissions
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
 
 class PriceEditPermissionMixin(object):
 
     def can_user_modify_price_object(self, scope):
-        if self.request.user.is_staff:
-            return True
-        customer = reduce(getattr, scope.Permissions.customer_path.split('__'), scope)
+        customer = structure_permissions._get_customer(scope)
         is_owner = customer.has_user(self.request.user, structure_models.CustomerRole.OWNER)
-        if is_owner and settings.NODECONDUCTOR['OWNER_CAN_MODIFY_COST_LIMIT']:
-            return True
-        return False
+        can_modify_cost_limit = is_owner and settings.NODECONDUCTOR['OWNER_CAN_MODIFY_COST_LIMIT']
+        return self.request.user.is_staff or can_modify_cost_limit
 
 
 class PriceEstimateViewSet(PriceEditPermissionMixin, core_views.ReadOnlyActionsViewSet):

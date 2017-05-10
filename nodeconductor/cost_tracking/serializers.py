@@ -193,26 +193,33 @@ class PriceEstimateLimitSerializer(serializers.Serializer):
                 pass
             else:
                 total_limit = attrs['limit']
-                if customer.projects.exclude(uuid=project.uuid).exists():
-                    total_limit = models.PriceEstimate.objects.filter(
-                        scope__in=customer.projects.exclude(uuid=project.uuid)).aggregate(
-                        Sum('limit'))['limit__sum'] + total_limit
+                other_projects = customer.projects.exclude(uuid=project.uuid)
+                if other_projects.exists():
+                    projects_estimates = self._get_scope_range_price_estimates(other_projects)
+                    if projects_estimates:
+                        total_limit = projects_estimates.aggregate(Sum('limit'))['limit__sum'] + total_limit
 
                 if price_estimate.limit != -1 and price_estimate.limit < total_limit:
-                    message = _('A sum of organization projects price limit must be less '
-                                'than a price limit set for organization. Total limit: %d > Organization limit: %d')
+                    message = _('Projects price limits exceeds organization price limit. '
+                                'Total limit: %d > Organization limit: %d')
                     raise serializers.ValidationError({'limit': message % (total_limit, price_estimate.limit)})
 
         if isinstance(attrs['scope'], structure_models.Customer):
             customer = attrs['scope']
             if customer.projects.exists():
-                projects_estimates = models.PriceEstimate.objects.filter(scope__in=customer.projects.all())
-                total_limit = projects_estimates.aggregate(Sum('limit'))['limit__sum']
-                if attrs['limit'] != -1 and total_limit > attrs['limit']:
-                    message = _('Organization limit must be greater than or equals to its projects limit: %d')
-                    raise serializers.ValidationError({'limit': message % total_limit})
+                projects_estimates = self._get_scope_range_price_estimates(customer.projects.all())
+                if projects_estimates:
+                    total_limit = projects_estimates.aggregate(Sum('limit'))['limit__sum']
+                    if attrs['limit'] != -1 and total_limit > attrs['limit']:
+                        message = _('Organization limit cannot be less than a sum of its projects limits: %d')
+                        raise serializers.ValidationError({'limit': message % total_limit})
 
         return attrs
+
+    def _get_scope_range_price_estimates(self, scope_query):
+        now = timezone.now()
+        estimates = models.PriceEstimate.objects.filter(scope__in=scope_query)
+        return estimates.filter(month=now.month, year=now.year, limit__gt=-1)
 
 
 class NestedPriceEstimateSerializer(serializers.HyperlinkedModelSerializer):
