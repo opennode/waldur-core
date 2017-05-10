@@ -666,7 +666,7 @@ class SharedServiceSettings(ServiceSettings):
 
     class Meta(object):
         proxy = True
-        verbose_name_plural = 'Shared provider settings'
+        verbose_name_plural = _('Shared provider settings')
 
 
 class PrivateServiceSettings(ServiceSettings):
@@ -676,7 +676,7 @@ class PrivateServiceSettings(ServiceSettings):
 
     class Meta(object):
         proxy = True
-        verbose_name_plural = 'Private provider settings'
+        verbose_name_plural = _('Private provider settings')
 
 
 @python_2_unicode_compatible
