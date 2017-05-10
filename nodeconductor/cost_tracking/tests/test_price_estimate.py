@@ -224,6 +224,7 @@ class PriceEstimateLimitTest(BaseCostTrackingTest):
         self.project_price_estimate.save()
         new_limit = self.project_price_estimate.limit - 10
         scope_url = structure_factories.CustomerFactory.get_url(self.customer)
+
         response = self.client.post(self.url, {'limit': new_limit, 'scope': scope_url})
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
