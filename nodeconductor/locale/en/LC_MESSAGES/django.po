@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-05-09 07:51+0000\n"
+"POT-Creation-Date: 2017-05-10 07:11+0000\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -468,21 +468,20 @@ msgstr ""
 #: nodeconductor/cost_tracking/serializers.py:203
 #, python-format
 msgid ""
-"A sum of organization projects price limit must be less than a price limit "
-"set for organization. Total limit: %d > Organization limit: %d"
+"Projects price limits exceeds organization price limit. Total limit: %d > "
+"Organization limit: %d"
 msgstr ""
 
-#: nodeconductor/cost_tracking/serializers.py:213
+#: nodeconductor/cost_tracking/serializers.py:214
 #, python-format
-msgid ""
-"Organization limit must be greater than or equals to its projects limit: %d"
+msgid "Organization limit cannot be less than a sum of its projects limits: %d"
 msgstr ""
 
-#: nodeconductor/cost_tracking/views.py:105
+#: nodeconductor/cost_tracking/views.py:102
 msgid "Threshold for price estimate is updated."
 msgstr ""
 
-#: nodeconductor/cost_tracking/views.py:145
+#: nodeconductor/cost_tracking/views.py:142
 msgid "Limit for price estimate is updated."
 msgstr ""
 
