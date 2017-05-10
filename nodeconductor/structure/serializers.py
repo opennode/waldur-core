@@ -1062,7 +1062,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             if create_settings:
                 required = getattr(self.Meta, 'required_fields', tuple())
                 for field in settings_fields:
-                    if field in required and field not in attrs:
+                    if field in required and (field not in attrs or attrs[field] is None):
                         error = self.fields[field].error_messages['required']
                         raise serializers.ValidationError({field: unicode(error)})
 
