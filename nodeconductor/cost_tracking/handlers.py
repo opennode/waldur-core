@@ -129,9 +129,11 @@ def log_price_estimate_limit_update(sender, instance, created=False, **kwargs):
         return
 
     if instance.tracker.has_changed('limit'):
+        previous_price_limit = instance.tracker.previous('limit')
+        message = 'Price limit for "%s" has been updated from "%s" to "{price_estimate_limit}".'
         log.event_logger.price_estimate.info(
-            'Price estimation limit for "%s" has been updated to {price_estimate_limit}.' % instance,
+            message % (instance, previous_price_limit),
             event_type='price_estimate_limit_updated',
             event_context={
-                'price_estimate': instance,
+                'price_estimate': instance
             })

@@ -200,7 +200,7 @@ class PriceEstimateLimitSerializer(serializers.Serializer):
                         total_limit = projects_estimates.aggregate(Sum('limit'))['limit__sum'] + total_limit
 
                 if price_estimate.limit != -1 and price_estimate.limit < total_limit:
-                    message = _('Projects price limits exceeds organization price limit. '
+                    message = _('Total price limits of projects exceeds organization price limit. '
                                 'Total limit: %d > Organization limit: %d')
                     raise serializers.ValidationError({'limit': message % (total_limit, price_estimate.limit)})
 
