@@ -5,7 +5,6 @@ from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
-from django.core.validators import MaxLengthValidator, URLValidator
 from django.core.exceptions import ValidationError
 from django.db import models as django_models
 from django.forms import ModelMultipleChoiceField, ModelForm, TypedChoiceField, RadioSelect, ChoiceField, CharField
@@ -317,7 +316,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         # filter out certain fields from the creation form
         form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
         if 'shared' in form.base_fields:
-            form.base_fields['shared'].initial = True if self.model is SharedServiceSettings else False
+            form.base_fields['shared'].initial = True if self.model is models.SharedServiceSettings else False
             form.base_fields['shared'].disabled = True
             form.base_fields['shared'].widget.attrs['disabled'] = True
 
@@ -471,28 +470,8 @@ class VirtualMachineAdmin(ResourceAdmin):
     detect_coordinates.short_description = _('Detect coordinates of virtual machines')
 
 
-class SharedServiceSettings(models.ServiceSettings):
-    """Required for a clear separation of shared/unshared service settings on admin."""
-
-    objects = managers.SharedServiceSettingsManager()
-
-    class Meta(object):
-        proxy = True
-        verbose_name_plural = 'Shared provider settings'
-
-
-class PrivateServiceSettings(models.ServiceSettings):
-    """Required for a clear separation of shared/unshared service settings on admin."""
-
-    objects = managers.PrivateServiceSettingsManager()
-
-    class Meta(object):
-        proxy = True
-        verbose_name_plural = 'Private provider settings'
-
-
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(PrivateServiceSettings, ServiceSettingsAdmin)
-admin.site.register(SharedServiceSettings, ServiceSettingsAdmin)
+admin.site.register(models.PrivateServiceSettings, ServiceSettingsAdmin)
+admin.site.register(models.SharedServiceSettings, ServiceSettingsAdmin)
