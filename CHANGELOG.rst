@@ -1,8 +1,8 @@
 CHANGELOG
 =========
 
-Changelog has been moved to `opennode.atlassian.net/wiki
-<https://opennode.atlassian.net/wiki/display/WD/Changelog#Changelog-Previousreleases>`_
+Changelog has been moved to `https://docs.waldur.com/Changelog
+<https://docs.waldur.com/Changelog>`_
 
 Release NEXT
 ------------
