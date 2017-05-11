@@ -1,6 +1,9 @@
 CHANGELOG
 =========
 
+Changelog has been moved to `opennode.atlassian.net/wiki
+<https://opennode.atlassian.net/wiki/display/WD/Changelog#Changelog-Previousreleases>`_
+
 Release NEXT
 ------------
 - Raise an ElasticsearchClientError if ELASTICSEARCH configuration keys are missing or empty.
