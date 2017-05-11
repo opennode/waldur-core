@@ -5,6 +5,32 @@ from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories, fixtures, models as test_models
 
 
+class ServiceCreateTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ProjectFixture()
+        self.customer_url = factories.CustomerFactory.get_url(self.fixture.customer)
+        self.client.force_authenticate(self.fixture.owner)
+
+    def test_if_required_fields_is_not_specified_error_raised(self):
+        response = self.client.post(factories.TestServiceFactory.get_list_url(), {
+            'name': 'Test service',
+            'customer': self.customer_url,
+            'backend_url': 'http://example.com/',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('username', response.data)
+
+    def test_validate_required_fields(self):
+        response = self.client.post(factories.TestServiceFactory.get_list_url(), {
+            'name': 'Test service',
+            'customer': self.customer_url,
+            'backend_url': 'http://example.com/',
+            'username': 'admin',
+            'password': 'secret',
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+
 class ServiceResourcesCounterTest(test.APITransactionTestCase):
     """
     There's one shared service. Also there are 2 users each of which has one project.

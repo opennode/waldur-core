@@ -1,4 +1,5 @@
 import factory
+from factory import fuzzy
 
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
@@ -16,10 +17,13 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
     total = factory.Iterator([10, 100, 1000, 10000, 980, 42])
     month = factory.Iterator(range(1, 13))
     year = factory.Iterator(range(2012, 2016))
+    limit = -1
+    threshold = fuzzy.FuzzyInteger(0, 1000, step=10)
 
     @classmethod
-    def get_list_url(self):
-        return 'http://testserver' + reverse('priceestimate-list')
+    def get_list_url(self, action=None):
+        url = 'http://testserver' + reverse('priceestimate-list')
+        return url if action is None else url + action + '/'
 
     @classmethod
     def get_url(self, price_estimate, action=None):
