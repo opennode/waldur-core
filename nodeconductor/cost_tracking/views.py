@@ -37,19 +37,18 @@ class PriceEstimateViewSet(core_views.ReadOnlyActionsViewSet):
         return context
 
     def _user_can_set_threshold_and_limit(self, scope):
-        '''
+        """
         User can manage price limit and threshold.
         :param scope: price estimate scope.
         :return: True if user is staff. True if user is owner and OWNER_CAN_MODIFY_COST_LIMIT settings is set to True.
-        '''
+        """
 
         if self.request.user.is_staff:
             return True
 
         customer = structure_permissions._get_customer(scope)
         is_owner = customer.has_user(self.request.user, structure_models.CustomerRole.OWNER)
-        can_modify_cost_limit = is_owner and settings.NODECONDUCTOR['OWNER_CAN_MODIFY_COST_LIMIT']
-        return can_modify_cost_limit
+        return is_owner and settings.NODECONDUCTOR['OWNER_CAN_MODIFY_COST_LIMIT']
 
     def get_queryset(self):
         return models.PriceEstimate.objects.filtered_for_user(self.request.user).order_by(

@@ -6,7 +6,8 @@ class PriceEstimateEventLogger(EventLogger):
     class Meta:
         event_types = ('project_price_limit_updated', 'customer_price_limit_updated')
         event_groups = {
-            'price_estimates': event_types,
+            'projects': ['project_price_limit_updated'],
+            'customers': ['customer_price_limit_updated'],
         }
 
 

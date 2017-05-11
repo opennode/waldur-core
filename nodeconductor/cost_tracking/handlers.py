@@ -129,7 +129,6 @@ def log_price_estimate_limit_update(sender, instance, created=False, **kwargs):
         return
 
     if instance.tracker.has_changed('limit'):
-        previous_price_limit = instance.tracker.previous('limit')
         if isinstance(instance.scope, structure_models.Customer):
             event_type = 'project_price_limit_updated'
         elif isinstance(instance.scope, structure_models.Project):
@@ -138,11 +137,9 @@ def log_price_estimate_limit_update(sender, instance, created=False, **kwargs):
             logger.warning('A price estimate event for type of "%s" is not registered.', type(instance.scope))
             return
 
-        message = 'Price limit for "%(scope)s" has been updated from "%(old)s" to "%(new)f".'
-        log.event_logger.price_estimate.info(
-            message % {
-                'scope': instance.scope,
-                'old': previous_price_limit,
-                'new': instance.limit
-            },
-            event_type=event_type)
+        message = 'Price limit for "%(scope)s" has been updated from "%(old)s" to "%(new)s".' % {
+            'scope': instance.scope,
+            'old': instance.tracker.previous('limit'),
+            'new': instance.limit
+        }
+        log.event_logger.price_estimate.info(message, event_type=event_type)

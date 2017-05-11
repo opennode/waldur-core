@@ -1,4 +1,3 @@
-from ddt import ddt, data
 from django.utils import timezone
 from rest_framework import status, test
 
