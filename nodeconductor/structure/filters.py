@@ -276,6 +276,10 @@ class UserPermissionFilter(django_filters.FilterSet):
             ('user__username', 'username'),
             ('user__full_name', 'full_name'),
             ('user__native_name', 'native_name'),
+            ('user__email', 'email'),
+            ('expiration_time', 'expiration_time'),
+            ('created', 'created'),
+            ('role', 'role'),
         )
     )
 
@@ -415,6 +419,10 @@ class ResourceFilterMetaclass(FilterSetMetaclass):
 
 class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
                          django_filters.FilterSet)):
+    def __init__(self, *args, **kwargs):
+        super(BaseResourceFilter, self).__init__(*args, **kwargs)
+        self.filters['o'] = django_filters.OrderingFilter(fields=self.ORDERING_FIELDS)
+
     # customer
     customer = django_filters.UUIDFilter(name='service_project_link__service__customer__uuid')
     customer_uuid = django_filters.UUIDFilter(name='service_project_link__service__customer__uuid')
@@ -456,16 +464,16 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
         conjoined=True,
     )
 
-    o = django_filters.OrderingFilter(
-        fields=(
-            ('name', 'name'),
-            ('state', 'state'),
-            ('service_project_link__project__customer__name', 'customer_name'),
-            ('service_project_link__project__customer__native_name', 'customer_native_name'),
-            ('service_project_link__project__customer__abbreviation', 'customer_abbreviation'),
-            ('service_project_link__project__name', 'project_name'),
-            ('created', 'created'),
-        )
+    ORDERING_FIELDS = (
+        ('name', 'name'),
+        ('state', 'state'),
+        ('service_project_link__project__customer__name', 'customer_name'),
+        ('service_project_link__project__customer__native_name', 'customer_native_name'),
+        ('service_project_link__project__customer__abbreviation', 'customer_abbreviation'),
+        ('service_project_link__project__name', 'project_name'),
+        ('service_project_link__service__settings__name', 'service_name'),
+        ('service_project_link__service__uuid', 'service_uuid'),
+        ('created', 'created'),
     )
 
     strict = False

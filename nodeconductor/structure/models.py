@@ -31,7 +31,8 @@ from nodeconductor.core.validators import validate_name
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
-from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user, ServiceSettingsManager
+from nodeconductor.structure.managers import StructureManager, filter_queryset_for_user, \
+    ServiceSettingsManager, PrivateServiceSettingsManager, SharedServiceSettingsManager
 from nodeconductor.structure.signals import structure_role_granted, structure_role_revoked
 from nodeconductor.structure.images import ImageModelMixin
 from nodeconductor.structure import SupportedServices
@@ -658,6 +659,26 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
             service.delete()
 
 
+class SharedServiceSettings(ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = SharedServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = _('Shared provider settings')
+
+
+class PrivateServiceSettings(ServiceSettings):
+    """Required for a clear separation of shared/unshared service settings on admin."""
+
+    objects = PrivateServiceSettingsManager()
+
+    class Meta(object):
+        proxy = True
+        verbose_name_plural = _('Private provider settings')
+
+
 @python_2_unicode_compatible
 class Service(core_models.UuidMixin,
               core_models.DescendantMixin,
@@ -867,9 +888,9 @@ class CloudServiceProjectLink(ServiceProjectLink):
         abstract = True
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
-        vcpu = quotas_fields.QuotaField(default_limit=100)
-        ram = quotas_fields.QuotaField(default_limit=256000)
-        storage = quotas_fields.QuotaField(default_limit=5120000)
+        vcpu = quotas_fields.QuotaField()
+        ram = quotas_fields.QuotaField()
+        storage = quotas_fields.QuotaField()
 
     def can_user_update_quotas(self, user):
         return user.is_staff or self.service.customer.has_user(user, CustomerRole.OWNER)

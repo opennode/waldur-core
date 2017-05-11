@@ -7,6 +7,7 @@ from nodeconductor.quotas import fields, models as quotas_models
 class GrandparentModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_models.DescendantMixin):
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
         regular_quota = fields.QuotaField()
+        quota_with_default_limit = fields.QuotaField(default_limit=100)
         usage_aggregator_quota = fields.UsageAggregatorQuotaField(
             get_children=lambda scope: ChildModel.objects.filter(parent__parent=scope),
         )
