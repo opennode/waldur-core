@@ -1,13 +1,10 @@
 from nodeconductor.logging.loggers import EventLogger, event_logger
 
-from . import models
-
 
 class PriceEstimateEventLogger(EventLogger):
-    price_estimate = models.PriceEstimate
 
     class Meta:
-        event_types = ('price_estimate_limit_updated',)
+        event_types = ('project_price_limit_updated', 'customer_price_limit_updated')
         event_groups = {
             'price_estimates': event_types,
         }

@@ -1,4 +1,5 @@
 import factory
+from factory import fuzzy
 
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
@@ -17,6 +18,7 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
     month = factory.Iterator(range(1, 13))
     year = factory.Iterator(range(2012, 2016))
     limit = -1
+    threshold = fuzzy.FuzzyInteger(0, 1000, step=10)
 
     @classmethod
     def get_list_url(self, action=None):

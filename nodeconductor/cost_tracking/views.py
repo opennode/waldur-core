@@ -15,16 +15,7 @@ from nodeconductor.structure import models as structure_models, permissions as s
 from nodeconductor.structure.filters import ScopeTypeFilterBackend
 
 
-class PriceEditPermissionMixin(object):
-
-    def can_user_modify_price_object(self, scope):
-        customer = structure_permissions._get_customer(scope)
-        is_owner = customer.has_user(self.request.user, structure_models.CustomerRole.OWNER)
-        can_modify_cost_limit = is_owner and settings.NODECONDUCTOR['OWNER_CAN_MODIFY_COST_LIMIT']
-        return self.request.user.is_staff or can_modify_cost_limit
-
-
-class PriceEstimateViewSet(PriceEditPermissionMixin, core_views.ReadOnlyActionsViewSet):
+class PriceEstimateViewSet(core_views.ReadOnlyActionsViewSet):
     queryset = models.PriceEstimate.objects.all()
     serializer_class = serializers.PriceEstimateSerializer
     lookup_field = 'uuid'
@@ -44,6 +35,21 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, core_views.ReadOnlyActionsV
         else:
             context['depth'] = min(depth, 10)  # DRF restriction - serializer depth cannot be > 10
         return context
+
+    def _user_can_set_threshold_and_limit(self, scope):
+        '''
+        User can manage price limit and threshold.
+        :param scope: price estimate scope.
+        :return: True if user is staff. True if user is owner and OWNER_CAN_MODIFY_COST_LIMIT settings is set to True.
+        '''
+
+        if self.request.user.is_staff:
+            return True
+
+        customer = structure_permissions._get_customer(scope)
+        is_owner = customer.has_user(self.request.user, structure_models.CustomerRole.OWNER)
+        can_modify_cost_limit = is_owner and settings.NODECONDUCTOR['OWNER_CAN_MODIFY_COST_LIMIT']
+        return can_modify_cost_limit
 
     def get_queryset(self):
         return models.PriceEstimate.objects.filtered_for_user(self.request.user).order_by(
@@ -91,7 +97,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, core_views.ReadOnlyActionsV
         threshold = serializer.validated_data['threshold']
         scope = serializer.validated_data['scope']
 
-        if not self.can_user_modify_price_object(scope):
+        if not self._user_can_set_threshold_and_limit(scope):
             raise exceptions.PermissionDenied()
 
         price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
@@ -131,7 +137,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, core_views.ReadOnlyActionsV
         limit = serializer.validated_data['limit']
         scope = serializer.validated_data['scope']
 
-        if not self.can_user_modify_price_object(scope):
+        if not self._user_can_set_threshold_and_limit(scope):
             raise exceptions.PermissionDenied()
 
         price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
@@ -145,7 +151,7 @@ class PriceEstimateViewSet(PriceEditPermissionMixin, core_views.ReadOnlyActionsV
     limit_serializer_class = serializers.PriceEstimateLimitSerializer
 
 
-class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
+class PriceListItemViewSet(viewsets.ModelViewSet):
     queryset = models.PriceListItem.objects.all()
     serializer_class = serializers.PriceListItemSerializer
     lookup_field = 'uuid'
@@ -153,6 +159,13 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         return models.PriceListItem.objects.filtered_for_user(self.request.user)
+
+    def _user_can_modify_price_list_item(self, item):
+        if self.request.user.is_staff:
+            return True
+
+        customer = structure_permissions._get_customer(item)
+        return customer.has_user(self.request.user, structure_models.CustomerRole.OWNER)
 
     def list(self, request, *args, **kwargs):
         """
@@ -202,13 +215,13 @@ class PriceListItemViewSet(PriceEditPermissionMixin, viewsets.ModelViewSet):
     def initial(self, request, *args, **kwargs):
         if self.action in ('partial_update', 'update', 'destroy'):
             price_list_item = self.get_object()
-            if not self.can_user_modify_price_object(price_list_item.service):
+            if not self._user_can_modify_price_list_item(price_list_item.service):
                 raise exceptions.PermissionDenied()
 
         return super(PriceListItemViewSet, self).initial(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        if not self.can_user_modify_price_object(serializer.validated_data['service']):
+        if not self._user_can_modify_price_list_item(serializer.validated_data['service']):
             raise exceptions.PermissionDenied()
 
         super(PriceListItemViewSet, self).perform_create(serializer)

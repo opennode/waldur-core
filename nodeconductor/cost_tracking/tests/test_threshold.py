@@ -51,7 +51,7 @@ class PriceEstimateThresholdApiTest(test.APITransactionTestCase):
     def set_project_threshold(self, project, threshold):
         project_url = ProjectFactory.get_url(project)
 
-        url = PriceEstimateFactory.get_list_url() + 'threshold/'
+        url = PriceEstimateFactory.get_list_url('threshold')
         response = self.client.post(url, {
             'threshold': threshold,
             'scope': project_url
