@@ -1,8 +1,8 @@
 CHANGELOG
 =========
 
-Changelog has been moved to `https://docs.waldur.com/Changelog
-<https://docs.waldur.com/Changelog>`_
+Changelog has been moved to `http://docs.waldur.com/Changelog
+<http://docs.waldur.com/Changelog>`_
 
 Release NEXT
 ------------
