@@ -1,3 +1,4 @@
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import NoReverseMatch
 from django.utils.encoding import smart_text, force_text
 from django_filters import OrderingFilter, ChoiceFilter, ModelMultipleChoiceFilter

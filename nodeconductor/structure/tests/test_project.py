@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from ddt import data, ddt
 from mock import call
 
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
 from mock_django import mock_signal_receiver

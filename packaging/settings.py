@@ -352,6 +352,7 @@ INSTALLED_APPS = (
     'corsheaders',
 ) + INSTALLED_APPS
 
+# XXX: Django 1.10 deprecation, change to MIDDLEWARE
 MIDDLEWARE_CLASSES = (
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',

@@ -364,6 +364,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # ?current
         current_user = self.request.query_params.get('current')
+        # XXX: Django 1.10 deprecation, replace with user.is_anonymous property
         if current_user is not None and not user.is_anonymous():
             queryset = User.objects.filter(uuid=user.uuid)
 

@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from operator import itemgetter
 
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import NoReverseMatch
 
 from rest_framework import views

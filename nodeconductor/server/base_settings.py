@@ -55,6 +55,7 @@ INSTALLED_APPS = (
 )
 INSTALLED_APPS += ADMIN_INSTALLED_APPS
 
+# XXX: Django 1.10 deprecation, change to MIDDLEWARE
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',

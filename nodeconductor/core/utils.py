@@ -12,6 +12,7 @@ from operator import itemgetter
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import resolve
 from django.http import QueryDict
 from django.utils import timezone

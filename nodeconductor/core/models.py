@@ -201,6 +201,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
             return {'user_uuid': [user.uuid]}
 
     def clean(self):
+        super(User, self).clean()
         # User email has to be unique or empty
         if self.email and User.objects.filter(email=self.email).exclude(id=self.id).exists():
             raise ValidationError({'email': _('User with email "%s" already exists.') % self.email})

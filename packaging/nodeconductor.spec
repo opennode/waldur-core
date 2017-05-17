@@ -120,14 +120,30 @@ INSTALLED_APPS = (
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
 STATIC_URL = '/static/'
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
-)
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-    'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
-)
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': ['nodeconductor/templates'],
+        'OPTIONS': {
+            'context_processors': (
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.static',
+                'django.template.context_processors.tz',
+            ),
+            'loaders': (
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+                'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
+            ),
+        },
+    },
+]
 EOF
 %{__python} manage.py collectstatic --noinput --settings=tmp_settings
 

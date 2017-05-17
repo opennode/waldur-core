@@ -8,6 +8,7 @@ from django.contrib.admin import forms as admin_forms
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
+# XXX:  Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext_lazy as _
 
@@ -27,6 +28,7 @@ def render_to_readonly(value):
 
 
 class ReadonlyTextWidget(forms.TextInput):
+    # XXX: Django 1.10 deprecation, change to format_value
     def _format_value(self, value):
         return value
 

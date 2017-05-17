@@ -2,17 +2,17 @@ import os
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from optparse import make_option
 from nodeconductor.core.docs import ApiDocs
 
 
 class Command(BaseCommand):
     help = "Generate RST docs for DRF API"
-    args = "[appname]"
-    option_list = BaseCommand.option_list + (
-        make_option('--store', '-s', action='store', dest='path',
-                    default='docs/drfapi', help='Where to store docs.'),
-    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--store', '-s', action='store', dest='path',
+            default='docs/drfapi', help='Where to store docs.'
+        )
 
     def handle(self, *args, **options):
         path = options.get('path')
