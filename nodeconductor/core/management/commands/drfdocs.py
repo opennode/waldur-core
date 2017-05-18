@@ -13,9 +13,9 @@ class Command(BaseCommand):
             '--store', '-s', action='store', dest='path',
             default='docs/drfapi', help='Where to store docs.'
         )
-        parser.add_argument('args', metavar='app_label', help='Application label.')
+        parser.add_argument('args', metavar='app_label', nargs='*', help='Application label.')
 
-    def handle(self, *args, **options):
+    def handle(self, *app_labels, **options):
         path = options.get('path')
         path = path if path.startswith('/') else os.path.join(settings.BASE_DIR, path)
 
@@ -27,6 +27,6 @@ class Command(BaseCommand):
                     os.remove(os.path.join(path, f))
 
         self.stdout.write(self.style.MIGRATE_HEADING('Gather endpoints info'))
-        docs = ApiDocs(apps=options.get('args'))
+        docs = ApiDocs(apps=app_labels)
         self.stdout.write(self.style.MIGRATE_HEADING('Write RST docs'))
         docs.generate(path)
