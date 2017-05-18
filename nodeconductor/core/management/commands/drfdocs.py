@@ -13,6 +13,7 @@ class Command(BaseCommand):
             '--store', '-s', action='store', dest='path',
             default='docs/drfapi', help='Where to store docs.'
         )
+        parser.add_argument('args', metavar='app_label', help='Application label.')
 
     def handle(self, *args, **options):
         path = options.get('path')
@@ -26,6 +27,6 @@ class Command(BaseCommand):
                     os.remove(os.path.join(path, f))
 
         self.stdout.write(self.style.MIGRATE_HEADING('Gather endpoints info'))
-        docs = ApiDocs(apps=args)
+        docs = ApiDocs(apps=options.get('args'))
         self.stdout.write(self.style.MIGRATE_HEADING('Write RST docs'))
         docs.generate(path)
