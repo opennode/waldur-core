@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.admin import SimpleListFilter
 from django.contrib.contenttypes.models import ContentType
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 from django.utils import timezone

@@ -31,6 +31,7 @@ class QuotaLimitField(models.IntegerField):
         if DJANGO_VERSION[:2] >= (1, 8):
             cls._meta.add_field(self, virtual=True)
         else:
+            # XXX: Django 1.10 deprecation, change to cls._meta.private_fields.append(self)
             cls._meta.virtual_fields.append(self)
 
     def deconstruct(self, *args, **kwargs):

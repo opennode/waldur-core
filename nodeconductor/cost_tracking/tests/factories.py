@@ -1,6 +1,7 @@
 import factory
 from factory import fuzzy
 
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import reverse
 from django.contrib.contenttypes.models import ContentType
 

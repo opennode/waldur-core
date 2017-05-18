@@ -34,11 +34,14 @@ def get_ip_address(request):
         return request.META['REMOTE_ADDR']
 
 
+# XXX: Django 1.10 deprecation, upgrade middleware
+# https://docs.djangoproject.com/en/1.11/topics/http/middleware/#upgrading-middleware
 class CaptureEventContextMiddleware(object):
     def process_request(self, request):
         context = {'ip_address': get_ip_address(request)}
 
         user = getattr(request, 'user', None)
+        # XXX: Django 1.10 deprecation, change to user.is_anonymous
         if user and not user.is_anonymous():
             context.update(user._get_log_context('user'))
 

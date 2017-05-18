@@ -1292,7 +1292,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return SupportedServices.get_name_for_model(obj)
 
     def get_resource_fields(self):
-        return self.Meta.model._meta.get_all_field_names()
+        return [f.name for f in self.Meta.model._meta.get_fields()]
 
     # an optional generic URL for accessing a resource
     def get_access_url(self, obj):

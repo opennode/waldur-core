@@ -4,6 +4,7 @@ from datetime import timedelta
 import logging
 
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import reverse, Resolver404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers

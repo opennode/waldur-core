@@ -1,4 +1,5 @@
 from django.test.utils import override_settings
+# XXX: Django 1.10 deprecation, import from django.urls
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from rest_framework import test
