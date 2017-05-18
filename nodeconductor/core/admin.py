@@ -32,6 +32,7 @@ class ReadonlyTextWidget(forms.TextInput):
     def _format_value(self, value):
         return value
 
+    # XXX: Django 1.11 deprecation, renderer argument must be passed.
     def render(self, name, value, attrs=None):
         return render_to_readonly(self._format_value(value))
 

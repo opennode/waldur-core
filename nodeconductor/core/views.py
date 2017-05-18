@@ -126,7 +126,7 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
                 data={'detail': _('Username is locked out. Try in %s minutes.') % lockout_time_in_mins},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-
+        # XXX: Django 1.11 deprecation, request argument must be passed.
         user = auth.authenticate(
             username=username,
             password=serializer.validated_data['password'],
