@@ -380,8 +380,8 @@ class InvitationAcceptTest(BaseInvitationTest):
 
         self.assertEqual(self.user.email, invitation.email)
 
-    @override_nodeconductor_settings(UPDATE_EMAIL_WITH_INVITATION_ACTIVE=False)
-    def test_user_can_not_rewrite_his_email_on_acceptance_if_feature_is_disabled(self):
+    @override_nodeconductor_settings(VALIDATE_INVITATION_EMAIL=True)
+    def test_user_can_not_rewrite_his_email_on_acceptance_if_validation_of_emails_is_on(self):
         invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email='invitation@i.ua')
         self.client.force_authenticate(user=self.user)
         url = factories.CustomerInvitationFactory.get_url(invitation, action='accept')
@@ -392,8 +392,8 @@ class InvitationAcceptTest(BaseInvitationTest):
         self.user.refresh_from_db()
         self.assertNotEqual(self.user.email, invitation.email)
 
-    @override_nodeconductor_settings(UPDATE_EMAIL_WITH_INVITATION_ACTIVE=True)
-    def test_user_can_rewrite_his_email_on_acceptance_if_feature_is_active(self):
+    @override_nodeconductor_settings(VALIDATE_INVITATION_EMAIL=False)
+    def test_user_can_rewrite_his_email_on_acceptance_if_validation_of_emails_is_off(self):
         invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email=self.user.email)
         self.client.force_authenticate(user=self.user)
         url = factories.CustomerInvitationFactory.get_url(invitation, action='accept')
@@ -404,8 +404,8 @@ class InvitationAcceptTest(BaseInvitationTest):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, invitation.email)
 
-    @override_nodeconductor_settings(UPDATE_EMAIL_WITH_INVITATION_ACTIVE=False)
-    def test_user_can_accept_invitation_if_feature_is_disabled_and_emails_match(self):
+    @override_nodeconductor_settings(VALIDATE_INVITATION_EMAIL=True)
+    def test_user_can_accept_invitation_if_emails_match_and_validation_of_emails_is_on(self):
         invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email=self.user.email)
         self.client.force_authenticate(user=self.user)
         url = factories.CustomerInvitationFactory.get_url(invitation, action='accept')
