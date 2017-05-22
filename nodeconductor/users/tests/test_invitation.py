@@ -15,19 +15,23 @@ from nodeconductor.users.tests import factories
 class BaseInvitationTest(test.APITransactionTestCase):
 
     def setUp(self):
-        self.customer_owner = structure_factories.UserFactory()
-        self.user = structure_factories.UserFactory()
         self.staff = structure_factories.UserFactory(is_staff=True)
+        self.customer_owner = structure_factories.UserFactory()
         self.project_admin = structure_factories.UserFactory()
         self.project_manager = structure_factories.UserFactory()
+        self.user = structure_factories.UserFactory()
+
         self.customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
+
         self.customer_role = structure_models.CustomerRole.OWNER
         self.customer_invitation = factories.CustomerInvitationFactory(
             customer=self.customer, customer_role=self.customer_role)
+
         self.project = structure_factories.ProjectFactory(customer=self.customer)
         self.project.add_user(self.project_admin, structure_models.ProjectRole.ADMINISTRATOR)
         self.project.add_user(self.project_manager, structure_models.ProjectRole.MANAGER)
+
         self.project_role = structure_models.ProjectRole.ADMINISTRATOR
         self.project_invitation = factories.ProjectInvitationFactory(
             project=self.project, project_role=self.project_role)
@@ -310,8 +314,6 @@ class InvitationPermissionApiTest(BaseInvitationTest):
 
 
 class InvitationAcceptTest(BaseInvitationTest):
-    def setUp(self):
-        super(InvitationAcceptTest, self).setUp()
 
     def test_authenticated_user_can_accept_project_invitation(self):
         self.client.force_authenticate(user=self.user)
