@@ -12,8 +12,8 @@ from nodeconductor.users import models, tasks
 from nodeconductor.users.tests import factories
 
 
-@ddt
-class InvitationPermissionApiTest(test.APITransactionTestCase):
+class BaseInvitationTest(test.APITransactionTestCase):
+
     def setUp(self):
         self.staff = structure_factories.UserFactory(is_staff=True)
         self.customer_owner = structure_factories.UserFactory()
@@ -35,6 +35,10 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.project_role = structure_models.ProjectRole.ADMINISTRATOR
         self.project_invitation = factories.ProjectInvitationFactory(
             project=self.project, project_role=self.project_role)
+
+
+@ddt
+class InvitationPermissionApiTest(BaseInvitationTest):
 
     # List tests
     def test_user_can_list_invitations(self):
@@ -122,13 +126,6 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         invitation = models.Invitation.objects.get(uuid=response.data['uuid'])
         self.assertEqual(invitation.created_by, getattr(self, user))
 
-    def test_user_which_created_invitation_is_stored_in_permission(self):
-        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner)
-        self.client.force_authenticate(user=self.user)
-        self.client.post(factories.CustomerInvitationFactory.get_url(invitation, action='accept'))
-        permission = structure_models.CustomerPermission.objects.get(user=self.user, customer=invitation.customer)
-        self.assertEqual(permission.created_by, self.customer_owner)
-
     @data('project_admin', 'project_manager', 'user')
     def test_user_without_access_cannot_create_customer_owner_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
@@ -168,55 +165,6 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         response = self.client.post(factories.CustomerInvitationFactory.get_url(self.customer_invitation,
                                                                                 action='cancel'))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_authenticated_user_can_accept_project_invitation(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.post(factories.ProjectInvitationFactory.get_url(
-            self.project_invitation, action='accept'))
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.project_invitation.refresh_from_db()
-        self.assertEqual(self.project_invitation.state, models.Invitation.State.ACCEPTED)
-        self.assertTrue(self.project.has_user(self.user, self.project_invitation.project_role))
-
-    def test_authenticated_user_can_accept_customer_invitation(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.post(factories.CustomerInvitationFactory.get_url(
-            self.customer_invitation, action='accept'))
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.customer_invitation.refresh_from_db()
-        self.assertEqual(self.customer_invitation.state, models.Invitation.State.ACCEPTED)
-        self.assertTrue(self.customer.has_user(self.user, self.customer_invitation.customer_role))
-
-    def test_user_with_invalid_civil_number_cannot_accept_invitation(self):
-        customer_invitation = factories.CustomerInvitationFactory(
-            customer=self.customer, customer_role=self.customer_role, civil_number='123456789')
-        self.client.force_authenticate(user=self.user)
-        response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, ['User has an invalid civil number.'])
-
-    def test_user_which_already_has_role_within_customer_cannot_accept_invitation(self):
-        customer_invitation = factories.CustomerInvitationFactory(
-            customer=self.customer, customer_role=self.customer_role)
-        self.client.force_authenticate(user=self.user)
-        self.customer.add_user(self.user, customer_invitation.customer_role)
-        response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, ['User already has role within this customer.'])
-
-    def test_user_which_already_has_role_within_project_cannot_accept_invitation(self):
-        project_invitation = factories.ProjectInvitationFactory(
-            project=self.project, project_role=self.project_role)
-        self.client.force_authenticate(user=self.user)
-        self.project.add_user(self.user, project_invitation.project_role)
-        response = self.client.post(factories.ProjectInvitationFactory.get_url(project_invitation, action='accept'))
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data, ['User already has role within this project.'])
 
     @data('staff', 'customer_owner')
     def test_user_with_access_can_send_customer_invitation(self, user):
@@ -345,15 +293,6 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
 
-    def test_user_can_rewrite_his_email_on_invitation_accept(self):
-        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email='invitation@i.ua')
-        self.client.force_authenticate(user=self.user)
-
-        self.client.post(
-            factories.CustomerInvitationFactory.get_url(invitation, action='accept'), {'replace_email': True})
-
-        self.assertEqual(self.user.email, invitation.email)
-
     # Helper methods
     def _get_valid_project_invitation_payload(self, invitation=None, project_role=None):
         invitation = invitation or factories.ProjectInvitationFactory.build()
@@ -372,3 +311,107 @@ class InvitationPermissionApiTest(test.APITransactionTestCase):
             'customer': structure_factories.CustomerFactory.get_url(invitation.customer),
             'customer_role': customer_role or structure_models.CustomerRole.OWNER,
         }
+
+
+class InvitationAcceptTest(BaseInvitationTest):
+
+    def test_authenticated_user_can_accept_project_invitation(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.ProjectInvitationFactory.get_url(
+            self.project_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.project_invitation.refresh_from_db()
+        self.assertEqual(self.project_invitation.state, models.Invitation.State.ACCEPTED)
+        self.assertTrue(self.project.has_user(self.user, self.project_invitation.project_role))
+
+    def test_authenticated_user_can_accept_customer_invitation(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(
+            self.customer_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.customer_invitation.refresh_from_db()
+        self.assertEqual(self.customer_invitation.state, models.Invitation.State.ACCEPTED)
+        self.assertTrue(self.customer.has_user(self.user, self.customer_invitation.customer_role))
+
+    def test_user_with_invalid_civil_number_cannot_accept_invitation(self):
+        customer_invitation = factories.CustomerInvitationFactory(
+            customer=self.customer, customer_role=self.customer_role, civil_number='123456789')
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['User has an invalid civil number.'])
+
+    def test_user_which_already_has_role_within_customer_cannot_accept_invitation(self):
+        customer_invitation = factories.CustomerInvitationFactory(
+            customer=self.customer, customer_role=self.customer_role)
+        self.client.force_authenticate(user=self.user)
+        self.customer.add_user(self.user, customer_invitation.customer_role)
+        response = self.client.post(factories.CustomerInvitationFactory.get_url(customer_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['User already has role within this customer.'])
+
+    def test_user_which_already_has_role_within_project_cannot_accept_invitation(self):
+        project_invitation = factories.ProjectInvitationFactory(
+            project=self.project, project_role=self.project_role)
+        self.client.force_authenticate(user=self.user)
+        self.project.add_user(self.user, project_invitation.project_role)
+        response = self.client.post(factories.ProjectInvitationFactory.get_url(project_invitation, action='accept'))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['User already has role within this project.'])
+
+    def test_user_which_created_invitation_is_stored_in_permission(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner)
+        self.client.force_authenticate(user=self.user)
+        self.client.post(factories.CustomerInvitationFactory.get_url(invitation, action='accept'))
+        permission = structure_models.CustomerPermission.objects.get(user=self.user, customer=invitation.customer)
+        self.assertEqual(permission.created_by, self.customer_owner)
+
+    def test_user_can_rewrite_his_email_on_invitation_accept(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email='invitation@i.ua')
+        self.client.force_authenticate(user=self.user)
+
+        self.client.post(
+            factories.CustomerInvitationFactory.get_url(invitation, action='accept'), {'replace_email': True})
+
+        self.assertEqual(self.user.email, invitation.email)
+
+    @override_nodeconductor_settings(VALIDATE_INVITATION_EMAIL=True)
+    def test_user_can_not_rewrite_his_email_on_acceptance_if_validation_of_emails_is_on(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email='invitation@i.ua')
+        self.client.force_authenticate(user=self.user)
+        url = factories.CustomerInvitationFactory.get_url(invitation, action='accept')
+
+        response = self.client.post(url, {'replace_email': True})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user.refresh_from_db()
+        self.assertNotEqual(self.user.email, invitation.email)
+
+    @override_nodeconductor_settings(VALIDATE_INVITATION_EMAIL=False)
+    def test_user_can_rewrite_his_email_on_acceptance_if_validation_of_emails_is_off(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email=self.user.email)
+        self.client.force_authenticate(user=self.user)
+        url = factories.CustomerInvitationFactory.get_url(invitation, action='accept')
+
+        response = self.client.post(url, {'replace_email': True})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, invitation.email)
+
+    @override_nodeconductor_settings(VALIDATE_INVITATION_EMAIL=True)
+    def test_user_can_accept_invitation_if_emails_match_and_validation_of_emails_is_on(self):
+        invitation = factories.CustomerInvitationFactory(created_by=self.customer_owner, email=self.user.email)
+        self.client.force_authenticate(user=self.user)
+        url = factories.CustomerInvitationFactory.get_url(invitation, action='accept')
+
+        response = self.client.post(url, {'replace_email': True})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, invitation.email)

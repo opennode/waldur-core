@@ -103,6 +103,9 @@ class InvitationViewSet(ProtectedViewSet):
         elif invitation.customer.has_user(request.user):
             raise ValidationError(_('User already has role within this customer.'))
 
+        if settings.NODECONDUCTOR['VALIDATE_INVITATION_EMAIL'] and invitation.email != request.user.email:
+            raise ValidationError(_('Invitation and user emails mismatch.'))
+
         replace_email = bool(request.data.get('replace_email'))
         invitation.accept(request.user, replace_email=replace_email)
         return Response({'detail': _('Invitation has been successfully accepted.')},
