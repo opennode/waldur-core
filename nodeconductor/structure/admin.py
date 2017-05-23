@@ -155,6 +155,7 @@ class CustomerAdmin(FormRequestAdminMixin,
               'country', 'vat_code', 'is_company', 'owners', 'support_users')
     list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
                     'get_private_cloud_count']
+    search_fields = ['name', 'uuid', 'abbreviation']
     inlines = [QuotaInline]
 
 
