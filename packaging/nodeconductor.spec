@@ -116,6 +116,7 @@ INSTALLED_APPS = (
     'nodeconductor.landing',
     'rest_framework',
     'rest_framework_swagger',
+    'django_filters',
 )
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
