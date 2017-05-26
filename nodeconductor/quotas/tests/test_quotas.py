@@ -3,7 +3,7 @@ from datetime import timedelta
 from ddt import ddt, data
 from django.utils import timezone
 from rest_framework import test, status
-from reversion import revisions as reversion
+from reversion.models import Version
 
 from nodeconductor.core import utils as core_utils
 from nodeconductor.quotas.tests import factories
@@ -51,7 +51,7 @@ class QuotaHistoryTest(test.APITransactionTestCase):
         self.quota = factories.QuotaFactory(scope=self.customer)
         self.url = factories.QuotaFactory.get_url(self.quota, 'history')
         # Hook for test: lets say that revision was created one hour ago
-        version = reversion.get_for_date(self.quota, timezone.now())
+        version = Version.objects.get_for_object(self.quota).filter(revision__date_created__lte=timezone.now()).first()
         version.revision.date_created = timezone.now() - timedelta(hours=1)
         version.revision.save()
 

@@ -26,7 +26,7 @@ install_requires = [
     'django-fsm==2.3.0',
     'django-model-utils==2.5.2',
     'django-redis-cache>=1.6.5',
-    'django-reversion>=1.10.0,<=1.10.2',
+    'django-reversion>=2.0.8,<2.1.0',
     'django-rest-swagger==2.1.1',
     'django-taggit>=0.20.2',
     'djangorestframework>=3.5.3,<3.6.0',

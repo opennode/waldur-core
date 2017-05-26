@@ -144,15 +144,9 @@ admin.site.unregister(Group)
 
 
 class ReversionAdmin(VersionAdmin):
-    ignore_duplicate_revisions = True
-
-    def log_change(self, request, object, message):
-        # Revision creation is ignored in this method because it has to be implemented in model.save method
-        super(VersionAdmin, self).log_change(request, object, message)
-
-    def log_addition(self, request, object, change_message=None):
-        # Revision creation is ignored in this method because it has to be implemented in model.save method
-        super(VersionAdmin, self).log_addition(request, object)
+    def reversion_register(self, model, **options):
+        options['ignore_duplicate_revisions'] = True
+        super(ReversionAdmin, self).reversion_register(model, **options)
 
 
 class ExecutorAdminAction(object):

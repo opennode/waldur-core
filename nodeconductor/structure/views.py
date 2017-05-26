@@ -22,7 +22,7 @@ from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException, ValidationError
 from rest_framework.response import Response
-from reversion import revisions as reversion
+from reversion.models import Version
 
 from nodeconductor.core import (
     filters as core_filters, mixins as core_mixins, models as core_models,
@@ -1756,18 +1756,15 @@ class QuotaTimelineStatsView(views.APIView):
             quota = scope.quotas.get(name=quota_name)
         except Quota.DoesNotExist:
             return stats_data
-        versions = reversion\
-            .get_for_object(quota)\
-            .select_related('revision')\
-            .filter(revision__date_created__lte=dates[0][0])\
-            .iterator()
+        versions = Version.objects.get_for_object(quota).select_related('revision').filter(
+            revision__date_created__lte=dates[0][0]).iterator()
         version = None
         for end, start in dates:
             try:
                 while version is None or version.revision.date_created > end:
                     version = versions.next()
-                stats_data.append((version.object_version.object.limit,
-                                   version.object_version.object.usage))
+                stats_data.append((version._object_version.object.limit,
+                                   version._object_version.object.usage))
             except StopIteration:
                 break
 
