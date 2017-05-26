@@ -21,7 +21,7 @@ install_requires = [
     'croniter>=0.3.4,<0.3.6',
     'Django>=1.9,<1.10',
     'django-admin-tools==0.7.0',
-    'django-filter==0.15.3',
+    'django-filter==1.0.4',
     'django-fluent-dashboard==0.6.1',
     'django-fsm==2.3.0',
     'django-model-utils==2.5.2',
