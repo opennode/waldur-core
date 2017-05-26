@@ -251,9 +251,6 @@ class HookSummaryFilterBackend(core_filters.SummaryFilter):
 
 
 class PushHookFilter(BaseHookFilter):
-    device_id = django_filters.CharFilter()
-    token = django_filters.CharFilter()
-
     class Meta(object):
         model = models.PushHook
-        fields = ('type', 'device_manufacturer', 'device_model')
+        fields = ('type', 'device_id', 'device_manufacturer', 'device_model', 'token')
