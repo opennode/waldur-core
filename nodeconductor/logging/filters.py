@@ -256,4 +256,4 @@ class PushHookFilter(BaseHookFilter):
 
     class Meta(object):
         model = models.PushHook
-        fields = ('type', 'device_id', 'device_manufacturer', 'device_model', 'token')
+        fields = ('type', 'device_manufacturer', 'device_model')

@@ -22,7 +22,7 @@ class ResourceStateFilter(django_filters.FilterSet):
 
     class Meta:
         model = ResourceSlaStateTransition
-        fields = ('timestamp', 'period', 'state')
+        fields = ('timestamp', 'state')
 
 
 class SlaFilter(BaseFilterBackend):
