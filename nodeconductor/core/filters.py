@@ -8,6 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import resolve
 import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.constants import EMPTY_VALUES
 from rest_framework.filters import BaseFilterBackend
 
 from nodeconductor.core import serializers as core_serializers, fields as core_fields, models as core_models
@@ -142,14 +143,15 @@ class URLFilter(django_filters.CharFilter):
         return uuid_value
 
     def filter(self, qs, value):
-        if value:
-            uuid_value = self.get_uuid(value)
-            try:
-                uuid.UUID(uuid_value)
-            except ValueError:
-                return qs.none()
-            return super(URLFilter, self).filter(qs, uuid_value)
-        return qs
+        if value in EMPTY_VALUES:
+            return qs
+
+        uuid_value = self.get_uuid(value)
+        try:
+            uuid.UUID(uuid_value)
+        except ValueError:
+            return qs.none()
+        return super(URLFilter, self).filter(qs, uuid_value)
 
 
 class TimestampFilter(django_filters.NumberFilter):
@@ -157,11 +159,12 @@ class TimestampFilter(django_filters.NumberFilter):
     Filter for dates in timestamp format
     """
     def filter(self, qs, value):
-        if value:
-            field = core_fields.TimestampField()
-            datetime_value = field.to_internal_value(value)
-            return super(TimestampFilter, self).filter(qs, datetime_value)
-        return qs
+        if value in EMPTY_VALUES:
+            return qs
+
+        field = core_fields.TimestampField()
+        datetime_value = field.to_internal_value(value)
+        return super(TimestampFilter, self).filter(qs, datetime_value)
 
 
 class CategoryFilter(django_filters.CharFilter):
@@ -193,14 +196,14 @@ class StaffOrUserFilter(BaseFilterBackend):
 class ContentTypeFilter(django_filters.CharFilter):
 
     def filter(self, qs, value):
-        if value:
-            try:
-                app_label, model = value.split('.')
-                ct = ContentType.objects.get(app_label=app_label, model=model)
-                return super(ContentTypeFilter, self).filter(qs, ct)
-            except (ContentType.DoesNotExist, ValueError):
-                return qs.none()
-        return qs
+        if value in EMPTY_VALUES:
+            return qs
+        try:
+            app_label, model = value.split('.')
+            ct = ContentType.objects.get(app_label=app_label, model=model)
+            return super(ContentTypeFilter, self).filter(qs, ct)
+        except (ContentType.DoesNotExist, ValueError):
+            return qs.none()
 
 
 class BaseExternalFilter(object):

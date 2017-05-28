@@ -20,7 +20,7 @@ class ResourceScopeFilterBackend(core_filters.GenericKeyFilterBackend):
 class ResourceStateFilter(django_filters.FilterSet):
     class Meta:
         model = ResourceSlaStateTransition
-    period = django_filters.CharFilter(name='period')
+        fields = ('timestamp', 'period', 'state')
 
 
 class SlaFilter(BaseFilterBackend):
