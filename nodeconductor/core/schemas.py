@@ -343,7 +343,7 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
                 location='form',
                 required=required,
                 description=description,
-                type=schemas.types_lookup[field]
+                schema=schemas.field_to_schema(field),
             )
             fields.append(field)
 

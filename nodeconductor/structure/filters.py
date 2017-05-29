@@ -94,16 +94,16 @@ class GenericUserFilter(BaseFilterBackend):
 
 class CustomerFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
     native_name = django_filters.CharFilter(
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
     abbreviation = django_filters.CharFilter(
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
     contact_details = django_filters.CharFilter(
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
 
     o = django_filters.OrderingFilter(
@@ -130,24 +130,24 @@ class ProjectFilter(django_filters.FilterSet):
     customer_name = django_filters.CharFilter(
         name='customer__name',
         distinct=True,
-        lookup_type='icontains'
+        lookup_expr='icontains'
     )
 
     customer_native_name = django_filters.CharFilter(
         name='customer__native_name',
         distinct=True,
-        lookup_type='icontains'
+        lookup_expr='icontains'
     )
 
     customer_abbreviation = django_filters.CharFilter(
         name='customer__abbreviation',
         distinct=True,
-        lookup_type='icontains'
+        lookup_expr='icontains'
     )
 
-    name = django_filters.CharFilter(lookup_type='icontains')
+    name = django_filters.CharFilter(lookup_expr='icontains')
 
-    description = django_filters.CharFilter(lookup_type='icontains')
+    description = django_filters.CharFilter(lookup_expr='icontains')
 
     o = django_filters.OrderingFilter(
         fields=(
@@ -206,11 +206,11 @@ class ProjectUserFilter(DjangoFilterBackend):
 
 
 class UserFilter(django_filters.FilterSet):
-    full_name = django_filters.CharFilter(lookup_type='icontains')
+    full_name = django_filters.CharFilter(lookup_expr='icontains')
     username = django_filters.CharFilter()
-    native_name = django_filters.CharFilter(lookup_type='icontains')
-    job_title = django_filters.CharFilter(lookup_type='icontains')
-    email = django_filters.CharFilter(lookup_type='icontains')
+    native_name = django_filters.CharFilter(lookup_expr='icontains')
+    job_title = django_filters.CharFilter(lookup_expr='icontains')
+    email = django_filters.CharFilter(lookup_expr='icontains')
     is_active = django_filters.BooleanFilter()
 
     o = django_filters.OrderingFilter(
@@ -260,15 +260,15 @@ class UserPermissionFilter(django_filters.FilterSet):
     )
     username = django_filters.CharFilter(
         name='user__username',
-        lookup_type='exact',
+        lookup_expr='exact',
     )
     full_name = django_filters.CharFilter(
         name='user__full_name',
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
     native_name = django_filters.CharFilter(
         name='user__native_name',
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
 
     o = django_filters.OrderingFilter(
@@ -318,7 +318,7 @@ class CustomerPermissionFilter(UserPermissionFilter):
 class SshKeyFilter(django_filters.FilterSet):
     uuid = django_filters.UUIDFilter()
     user_uuid = django_filters.UUIDFilter(name='user__uuid')
-    name = django_filters.CharFilter(lookup_type='icontains')
+    name = django_filters.CharFilter(lookup_expr='icontains')
 
     o = django_filters.OrderingFilter(fields=('name',))
 
@@ -339,7 +339,7 @@ class ServiceTypeFilter(django_filters.Filter):
 
 
 class ServiceSettingsFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(lookup_type='icontains')
+    name = django_filters.CharFilter(lookup_expr='icontains')
     type = ServiceTypeFilter()
     state = core_filters.StateFilter()
 
@@ -371,7 +371,7 @@ class ServiceFilterMetaclass(FilterSetMetaclass):
 
 class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filters.FilterSet)):
     customer = django_filters.UUIDFilter(name='customer__uuid')
-    name = django_filters.CharFilter(name='settings__name', lookup_type='icontains')
+    name = django_filters.CharFilter(name='settings__name', lookup_expr='icontains')
     project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
     project_uuid = django_filters.UUIDFilter(name='projects__uuid', distinct=True)
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
@@ -380,7 +380,7 @@ class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filter
     tag = django_filters.ModelMultipleChoiceFilter(
         name='settings__tags__name',
         to_field_name='name',
-        lookup_type='in',
+        lookup_expr='in',
         queryset=taggit.models.Tag.objects.all(),
     )
     # rtag - required tag, support for filtration by tags using AND operation
@@ -405,6 +405,7 @@ class BaseServiceProjectLinkFilter(django_filters.FilterSet):
 
     class Meta(object):
         model = models.ServiceProjectLink
+        fields = ()
 
 
 class ResourceFilterMetaclass(FilterSetMetaclass):
@@ -427,38 +428,40 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     customer = django_filters.UUIDFilter(name='service_project_link__service__customer__uuid')
     customer_uuid = django_filters.UUIDFilter(name='service_project_link__service__customer__uuid')
     customer_name = django_filters.CharFilter(
-        name='service_project_link__service__customer__name', lookup_type='icontains')
+        name='service_project_link__service__customer__name', lookup_expr='icontains')
     customer_native_name = django_filters.CharFilter(
-        name='service_project_link__project__customer__native_name', lookup_type='icontains')
+        name='service_project_link__project__customer__native_name', lookup_expr='icontains')
     customer_abbreviation = django_filters.CharFilter(
-        name='service_project_link__project__customer__abbreviation', lookup_type='icontains')
+        name='service_project_link__project__customer__abbreviation', lookup_expr='icontains')
     # project
     project = django_filters.UUIDFilter(name='service_project_link__project__uuid')
     project_uuid = django_filters.UUIDFilter(name='service_project_link__project__uuid')
-    project_name = django_filters.CharFilter(name='service_project_link__project__name', lookup_type='icontains')
+    project_name = django_filters.CharFilter(name='service_project_link__project__name', lookup_expr='icontains')
     # service
     service_uuid = django_filters.UUIDFilter(name='service_project_link__service__uuid')
-    service_name = django_filters.CharFilter(name='service_project_link__service__settings__name', lookup_type='icontains')
+    service_name = django_filters.CharFilter(name='service_project_link__service__settings__name', lookup_expr='icontains')
     # service settings
     service_settings_uuid = django_filters.UUIDFilter(name='service_project_link__service__settings__uuid')
     service_settings_name = django_filters.CharFilter(name='service_project_link__service__settings__name',
-                                                      lookup_type='icontains')
+                                                      lookup_expr='icontains')
     # resource
-    name = django_filters.CharFilter(lookup_type='icontains')
-    description = django_filters.CharFilter(lookup_type='icontains')
+    name = django_filters.CharFilter(lookup_expr='icontains')
+    description = django_filters.CharFilter(lookup_expr='icontains')
     state = core_filters.MappedMultipleChoiceFilter(
         choices=[(representation, representation) for db_value, representation in core_models.StateMixin.States.CHOICES],
         choice_mappings={representation: db_value for db_value, representation in core_models.StateMixin.States.CHOICES},
     )
-    uuid = django_filters.UUIDFilter(lookup_type='exact')
+    uuid = django_filters.UUIDFilter(lookup_expr='exact')
     tag = django_filters.ModelMultipleChoiceFilter(
         name='tags__name',
+        label='tag',
         to_field_name='name',
-        lookup_type='in',
+        lookup_expr='in',
         queryset=taggit.models.Tag.objects.all(),
     )
     rtag = django_filters.ModelMultipleChoiceFilter(
         name='tags__name',
+        label='rtag',
         to_field_name='name',
         queryset=taggit.models.Tag.objects.all(),
         conjoined=True,
@@ -476,8 +479,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
         ('created', 'created'),
     )
 
-    strict = False
-
     class Meta(object):
         model = models.ResourceMixin
         fields = (
@@ -492,6 +493,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             # resource
             'name', 'description', 'state', 'uuid', 'tag', 'rtag',
         )
+        strict = django_filters.STRICTNESS.IGNORE
 
 
 class TagsFilter(BaseFilterBackend):
@@ -562,7 +564,7 @@ class StartTimeFilter(BaseFilterBackend):
 class BaseServicePropertyFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(
         name='name',
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
 
     class Meta(object):

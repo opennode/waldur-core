@@ -144,8 +144,16 @@ admin.site.unregister(Group)
 
 
 class ReversionAdmin(VersionAdmin):
+    def add_view(self, request, form_url='', extra_context=None):
+        # Revision creation is ignored in this method because it has to be implemented in model.save method
+        return super(VersionAdmin, self).add_view(request, form_url, extra_context)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        # Revision creation is ignored in this method because it has to be implemented in model.save method
+        return super(VersionAdmin, self).change_view(request, object_id, form_url, extra_context)
+
     def reversion_register(self, model, **options):
-        options['ignore_duplicate_revisions'] = True
+        options['ignore_duplicates'] = True
         super(ReversionAdmin, self).reversion_register(model, **options)
 
 

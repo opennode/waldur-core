@@ -394,7 +394,7 @@ class ReversionMixin(object):
 
     def get_version_fields(self):
         """ Get field that are tracked in object history versions. """
-        options = reversion._registered_models[reversion._get_registration_key(self.__class__)]
+        options = reversion._get_options(self)
         return options.fields or [f.name for f in self._meta.fields if f not in options.exclude]
 
     def _is_version_duplicate(self):
@@ -415,12 +415,11 @@ class ReversionMixin(object):
         fields = self.get_version_fields()
         return all([getattr(self, f) == getattr(latest_version_object, f) for f in fields])
 
-    def save(self, save_revision=True, ignore_revision_duplicates=True, **kwargs):
-        if save_revision:
-            if not ignore_revision_duplicates or not self._is_version_duplicate():
-                with reversion.create_revision():
-                    return super(ReversionMixin, self).save(**kwargs)
-        return super(ReversionMixin, self).save(**kwargs)
+    def save(self, **kwargs):
+        if self._is_version_duplicate():
+            return super(ReversionMixin, self).save(**kwargs)
+        with reversion.create_revision():
+            return super(ReversionMixin, self).save(**kwargs)
 
 
 # XXX: consider renaming it to AffinityMixin

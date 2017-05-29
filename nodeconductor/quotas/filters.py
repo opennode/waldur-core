@@ -24,7 +24,7 @@ class QuotaFilterSet(django_filters.FilterSet):
     FilterSet for quotas view
     """
     name = django_filters.CharFilter(
-        lookup_type='icontains',
+        lookup_expr='icontains',
     )
 
     class Meta(object):
