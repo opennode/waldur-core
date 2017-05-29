@@ -29,12 +29,12 @@ Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-django >= 1.9, python-django < 1.10
-Requires: python-django-admin-tools = 0.7.0
-Requires: python-django-cors-headers
+Requires: python-django-admin-tools = 0.8.0
+Requires: python-django-cors-headers = 2.1.0
 Requires: python-django-filter = 1.0.2
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
-Requires: python-django-jsoneditor >= 0.0.5
+Requires: python-django-jsoneditor >= 0.0.7
 Requires: python-django-jsonfield = 2.0.1
 Requires: python-django-model-utils = 3.0.0
 Requires: python-django-redis-cache >= 1.6.5
