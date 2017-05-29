@@ -70,7 +70,7 @@ BuildRequires: gettext
 BuildRequires: python-django >= 1.9, python-django < 1.10
 BuildRequires: python-django-filter = 1.0.2
 BuildRequires: python-django-fluent-dashboard
-BuildRequires: python-django-jsoneditor >= 0.0.5
+BuildRequires: python-django-jsoneditor >= 0.0.7
 BuildRequires: python-django-rest-framework >= 3.6.3, python-django-rest-framework < 3.7.0
 BuildRequires: python-django-rest-swagger = 2.1.2
 BuildRequires: python-setuptools
