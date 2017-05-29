@@ -144,15 +144,13 @@ admin.site.unregister(Group)
 
 
 class ReversionAdmin(VersionAdmin):
-    ignore_duplicate_revisions = True
-
-    def log_change(self, request, object, message):
+    def add_view(self, request, form_url='', extra_context=None):
         # Revision creation is ignored in this method because it has to be implemented in model.save method
-        super(VersionAdmin, self).log_change(request, object, message)
+        return super(VersionAdmin, self).add_view(request, form_url, extra_context)
 
-    def log_addition(self, request, object, change_message=None):
+    def change_view(self, request, object_id, form_url='', extra_context=None):
         # Revision creation is ignored in this method because it has to be implemented in model.save method
-        super(VersionAdmin, self).log_addition(request, object)
+        return super(VersionAdmin, self).change_view(request, object_id, form_url, extra_context)
 
 
 class ExecutorAdminAction(object):

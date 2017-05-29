@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from reversion import revisions as reversion
+from reversion.models import Version
 
 from nodeconductor.quotas.models import Quota
 
@@ -31,7 +31,7 @@ class Command(BaseCommand):
                 self.stdout.write('Duplicates were not deleted.')
 
     def get_quota_duplicate_versions(self, quota):
-        versions = reversion.get_for_object(quota).order_by('revision__date_created')
+        versions = Version.objects.get_for_object(quota).order_by('revision__date_created')
         if not versions:
             return []
         duplicates = []
@@ -45,6 +45,6 @@ class Command(BaseCommand):
         return duplicates
 
     def are_versions_equal(self, quota, v1, v2):
-        o1 = v1.object_version.object
-        o2 = v2.object_version.object
+        o1 = v1._object_version.object
+        o2 = v2._object_version.object
         return all([getattr(o1, f) == getattr(o2, f) for f in quota.get_version_fields()])

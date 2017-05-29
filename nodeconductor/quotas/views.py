@@ -140,13 +140,10 @@ class QuotaViewSet(mixins.UpdateModelMixin,
         serialized_versions = []
         for point_date in history_serializer.get_filter_data():
             serialized = {'point': datetime_to_timestamp(point_date)}
-            try:
-                version = reversion.get_for_date(quota, point_date)
-            except Version.DoesNotExist:
-                pass
-            else:
+            version = Version.objects.get_for_object(quota).filter(revision__date_created__lte=point_date)
+            if version.exists():
                 # make copy of serialized data and update field that are stored in version
-                version_object = version.object_version.object
+                version_object = version.first()._object_version.object
                 serialized['object'] = serializer.data.copy()
                 serialized['object'].update({
                     f: getattr(version_object, f) for f in quota.get_version_fields()

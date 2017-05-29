@@ -24,9 +24,10 @@ install_requires = [
     'django-filter==1.0.2',
     'django-fluent-dashboard==0.6.1',
     'django-fsm==2.3.0',
+    'django-jsoneditor>=0.0.5',
     'django-model-utils==3.0.0',
     'django-redis-cache>=1.6.5',
-    'django-reversion>=1.10.0,<=1.10.2',
+    'django-reversion==2.0.8',
     'django-rest-swagger==2.1.2',
     'django-taggit>=0.20.2',
     'djangorestframework>=3.6.3,<3.7.0',
@@ -43,7 +44,6 @@ install_requires = [
     'requests>=2.6.0,!=2.12.2,!=2.13.0',
     'sqlparse>=0.1.11',
     'urllib3<1.18',
-    'django-jsoneditor>=0.0.5',
 ]
 
 setup(

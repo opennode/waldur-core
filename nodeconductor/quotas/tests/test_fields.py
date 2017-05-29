@@ -1,5 +1,5 @@
 from django.test import TransactionTestCase
-from reversion import revisions as reversion
+from reversion.models import Version
 
 from nodeconductor.core.utils import silent_call
 from . import models as test_models
@@ -29,12 +29,12 @@ class TestQuotaField(TransactionTestCase):
         quota.usage = 13.0
         quota.save()
         # make sure that new version was created after quota usage change.
-        latest_version = reversion.get_for_object(quota).latest('revision__date_created')
-        self.assertEqual(latest_version.object_version.object.usage, quota.usage)
+        latest_version = Version.objects.get_for_object(quota).latest('revision__date_created')
+        self.assertEqual(latest_version._object_version.object.usage, quota.usage)
         # make sure that new version was not created if object was saved without data change.
         quota.usage = 13
         quota.save()
-        new_latest_version = reversion.get_for_object(quota).latest('revision__date_created')
+        new_latest_version = Version.objects.get_for_object(quota).latest('revision__date_created')
         self.assertEqual(new_latest_version, latest_version)
 
 
