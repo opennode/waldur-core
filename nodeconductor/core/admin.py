@@ -152,10 +152,6 @@ class ReversionAdmin(VersionAdmin):
         # Revision creation is ignored in this method because it has to be implemented in model.save method
         return super(VersionAdmin, self).change_view(request, object_id, form_url, extra_context)
 
-    def reversion_register(self, model, **options):
-        options['ignore_duplicates'] = True
-        super(ReversionAdmin, self).reversion_register(model, **options)
-
 
 class ExecutorAdminAction(object):
     """ Add executor as action to admin model.
