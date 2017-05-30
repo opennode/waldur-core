@@ -147,53 +147,49 @@ class ElasticsearchClient(object):
         def prepare(self):
             # Valid event has event_type field
             self['query'] = {
-                'filtered': {
-                    'filter': {
-                        'bool': {
-                            'must': [
-                                {
-                                    'exists': {
-                                        'field': 'event_type'
-                                    }
-                                }
-                            ]
+                'bool': {
+                    'must': [
+                        {
+                            'exists': {
+                                'field': 'event_type'
+                            }
                         }
-                    }
+                    ]
                 }
             }
 
             if self.queries:
-                self['query']['filtered']['query'] = {
+                self['query']['bool']['filter'] = {
                     'query_string': {
                         'query': ' AND '.join('(' + search_query + ')' for search_query in self.queries.values())
                     }
                 }
 
             if self.should_terms_filter:
-                self['query']['filtered']['filter']['bool']['should'] = [
+                self['query']['bool']['should'] = [
                     {'terms': {key: value}} for key, value in self.should_terms_filter.items()
                 ]
 
             if self.must_terms_filter:
-                self['query']['filtered']['filter']['bool']['must'].extend([
+                self['query']['bool']['must'].extend([
                     {'terms': {key: value}} for key, value in self.must_terms_filter.items()
                 ])
 
             if self.must_not_terms_filter:
-                self['query']['filtered']['filter']['bool']['must_not'] = [
+                self['query']['bool']['must_not'] = [
                     {'terms': {key: value}} for key, value in self.must_not_terms_filter.items()
                 ]
 
             if self.timestamp_filter:
-                self['query']['filtered']['filter']['bool']['must'].append({
+                self['query']['bool']['must'].append({
                     'range': {'@timestamp': self.timestamp_filter}})
 
             if self.timestamp_ranges:
-                self["aggs"] = {
-                    "timestamp_ranges": {
-                        "date_range": {
-                            "field": "@timestamp",
-                            "ranges": self.timestamp_ranges,
+                self['aggs'] = {
+                    'timestamp_ranges': {
+                        'date_range': {
+                            'field': '@timestamp',
+                            'ranges': self.timestamp_ranges,
                         },
                     }
                 }
