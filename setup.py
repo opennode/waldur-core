@@ -31,7 +31,7 @@ install_requires = [
     'django-rest-swagger==2.1.2',
     'django-taggit>=0.20.2',
     'djangorestframework>=3.6.3,<3.7.0',
-    'elasticsearch>=5.4.0,<6.0.0',
+    'elasticsearch==5.4.0',
     'hiredis>=0.2.0',
     'iptools>=0.6.1',
     'jsonfield==2.0.1',
