@@ -21,8 +21,7 @@ class AuthenticationBackend(object):
     Enables only support and staff to access admin site.
     """
 
-    # XXX: Django 1.11 deprecation, request argument must be passed.
-    def authenticate(self, username, password):
+    def authenticate(self, request, username, password):
         """
         Always return ``None`` to prevent authentication within this backend.
         """

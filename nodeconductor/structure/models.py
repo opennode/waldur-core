@@ -379,7 +379,7 @@ class Customer(core_models.UuidMixin,
               customerpermission__is_active=True) |
             Q(projectpermission__project__customer=self,
               projectpermission__is_active=True)
-        ).distinct()
+        ).distinct().order_by('username')
 
     def can_user_update_quotas(self, user):
         return user.is_staff
@@ -519,7 +519,7 @@ class Project(core_models.DescribableMixin,
         if role:
             query = query & Q(projectpermission__role=role)
 
-        return get_user_model().objects.filter(query)
+        return get_user_model().objects.filter(query).order_by('username')
 
     def __str__(self):
         return '%(name)s | %(customer)s' % {

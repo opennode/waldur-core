@@ -10,7 +10,7 @@ from nodeconductor.structure.tests.factories import ProjectFactory, UserFactory
 
 
 # XXX: This tests should be moved to test_handlers. NC-1537.
-class PriceEstimateThresholdAlertTest(test.APITransactionTestCase):
+class PriceEstimateThresholdAlertTest(test.APITestCase):
     def test_price_estimate_is_copied_from_previous_one(self):
         project = ProjectFactory()
         estimate1 = PriceEstimateFactory(year=2015, month=12, scope=project, threshold=100)

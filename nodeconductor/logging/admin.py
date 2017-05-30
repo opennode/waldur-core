@@ -2,6 +2,7 @@ import json
 
 from django import forms
 from django.contrib import admin
+from django.contrib.auth.models import Group
 
 from nodeconductor.logging import models
 from nodeconductor.logging.loggers import get_valid_events
@@ -23,6 +24,10 @@ class SystemNotificationForm(forms.ModelForm):
     class Meta:
         model = models.SystemNotification
         exclude = 'uuid',
+
+    def __init__(self, *args, **kwargs):
+        super(SystemNotificationForm, self).__init__(*args, **kwargs)
+        self.fields['hook_content_type'].queryset = models.BaseHook.get_all_content_types()
 
 
 class SystemNotificationAdmin(admin.ModelAdmin):
@@ -52,6 +57,10 @@ class EmailHookAdmin(BaseHookAdmin):
 class PushHookAdmin(BaseHookAdmin):
     list_display = BaseHookAdmin.list_display + ('type', 'device_id')
 
+
+# This hack is needed because core admin is imported several times.
+if admin.site.is_registered(Group):
+    admin.site.unregister(Group)
 
 admin.site.register(models.Alert, AlertAdmin)
 admin.site.register(models.SystemNotification, SystemNotificationAdmin)

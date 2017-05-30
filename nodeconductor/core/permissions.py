@@ -5,8 +5,7 @@ class IsAdminOrReadOnly(BasePermission):
     def has_permission(self, request, view):
         return (
             request.method in SAFE_METHODS or
-            # XXX: Django 1.10 deprecation, replace with user.is_authenticated property
-            (request.user.is_authenticated() and request.user.is_staff)
+            (request.user.is_authenticated and request.user.is_staff)
         )
 
 

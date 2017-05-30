@@ -1,6 +1,5 @@
 from ddt import ddt, data
-# XXX: Django 1.10 deprecation, import from django.urls
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from rest_framework import status, test
 
 from nodeconductor.logging import loggers

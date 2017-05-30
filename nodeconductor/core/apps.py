@@ -5,6 +5,8 @@ from django.contrib.auth import get_user_model
 from django.db.models import signals
 from django_fsm import signals as fsm_signals
 
+from nodeconductor.core.monkeypatch import monkey_patch_fields
+
 
 class CoreConfig(AppConfig):
     name = 'nodeconductor.core'
@@ -72,3 +74,6 @@ class CoreConfig(AppConfig):
                 sender=model,
                 dispatch_uid='nodeconductor.core.handlers.delete_error_message_%s_%s' % (model.__name__, index),
             )
+
+        # Database fields should be patched only after database models are initialized
+        monkey_patch_fields()

@@ -21,7 +21,7 @@ from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
 from reversion import revisions as reversion
-from reversion.models import Version, Revision
+from reversion.models import Version
 
 from nodeconductor.core.fields import CronScheduleField, UUIDField
 from nodeconductor.core.validators import validate_name, MinCronValueValidator
