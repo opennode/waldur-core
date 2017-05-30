@@ -73,9 +73,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
             #                           % request.query_params['scope'])
 
             for key, val in obj.filter_by_logged_object().items():
-                # Use "{field_name}.raw" to get the non-analyzed version of the value
-                # https://github.com/elastic/kibana/issues/364
-                must_terms[camel_case_to_underscore(key) + '.raw'] = [val]
+                must_terms[camel_case_to_underscore(key) + '.keyword'] = [val]
 
         elif 'scope_type' in request.query_params:
             choices = utils.get_scope_types_mapping()
