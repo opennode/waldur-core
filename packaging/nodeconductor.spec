@@ -54,6 +54,7 @@ Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
 Requires: python-vat >= 1.3.1, python-vat < 2.0
+Requires: pytz
 Requires: PyYAML
 Requires: uwsgi-plugin-python
 
@@ -74,6 +75,7 @@ BuildRequires: python-django-jsoneditor >= 0.0.7
 BuildRequires: python-django-rest-framework >= 3.6.3, python-django-rest-framework < 3.7.0
 BuildRequires: python-django-rest-swagger = 2.1.2
 BuildRequires: python-setuptools
+BuildRequires: pytz
 BuildRequires: systemd
 
 %description
