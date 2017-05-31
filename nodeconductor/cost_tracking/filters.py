@@ -5,6 +5,7 @@ import uuid
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 import django_filters
+from django_filters.constants import EMPTY_VALUES
 from rest_framework import filters
 
 from nodeconductor.core import filters as core_filters
@@ -82,15 +83,15 @@ class PriceListItemServiceFilterBackend(core_filters.GenericKeyFilterBackend):
 class ResourceTypeFilter(django_filters.CharFilter):
 
     def filter(self, qs, value):
-        if value:
-            resource_models = SupportedServices.get_resource_models()
-            try:
-                model = resource_models[value]
-                ct = ContentType.objects.get_for_model(model)
-                return super(ResourceTypeFilter, self).filter(qs, ct)
-            except (ContentType.DoesNotExist, KeyError):
-                return qs.none()
-        return qs
+        if value in EMPTY_VALUES:
+            return qs
+        resource_models = SupportedServices.get_resource_models()
+        try:
+            model = resource_models[value]
+            ct = ContentType.objects.get_for_model(model)
+            return super(ResourceTypeFilter, self).filter(qs, ct)
+        except (ContentType.DoesNotExist, KeyError):
+            return qs.none()
 
 
 class DefaultPriceListItemFilter(django_filters.FilterSet):

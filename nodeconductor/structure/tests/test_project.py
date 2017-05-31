@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 from ddt import data, ddt
 from mock import call
 
-from django.core.urlresolvers import reverse
 from django.test import TransactionTestCase
+from django.urls import reverse
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
 

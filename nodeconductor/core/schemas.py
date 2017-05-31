@@ -1,4 +1,4 @@
-from django.core.urlresolvers import NoReverseMatch
+from django.urls import NoReverseMatch
 from django.utils.encoding import smart_text, force_text
 from django_filters import OrderingFilter, ChoiceFilter, ModelMultipleChoiceFilter
 from rest_framework import exceptions, schemas
@@ -342,7 +342,7 @@ class WaldurSchemaGenerator(schemas.SchemaGenerator):
                 location='form',
                 required=required,
                 description=description,
-                type=schemas.types_lookup[field]
+                schema=schemas.field_to_schema(field),
             )
             fields.append(field)
 

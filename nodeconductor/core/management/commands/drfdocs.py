@@ -2,19 +2,20 @@ import os
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from optparse import make_option
 from nodeconductor.core.docs import ApiDocs
 
 
 class Command(BaseCommand):
     help = "Generate RST docs for DRF API"
-    args = "[appname]"
-    option_list = BaseCommand.option_list + (
-        make_option('--store', '-s', action='store', dest='path',
-                    default='docs/drfapi', help='Where to store docs.'),
-    )
 
-    def handle(self, *args, **options):
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--store', '-s', action='store', dest='path',
+            default='docs/drfapi', help='Where to store docs.'
+        )
+        parser.add_argument('args', metavar='app_label', nargs='*', help='Application label.')
+
+    def handle(self, *app_labels, **options):
         path = options.get('path')
         path = path if path.startswith('/') else os.path.join(settings.BASE_DIR, path)
 
@@ -26,6 +27,6 @@ class Command(BaseCommand):
                     os.remove(os.path.join(path, f))
 
         self.stdout.write(self.style.MIGRATE_HEADING('Gather endpoints info'))
-        docs = ApiDocs(apps=args)
+        docs = ApiDocs(apps=app_labels)
         self.stdout.write(self.style.MIGRATE_HEADING('Write RST docs'))
         docs.generate(path)

@@ -13,7 +13,7 @@ from nodeconductor.users import models, filters, serializers, tasks
 
 
 class InvitationViewSet(ProtectedViewSet):
-    queryset = models.Invitation.objects.all()
+    queryset = models.Invitation.objects.all().order_by('-created')
     serializer_class = serializers.InvitationSerializer
     filter_backends = (
         structure_filters.GenericRoleFilter,
@@ -102,6 +102,9 @@ class InvitationViewSet(ProtectedViewSet):
                 raise ValidationError(_('User already has role within this project.'))
         elif invitation.customer.has_user(request.user):
             raise ValidationError(_('User already has role within this customer.'))
+
+        if settings.NODECONDUCTOR['VALIDATE_INVITATION_EMAIL'] and invitation.email != request.user.email:
+            raise ValidationError(_('Invitation and user emails mismatch.'))
 
         replace_email = bool(request.data.get('replace_email'))
         invitation.accept(request.user, replace_email=replace_email)

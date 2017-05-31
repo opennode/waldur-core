@@ -201,6 +201,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
             return {'user_uuid': [user.uuid]}
 
     def clean(self):
+        super(User, self).clean()
         # User email has to be unique or empty
         if self.email and User.objects.filter(email=self.email).exclude(id=self.id).exists():
             raise ValidationError({'email': _('User with email "%s" already exists.') % self.email})
@@ -393,8 +394,8 @@ class ReversionMixin(object):
 
     def get_version_fields(self):
         """ Get field that are tracked in object history versions. """
-        adapter = reversion.default_revision_manager.get_adapter(self.__class__)
-        return adapter.fields or [f.name for f in self._meta.fields if f not in adapter.exclude]
+        options = reversion._get_options(self)
+        return options.fields or [f.name for f in self._meta.fields if f not in options.exclude]
 
     def _is_version_duplicate(self):
         """ Define should new version be created for object or no.
@@ -407,19 +408,18 @@ class ReversionMixin(object):
         if self.id is None:
             return False
         try:
-            latest_version = reversion.get_for_object(self).latest('revision__date_created')
+            latest_version = Version.objects.get_for_object(self).latest('revision__date_created')
         except Version.DoesNotExist:
             return False
-        latest_version_object = latest_version.object_version.object
+        latest_version_object = latest_version._object_version.object
         fields = self.get_version_fields()
         return all([getattr(self, f) == getattr(latest_version_object, f) for f in fields])
 
-    def save(self, save_revision=True, ignore_revision_duplicates=True, **kwargs):
-        if save_revision:
-            if not ignore_revision_duplicates or not self._is_version_duplicate():
-                with reversion.create_revision():
-                    return super(ReversionMixin, self).save(**kwargs)
-        return super(ReversionMixin, self).save(**kwargs)
+    def save(self, **kwargs):
+        if self._is_version_duplicate():
+            return super(ReversionMixin, self).save(**kwargs)
+        with reversion.create_revision():
+            return super(ReversionMixin, self).save(**kwargs)
 
 
 # XXX: consider renaming it to AffinityMixin

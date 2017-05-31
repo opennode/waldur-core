@@ -8,7 +8,7 @@ from django.contrib.admin import forms as admin_forms
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import permissions as rf_permissions
@@ -27,11 +27,11 @@ def render_to_readonly(value):
 
 
 class ReadonlyTextWidget(forms.TextInput):
-    def _format_value(self, value):
+    def format_value(self, value):
         return value
 
-    def render(self, name, value, attrs=None):
-        return render_to_readonly(self._format_value(value))
+    def render(self, name, value, attrs=None, renderer=None):
+        return render_to_readonly(self.format_value(value))
 
 
 class OptionalChoiceField(forms.ChoiceField):
@@ -137,19 +137,22 @@ admin_site = CustomAdminSite.clone_default()
 admin.site = admin_site
 admin.site.register(models.User, UserAdmin)
 admin.site.register(models.SshPublicKey, SshPublicKeyAdmin)
-admin.site.unregister(Group)
+
+# TODO: Extract common classes to admin_utils module and remove hack.
+# This hack is needed because admin is imported several times.
+# Please note that admin module should NOT be imported by other apps.
+if admin.site.is_registered(Group):
+    admin.site.unregister(Group)
 
 
 class ReversionAdmin(VersionAdmin):
-    ignore_duplicate_revisions = True
-
-    def log_change(self, request, object, message):
+    def add_view(self, request, form_url='', extra_context=None):
         # Revision creation is ignored in this method because it has to be implemented in model.save method
-        super(VersionAdmin, self).log_change(request, object, message)
+        return super(VersionAdmin, self).add_view(request, form_url, extra_context)
 
-    def log_addition(self, request, object, change_message=None):
+    def change_view(self, request, object_id, form_url='', extra_context=None):
         # Revision creation is ignored in this method because it has to be implemented in model.save method
-        super(VersionAdmin, self).log_addition(request, object)
+        return super(VersionAdmin, self).change_view(request, object_id, form_url, extra_context)
 
 
 class ExecutorAdminAction(object):

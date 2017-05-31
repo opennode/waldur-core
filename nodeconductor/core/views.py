@@ -126,8 +126,8 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
                 data={'detail': _('Username is locked out. Try in %s minutes.') % lockout_time_in_mins},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-
         user = auth.authenticate(
+            request=request,
             username=username,
             password=serializer.validated_data['password'],
         )

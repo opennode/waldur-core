@@ -21,7 +21,7 @@ from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.validators import BackendURLValidator
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices, executors, utils, managers
+from nodeconductor.structure import models, SupportedServices, executors, utils
 
 
 class BackendModelAdmin(admin.ModelAdmin):
@@ -155,6 +155,7 @@ class CustomerAdmin(FormRequestAdminMixin,
               'country', 'vat_code', 'is_company', 'owners', 'support_users')
     list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
                     'get_private_cloud_count']
+    search_fields = ['name', 'uuid', 'abbreviation']
     inlines = [QuotaInline]
 
 

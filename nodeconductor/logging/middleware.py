@@ -2,6 +2,9 @@ from __future__ import unicode_literals
 
 import threading
 
+from django.utils.deprecation import MiddlewareMixin
+
+
 _locals = threading.local()
 
 
@@ -34,12 +37,12 @@ def get_ip_address(request):
         return request.META['REMOTE_ADDR']
 
 
-class CaptureEventContextMiddleware(object):
+class CaptureEventContextMiddleware(MiddlewareMixin):
     def process_request(self, request):
         context = {'ip_address': get_ip_address(request)}
 
         user = getattr(request, 'user', None)
-        if user and not user.is_anonymous():
+        if user and not user.is_anonymous:
             context.update(user._get_log_context('user'))
 
         set_event_context(context)

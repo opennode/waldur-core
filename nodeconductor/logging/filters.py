@@ -73,9 +73,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
             #                           % request.query_params['scope'])
 
             for key, val in obj.filter_by_logged_object().items():
-                # Use "{field_name}.raw" to get the non-analyzed version of the value
-                # https://github.com/elastic/kibana/issues/364
-                must_terms[camel_case_to_underscore(key) + '.raw'] = [val]
+                must_terms[camel_case_to_underscore(key) + '.keyword'] = [val]
 
         elif 'scope_type' in request.query_params:
             choices = utils.get_scope_types_mapping()
@@ -122,12 +120,12 @@ class AlertFilter(django_filters.FilterSet):
     """ Basic filters for alerts """
 
     acknowledged = django_filters.BooleanFilter(name='acknowledged', distinct=True)
-    closed_from = core_filters.TimestampFilter(name='closed', lookup_type='gte')
-    closed_to = core_filters.TimestampFilter(name='closed', lookup_type='lt')
-    created_from = core_filters.TimestampFilter(name='created', lookup_type='gte')
-    created_to = core_filters.TimestampFilter(name='created', lookup_type='lt')
+    closed_from = core_filters.TimestampFilter(name='closed', lookup_expr='gte')
+    closed_to = core_filters.TimestampFilter(name='closed', lookup_expr='lt')
+    created_from = core_filters.TimestampFilter(name='created', lookup_expr='gte')
+    created_to = core_filters.TimestampFilter(name='created', lookup_expr='lt')
     content_type = core_filters.ContentTypeFilter()
-    message = django_filters.CharFilter(lookup_type='icontains')
+    message = django_filters.CharFilter(lookup_expr='icontains')
 
     o = django_filters.OrderingFilter(fields=('severity', 'created'))
 
@@ -226,22 +224,31 @@ class BaseHookFilter(django_filters.FilterSet):
 class WebHookFilter(BaseHookFilter):
     class Meta(object):
         model = models.WebHook
+        fields = ('destination_url', 'content_type')
 
 
 class EmailHookFilter(BaseHookFilter):
     class Meta(object):
         model = models.EmailHook
+        fields = ('email',)
 
 
 class HookSummaryFilterBackend(core_filters.SummaryFilter):
+    def get_queryset_filter(self, queryset):
+        if queryset.model == models.WebHook:
+            return WebHookFilter
+        elif queryset.model == models.EmailHook:
+            return EmailHookFilter
+        elif queryset.model == models.PushHook:
+            return PushHookFilter
+
+        return BaseHookFilter
 
     def get_base_filter(self):
         return BaseHookFilter
 
 
 class PushHookFilter(BaseHookFilter):
-    device_id = django_filters.CharFilter()
-    token = django_filters.CharFilter()
-
     class Meta(object):
         model = models.PushHook
+        fields = ('type', 'device_id', 'device_manufacturer', 'device_model', 'token')

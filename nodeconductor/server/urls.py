@@ -1,8 +1,7 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
-from django.conf.urls import include
-from django.conf.urls import url
+from django.conf.urls import include, url
 from django.contrib import admin
 from django.views.generic import TemplateView
 
@@ -18,7 +17,6 @@ from nodeconductor.structure import urls as structure_urls
 from nodeconductor.users import urls as users_urls
 
 
-admin.autodiscover()
 CostTrackingRegister.autodiscover()
 
 router = DefaultRouter()
@@ -31,7 +29,7 @@ users_urls.register_in(router)
 
 
 urlpatterns = [
-    url(r'^admin/', include(admin.site.urls), name='admin'),
+    url(r'^admin/', admin.site.urls),
     url(r'^admintools/', include('admin_tools.urls')),
 ]
 

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from operator import itemgetter
 
-from django.core.urlresolvers import NoReverseMatch
+from django.urls import NoReverseMatch
 
 from rest_framework import views
 from rest_framework.response import Response

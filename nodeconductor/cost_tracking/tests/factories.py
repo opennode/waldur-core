@@ -1,7 +1,7 @@
 import factory
 from factory import fuzzy
 
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
 
 from nodeconductor.cost_tracking import models, CostTrackingStrategy, ConsumableItem

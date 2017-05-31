@@ -1,17 +1,14 @@
 from __future__ import unicode_literals
 
-import functools
 import json
 import hashlib
 import logging
-import sys
 
-from celery import current_task, Task as CeleryTask
+from celery import Task as CeleryTask
 from celery.execute import send_task as send_celery_task
-from celery.exceptions import MaxRetriesExceededError
 from celery.worker.job import Request
 from django.core.cache import cache
-from django.db import transaction, IntegrityError, models as django_models
+from django.db import IntegrityError, models as django_models
 from django.db.models import ObjectDoesNotExist
 from django.utils import six
 from django_fsm import TransitionNotAllowed
@@ -24,101 +21,6 @@ logger = logging.getLogger(__name__)
 
 class StateChangeError(RuntimeError):
     pass
-
-
-def transition(model_class, processing_state, error_state='set_erred'):
-    """ Atomically runs state transition for a model_class instance.
-        Executes desired task on success.
-    """
-    def decorator(task_fn):
-        @functools.wraps(task_fn)
-        def wrapped(uuid_or_pk, *task_args, **task_kwargs):
-            logged_operation = processing_state.replace('_', ' ')
-            entity_name = model_class._meta.model_name
-
-            try:
-                with transaction.atomic():
-                    if 'uuid' in model_class._meta.get_all_field_names():
-                        kwargs = {'uuid': uuid_or_pk}
-                    else:
-                        kwargs = {'pk': uuid_or_pk}
-                    entity = model_class._default_manager.get(**kwargs)
-
-                    getattr(entity, processing_state)()
-                    entity.save(update_fields=['state'])
-
-            except model_class.DoesNotExist as e:
-                logger.error(
-                    'Could not %s %s with id %s. Instance has gone',
-                    logged_operation, entity_name, uuid_or_pk)
-
-                six.reraise(StateChangeError, e)
-
-            except IntegrityError as e:
-                logger.error(
-                    'Could not %s %s with id %s due to concurrent update',
-                    logged_operation, entity_name, uuid_or_pk)
-
-                six.reraise(StateChangeError, e)
-
-            except TransitionNotAllowed as e:
-                logger.error(
-                    'Could not %s %s with id %s, transition not allowed',
-                    logged_operation, entity_name, uuid_or_pk)
-
-                six.reraise(StateChangeError, e)
-
-            else:
-                logger.info(
-                    'Managed to %s %s with id %s',
-                    logged_operation, entity_name, uuid_or_pk)
-
-                try:
-                    task_kwargs['transition_entity'] = entity
-                    return task_fn(uuid_or_pk, *task_args, **task_kwargs)
-                except:
-                    getattr(entity, error_state)()
-                    entity.save(update_fields=['state'])
-                    logger.error(
-                        'Failed to finish task %s after %s %s with id %s',
-                        task_fn.__name__, logged_operation, entity_name, uuid_or_pk)
-                    raise
-
-        return wrapped
-    return decorator
-
-
-def save_error_message(func):
-    """
-    This function will work only if transition_entity is defined in kwargs and
-    transition_entity is instance of ErrorMessageMixin
-    """
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as exception:
-            message = six.text_type(exception)
-            transition_entity = kwargs['transition_entity']
-            if message:
-                transition_entity.error_message = message
-                transition_entity.save(update_fields=['error_message'])
-            six.reraise(*sys.exc_info())
-    return wrapped
-
-
-def retry_if_false(func):
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        is_true = func(*args, **kwargs)
-        if not is_true:
-            try:
-                current_task.retry()
-            except MaxRetriesExceededError:
-                raise RuntimeError('Task %s failed to retry' % current_task.name)
-
-        return is_true
-    return wrapped
 
 
 def send_task(app_label, task_name):

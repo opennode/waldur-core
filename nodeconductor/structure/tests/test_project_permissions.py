@@ -5,7 +5,7 @@ import unittest
 
 import datetime
 from django.contrib.auth import get_user_model
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework import test

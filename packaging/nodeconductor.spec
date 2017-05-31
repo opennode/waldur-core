@@ -16,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.138.0
+Version: 0.139.0
 Release: 1.el7
 License: MIT
 
@@ -26,34 +26,34 @@ License: MIT
 Requires: logrotate
 Requires: mailcap
 Requires: python-celery >= 3.1.23, python-celery < 3.2
+Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
-Requires: python-django >= 1.9, python-django < 1.10
-Requires: python-django-admin-tools = 0.7.0
-Requires: python-django-cors-headers
-Requires: python-django-filter = 0.15.3
+Requires: python-django >= 1.11, python-django < 2.0
+Requires: python-django-admin-tools = 0.8.0
+Requires: python-django-cors-headers = 2.1.0
+Requires: python-django-filter = 1.0.2
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
-Requires: python-django-jsoneditor >= 0.0.5
-Requires: python-django-model-utils = 2.5.2
+Requires: python-django-jsoneditor >= 0.0.7
+Requires: python-django-jsonfield = 2.0.1
+Requires: python-django-model-utils = 3.0.0
 Requires: python-django-redis-cache >= 1.6.5
-Requires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
-Requires: python-django-rest-swagger = 2.1.1
-Requires: python-django-reversion >= 1.10.0, python-django-reversion <= 1.10.2
+Requires: python-django-rest-framework >= 3.6.3, python-django-rest-framework < 3.7.0
+Requires: python-django-rest-swagger = 2.1.2
+Requires: python-django-reversion = 2.0.8
 Requires: python-django-taggit >= 0.20.2
-Requires: python-elasticsearch = 1.4.0
+Requires: python-elasticsearch = 5.4.0
 Requires: python-hiredis >= 0.2.0
 Requires: python-iptools >= 0.6.1
-Requires: python-jsonfield = 1.0.0
 Requires: python-pillow >= 2.0.0
 Requires: python-prettytable >= 0.7.1, python-prettytable < 0.8
 Requires: python-psycopg2
-Requires: python-country >= 1.20, python-country < 2.0
-Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: python-redis = 2.10.3
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
 Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
+Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: PyYAML
 Requires: uwsgi-plugin-python
 
@@ -67,11 +67,12 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
 BuildRequires: gettext
-BuildRequires: python-django >= 1.9, python-django < 1.10
+BuildRequires: python-django >= 1.11, python-django < 2.0
+BuildRequires: python-django-filter = 1.0.2
 BuildRequires: python-django-fluent-dashboard
-BuildRequires: python-django-jsoneditor >= 0.0.5
-BuildRequires: python-django-rest-framework >= 3.5.3, python-django-rest-framework < 3.6.0
-BuildRequires: python-django-rest-swagger = 2.1.1
+BuildRequires: python-django-jsoneditor >= 0.0.7
+BuildRequires: python-django-rest-framework >= 3.6.3, python-django-rest-framework < 3.7.0
+BuildRequires: python-django-rest-swagger = 2.1.2
 BuildRequires: python-setuptools
 BuildRequires: systemd
 
@@ -116,18 +117,35 @@ INSTALLED_APPS = (
     'nodeconductor.landing',
     'rest_framework',
     'rest_framework_swagger',
+    'django_filters',
 )
 SECRET_KEY = 'tmp'
 STATIC_ROOT = '%{buildroot}%{__data_dir}/static'
 STATIC_URL = '/static/'
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
-)
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-    'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
-)
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': ['nodeconductor/templates'],
+        'OPTIONS': {
+            'context_processors': (
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',  # required by django-admin-tools >= 0.7.0
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.i18n',
+                'django.template.context_processors.media',
+                'django.template.context_processors.static',
+                'django.template.context_processors.tz',
+            ),
+            'loaders': (
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+                'admin_tools.template_loaders.Loader',  # required by django-admin-tools >= 0.7.0
+            ),
+        },
+    },
+]
 EOF
 %{__python} manage.py collectstatic --noinput --settings=tmp_settings
 
@@ -222,6 +240,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Wed May 31 2017 Jenkins <jenkins@opennodecloud.com> - 0.139.0-1.el7
+- New upstream release
+
 * Thu May 11 2017 Jenkins <jenkins@opennodecloud.com> - 0.138.0-1.el7
 - New upstream release
 

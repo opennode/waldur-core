@@ -22,7 +22,7 @@ from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException, ValidationError
 from rest_framework.response import Response
-from reversion import revisions as reversion
+from reversion.models import Version
 
 from nodeconductor.core import (
     filters as core_filters, mixins as core_mixins, models as core_models,
@@ -45,7 +45,7 @@ User = auth.get_user_model()
 
 
 class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
-    queryset = models.Customer.objects.all()
+    queryset = models.Customer.objects.all().order_by('name')
     serializer_class = serializers.CustomerSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericUserFilter, filters.GenericRoleFilter, DjangoFilterBackend)
@@ -190,7 +190,7 @@ class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generi
 
 
 class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
-    queryset = models.Project.objects.all()
+    queryset = models.Project.objects.all().order_by('name')
     serializer_class = serializers.ProjectSerializer
     lookup_field = 'uuid'
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend)
@@ -364,7 +364,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # ?current
         current_user = self.request.query_params.get('current')
-        if current_user is not None and not user.is_anonymous():
+        if current_user is not None and not user.is_anonymous:
             queryset = User.objects.filter(uuid=user.uuid)
 
         # TODO: refactor to a separate endpoint or structure
@@ -417,7 +417,7 @@ class UserViewSet(viewsets.ModelViewSet):
             # non-staff users cannot see staff through rest
             queryset = queryset.filter(is_staff=False)
 
-        return queryset
+        return queryset.order_by('username')
 
     def list(self, request, *args, **kwargs):
         """
@@ -654,7 +654,7 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
     """
     # See CustomerPermissionViewSet for implementation details.
 
-    queryset = models.ProjectPermission.objects.filter(is_active=True)
+    queryset = models.ProjectPermission.objects.filter(is_active=True).order_by('-created')
     serializer_class = serializers.ProjectPermissionSerializer
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
@@ -756,7 +756,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
     - Project administrators can list all the customers that own any of the projects they are administrators in.
     - Project managers can list all the customers that own any of the projects they are managers in.
     """
-    queryset = models.CustomerPermission.objects.filter(is_active=True)
+    queryset = models.CustomerPermission.objects.filter(is_active=True).order_by('-created')
     serializer_class = serializers.CustomerPermissionSerializer
     filter_class = filters.CustomerPermissionFilter
 
@@ -959,7 +959,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 
 class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
                              core_views.ActionsViewSet):
-    queryset = models.ServiceSettings.objects.filter()
+    queryset = models.ServiceSettings.objects.filter().order_by('type')
     serializer_class = serializers.ServiceSettingsSerializer
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,
                        filters.ServiceSettingsScopeFilterBackend)
@@ -1755,18 +1755,15 @@ class QuotaTimelineStatsView(views.APIView):
             quota = scope.quotas.get(name=quota_name)
         except Quota.DoesNotExist:
             return stats_data
-        versions = reversion\
-            .get_for_object(quota)\
-            .select_related('revision')\
-            .filter(revision__date_created__lte=dates[0][0])\
-            .iterator()
+        versions = Version.objects.get_for_object(quota).select_related('revision').filter(
+            revision__date_created__lte=dates[0][0]).iterator()
         version = None
         for end, start in dates:
             try:
                 while version is None or version.revision.date_created > end:
                     version = versions.next()
-                stats_data.append((version.object_version.object.limit,
-                                   version.object_version.object.usage))
+                stats_data.append((version._object_version.object.limit,
+                                   version._object_version.object.usage))
             except StopIteration:
                 break
 

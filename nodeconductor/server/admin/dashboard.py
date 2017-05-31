@@ -1,11 +1,11 @@
 from django.conf import settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 
 from nodeconductor import __version__
 from nodeconductor.core import NodeConductorExtension, models as core_models
-from nodeconductor.structure import models as structure_models, SupportedServices, admin as structure_admin
+from nodeconductor.structure import models as structure_models, SupportedServices
 
 
 class CustomIndexDashboard(FluentIndexDashboard):
