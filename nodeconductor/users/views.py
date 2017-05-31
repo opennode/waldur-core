@@ -13,7 +13,7 @@ from nodeconductor.users import models, filters, serializers, tasks
 
 
 class InvitationViewSet(ProtectedViewSet):
-    queryset = models.Invitation.objects.all()
+    queryset = models.Invitation.objects.all().order_by('-created')
     serializer_class = serializers.InvitationSerializer
     filter_backends = (
         structure_filters.GenericRoleFilter,

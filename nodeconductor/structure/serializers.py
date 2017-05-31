@@ -958,24 +958,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
 
     @staticmethod
     def eager_load(queryset):
-        related_fields = (
-            'uuid',
-            'available_for_all',
-            'customer__uuid',
-            'customer__name',
-            'customer__native_name',
-            'settings__state',
-            'settings__uuid',
-            'settings__name',
-            'settings__type',
-            'settings__shared',
-            'settings__error_message',
-            'settings__options',
-            'settings__domain',
-            'settings__terms_of_services',
-            'settings__homepage',
-        )
-        queryset = queryset.select_related('customer', 'settings').only(*related_fields)
+        queryset = queryset.select_related('customer', 'settings')
         projects = models.Project.objects.all().only('uuid', 'name')
         return queryset.prefetch_related(django_models.Prefetch('projects', queryset=projects), 'quotas')
 

@@ -21,7 +21,7 @@ from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.validators import BackendURLValidator
 from nodeconductor.quotas.admin import QuotaInline
-from nodeconductor.structure import models, SupportedServices, executors, utils, managers
+from nodeconductor.structure import models, SupportedServices, executors, utils
 
 
 class BackendModelAdmin(admin.ModelAdmin):

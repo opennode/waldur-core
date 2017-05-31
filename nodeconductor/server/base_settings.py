@@ -56,8 +56,7 @@ INSTALLED_APPS = (
 )
 INSTALLED_APPS += ADMIN_INSTALLED_APPS
 
-# XXX: Django 1.10 deprecation, change to MIDDLEWARE
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -142,14 +141,14 @@ ROOT_URLCONF = 'nodeconductor.server.urls'
 AUTH_USER_MODEL = 'core.User'
 
 # Session
-# https://docs.djangoproject.com/en/1.8/ref/settings/#sessions
+# https://docs.djangoproject.com/en/1.11/ref/settings/#sessions
 SESSION_COOKIE_AGE = 3600
 SESSION_SAVE_EVERY_REQUEST = True
 
 WSGI_APPLICATION = 'nodeconductor.server.wsgi.application'
 
 # Internationalization
-# https://docs.djangoproject.com/en/1.8/topics/i18n/
+# https://docs.djangoproject.com/en/1.11/topics/i18n/
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -170,7 +169,7 @@ LANGUAGES = (
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.8/howto/static-files/
+# https://docs.djangoproject.com/en/1.11/howto/static-files/
 STATIC_URL = '/static/'
 
 # Celery

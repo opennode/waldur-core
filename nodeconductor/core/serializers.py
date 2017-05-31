@@ -4,8 +4,7 @@ from datetime import timedelta
 import logging
 
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
-# XXX: Django 1.10 deprecation, import from django.urls
-from django.core.urlresolvers import reverse, Resolver404
+from django.urls import reverse, Resolver404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.fields import Field, ReadOnlyField
@@ -241,17 +240,7 @@ class AugmentedSerializerMixin(object):
         try:
             related_paths = self.Meta.related_paths
         except AttributeError:
-            if callable(getattr(self, 'get_related_paths', None)):
-                import warnings
-
-                warnings.warn(
-                    "get_related_paths() is deprecated. "
-                    "Inherit from AugmentedSerializerMixin and set Meta.related_paths instead.",
-                    DeprecationWarning,
-                )
-                related_paths = self.get_related_paths()
-            else:
-                return {}
+            return {}
 
         if not isinstance(self, serializers.ModelSerializer):
             raise ImproperlyConfigured(

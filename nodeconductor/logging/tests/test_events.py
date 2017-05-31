@@ -36,7 +36,7 @@ class BaseEventsApiTest(test.APITransactionTestCase):
     @property
     def must_terms(self):
         call_args = self.mocked_es().search.call_args[-1]
-        return call_args['body']['query']['filtered']['filter']['bool']['must'][-1]['terms']
+        return call_args['body']['query']['bool']['must'][-1]['terms']
 
 
 class ScopeTypeTest(BaseEventsApiTest):
@@ -115,4 +115,4 @@ class ScopeTest(BaseEventsApiTest):
 
         self.client.force_authenticate(user=owner)
         self._get_events_by_scope(structure_factories.CustomerFactory.get_url(customer))
-        self.assertEqual(self.must_terms, {'customer_uuid.raw': [customer.uuid.hex]})
+        self.assertEqual(self.must_terms, {'customer_uuid.keyword': [customer.uuid.hex]})

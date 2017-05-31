@@ -7,7 +7,7 @@ from nodeconductor.quotas.tests.factories import QuotaFactory
 from nodeconductor.structure.tests.factories import ProjectFactory, UserFactory
 
 
-class QuotaThresholdAlertTest(test.APITransactionTestCase):
+class QuotaThresholdAlertTest(test.APITestCase):
     def setUp(self):
         self.project = ProjectFactory()
         self.quota = self.project.quotas.first()

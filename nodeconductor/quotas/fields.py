@@ -17,7 +17,7 @@ class QuotaLimitField(models.IntegerField):
         self._quota_field = quota_field
 
     def db_type(self, connection):
-        # virtual field -- ignore in migrtions
+        # virtual field -- ignore in migrations
         return None
 
     def contribute_to_class(self, cls, name):
@@ -27,12 +27,7 @@ class QuotaLimitField(models.IntegerField):
         self.column = None
         # connect myself as the descriptor for this field
         setattr(cls, name, property(self._get_func(), self._set_func()))
-        # add field to class
-        if DJANGO_VERSION[:2] >= (1, 8):
-            cls._meta.add_field(self, virtual=True)
-        else:
-            # XXX: Django 1.10 deprecation, change to cls._meta.private_fields.append(self)
-            cls._meta.virtual_fields.append(self)
+        cls._meta.add_field(self, virtual=True)
 
     def deconstruct(self, *args, **kwargs):
         name, path, args, kwargs = super(QuotaField, self).deconstruct(*args, **kwargs)

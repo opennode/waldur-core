@@ -152,6 +152,12 @@ class BaseHook(EventTypesMixin, UuidMixin, TimeStampedModel):
     def get_all_models(cls):
         return [model for model in apps.get_models() if issubclass(model, cls)]
 
+    @classmethod
+    def get_all_content_types(cls):
+        ctypes = ct_models.ContentType.objects.get_for_models(*cls.get_all_models())
+        ids = [ctype.id for ctype in ctypes.values()]
+        return ct_models.ContentType.objects.filter(id__in=ids)
+
 
 class WebHook(BaseHook):
     class ContentTypeChoices(object):
@@ -250,8 +256,4 @@ class EmailHook(BaseHook):
 
 
 class SystemNotification(EventTypesMixin, models.Model):
-    hook_content_type = models.OneToOneField(
-        ct_models.ContentType, related_name='+',
-        limit_choices_to=lambda: {'id__in': [
-            ct.id for ct in ct_models.ContentType.objects.get_for_models(
-                *BaseHook.__subclasses__()).values()]})
+    hook_content_type = models.OneToOneField(ct_models.ContentType, related_name='+')

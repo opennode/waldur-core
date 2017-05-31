@@ -28,7 +28,7 @@ Requires: mailcap
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
-Requires: python-django >= 1.9, python-django < 1.10
+Requires: python-django >= 1.11, python-django < 2.0
 Requires: python-django-admin-tools = 0.8.0
 Requires: python-django-cors-headers = 2.1.0
 Requires: python-django-filter = 1.0.2
@@ -67,7 +67,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
 BuildRequires: gettext
-BuildRequires: python-django >= 1.9, python-django < 1.10
+BuildRequires: python-django >= 1.11, python-django < 2.0
 BuildRequires: python-django-filter = 1.0.2
 BuildRequires: python-django-fluent-dashboard
 BuildRequires: python-django-jsoneditor >= 0.0.7

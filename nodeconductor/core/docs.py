@@ -5,8 +5,7 @@ import logging
 from django.apps import apps
 from django.conf import settings
 from django.contrib.admindocs.views import simplify_regex
-# XXX: Django 1.10 deprecation, import from django.urls
-from django.core.urlresolvers import RegexURLResolver, RegexURLPattern
+from django.urls import RegexURLResolver, RegexURLPattern
 from django_filters import ModelMultipleChoiceFilter
 
 from rest_framework.fields import ChoiceField, ReadOnlyField, ModelField

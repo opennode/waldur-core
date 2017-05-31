@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
-# XXX: Django 1.10 deprecation, import from django.urls
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils import timezone
 from django.core.cache import cache
 

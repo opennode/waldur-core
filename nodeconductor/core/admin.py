@@ -8,8 +8,7 @@ from django.contrib.admin import forms as admin_forms
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-# XXX:  Django 1.10 deprecation, import from django.urls
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import permissions as rf_permissions
@@ -28,13 +27,11 @@ def render_to_readonly(value):
 
 
 class ReadonlyTextWidget(forms.TextInput):
-    # XXX: Django 1.10 deprecation, change to format_value
-    def _format_value(self, value):
+    def format_value(self, value):
         return value
 
-    # XXX: Django 1.11 deprecation, renderer argument must be passed.
-    def render(self, name, value, attrs=None):
-        return render_to_readonly(self._format_value(value))
+    def render(self, name, value, attrs=None, renderer=None):
+        return render_to_readonly(self.format_value(value))
 
 
 class OptionalChoiceField(forms.ChoiceField):
@@ -140,7 +137,12 @@ admin_site = CustomAdminSite.clone_default()
 admin.site = admin_site
 admin.site.register(models.User, UserAdmin)
 admin.site.register(models.SshPublicKey, SshPublicKeyAdmin)
-admin.site.unregister(Group)
+
+# TODO: Extract common classes to admin_utils module and remove hack.
+# This hack is needed because admin is imported several times.
+# Please note that admin module should NOT be imported by other apps.
+if admin.site.is_registered(Group):
+    admin.site.unregister(Group)
 
 
 class ReversionAdmin(VersionAdmin):

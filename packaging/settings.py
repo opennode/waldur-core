@@ -82,16 +82,6 @@ for section, options in config_defaults.items():
 
 redis_url = 'redis://%s:%s' % (config.get('redis', 'host'), config.get('redis', 'port'))
 
-# Handle deprecated settings
-for section in ('billing', 'celery', 'mysql', 'openstack', 'sqlite3'):
-    if config.has_section(section):
-        warnings.warn("'%s' section in settings.ini is no longer supported and will be ignored" % section)
-
-for option in ('db_backend', 'enable_order_processing'):
-    if config.has_option('global', option):
-        warnings.warn(
-            "'global.%s' property in settings.ini is no longer supported and will be ignored" % option)
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get('global', 'secret_key')
 
@@ -137,7 +127,7 @@ ALLOWED_HOSTS = ['*']
 #
 #   yum install python-psycopg2
 #
-# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#databases
+# See also: https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -150,14 +140,14 @@ DATABASES = {
 }
 
 # Logging
-# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#logging
+# See also: https://docs.djangoproject.com/en/1.11/ref/settings/#logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,  # fixes Celery beat logging
 
     # Filters
     # Filter provides additional control over which log records are passed from logger to handler.
-    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#filters
+    # See also: https://docs.djangoproject.com/en/1.11/topics/logging/#filters
     'filters': {
         # Filter out only events (user-facing messages)
         'is-event': {
@@ -175,7 +165,7 @@ LOGGING = {
 
     # Formatters
     # Formatter describes the exact format of the log entry.
-    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#formatters
+    # See also: https://docs.djangoproject.com/en/1.11/topics/logging/#formatters
     'formatters': {
         'message-only': {
             'format': '%(message)s',
@@ -187,10 +177,10 @@ LOGGING = {
 
     # Handlers
     # Handler determines what happens to each message in a logger.
-    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#handlers
+    # See also: https://docs.djangoproject.com/en/1.11/topics/logging/#handlers
     'handlers': {
         # Send logs to admins by email
-        # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#django.utils.log.AdminEmailHandler
+        # See also: https://docs.djangoproject.com/en/1.11/topics/logging/#django.utils.log.AdminEmailHandler
         'email-admins': {
             'filters': ['is-not-background-task'],
             'class': 'django.utils.log.AdminEmailHandler',
@@ -249,7 +239,7 @@ LOGGING = {
     # Loggers
     # A logger is the entry point into the logging system.
     # Each logger is a named bucket to which messages can be written for processing.
-    # See also: https://docs.djangoproject.com/en/1.8/topics/logging/#loggers
+    # See also: https://docs.djangoproject.com/en/1.11/topics/logging/#loggers
     #
     # Default logger configuration
     'root': {
@@ -323,15 +313,15 @@ if config.getboolean('events', 'hook'):
     LOGGING['loggers']['nodeconductor']['handlers'].append('hook-event')
 
 # Static files
-# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#static-files
+# See also: https://docs.djangoproject.com/en/1.11/ref/settings/#static-files
 STATIC_ROOT = config.get('global', 'static_root')
 
 # Django cache
-# https://docs.djangoproject.com/en/1.8/topics/cache/
+# https://docs.djangoproject.com/en/1.11/topics/cache/
 CACHES['default']['LOCATION'] = redis_url
 
 # Email
-# See also: https://docs.djangoproject.com/en/1.8/ref/settings/#default-from-email
+# See also: https://docs.djangoproject.com/en/1.11/ref/settings/#default-from-email
 if config.get('global', 'default_from_email') != '':
     DEFAULT_FROM_EMAIL = config.get('global', 'default_from_email')
 
@@ -352,14 +342,13 @@ INSTALLED_APPS = (
     'corsheaders',
 ) + INSTALLED_APPS
 
-# XXX: Django 1.10 deprecation, change to MIDDLEWARE
-MIDDLEWARE_CLASSES = (
+MIDDLEWARE = (
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-) + MIDDLEWARE_CLASSES
+) + MIDDLEWARE
 
 # Session
-# https://docs.djangoproject.com/en/1.8/ref/settings/#sessions
+# https://docs.djangoproject.com/en/1.11/ref/settings/#sessions
 SESSION_COOKIE_AGE = config.getint('auth', 'session_lifetime')
 
 # Celery
