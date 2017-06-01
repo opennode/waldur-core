@@ -45,7 +45,6 @@ class CustomMenu(Menu):
         'nodeconductor_aws.*',
         'nodeconductor_digitalocean.*',
         'nodeconductor_ldap.*',
-        'waldur_ansible.*',
     )
 
     USERS = (
@@ -67,6 +66,7 @@ class CustomMenu(Menu):
         'nodeconductor_gitlab.*',
         'nodeconductor_oracle_dbaas.*',
         'nodeconductor_paas_oracle.*',
+        'waldur_ansible.*',
     )
 
     SUPPORT_MODULES = (
