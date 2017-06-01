@@ -180,6 +180,16 @@ def get_detail_view_name(model):
     return '%s-detail' % model.__name__.lower()
 
 
+def get_list_view_name(model):
+    if model is NotImplemented:
+        raise AttributeError('Cannot get list view name for not implemented model')
+
+    if hasattr(model, 'get_url_name') and callable(model.get_url_name):
+        return '%s-list' % model.get_url_name()
+
+    return '%s-list' % model.__name__.lower()
+
+
 def get_fake_context():
     user = get_user_model()()
     request = type('R', (object,), {'method': 'GET', 'user': user, 'query_params': QueryDict()})
