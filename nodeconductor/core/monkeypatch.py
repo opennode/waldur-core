@@ -1,13 +1,11 @@
 """
-TODO: drop patch when django-fsm and jsonfield packages are updated.
+TODO: drop patch when django-fsm package is updated.
 
 If model with FSM state field has other fields that access their field value
 via a property or a virtual Field, then creation of instances will fail.
-Similarly, creating an object that has both a JSONField and a GenericForeignKey raises AttributeError.
 
-There are pending patches in upstream projects:
+There is pending patch in upstream project:
 https://github.com/kmmbvnr/django-fsm/pull/171
-https://github.com/dmkoch/django-jsonfield/pull/190
 """
 
 __all__ = ['monkey_patch_fields']
@@ -34,7 +32,4 @@ def patch_field_descriptor(cls):
 
 def monkey_patch_fields():
     from django_fsm import FSMFieldDescriptor
-    from jsonfield.subclassing import Creator
-
-    patch_field_descriptor(Creator)
     patch_field_descriptor(FSMFieldDescriptor)

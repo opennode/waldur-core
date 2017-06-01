@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
-import jsonfield.fields
+import nodeconductor.core.fields
 
 
 class Migration(migrations.Migration):
@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='defaultpricelistitem',
             name='metadata',
-            field=jsonfield.fields.JSONField(blank=True, default='""'),
+            field=nodeconductor.core.fields.JSONField(blank=True, default={}, help_text='Details of the item, that corresponds price list item. Example: details of flavor.'),
             preserve_default=False,
         ),
     ]

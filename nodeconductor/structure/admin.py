@@ -237,7 +237,6 @@ class ServiceSettingsAdminForm(ModelForm):
         choices=((True, _('Yes (Anybody can use it)')), (False, _('No (Only available to me)'))),
         widget=RadioSelect,
     )
-    # reuqired by nodeconductor-ldap plugin
     backend_url = CharField(max_length=200, required=False, validators=[BackendURLValidator()])
 
     class Meta:

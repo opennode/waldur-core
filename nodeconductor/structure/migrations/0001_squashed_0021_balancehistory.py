@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
-import jsonfield.fields
 import django.utils.timezone
 import model_utils.fields
 import nodeconductor.structure.images
@@ -127,7 +126,7 @@ class Migration(migrations.Migration):
                 ('certificate', models.FileField(null=True, upload_to='certs', blank=True)),
                 ('token', models.CharField(max_length=255, null=True, blank=True)),
                 ('type', models.SmallIntegerField(choices=[(1, b'OpenStack'), (2, b'DigitalOcean'), (3, b'Amazon'), (4, b'Jira'), (5, b'GitLab'), (6, b'Oracle'), (7, b'Azure')])),
-                ('options', jsonfield.fields.JSONField(help_text='Extra options', blank=True)),
+                ('options', nodeconductor.core.fields.JSONField(help_text='Extra options', blank=True)),
                 ('shared', models.BooleanField(default=False, help_text='Anybody can use it')),
                 ('dummy', models.BooleanField(default=False, help_text='Emulate backend operations')),
             ],

@@ -3,6 +3,9 @@ import json
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
+from django.forms import ModelForm
+
+from jsoneditor.forms import JSONEditor
 
 from nodeconductor.logging import models
 from nodeconductor.logging.loggers import get_valid_events
@@ -30,6 +33,13 @@ class SystemNotificationForm(forms.ModelForm):
         self.fields['hook_content_type'].queryset = models.BaseHook.get_all_content_types()
 
 
+class AlertAdminForm(ModelForm):
+    class Meta:
+        widgets = {
+            'context': JSONEditor(),
+        }
+
+
 class SystemNotificationAdmin(admin.ModelAdmin):
     form = SystemNotificationForm
     list_display = 'hook_content_type',
@@ -40,6 +50,7 @@ class AlertAdmin(admin.ModelAdmin):
     list_filter = ('alert_type', 'created', 'closed', 'severity')
     ordering = ('alert_type',)
     base_model = models.Alert
+    form = AlertAdminForm
 
 
 class BaseHookAdmin(admin.ModelAdmin):

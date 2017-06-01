@@ -19,7 +19,6 @@ Example:
     import datetime
 
     from django.conf import settings
-    from jsonfield import JSONField
     from model_utils import FieldTracker
 
     from nodeconductor.core import models as core_models, exceptions as core_exceptions
