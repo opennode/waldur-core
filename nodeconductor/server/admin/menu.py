@@ -45,6 +45,7 @@ class CustomMenu(Menu):
         'nodeconductor_aws.*',
         'nodeconductor_digitalocean.*',
         'nodeconductor_ldap.*',
+        'waldur_ansible.*',
     )
 
     USERS = (
