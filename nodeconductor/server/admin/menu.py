@@ -66,6 +66,7 @@ class CustomMenu(Menu):
         'nodeconductor_gitlab.*',
         'nodeconductor_oracle_dbaas.*',
         'nodeconductor_paas_oracle.*',
+        'waldur_ansible.*',
     )
 
     SUPPORT_MODULES = (

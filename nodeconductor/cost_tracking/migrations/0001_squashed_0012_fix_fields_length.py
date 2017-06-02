@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
-import jsonfield.fields
 import nodeconductor.core.fields
 import django.core.validators
 
@@ -25,7 +24,7 @@ class Migration(migrations.Migration):
                 ('uuid', nodeconductor.core.fields.UUIDField()),
                 ('object_id', models.PositiveIntegerField()),
                 ('total', models.FloatField(default=0)),
-                ('details', jsonfield.fields.JSONField(blank=True)),
+                ('details', nodeconductor.core.fields.JSONField(blank=True)),
                 ('month', models.PositiveSmallIntegerField(validators=[django.core.validators.MaxValueValidator(12), django.core.validators.MinValueValidator(1)])),
                 ('year', models.PositiveSmallIntegerField()),
                 ('is_manually_input', models.BooleanField(default=False)),

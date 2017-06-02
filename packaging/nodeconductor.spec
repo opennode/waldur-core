@@ -16,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.139.0
+Version: 0.140.0
 Release: 1.el7
 License: MIT
 
@@ -35,7 +35,6 @@ Requires: python-django-filter = 1.0.2
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
 Requires: python-django-jsoneditor >= 0.0.7
-Requires: python-django-jsonfield = 2.0.1
 Requires: python-django-model-utils = 3.0.0
 Requires: python-django-redis-cache >= 1.6.5
 Requires: python-django-rest-framework >= 3.6.3, python-django-rest-framework < 3.7.0
@@ -240,6 +239,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Fri Jun 2 2017 Jenkins <jenkins@opennodecloud.com> - 0.140.0-1.el7
+- New upstream release
+
 * Wed May 31 2017 Jenkins <jenkins@opennodecloud.com> - 0.139.0-1.el7
 - New upstream release
 

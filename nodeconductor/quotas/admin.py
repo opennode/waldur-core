@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.contrib.contenttypes import models as ct_models
-from django.forms import ModelForm, CharField, FloatField
+from django.forms import ModelForm
 
 from nodeconductor.core.admin import ReversionAdmin, ReadonlyTextWidget
 from nodeconductor.quotas import models, utils
@@ -27,7 +27,8 @@ class QuotaScopeClassListFilter(admin.SimpleListFilter):
 
 
 class QuotaFieldTypeLimit(object):
-    readonly_fields = ('quota_field_type',)
+    fields = ('name', 'limit', 'usage', 'quota_field_type')
+    readonly_fields = ('name', 'usage', 'quota_field_type')
 
     def quota_field_type(self, obj):
         field = obj.get_field()
@@ -37,10 +38,6 @@ class QuotaFieldTypeLimit(object):
 
 
 class QuotaForm(ModelForm):
-    name = CharField(required=False, label='Name', widget=ReadonlyTextWidget())
-    usage = CharField(required=False, label='Usage', widget=ReadonlyTextWidget())
-    limit = FloatField(required=False, label='Limit')
-
     class Meta:
         model = models.Quota
         fields = ('name', 'limit', 'usage')

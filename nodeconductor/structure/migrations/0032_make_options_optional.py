@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
-import jsonfield.fields
+import nodeconductor.core.fields
 
 
 class Migration(migrations.Migration):
@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='servicesettings',
             name='options',
-            field=jsonfield.fields.JSONField(default={}, help_text='Extra options', blank=True),
+            field=nodeconductor.core.fields.JSONField(default={}, help_text='Extra options', blank=True),
             preserve_default=True,
         ),
     ]

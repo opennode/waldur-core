@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import migrations, models
-import jsonfield.fields
+import nodeconductor.core.fields
 
 import nodeconductor.cost_tracking.models
 
@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='defaultpricelistitem',
             name='metadata',
-            field=jsonfield.fields.JSONField(help_text='Details of the item, that corresponds price list item. Example: details of flavor.', blank=True),
+            field=nodeconductor.core.fields.JSONField(blank=True, default={}, help_text='Details of the item, that corresponds price list item. Example: details of flavor.'),
         ),
         migrations.AlterField(
             model_name='priceestimate',
@@ -42,7 +42,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='priceestimate',
             name='details',
-            field=jsonfield.fields.JSONField(default={}, help_text='Saved scope details. Field is populated on scope deletion.'),
+            field=nodeconductor.core.fields.JSONField(default={}, help_text='Saved scope details. Field is populated on scope deletion.'),
         ),
         migrations.AlterField(
             model_name='priceestimate',

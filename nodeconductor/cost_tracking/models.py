@@ -14,11 +14,11 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
 
-from jsonfield import JSONField
 from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
 
 from nodeconductor.core import models as core_models, utils as core_utils
+from nodeconductor.core.fields import JSONField
 from nodeconductor.cost_tracking import managers, ConsumableItem
 from nodeconductor.logging.loggers import LoggableMixin
 from nodeconductor.logging.models import AlertThresholdMixin
@@ -265,24 +265,19 @@ class ConsumableItemsField(JSONField):
             ...
         ]
     """
-    def pre_init(self, value, obj):
-        """ JSON field initializes field in "pre_init" method, so it is better to override it. """
-        value = super(ConsumableItemsField, self).pre_init(value, obj)
+    def to_python(self, value):
+        value = super(ConsumableItemsField, self).to_python(value)
         if isinstance(value, list):
             value = self._deserialize(value)
         return value
 
-    def get_db_prep_value(self, value, connection, prepared=False):
-        if prepared:
-            return value
-
+    def get_prep_value(self, value):
         if not isinstance(value, dict):
             raise TypeError('ConsumableItemsField value should be dict. Received: %s' % value)
         if any([not isinstance(item, ConsumableItem) for item in value]):
             raise TypeError('ConsumableItemsField keys should be instances of ConsumableItem class.')
 
-        prep_value = self._serialize(value)
-        return super(ConsumableItemsField, self).get_db_prep_value(prep_value, connection, prepared)
+        return super(ConsumableItemsField, self).get_prep_value(self._serialize(value))
 
     def _serialize(self, value):
         return [{'usage': usage, 'item_type': item.item_type, 'key': item.key}
@@ -305,6 +300,10 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         default={}, help_text=_('How many consumables were used by resource before last update.'))
 
     objects = managers.ConsumptionDetailsManager()
+
+    class Meta:
+        verbose_name = _('Consumption details')
+        verbose_name_plural = _('Consumption details')
 
     def update_configuration(self, new_configuration):
         """ Save how much consumables were used and update current configuration.
@@ -384,7 +383,7 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
         max_length=255, help_text=_('Key that corresponds particular consumable. Example: name of flavor.'))
     resource_content_type = models.ForeignKey(ContentType, default=None)
     # Field "metadata" is deprecated. We decided to store objects separately from their prices.
-    metadata = JSONField(
+    metadata = JSONField(default={},
         blank=True, help_text=_('Details of the item, that corresponds price list item. Example: details of flavor.'))
 
     tracker = FieldTracker()
@@ -466,6 +465,9 @@ class PriceListItem(core_models.UuidMixin, AbstractPriceListItem):
         return self.default_price_list_item.item_type
 
     def clean(self):
+        if not self.service:
+            raise ValidationError(_('Service is not defined.'))
+
         if SupportedServices.is_public_service(self.service):
             raise ValidationError(_('Public service does not support price list items.'))
 
