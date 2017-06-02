@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from django.conf import settings as django_settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
@@ -13,6 +14,21 @@ from nodeconductor.core.utils import camel_case_to_underscore
 from nodeconductor.logging import models, utils
 from nodeconductor.logging.elasticsearch_client import EmptyQueryset
 from nodeconductor.logging.loggers import event_logger, expand_event_groups, expand_alert_groups
+
+
+def format_raw_field(key):
+    """
+    When ElasticSearch analyzes string, it breaks it into parts.
+    In order make query for not-analyzed exact string values, we should use subfield instead.
+
+    The index template for Elasticsearch 5.0 has been changed.
+    The subfield for string multi-fields has changed from .raw to .keyword
+
+    Thus workaround for backward compatibility during migration is required.
+    See also: https://github.com/elastic/logstash/blob/v5.4.1/docs/static/breaking-changes.asciidoc
+    """
+    subfield = django_settings.NODECONDUCTOR.get('ELASTICSEARCH', {}).get('raw_subfield', 'keyword')
+    return '%s.%s' % (camel_case_to_underscore(key), subfield)
 
 
 class EventFilterBackend(filters.BaseFilterBackend):
@@ -73,7 +89,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
             #                           % request.query_params['scope'])
 
             for key, val in obj.filter_by_logged_object().items():
-                must_terms[camel_case_to_underscore(key) + '.keyword'] = [val]
+                must_terms[format_raw_field(key)] = [val]
 
         elif 'scope_type' in request.query_params:
             choices = utils.get_scope_types_mapping()
