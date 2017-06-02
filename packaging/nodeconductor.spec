@@ -35,7 +35,6 @@ Requires: python-django-filter = 1.0.2
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0
 Requires: python-django-jsoneditor >= 0.0.7
-Requires: python-django-jsonfield = 2.0.1
 Requires: python-django-model-utils = 3.0.0
 Requires: python-django-redis-cache >= 1.6.5
 Requires: python-django-rest-framework >= 3.6.3, python-django-rest-framework < 3.7.0

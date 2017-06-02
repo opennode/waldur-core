@@ -16,7 +16,6 @@ from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
-from jsonfield import JSONField
 from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
 from model_utils.fields import AutoCreatedField
@@ -24,6 +23,7 @@ from taggit.managers import TaggableManager
 import pyvat
 
 from nodeconductor.core import fields as core_fields
+from nodeconductor.core.fields import JSONField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker

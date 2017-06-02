@@ -4,6 +4,9 @@ import re
 import json
 import uuid
 
+import copy
+from django.core.exceptions import ValidationError
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.core import validators
 from django.utils.encoding import smart_text
@@ -16,12 +19,6 @@ from nodeconductor.core.validators import validate_cron_schedule
 from nodeconductor.core import utils, validators as core_validators
 
 
-# XXX: This field is left only for migrations compatibility.
-# It has to be removed after migrations compression
-class CronScheduleBaseField(models.CharField):
-    pass
-
-
 class CronScheduleField(models.CharField):
     description = "A cron schedule in textual form"
 
@@ -29,25 +26,6 @@ class CronScheduleField(models.CharField):
         kwargs['validators'] = [validate_cron_schedule] + kwargs.get('validators', [])
         kwargs['max_length'] = kwargs.get('max_length', 15)
         super(CronScheduleField, self).__init__(*args, **kwargs)
-
-
-comma_separated_string_list_re = re.compile('^((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(,\s+)?)+')
-validate_comma_separated_string_list = validators.RegexValidator(comma_separated_string_list_re,
-                                                                 _('Enter IPs separated by commas.'), 'invalid')
-
-
-class IPsField(models.CharField):
-    default_validators = [validate_comma_separated_string_list]
-    description = _('Comma-separated IPs')
-
-    def formfield(self, **kwargs):
-        defaults = {
-            'error_messages': {
-                'invalid': _('Enter IPs separated by commas.'),
-            }
-        }
-        defaults.update(kwargs)
-        return super(IPsField, self).formfield(**defaults)
 
 
 class MappedChoiceField(serializers.ChoiceField):
@@ -138,7 +116,7 @@ class NaturalChoiceField(MappedChoiceField):
 
 class JsonField(serializers.Field):
     """
-    A read-write DRF field for the jsonfield.JSONField objects.
+    A read-write DRF field for the JSONField objects.
     """
 
     def to_representation(self, obj):
@@ -224,3 +202,48 @@ class UUIDField(models.UUIDField):
 
 class BackendURLField(models.URLField):
     default_validators = [core_validators.BackendURLValidator()]
+
+
+class JSONField(models.TextField):
+    def __init__(self, *args, **kwargs):
+        self.dump_kwargs = kwargs.pop('dump_kwargs', {
+            'cls': DjangoJSONEncoder,
+            'separators': (',', ':')
+        })
+        self.load_kwargs = kwargs.pop('load_kwargs', {})
+
+        super(JSONField, self).__init__(*args, **kwargs)
+
+    def from_db_value(self, value, expression, connection, context):
+        return self.to_python(value)
+
+    def to_python(self, value):
+        if isinstance(value, six.string_types) and value:
+            try:
+                return json.loads(value, **self.load_kwargs)
+            except ValueError:
+                raise ValidationError(_('Enter valid JSON'))
+        return value
+
+    def get_prep_value(self, value):
+        """Convert JSON object to a string"""
+        if self.null and value is None:
+            return None
+        return json.dumps(value, **self.dump_kwargs)
+
+    def get_default(self):
+        """
+        Returns the default value for this field.
+        The default implementation on models.Field calls force_unicode
+        on the default, which means you can't set arbitrary Python
+        objects as the default. To fix this, we just return the value
+        without calling force_unicode on it. Note that if you set a
+        callable as a default, the field will still call it. It will
+        *not* try to pickle and encode it.
+        """
+        if self.has_default():
+            if callable(self.default):
+                return self.default()
+            return copy.deepcopy(self.default)
+        # If the field doesn't have a default, then we punt to models.Field.
+        return super(JSONField, self).get_default()

@@ -27,7 +27,7 @@ class QuotaLimitField(models.IntegerField):
         self.column = None
         # connect myself as the descriptor for this field
         setattr(cls, name, property(self._get_func(), self._set_func()))
-        cls._meta.add_field(self, virtual=True)
+        cls._meta.add_field(self, private=True)
 
     def deconstruct(self, *args, **kwargs):
         name, path, args, kwargs = super(QuotaField, self).deconstruct(*args, **kwargs)

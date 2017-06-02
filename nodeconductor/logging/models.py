@@ -13,11 +13,10 @@ from django.db import models
 from django.template.loader import render_to_string
 from django.utils.lru_cache import lru_cache
 from django.utils import timezone
-from jsonfield import JSONField
 from model_utils.models import TimeStampedModel
 import requests
 
-from nodeconductor.core.fields import UUIDField
+from nodeconductor.core.fields import JSONField, UUIDField
 from nodeconductor.core.utils import timestamp_to_datetime
 from nodeconductor.logging import managers
 
