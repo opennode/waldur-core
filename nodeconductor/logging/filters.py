@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.conf import settings
+from django.conf import settings as django_settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
@@ -27,7 +27,7 @@ def format_raw_field(key):
     Thus workaround for backward compatibility during migration is required.
     See also: https://github.com/elastic/logstash/blob/v5.4.1/docs/static/breaking-changes.asciidoc
     """
-    subfield = settings.NODECONDUCTOR.get('ELASTICSEARCH', {}).get('raw_subfield', 'keyword')
+    subfield = django_settings.NODECONDUCTOR.get('ELASTICSEARCH', {}).get('raw_subfield', 'keyword')
     return '%s.%s' % (camel_case_to_underscore(key), subfield)
 
 
