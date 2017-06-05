@@ -73,9 +73,10 @@ class UserChangeForm(auth_admin.UserChangeForm):
         self.fields['competence'] = OptionalChoiceField(choices=competences, required=False)
 
     def clean_civil_number(self):
-        # See http://stackoverflow.com/a/1400046/175349
-        # and https://code.djangoproject.com/ticket/9039
-        return self.cleaned_data['civil_number'].strip() or None
+        civil_number = self.cleaned_data.get('civil_number')
+        if civil_number:
+            return civil_number.strip()
+        return None
 
 
 class UserAdmin(auth_admin.UserAdmin):
