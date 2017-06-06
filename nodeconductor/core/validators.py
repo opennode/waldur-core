@@ -49,10 +49,8 @@ class StateValidator(object):
         self.valid_states = valid_states
 
     def __call__(self, resource):
-        from nodeconductor.core import models  # To avoid circular imports.
-
         if resource.state not in self.valid_states:
-            states_names = dict(models.StateMixin.States.CHOICES)
+            states_names = dict(resource.States.CHOICES)
             valid_states_names = [str(states_names[state]) for state in self.valid_states]
             raise exceptions.IncorrectStateException(_('Valid states for operation: %s.') % ', '.join(valid_states_names))
 
