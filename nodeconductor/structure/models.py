@@ -294,6 +294,12 @@ class CustomerPermission(BasePermission):
         return '%s | %s' % (self.customer.name, self.get_role_display())
 
 
+def get_next_agreement_number():
+    inital_number = settings.NODECONDUCTOR.get('INITIAL_CUSTOMER_AGREEMENT_NUMBER', 4000)
+    last_number = Customer.objects.aggregate(models.Max('agreement_number')).get('agreement_number__max')
+    return (last_number or inital_number) + 1
+
+
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
@@ -312,6 +318,7 @@ class Customer(core_models.UuidMixin,
     native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=12, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
+    agreement_number = models.PositiveIntegerField(null=True, blank=True, unique=True)
 
     registration_code = models.CharField(max_length=160, default='', blank=True)
 

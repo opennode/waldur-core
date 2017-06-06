@@ -306,11 +306,12 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'name', 'native_name', 'abbreviation', 'contact_details',
             'projects',
             'owners', 'support_users',
-            'registration_code',
+            'registration_code', 'agreement_number',
             'quotas',
             'image',
             'country', 'vat_code', 'is_company'
         )
+        protected_fields = ('agreement_number',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
