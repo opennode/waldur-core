@@ -117,6 +117,7 @@ class CustomerAdminForm(ModelForm):
         else:
             self.owners = User.objects.none()
             self.support_users = User.objects.none()
+        self.fields['agreement_number'].initial = models.get_next_agreement_number()
 
     def save(self, commit=True):
         customer = super(CustomerAdminForm, self).save(commit=False)
@@ -152,7 +153,7 @@ class CustomerAdmin(FormRequestAdminMixin,
                     admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
-              'country', 'vat_code', 'is_company', 'owners', 'support_users')
+              'agreement_number', 'email', 'phone_number', 'country', 'vat_code', 'is_company', 'owners', 'support_users')
     list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
                     'get_private_cloud_count']
     search_fields = ['name', 'uuid', 'abbreviation']
