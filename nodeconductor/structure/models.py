@@ -295,7 +295,7 @@ class CustomerPermission(BasePermission):
 
 
 def get_next_agreement_number():
-    inital_number = settings.NODECONDUCTOR.get('INITIAL_CUSTOMER_AGREEMENT_NUMBER', 4000)
+    inital_number = settings.NODECONDUCTOR['INITIAL_CUSTOMER_AGREEMENT_NUMBER']
     last_number = Customer.objects.aggregate(models.Max('agreement_number')).get('agreement_number__max')
     return (last_number or inital_number) + 1
 
