@@ -203,8 +203,9 @@ class PriceEstimateLimitSerializer(serializers.Serializer):
 
         if total_limit > customer_limit:
             message = _('Total price limits of projects exceeds organization price limit. '
-                        'Total limit: %s, organization limit: %s')
-            raise serializers.ValidationError({'limit': message % (total_limit, customer_limit)})
+                        'Total limit: %(total_limit)s, organization limit: %(customer_limit)s')
+            context = dict(total_limit=total_limit, customer_limit=customer_limit)
+            raise serializers.ValidationError({'limit': message % context})
 
     def _validate_customer_limit(self, customer, limit):
         if limit == -1:

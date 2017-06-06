@@ -153,7 +153,7 @@ class CustomerAdmin(FormRequestAdminMixin,
                     admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
-              'agreement_number', 'country', 'vat_code', 'is_company', 'owners', 'support_users')
+              'agreement_number', 'email', 'phone_number', 'country', 'vat_code', 'is_company', 'owners', 'support_users')
     list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
                     'get_private_cloud_count']
     search_fields = ['name', 'uuid', 'abbreviation']
