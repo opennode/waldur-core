@@ -39,10 +39,10 @@ class BaseLogger(object):
         self.supported_types = self.get_supported_types()
 
     def get_supported_types(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_supported_groups(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_nullable_fields(self):
         return getattr(self._meta, 'nullable_fields', [])
@@ -367,7 +367,7 @@ class LoggableMixin(object):
 class BaseLoggerRegistry(object):
 
     def get_loggers(self):
-        raise NotImplemented('Method "get_loggers" is not implemented.')
+        raise NotImplementedError('Method "get_loggers" is not implemented.')
 
     def register(self, name, logger):
         if name in self.__dict__:
