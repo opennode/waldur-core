@@ -322,7 +322,8 @@ class Customer(core_models.UuidMixin,
     email = models.EmailField(_('email address'), max_length=75, blank=True)
     phone_number = models.CharField(_('phone number'), max_length=255, blank=True)
     subnets = models.TextField(validators=[validate_cidr_list], blank=True, default='',
-                               help_text=_('Enter a comma separated list of IPv4 or IPv6 addresses.'))
+                               help_text=_('Enter a comma separated list of IPv4 or IPv6 '
+                                           'subnets from which connection to self-service is allowed.'))
     registration_code = models.CharField(max_length=160, default='', blank=True)
 
     class Meta(object):
