@@ -103,12 +103,12 @@ class UserAdmin(auth_admin.UserAdmin):
 
     def customer_roles(self, instance):
         from nodeconductor.structure.models import CustomerPermission
-        customer_permissions = CustomerPermission.objects.filter(user=instance, is_active=True).order_by('customer')
+        permissions = CustomerPermission.objects.filter(user=instance, is_active=True).order_by('customer')
 
         return format_html_join(
             mark_safe('<br/>'),
             '{}',
-            ((str(permission),) for permission in customer_permissions),
+            ((str(permission),) for permission in permissions),
         ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any organization.'))
 
     customer_roles.short_description = _('Roles in organizations')
@@ -120,7 +120,7 @@ class UserAdmin(auth_admin.UserAdmin):
         return format_html_join(
             mark_safe('<br/>'),
             '{}',
-            ((str(line),) for line in permissions),
+            ((str(permission),) for permission in permissions),
         ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any project.'))
 
     project_roles.short_description = _('Roles in projects')
