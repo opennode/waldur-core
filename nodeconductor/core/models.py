@@ -207,8 +207,8 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
             raise ValidationError({'email': _('User with email "%s" already exists.') % self.email})
 
     def __str__(self):
-        if self.civil_number:
-            return '%s (%s)' % (self.get_username(), self.civil_number)
+        if self.full_name:
+            return '%s (%s)' % (self.get_username(), self.full_name)
 
         return self.get_username()
 
