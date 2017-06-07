@@ -304,7 +304,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'url',
             'uuid',
             'name', 'native_name', 'abbreviation', 'contact_details',
-            'agreement_number', 'email', 'phone_number',
+            'agreement_number', 'email', 'phone_number', 'access_subnets',
             'projects',
             'owners', 'support_users',
             'registration_code',
@@ -313,6 +313,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'country', 'vat_code', 'is_company'
         )
         protected_fields = ('agreement_number',)
+        read_only_fields = ('access_subnets',)
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }

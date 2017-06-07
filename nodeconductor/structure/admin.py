@@ -119,6 +119,10 @@ class CustomerAdminForm(ModelForm):
             self.support_users = User.objects.none()
         self.fields['agreement_number'].initial = models.get_next_agreement_number()
 
+        textarea_attrs = {'cols': '40', 'rows': '4'}
+        self.fields['contact_details'].widget.attrs = textarea_attrs
+        self.fields['access_subnets'].widget.attrs = textarea_attrs
+
     def save(self, commit=True):
         customer = super(CustomerAdminForm, self).save(commit=False)
 
@@ -152,11 +156,13 @@ class CustomerAdmin(FormRequestAdminMixin,
                     ProtectedModelMixin,
                     admin.ModelAdmin):
     form = CustomerAdminForm
-    fields = ('name', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
-              'agreement_number', 'email', 'phone_number', 'country', 'vat_code', 'is_company', 'owners', 'support_users')
+    fields = ('name', 'uuid', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
+              'agreement_number', 'email', 'phone_number', 'access_subnets',
+              'country', 'vat_code', 'is_company', 'owners', 'support_users')
     list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
                     'get_private_cloud_count']
     search_fields = ['name', 'uuid', 'abbreviation']
+    readonly_fields = ['uuid']
     inlines = [QuotaInline]
 
 
