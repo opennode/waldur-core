@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-06-07 12:23+0300\n"
+"POT-Creation-Date: 2017-06-07 12:27+0300\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -615,75 +615,75 @@ msgstr ""
 msgid "Owners"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:107 nodeconductor/structure/admin.py:174
+#: nodeconductor/structure/admin.py:107 nodeconductor/structure/admin.py:175
 msgid "Support users"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:170
+#: nodeconductor/structure/admin.py:171
 msgid "Admins"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:172
+#: nodeconductor/structure/admin.py:173
 msgid "Managers"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:243
+#: nodeconductor/structure/admin.py:244
 msgid "Yes (Anybody can use it)"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:243
+#: nodeconductor/structure/admin.py:244
 msgid "No (Only available to me)"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:262
+#: nodeconductor/structure/admin.py:263
 msgid "Shared service settings should not be connected to any customer."
 msgstr ""
 
-#: nodeconductor/structure/admin.py:357
+#: nodeconductor/structure/admin.py:358
 msgid "Pull"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:362
+#: nodeconductor/structure/admin.py:363
 msgid "Service settings has to be OK or erred."
 msgstr ""
 
-#: nodeconductor/structure/admin.py:368
+#: nodeconductor/structure/admin.py:369
 msgid "Create SPLs and services for shared service settings"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:372
+#: nodeconductor/structure/admin.py:373
 msgid "It is impossible to connect not shared settings."
 msgstr ""
 
-#: nodeconductor/structure/admin.py:403 nodeconductor/structure/admin.py:444
+#: nodeconductor/structure/admin.py:404 nodeconductor/structure/admin.py:445
 msgid "Service"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:408 nodeconductor/structure/admin.py:450
+#: nodeconductor/structure/admin.py:409 nodeconductor/structure/admin.py:451
 msgid "Project"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:413
+#: nodeconductor/structure/admin.py:414
 msgid "Customer"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:417
+#: nodeconductor/structure/admin.py:418
 msgid "service settings"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:421
+#: nodeconductor/structure/admin.py:422
 msgid "Shared"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:421
+#: nodeconductor/structure/admin.py:422
 msgid "Private"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:439
+#: nodeconductor/structure/admin.py:440
 msgid "Are service settings shared"
 msgstr ""
 
-#: nodeconductor/structure/admin.py:468
+#: nodeconductor/structure/admin.py:469
 #, python-format
 msgid "Coordinates detection has been scheduled for one virtual machine."
 msgid_plural ""
@@ -692,7 +692,7 @@ msgid_plural ""
 msgstr[0] ""
 msgstr[1] ""
 
-#: nodeconductor/structure/admin.py:476
+#: nodeconductor/structure/admin.py:477
 msgid "Detect coordinates of virtual machines"
 msgstr ""
 
@@ -726,8 +726,8 @@ msgstr ""
 
 #: nodeconductor/structure/models.py:325
 msgid ""
-"Enter a comma separated list of IPv4 or IPv6 subnets from which connection "
-"to self-service is allowed."
+"Enter a comma separated list of IPv4 or IPv6 CIDR addresses from which "
+"connection to self-service is allowed."
 msgstr ""
 
 #: nodeconductor/structure/models.py:620

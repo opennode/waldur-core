@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='customer',
-            name='subnets',
+            name='access_subnets',
             field=models.TextField(blank=True, default='', validators=[nodeconductor.core.validators.validate_cidr_list], help_text='Enter a comma separated list of IPv4 or IPv6 subnets from which connection to self-service is allowed.'),
         ),
     ]
