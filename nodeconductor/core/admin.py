@@ -9,8 +9,9 @@ from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from django.utils.html import format_html_join
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
-
 from rest_framework import permissions as rf_permissions
 from reversion.admin import VersionAdmin
 
@@ -93,12 +94,36 @@ class UserAdmin(auth_admin.UserAdmin):
             'preferred_language', 'competence', 'phone_number'
         )}),
         (_('Organization'), {'fields': ('organization', 'organization_approved')}),
-        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_support')}),
+        (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_support', 'customer_roles', 'project_roles')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined', 'agreement_date')}),
     )
-    readonly_fields = ('registration_method', 'agreement_date')
+    readonly_fields = ('registration_method', 'agreement_date', 'customer_roles', 'project_roles')
     form = UserChangeForm
     add_form = UserCreationForm
+
+    def customer_roles(self, instance):
+        from nodeconductor.structure.models import CustomerPermission
+        permissions = CustomerPermission.objects.filter(user=instance, is_active=True).order_by('customer')
+
+        return format_html_join(
+            mark_safe('<br/>'),
+            '<a href={}>{}</a>',
+            ((get_admin_url(permission.customer), str(permission)) for permission in permissions),
+        ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any organization.'))
+
+    customer_roles.short_description = _('Roles in organizations')
+
+    def project_roles(self, instance):
+        from nodeconductor.structure.models import ProjectPermission
+        permissions = ProjectPermission.objects.filter(user=instance, is_active=True).order_by('project')
+
+        return format_html_join(
+            mark_safe('<br/>'),
+            '<a href={}>{}</a>',
+            ((get_admin_url(permission.project), str(permission)) for permission in permissions),
+        ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any project.'))
+
+    project_roles.short_description = _('Roles in projects')
 
 
 class SshPublicKeyAdmin(admin.ModelAdmin):
