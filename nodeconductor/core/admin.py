@@ -107,8 +107,8 @@ class UserAdmin(auth_admin.UserAdmin):
 
         return format_html_join(
             mark_safe('<br/>'),
-            '{}',
-            ((str(permission),) for permission in permissions),
+            '<a href={}>{}</a>',
+            ((get_admin_url(permission.customer), str(permission)) for permission in permissions),
         ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any organization.'))
 
     customer_roles.short_description = _('Roles in organizations')
@@ -119,8 +119,8 @@ class UserAdmin(auth_admin.UserAdmin):
 
         return format_html_join(
             mark_safe('<br/>'),
-            '{}',
-            ((str(permission),) for permission in permissions),
+            '<a href={}>{}</a>',
+            ((get_admin_url(permission.project), str(permission)) for permission in permissions),
         ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any project.'))
 
     project_roles.short_description = _('Roles in projects')
