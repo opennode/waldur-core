@@ -106,10 +106,10 @@ class UserAdmin(auth_admin.UserAdmin):
         permissions = CustomerPermission.objects.filter(user=instance, is_active=True).order_by('customer')
 
         return format_html_join(
-            mark_safe('<br/>'),
+            mark_safe('<br/>'),  # nosec
             '<a href={}>{}</a>',
             ((get_admin_url(permission.customer), str(permission)) for permission in permissions),
-        ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any organization.'))
+        ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any organization.'))  # nosec
 
     customer_roles.short_description = _('Roles in organizations')
 
@@ -118,10 +118,10 @@ class UserAdmin(auth_admin.UserAdmin):
         permissions = ProjectPermission.objects.filter(user=instance, is_active=True).order_by('project')
 
         return format_html_join(
-            mark_safe('<br/>'),
+            mark_safe('<br/>'),  # nosec
             '<a href={}>{}</a>',
             ((get_admin_url(permission.project), str(permission)) for permission in permissions),
-        ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any project.'))
+        ) or mark_safe("<span class='errors'>%s</span>" % _('User has no roles in any project.'))  # nosec
 
     project_roles.short_description = _('Roles in projects')
 
