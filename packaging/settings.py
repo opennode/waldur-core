@@ -367,11 +367,11 @@ for app in INSTALLED_APPS:
 # See also: http://nodeconductor.readthedocs.io/en/stable/guide/intro.html#id1
 NODECONDUCTOR.update({
     'ELASTICSEARCH': {
-        'username': config.get('elasticsearch', 'username'),
-        'password': config.get('elasticsearch', 'password'),
         'host': config.get('elasticsearch', 'host'),
+        'password': config.get('elasticsearch', 'password'),
         'port': config.get('elasticsearch', 'port'),
         'protocol': config.get('elasticsearch', 'protocol'),
+        'username': config.get('elasticsearch', 'username'),
     },
     'TOKEN_LIFETIME': timedelta(seconds=config.getint('auth', 'token_lifetime')),
     'OWNER_CAN_MANAGE_CUSTOMER': config.getboolean('global', 'owner_can_manage_customer'),

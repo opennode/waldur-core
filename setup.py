@@ -36,6 +36,7 @@ install_requires = [
     'iptools>=0.6.1',
     'PrettyTable<0.8,>=0.7.1',
     'Pillow>=2.0.0',
+    'psycopg2>=2.5.4',  # https://docs.djangoproject.com/en/1.11/ref/databases/#postgresql-notes
     'PyYAML>=3.10',
     'pycountry>=1.20,<2.0',
     'pyvat>=1.3.1,<2.0',
@@ -46,7 +47,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.140.1',
+    version='0.141.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',

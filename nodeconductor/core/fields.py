@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import re
 import json
 import uuid
 
@@ -8,7 +7,6 @@ import copy
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
-from django.core import validators
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext_lazy as _
 import pycountry

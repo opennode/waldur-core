@@ -100,7 +100,7 @@ class BaseHookSerializer(serializers.HyperlinkedModelSerializer):
         return attrs
 
     def get_hook_type(self, hook):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class SummaryHookSerializer(serializers.Serializer):

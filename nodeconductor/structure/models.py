@@ -27,7 +27,7 @@ from nodeconductor.core.fields import JSONField
 from nodeconductor.core import models as core_models
 from nodeconductor.core import utils as core_utils
 from nodeconductor.core.models import CoordinatesMixin, AbstractFieldTracker
-from nodeconductor.core.validators import validate_name
+from nodeconductor.core.validators import validate_name, validate_cidr_list
 from nodeconductor.monitoring.models import MonitoringModelMixin
 from nodeconductor.quotas import models as quotas_models, fields as quotas_fields
 from nodeconductor.logging.loggers import LoggableMixin
@@ -294,6 +294,12 @@ class CustomerPermission(BasePermission):
         return '%s | %s' % (self.customer.name, self.get_role_display())
 
 
+def get_next_agreement_number():
+    inital_number = settings.NODECONDUCTOR['INITIAL_CUSTOMER_AGREEMENT_NUMBER']
+    last_number = Customer.objects.aggregate(models.Max('agreement_number')).get('agreement_number__max')
+    return (last_number or inital_number) + 1
+
+
 @python_2_unicode_compatible
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
@@ -312,7 +318,12 @@ class Customer(core_models.UuidMixin,
     native_name = models.CharField(max_length=160, default='', blank=True)
     abbreviation = models.CharField(max_length=12, blank=True)
     contact_details = models.TextField(blank=True, validators=[MaxLengthValidator(500)])
-
+    agreement_number = models.PositiveIntegerField(null=True, blank=True, unique=True)
+    email = models.EmailField(_('email address'), max_length=75, blank=True)
+    phone_number = models.CharField(_('phone number'), max_length=255, blank=True)
+    access_subnets = models.TextField(validators=[validate_cidr_list], blank=True, default='',
+                                      help_text=_('Enter a comma separated list of IPv4 or IPv6 '
+                                                  'CIDR addresses from where connection to self-service is allowed.'))
     registration_code = models.CharField(max_length=160, default='', blank=True)
 
     class Meta(object):

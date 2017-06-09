@@ -6,6 +6,8 @@ from django.core.validators import BaseValidator, URLValidator
 from django.utils import timezone
 from django.utils.deconstruct import deconstructible
 from django.utils.translation import ugettext_lazy as _
+from iptools.ipv4 import validate_cidr as is_valid_ipv4_cidr
+from iptools.ipv6 import validate_cidr as is_valid_ipv6_cidr
 
 from nodeconductor.core import exceptions
 
@@ -49,10 +51,8 @@ class StateValidator(object):
         self.valid_states = valid_states
 
     def __call__(self, resource):
-        from nodeconductor.core import models  # To avoid circular imports.
-
         if resource.state not in self.valid_states:
-            states_names = dict(models.StateMixin.States.CHOICES)
+            states_names = dict(resource.States.CHOICES)
             valid_states_names = [str(states_names[state]) for state in self.valid_states]
             raise exceptions.IncorrectStateException(_('Valid states for operation: %s.') % ', '.join(valid_states_names))
 
@@ -66,3 +66,23 @@ class RuntimeStateValidator(StateValidator):
 
 class BackendURLValidator(URLValidator):
     schemes = ['ldap', 'ldaps', 'http', 'https']
+
+
+def is_valid_ipv46_cidr(value):
+    return is_valid_ipv6_cidr(value) or is_valid_ipv4_cidr(value)
+
+
+def validate_cidr_list(value):
+    if not value.strip():
+        return
+    invalid_items = []
+    for item in value.split(','):
+        item = item.strip()
+        if not is_valid_ipv46_cidr(item):
+            invalid_items.append(item)
+    if invalid_items:
+        raise ValidationError(
+            message=_('The following items are invalid: %s'),
+            code='invalid',
+            params=', '.join(invalid_items),
+        )
