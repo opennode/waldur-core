@@ -127,7 +127,8 @@ class EventFilterBackend(filters.BaseFilterBackend):
                                    end=filter_data.get('end'))
 
         order_by = request.query_params.get('o', '-@timestamp')
-        queryset = queryset.order_by(order_by)
+        if order_by:
+            queryset = queryset.order_by(order_by)
 
         return queryset
 

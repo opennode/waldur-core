@@ -304,7 +304,7 @@ def get_next_agreement_number():
 class Customer(core_models.UuidMixin,
                core_models.NameMixin,
                core_models.DescendantMixin,
-               quotas_models.QuotaModelMixin,
+               quotas_models.ExtendableQuotaModelMixin,
                PermissionMixin,
                VATMixin,
                LoggableMixin,
@@ -332,6 +332,7 @@ class Customer(core_models.UuidMixin,
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_customer_count'
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        enable_fields_caching = False
         nc_project_count = quotas_fields.CounterQuotaField(
             target_models=lambda: [Project],
             path_to_scope='customer',
@@ -476,7 +477,7 @@ class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
               core_models.DescendantMixin,
-              quotas_models.QuotaModelMixin,
+              quotas_models.ExtendableQuotaModelMixin,
               PermissionMixin,
               StructureLoggableMixin,
               TimeStampedModel,
@@ -488,6 +489,7 @@ class Project(core_models.DescribableMixin,
     GLOBAL_COUNT_QUOTA_NAME = 'nc_global_project_count'
 
     class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        enable_fields_caching = False
         nc_resource_count = quotas_fields.CounterQuotaField(
             target_models=lambda: ResourceMixin.get_all_models(),
             path_to_scope='project',
