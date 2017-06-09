@@ -1011,6 +1011,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     def validate_empty_values(self, data):
         # required=False is ignored for settings FK, deal with it here
         if 'settings' not in data:
+            data = data.copy()
             data['settings'] = None
         return super(BaseServiceSerializer, self).validate_empty_values(data)
 
