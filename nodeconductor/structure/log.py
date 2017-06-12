@@ -19,14 +19,11 @@ class CustomerEventLogger(EventLogger):
 
 class ProjectEventLogger(EventLogger):
     project = models.Project
-    project_previous_name = six.text_type
 
     class Meta:
-        nullable_fields = ['project_previous_name']
         event_types = ('project_deletion_succeeded',
                        'project_update_succeeded',
-                       'project_creation_succeeded',
-                       'project_name_update_succeeded')
+                       'project_creation_succeeded')
         event_groups = {
             'projects': event_types,
         }
