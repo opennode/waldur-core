@@ -15,7 +15,7 @@ from django.test.utils import get_runner
 
 
 class Test(TestCommand):
-    user_options = TestCommand.user_options + [('parallel', 'p', "Runs tests in separate parallel processes.")]
+    user_options = TestCommand.user_options + [('parallel', None, "Runs tests in separate parallel processes.")]
 
     def initialize_options(self):
         TestCommand.initialize_options(self)
