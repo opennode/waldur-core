@@ -28,7 +28,7 @@ class LogProjectSaveTest(TestCase):
             new_project.save()
 
             logger_mock.project.info.assert_called_once_with(
-                "Project has been updated. 'Name' has been changed from '%s' to '%s'." % (old_name, new_project.name),
+                "Project has been updated. Name has been changed from '%s' to '%s'." % (old_name, new_project.name),
                 event_type='project_update_succeeded',
                 event_context={
                     'project': new_project,
@@ -36,21 +36,18 @@ class LogProjectSaveTest(TestCase):
             )
 
     def test_logger_logs_project_name_and_description_when_updated(self):
-        old_description = 'description'
-        new_project = factories.ProjectFactory(description=old_description)
-        old_name = new_project.name
+        new_project = factories.ProjectFactory(description='description', name='name')
 
         with patch('nodeconductor.structure.handlers.event_logger') as logger_mock:
             new_project.name = 'new name'
             new_project.description = 'new description'
             new_project.save()
 
-            message = 'Project has been updated.'
-            template = "'%s' has been changed from '%s' to '%s'."
-            description_changed = template % ('description'.capitalize(), old_description, new_project.description)
-            name_changed = template % ('name'.capitalize(), old_name, new_project.name)
+            expected_message = ('Project has been updated.'
+                                " Description has been changed from 'description' to 'new description'."
+                                " Name has been changed from 'name' to 'new name'.")
             logger_mock.project.info.assert_called_once_with(
-                ' '.join([message, description_changed, name_changed]),
+                expected_message,
                 event_type='project_update_succeeded',
                 event_context={
                     'project': new_project,

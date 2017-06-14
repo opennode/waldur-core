@@ -69,10 +69,12 @@ def log_project_save(sender, instance, created=False, **kwargs):
         message = 'Project has been updated.'
         for name, previous_value in changed_fields.items():
             current_value = getattr(instance, name)
-            message = "%s '%s' has been changed from '%s' to '%s'." % (message,
-                                                                       name.capitalize(),
-                                                                       previous_value,
-                                                                       current_value)
+            message = "%s %s has been changed from '%s' to '%s'." % (
+                message,
+                name.capitalize(),
+                previous_value,
+                current_value,
+            )
 
         event_logger.project.info(message, event_type='project_update_succeeded', event_context={'project': instance})
 
