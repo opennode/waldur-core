@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
-
+from nodeconductor.server.test_runner import Test
 
 dev_requires = [
     'Sphinx==1.2.2',
@@ -63,7 +63,7 @@ setup(
         'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
     },
     tests_require=tests_requires,
-    test_suite='nodeconductor.server.test_runner.run_tests',
+    cmdclass={'test': Test},
     include_package_data=True,
     classifiers=[
         'Framework :: Django',
