@@ -66,7 +66,7 @@ def log_project_save(sender, instance, created=False, **kwargs):
         if not changed_fields:
             return
 
-        message = 'Project has been updated.'
+        message = 'Project {project_name} has been updated.'
         for name, previous_value in changed_fields.items():
             current_value = getattr(instance, name)
             message = "%s %s has been changed from '%s' to '%s'." % (
