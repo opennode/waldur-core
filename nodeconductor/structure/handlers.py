@@ -61,21 +61,22 @@ def log_project_save(sender, instance, created=False, **kwargs):
                 'project': instance,
             })
     else:
-        if instance.tracker.has_changed('name'):
-            event_logger.project.info(
-                'Project has been renamed from {project_previous_name} to {project_name}.',
-                event_type='project_name_update_succeeded',
-                event_context={
-                    'project': instance,
-                    'project_previous_name': instance.tracker.previous('name')
-                })
-        else:
-            event_logger.project.info(
-                'Project {project_name} has been updated.',
-                event_type='project_update_succeeded',
-                event_context={
-                    'project': instance,
-                })
+        changed_fields = instance.tracker.changed().copy()
+        changed_fields.pop('modified', None)
+        if not changed_fields:
+            return
+
+        message = 'Project {project_name} has been updated.'
+        for name, previous_value in changed_fields.items():
+            current_value = getattr(instance, name)
+            message = "%s %s has been changed from '%s' to '%s'." % (
+                message,
+                name.capitalize(),
+                previous_value,
+                current_value,
+            )
+
+        event_logger.project.info(message, event_type='project_update_succeeded', event_context={'project': instance})
 
 
 def log_project_delete(sender, instance, **kwargs):
