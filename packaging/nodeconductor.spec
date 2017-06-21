@@ -64,6 +64,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
+BuildRequires: python-celery >= 3.1.23, python-celery < 3.2
 BuildRequires: gettext
 BuildRequires: python-django >= 1.11, python-django < 2.0
 BuildRequires: python-django-filter = 1.0.2
