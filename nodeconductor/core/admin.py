@@ -88,16 +88,16 @@ class UserAdmin(auth_admin.UserAdmin):
     search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email', 'civil_number')
     list_filter = ('is_active', 'is_staff', 'is_support')
     fieldsets = (
-        (None, {'fields': ('username', 'password', 'registration_method')}),
+        (None, {'fields': ('username', 'password', 'registration_method', 'uuid')}),
         (_('Personal info'), {'fields': (
             'civil_number', 'full_name', 'native_name', 'email',
             'preferred_language', 'competence', 'phone_number'
         )}),
-        (_('Organization'), {'fields': ('organization', 'organization_approved')}),
+        (_('Organization'), {'fields': ('organization', 'organization_approved', 'job_title')}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_support', 'customer_roles', 'project_roles')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined', 'agreement_date')}),
     )
-    readonly_fields = ('registration_method', 'agreement_date', 'customer_roles', 'project_roles')
+    readonly_fields = ('registration_method', 'agreement_date', 'customer_roles', 'project_roles', 'uuid')
     form = UserChangeForm
     add_form = UserCreationForm
 
