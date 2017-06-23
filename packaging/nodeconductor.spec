@@ -16,7 +16,7 @@
 
 Name: nodeconductor
 Summary: NodeConductor
-Version: 0.141.1
+Version: 0.142.0
 Release: 1.el7
 License: MIT
 
@@ -64,6 +64,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
+BuildRequires: python-celery >= 3.1.23, python-celery < 3.2
 BuildRequires: gettext
 BuildRequires: python-django >= 1.11, python-django < 2.0
 BuildRequires: python-django-filter = 1.0.2
@@ -238,6 +239,9 @@ EOF
 %systemd_postun_with_restart %{name}-uwsgi.service
 
 %changelog
+* Fri Jun 23 2017 Jenkins <jenkins@opennodecloud.com> - 0.142.0-1.el7
+- New upstream release
+
 * Fri Jun 9 2017 Jenkins <jenkins@opennodecloud.com> - 0.141.1-1.el7
 - New upstream release
 
