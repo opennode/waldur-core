@@ -47,7 +47,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.141.1',
+    version='0.142.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
