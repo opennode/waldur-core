@@ -407,9 +407,41 @@ if config.get('sentry', 'dsn') != '':
     for logger in ['celery.worker', 'django', 'nodeconductor', 'requests']:
         LOGGING['loggers'][logger]['handlers'].append('sentry')
 
+# Additional configuration files for NodeConductor and plugins (deprectaed)
 extensions = ('nodeconductor_plus.py', 'nodeconductor_saml2.py')
 for extension_name in extensions:
     # optionally load extension configurations
     extension_conf_file_path = os.path.join(conf_dir, extension_name)
     if os.path.isfile(extension_conf_file_path):
+        warnings.warn("Configuration file '%s' is deprecated" % extension_conf_file_path)
         execfile(extension_conf_file_path)
+
+# Additional configuration files for NodeConductor
+extensions = ('override.conf.py')
+for extension_name in extensions:
+    # optionally load extension configurations
+    extension_conf_file_path = os.path.join(conf_dir, extension_name)
+    if os.path.isfile(extension_conf_file_path):
+        execfile(extension_conf_file_path)
+
+# FIXME: nodeconductor_saml2.py is provided by nodeconductor-saml2 plugin and should be located in
+# /etc/nodeconductor-saml2/ directory.
+#
+# Not changing it yet as nodeconductor-saml2 is going to be removed to waldur-saml2 soon, and as a result, configuration
+# directory name wll be changed to /etc/waldur-saml2/.
+#
+# Action plan:
+#  - Rename nodeconductor-saml2 to waldur-saml2
+#  - Rename /etc/nodeconductor/nodeconductor/nodeconductor-saml2.py to /etc/waldur-saml2/conf.py
+#  - Enable the code below
+#
+# Similar change is expected for other plugins as well: each should provide its own configuration file instead of
+# polluting nodeconductor_plus.py which is going to be dropped soon.
+#
+#-----------------------------------------------------------------------------------------------------------------------
+## Additional configuration files for NodeConductor plugins (provided by plugins themselves)
+#plugins = ('waldur-saml2')
+#for plugin_name in plugins:
+#    extension_conf_file_path = os.path.join('etc', plugin_name, 'conf.py')
+#    if os.path.isfile(extension_conf_file_path):
+#        execfile(extension_conf_file_path)
