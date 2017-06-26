@@ -1,9 +1,9 @@
 # Configure repositories
 yum -y install epel-release
-yum -y install http://opennodecloud.com/centos/7/nodeconductor-release.rpm
+yum -y install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-centos95-9.5-2.noarch.rpm
+yum -y install https://opennodecloud.com/centos/7/waldur-release.rpm
 
 # Set up PostgreSQL
-yum -y install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-centos95-9.5-2.noarch.rpm
 yum -y install postgresql95-server
 /usr/pgsql-9.5/bin/postgresql95-setup initdb
 systemctl start postgresql-9.5
