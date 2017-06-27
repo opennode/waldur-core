@@ -89,7 +89,7 @@ SECRET_KEY = config.get('global', 'secret_key')
 DEBUG = config.getboolean('global', 'debug')
 for tmpl in TEMPLATES:
     tmpl.setdefault('OPTIONS', {})
-    tmpl['OPTIONS']['debug'] = config.getboolean('global', 'template_debug')
+    tmpl['OPTIONS']['debug'] = config.getboolean('global', 'debug')
 
 # Allow to overwrite templates
 TEMPLATES[0]['DIRS'].insert(0, templates_dir)
