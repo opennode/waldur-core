@@ -88,7 +88,7 @@ Waldur Core is an open-source RESTful server for multi-tenant resource
 management. It provides an easy way for sharing access to external systems.
 It is used as a platform for creating private and public clouds.
 
-Additional information can be found at http://nodeconductor.readthedocs.org.
+Additional information can be found at http://docs.waldur.com.
 
 %prep
 %setup -q -n %{name}-%{version}
