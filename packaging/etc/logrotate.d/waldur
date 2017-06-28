@@ -1,4 +1,4 @@
-/var/log/nodeconductor/*.log {
+/var/log/waldur/*.log {
     compress
     copytruncate
     daily
@@ -6,5 +6,5 @@
     missingok
     notifempty
     rotate 91
-    su nodeconductor nodeconductor
+    su waldur waldur
 }
