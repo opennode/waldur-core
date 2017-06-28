@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import unittest
 from collections import namedtuple
 
+from django.test.client import RequestFactory
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, APITransactionTestCase, force_authenticate
@@ -10,8 +11,9 @@ from rest_framework.views import APIView
 
 from nodeconductor.core.fields import JsonField
 from nodeconductor.core.fields import TimestampField
-from nodeconductor.core.serializers import Base64Field, RestrictedSerializerMixin
+from nodeconductor.core.serializers import Base64Field, RestrictedSerializerMixin, GenericRelatedField
 from nodeconductor.core import utils
+from nodeconductor.logging.utils import get_loggable_models
 
 
 class Base64Serializer(serializers.Serializer):
@@ -42,6 +44,43 @@ class Base64FieldTest(unittest.TestCase):
                       'There should be errors for content field')
         self.assertIn('This field should a be valid Base64 encoded string.',
                       serializer.errors['content'])
+
+
+class GenericRelatedFieldTest(APITransactionTestCase):
+    def setUp(self):
+        from nodeconductor.structure.tests.factories import UserFactory
+
+        self.user = UserFactory(is_staff=True)
+        self.request = APIRequestFactory().get('/')
+        self.request.user = self.user
+
+        self.field = GenericRelatedField(related_models=get_loggable_models())
+        self.field.context = {'request': self.request}
+
+    def test_if_related_object_exists_it_is_deserialized(self):
+        from nodeconductor.structure.tests.factories import CustomerFactory
+        customer = CustomerFactory()
+        valid_url = CustomerFactory.get_url(customer)
+        self.assertEqual(self.field.to_internal_value(valid_url), customer)
+
+    def test_if_related_object_does_not_exist_validation_error_is_raised(self):
+        from nodeconductor.structure.tests.factories import CustomerFactory
+        customer = CustomerFactory()
+        valid_url = CustomerFactory.get_url(customer)
+        customer.delete()
+        self.assertRaises(serializers.ValidationError, self.field.to_internal_value, valid_url)
+
+    def test_if_user_does_not_have_permissions_for_related_object_validation_error_is_raised(self):
+        from nodeconductor.structure.tests.factories import CustomerFactory
+        customer = CustomerFactory()
+        valid_url = CustomerFactory.get_url(customer)
+        self.user.is_staff = False
+        self.user.save()
+        self.assertRaises(serializers.ValidationError, self.field.to_internal_value, valid_url)
+
+    def test_if_uuid_is_invalid_validation_error_is_raised(self):
+        invalid_url = 'https://example.com/api/customers/invalid/'
+        self.assertRaises(serializers.ValidationError, self.field.to_internal_value, invalid_url)
 
 
 class JsonSerializer(serializers.Serializer):
