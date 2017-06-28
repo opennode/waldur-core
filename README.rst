@@ -6,10 +6,10 @@
     :target: https://readthedocs.org/projects/nodeconductor/?badge=stable
     :alt: Documentation Status
 
-NodeConductor
-=============
+Waldur Core
+===========
 
-NodeConductor is an open-source RESTful server for multi-tenant resource management. It provides an
+Waldur Core is an open-source RESTful server for multi-tenant resource management. It provides an
 easy way for sharing access to external systems. It is used as a platform for creating private and
 public clouds.
 
