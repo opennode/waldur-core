@@ -128,6 +128,8 @@ class GenericRelatedField(Field):
         try:
             obj = core_utils.instance_from_url(data, user=user)
             model = obj.__class__
+        except ValueError:
+            raise serializers.ValidationError(_('URL is invalid: %s.') % data)
         except (Resolver404, AttributeError, MultipleObjectsReturned, ObjectDoesNotExist):
             raise serializers.ValidationError(_("Can't restore object from url: %s") % data)
         if model not in self.related_models:
