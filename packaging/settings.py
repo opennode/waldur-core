@@ -6,13 +6,13 @@ import warnings
 
 from ConfigParser import RawConfigParser
 
-conf_dir = '/etc/nodeconductor'
-data_dir = '/usr/share/nodeconductor'
-work_dir = '/var/lib/nodeconductor'
+conf_dir = '/etc/waldur'
+data_dir = '/usr/share/waldur'
+work_dir = '/var/lib/waldur'
 templates_dir = os.path.join(conf_dir, 'templates')
 
 config = RawConfigParser()
-config.read(os.path.join(conf_dir, 'settings.ini'))
+config.read(os.path.join(conf_dir, 'core.ini'))
 
 # If these sections and/or options are not set, these values are used as defaults
 config_defaults = {
@@ -56,10 +56,10 @@ config_defaults = {
     },
     'postgresql': {
         'host': '',  # empty to connect via local UNIX socket
-        'name': 'nodeconductor',
-        'password': 'nodeconductor',
+        'name': 'waldur',
+        'password': 'waldur',
         'port': '5432',
-        'user': 'nodeconductor',
+        'user': 'waldur',
     },
     'redis': {
         'host': 'localhost',
@@ -89,7 +89,7 @@ SECRET_KEY = config.get('global', 'secret_key')
 DEBUG = config.getboolean('global', 'debug')
 for tmpl in TEMPLATES:
     tmpl.setdefault('OPTIONS', {})
-    tmpl['OPTIONS']['debug'] = config.getboolean('global', 'template_debug')
+    tmpl['OPTIONS']['debug'] = config.getboolean('global', 'debug')
 
 # Allow to overwrite templates
 TEMPLATES[0]['DIRS'].insert(0, templates_dir)
@@ -120,8 +120,8 @@ ALLOWED_HOSTS = ['*']
 #
 # Example: create database, user and grant privileges:
 #
-#   CREATE DATABASE nodeconductor ENCODING 'UTF8'
-#   CREATE USER nodeconductor WITH PASSWORD 'nodeconductor'
+#   CREATE DATABASE waldur ENCODING 'UTF8'
+#   CREATE USER waldur WITH PASSWORD 'waldur'
 #
 # Example: install psycopg2 in CentOS:
 #
@@ -363,7 +363,7 @@ for app in INSTALLED_APPS:
     if app.startswith('nodeconductor_'):
         LOGGING['loggers'][app] = LOGGING['loggers']['nodeconductor']
 
-# NodeConductor internal configuration
+# Waldur Core internal configuration
 # See also: http://nodeconductor.readthedocs.io/en/stable/guide/intro.html#id1
 NODECONDUCTOR.update({
     'ELASTICSEARCH': {
@@ -407,7 +407,19 @@ if config.get('sentry', 'dsn') != '':
     for logger in ['celery.worker', 'django', 'nodeconductor', 'requests']:
         LOGGING['loggers'][logger]['handlers'].append('sentry')
 
+# Additional configuration files for Waldur (deprectaed)
 extensions = ('nodeconductor_plus.py', 'nodeconductor_saml2.py')
+for extension_name in extensions:
+    # optionally load extension configurations
+    extension_conf_file_path = os.path.join('etc', 'nodeconductor', extension_name)
+    if os.path.isfile(extension_conf_file_path):
+        warnings.warn("Configuration file '%s' is deprecated" % extension_conf_file_path)
+        execfile(extension_conf_file_path)
+
+# Additional configuration files for Waldur
+# 'override.conf.py' must be the first element to override settings in core.ini but not plugin configuration.
+# Plugin configuration files must me ordered alphabetically to provide predicatable configuration handling order.
+extensions = ('override.conf.py', 'saml2.conf.py')
 for extension_name in extensions:
     # optionally load extension configurations
     extension_conf_file_path = os.path.join(conf_dir, extension_name)

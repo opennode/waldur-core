@@ -8,11 +8,6 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.test_settings'
 test_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), '..'))
 sys.path.insert(0, test_dir)
 
-import django
-from django.conf import settings
-from django.test.runner import default_test_processes
-from django.test.utils import get_runner
-
 
 class Test(TestCommand):
     user_options = TestCommand.user_options + [('parallel', None, "Runs tests in separate parallel processes.")]
@@ -22,6 +17,11 @@ class Test(TestCommand):
         self.parallel = 0
 
     def run_tests(self):
+        import django
+        from django.conf import settings
+        from django.test.runner import default_test_processes
+        from django.test.utils import get_runner
+
         django.setup()
         test_runner_class = get_runner(settings)
         try:
