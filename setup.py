@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
-from nodeconductor.server.test_runner import Test
+
+from nodeconductor.core.test_runner import Test
 
 dev_requires = [
     'Sphinx==1.2.2',
