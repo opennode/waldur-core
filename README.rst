@@ -2,10 +2,6 @@
     :target: https://travis-ci.org/opennode/nodeconductor
     :alt: Build status
 
-.. image:: https://readthedocs.org/projects/nodeconductor/badge/?version=stable
-    :target: https://readthedocs.org/projects/nodeconductor/?badge=stable
-    :alt: Documentation Status
-
 Waldur Core
 ===========
 
