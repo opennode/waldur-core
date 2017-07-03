@@ -9,24 +9,24 @@ yum -y install postgresql95-server
 systemctl start postgresql-9.5
 systemctl enable postgresql-9.5
 
-su - postgres -c "/usr/pgsql-9.5/bin/createdb -EUTF8 nodeconductor"
-su - postgres -c "/usr/pgsql-9.5/bin/createuser nodeconductor"
+su - postgres -c "/usr/pgsql-9.5/bin/createdb -EUTF8 waldur"
+su - postgres -c "/usr/pgsql-9.5/bin/createuser waldur"
 
 # Set up Redis
 yum -y install redis
 systemctl start redis
 systemctl enable redis
 
-# Set up NodeConductor
-yum -y install nodeconductor
+# Set up Waldur Core
+yum -y install waldur-core
 
-su - nodeconductor -c "nodeconductor migrate --noinput"
+su - waldur -c "nodeconductor migrate --noinput"
 
-systemctl start nodeconductor-uwsgi
-systemctl enable nodeconductor-uwsgi
+systemctl start waldur-uwsgi
+systemctl enable waldur-uwsgi
 
-systemctl start nodeconductor-celery
-systemctl enable nodeconductor-celery
+systemctl start waldur-celery
+systemctl enable waldur-celery
 
-systemctl start nodeconductor-celerybeat
-systemctl enable nodeconductor-celerybeat
+systemctl start waldur-celerybeat
+systemctl enable waldur-celerybeat
