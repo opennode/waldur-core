@@ -74,8 +74,8 @@ class Command(BaseCommand):
 
         # output
         if options['output'] is None:
-            self.stdout.write(str(table))
+            self.stdout.write(table.get_string())
             return
 
         with open(options['output'], 'w') as output_file:
-            output_file.write(str(table))
+            output_file.write(table.get_string())

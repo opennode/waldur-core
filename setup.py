@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
-from nodeconductor.server.test_runner import Test
+
+from nodeconductor.core.test_runner import Test
 
 dev_requires = [
     'Sphinx==1.2.2',
@@ -47,7 +48,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.142.0',
+    version='0.142.1',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
