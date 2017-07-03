@@ -26,7 +26,7 @@ Version: 0.142.1
 Release: 1.el7
 License: MIT
 
-Obsoletes: nodeconductor
+Provides: nodeconductor
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # mailcap is required for /etc/mime.types of static files served by uwsgi
