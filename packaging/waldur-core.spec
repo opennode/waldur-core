@@ -222,7 +222,7 @@ Next steps:
 
 5. Migrate the database:
 
-     su - %{__user} -c "nodeconductor migrate --noinput"
+     su - %{__user} -c "waldur migrate --noinput"
 
    Note: you will need to run this again on next Waldur Core update.
 
@@ -234,7 +234,7 @@ Next steps:
 
 7. Create first superuser (if needed and not yet done):
 
-     su - %{__user} -c "nodeconductor createsuperuser"
+     su - %{__user} -c "waldur createsuperuser"
 
 All done.
 ------------------------------------------------------------------------
