@@ -61,7 +61,10 @@ setup(
         'tests': tests_requires,
     },
     entry_points={
-        'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
+        'console_scripts': (
+            'nodeconductor = nodeconductor.server.manage:main',
+            'waldur = nodeconductor.server.manage:main',
+        ),
     },
     tests_require=tests_requires,
     cmdclass={'test': Test},
