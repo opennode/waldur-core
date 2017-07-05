@@ -105,14 +105,18 @@ def log_user_delete(sender, instance, **kwargs):
 def log_ssh_key_save(sender, instance, created=False, **kwargs):
     if created:
         event_logger.sshkey.info(
-            'SSH key {ssh_key_name} has been created for user {user_username}.',
+            'SSH key {ssh_key_name} has been created for user%s with username {user_username}.' % (
+                ' {user_full_name}' if instance.user.full_name else ''
+            ),
             event_type='ssh_key_creation_succeeded',
             event_context={'ssh_key': instance, 'user': instance.user})
 
 
 def log_ssh_key_delete(sender, instance, **kwargs):
     event_logger.sshkey.info(
-        'SSH key {ssh_key_name} has been deleted for user {user_username}.',
+        'SSH key {ssh_key_name} has been deleted for user%s with username {user_username}.' % (
+            ' {user_full_name}' if instance.user.full_name else ''
+        ),
         event_type='ssh_key_deletion_succeeded',
         event_context={'ssh_key': instance, 'user': instance.user})
 
