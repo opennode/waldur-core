@@ -42,6 +42,7 @@ class TokenEventLogger(EventLogger):
 
 class SshPublicKeyEventLogger(EventLogger):
     ssh_key = SshPublicKey
+    user = User
 
     class Meta:
         event_types = ('ssh_key_creation_succeeded',

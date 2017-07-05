@@ -107,14 +107,14 @@ def log_ssh_key_save(sender, instance, created=False, **kwargs):
         event_logger.sshkey.info(
             'SSH key {ssh_key_name} has been created for user {user_username}.',
             event_type='ssh_key_creation_succeeded',
-            event_context={'ssh_key': instance})
+            event_context={'ssh_key': instance, 'user': instance.user})
 
 
 def log_ssh_key_delete(sender, instance, **kwargs):
     event_logger.sshkey.info(
         'SSH key {ssh_key_name} has been deleted for user {user_username}.',
         event_type='ssh_key_deletion_succeeded',
-        event_context={'ssh_key': instance})
+        event_context={'ssh_key': instance, 'user': instance.user})
 
 
 def log_token_create(sender, instance, created=False, **kwargs):
