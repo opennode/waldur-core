@@ -185,6 +185,20 @@ class ServiceSettingUpdateTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_options_are_partially_updated(self):
+        required_field_name = 'availability_zone'
+        self.service_settings.shared = False
+        self.service_settings.options = {required_field_name: 'value'}
+        self.service_settings.save()
+        self.client.force_authenticate(user=self.fixture.owner)
+        payload = {'tenant_name': 'secret'}
+
+        response = self.client.patch(self.url, data=payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.service_settings.refresh_from_db()
+        self.assertIn(required_field_name, self.service_settings.options)
+
 
 @ddt
 class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):

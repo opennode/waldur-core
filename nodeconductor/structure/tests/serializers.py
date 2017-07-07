@@ -6,6 +6,11 @@ from . import models
 
 
 class ServiceSerializer(structure_serializers.BaseServiceSerializer):
+    SERVICE_ACCOUNT_EXTRA_FIELDS = {
+        'tenant_name': '',
+        'availability_zone': '',
+    }
+
     class Meta(structure_serializers.BaseServiceSerializer.Meta):
         model = models.TestService
         required_fields = 'backend_url', 'username', 'password'
