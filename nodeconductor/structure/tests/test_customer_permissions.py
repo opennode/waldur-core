@@ -139,6 +139,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
                 )
 
     # Granting tests
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     def test_customer_owner_can_grant_new_role_within_his_customer(self):
         self.assert_user_access_to_permission_granting(
             login_user='first',
@@ -178,6 +179,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             expected_status=status.HTTP_403_FORBIDDEN,
         )
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     def test_project_admin_cannot_grant_role_within_his_customer(self):
         self.assert_user_access_to_permission_granting(
             login_user='first_admin',
@@ -250,6 +252,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             self.assertDictContainsSubset(expected_payload, response.data)
 
     # Revocation tests
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     def test_customer_owner_can_revoke_role_within_his_customer(self):
         self.assert_user_access_to_permission_revocation(
             login_user='first',
@@ -275,6 +278,7 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
             expected_status=status.HTTP_403_FORBIDDEN,
         )
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     def test_project_admin_cannot_revoke_role_within_his_customer(self):
         self.assert_user_access_to_permission_revocation(
             login_user='first_admin',
@@ -466,6 +470,7 @@ class CustomerPermissionExpirationTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     def test_owner_can_update_permission_expiration_time_for_other_owner_in_same_customer(self):
         owner = factories.UserFactory()
         self.customer.add_user(owner, CustomerRole.OWNER)
