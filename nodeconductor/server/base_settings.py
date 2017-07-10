@@ -256,7 +256,7 @@ NODECONDUCTOR = {
     'TOKEN_LIFETIME': timedelta(hours=1),
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
     'INVITATION_LIFETIME': timedelta(weeks=1),
-    'OWNERS_CAN_MANAGE_OWNERS': True,
+    'OWNERS_CAN_MANAGE_OWNERS': False,
     'OWNER_CAN_MODIFY_COST_LIMIT': True,
     'BACKEND_FIELDS_EDITABLE': True,
     'VALIDATE_INVITATION_EMAIL': False,
