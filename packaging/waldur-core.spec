@@ -22,7 +22,7 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.142.2
+Version: 0.143.0
 Release: 1.el7
 License: MIT
 
@@ -222,7 +222,7 @@ Next steps:
 
 5. Migrate the database:
 
-     su - %{__user} -c "nodeconductor migrate --noinput"
+     su - %{__user} -c "waldur migrate --noinput"
 
    Note: you will need to run this again on next Waldur Core update.
 
@@ -234,7 +234,7 @@ Next steps:
 
 7. Create first superuser (if needed and not yet done):
 
-     su - %{__user} -c "nodeconductor createsuperuser"
+     su - %{__user} -c "waldur createsuperuser"
 
 All done.
 ------------------------------------------------------------------------
@@ -251,6 +251,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Wed Jul 12 2017 Jenkins <jenkins@opennodecloud.com> - 0.143.0-1.el7
+- New upstream release
+
 * Mon Jul 3 2017 Jenkins <jenkins@opennodecloud.com> - 0.142.2-1.el7
 - New upstream release
 

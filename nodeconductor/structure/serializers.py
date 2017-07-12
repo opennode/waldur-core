@@ -874,6 +874,14 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
 
         return self.instance.customer.has_user(request.user, models.CustomerRole.OWNER)
 
+    def update(self, instance, validated_data):
+        if 'options' in validated_data:
+            new_options = dict.copy(instance.options)
+            new_options.update(validated_data['options'])
+            validated_data['options'] = new_options
+
+        return super(ServiceSettingsSerializer, self).update(instance, validated_data)
+
 
 class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
     """ Build a list of supported services via serializers definition.

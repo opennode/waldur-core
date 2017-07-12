@@ -96,6 +96,7 @@ class InvitationPermissionApiTest(BaseInvitationTest):
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     @data('project_admin', 'project_manager', 'user')
     def test_user_without_access_cannot_create_project_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
@@ -104,6 +105,7 @@ class InvitationPermissionApiTest(BaseInvitationTest):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data, {'detail': 'You do not have permission to perform this action.'})
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     @data('staff', 'customer_owner')
     def test_user_with_access_can_create_customer_owner_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
@@ -118,6 +120,7 @@ class InvitationPermissionApiTest(BaseInvitationTest):
         response = self.client.post(factories.InvitationBaseFactory.get_list_url(), data=payload)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     @data('staff', 'customer_owner')
     def test_user_which_created_invitation_is_stored_in_inviatation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
@@ -150,6 +153,7 @@ class InvitationPermissionApiTest(BaseInvitationTest):
                                                                                action='cancel'))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     @data('staff', 'customer_owner')
     def test_user_with_access_can_cancel_customer_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))
@@ -166,6 +170,7 @@ class InvitationPermissionApiTest(BaseInvitationTest):
                                                                                 action='cancel'))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     @data('staff', 'customer_owner')
     def test_user_with_access_can_send_customer_invitation(self, user):
         self.client.force_authenticate(user=getattr(self, user))

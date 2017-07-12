@@ -48,7 +48,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.142.2',
+    version='0.143.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/nodeconductor',
@@ -61,7 +61,10 @@ setup(
         'tests': tests_requires,
     },
     entry_points={
-        'console_scripts': ('nodeconductor = nodeconductor.server.manage:main',),
+        'console_scripts': (
+            'nodeconductor = nodeconductor.server.manage:main',
+            'waldur = nodeconductor.server.manage:main',
+        ),
     },
     tests_require=tests_requires,
     cmdclass={'test': Test},
