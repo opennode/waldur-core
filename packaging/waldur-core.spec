@@ -22,7 +22,7 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.143.0
+Version: 0.143.1
 Release: 1.el7
 License: MIT
 
@@ -185,7 +185,7 @@ rm -rf %{buildroot}
 
 %pre
 # User must exist in the system before package installation, otherwise setting file permissions will fail
-if ! id %{name} 2> /dev/null > /dev/null; then
+if ! id %{__user} 2> /dev/null > /dev/null; then
     echo "[%{name}] Adding new system user %{__user}..."
     useradd --home %{__work_dir} --shell /bin/sh --system --user-group %{__user}
 fi
@@ -251,6 +251,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Thu Jul 13 2017 Jenkins <jenkins@opennodecloud.com> - 0.143.1-1.el7
+- New upstream release
+
 * Wed Jul 12 2017 Jenkins <jenkins@opennodecloud.com> - 0.143.0-1.el7
 - New upstream release
 
