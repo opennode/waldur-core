@@ -239,11 +239,6 @@ class ServiceCertificationAdmin(admin.ModelAdmin):
 
 
 class ServiceSettingsAdminForm(ModelForm):
-    shared = TypedChoiceField(
-        coerce=lambda x: x == 'True',
-        choices=((True, _('Yes (Anybody can use it)')), (False, _('No (Only available to me)'))),
-        widget=RadioSelect,
-    )
     backend_url = CharField(max_length=200, required=False, validators=[BackendURLValidator()])
 
     class Meta:
@@ -256,13 +251,6 @@ class ServiceSettingsAdminForm(ModelForm):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
         self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
                                           widget=RadioSelect)
-
-    def clean(self):
-        shared = self.cleaned_data.get('shared', False)
-        if shared and self.cleaned_data.get('customer') is not None:
-            raise ValidationError(_('Shared service settings should not be connected to any customer.'))
-
-        return super(ServiceSettingsAdminForm, self).clean()
 
 
 class ServiceTypeFilter(SimpleListFilter):
@@ -279,20 +267,20 @@ class ServiceTypeFilter(SimpleListFilter):
             return queryset
 
 
-class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
+class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     readonly_fields = ('error_message',)
     list_display = ('name', 'customer', 'get_type_display', 'state', 'error_message')
     list_filter = (ServiceTypeFilter, 'state')
-    change_readonly_fields = ('shared', 'customer')
+    change_readonly_fields = ('customer',)
     actions = ['pull', 'connect_shared']
     form = ServiceSettingsAdminForm
-    fields = ('type', 'name', 'shared', 'backend_url', 'username', 'password',
+    fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer',
               'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
               'certifications', 'geolocations')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
-    common_fields = ('type', 'name', 'shared', 'state', 'options', 'geolocations', 'certifications')
+    common_fields = ('type', 'name', 'state', 'options', 'geolocations', 'certifications', 'customer')
 
     # must be specified explicitly not to be constructed from model name by default.
     change_form_template = 'admin/structure/servicesettings/change_form.html'
@@ -303,7 +291,7 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def add_view(self, *args, **kwargs):
         self.exclude = getattr(self, 'add_exclude', ())
-        return super(ServiceSettingsAdmin, self).add_view(*args, **kwargs)
+        return super(PrivateServiceSettingsAdmin, self).add_view(*args, **kwargs)
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         extra_context = extra_context or {}
@@ -311,29 +299,19 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         for service_name in service_field_names:
             service_field_names[service_name].extend(self.common_fields)
         extra_context['service_fields'] = json.dumps(service_field_names)
-        return super(ServiceSettingsAdmin, self).changeform_view(request, object_id, form_url, extra_context)
+        return super(PrivateServiceSettingsAdmin, self).changeform_view(request, object_id, form_url, extra_context)
 
     def get_readonly_fields(self, request, obj=None):
-        fields = super(ServiceSettingsAdmin, self).get_readonly_fields(request, obj)
+        fields = super(PrivateServiceSettingsAdmin, self).get_readonly_fields(request, obj)
         if not obj:
             return fields + ('state',)
         return fields
-
-    def get_form(self, request, obj=None, **kwargs):
-        # filter out certain fields from the creation form
-        form = super(ServiceSettingsAdmin, self).get_form(request, obj, **kwargs)
-        if 'shared' in form.base_fields:
-            form.base_fields['shared'].initial = True if self.model is models.SharedServiceSettings else False
-            form.base_fields['shared'].disabled = True
-            form.base_fields['shared'].widget.attrs['disabled'] = True
-
-        return form
 
     def get_urls(self):
         my_urls = [
             url(r'^(.+)/change/services/$', self.admin_site.admin_view(self.services)),
         ]
-        return my_urls + super(ServiceSettingsAdmin, self).get_urls()
+        return my_urls + super(PrivateServiceSettingsAdmin, self).get_urls()
 
     def services(self, request, pk=None):
         settings = models.ServiceSettings.objects.get(id=pk)
@@ -378,6 +356,26 @@ class ServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         obj.save()
         if not change:
             executors.ServiceSettingsCreateExecutor.execute(obj)
+
+
+class SharedServiceSettingsAdmin(PrivateServiceSettingsAdmin):
+    def get_fields(self, request, obj=None):
+        fields = super(SharedServiceSettingsAdmin, self).get_fields(request, obj)
+        if self.model is models.SharedServiceSettings:
+            fields = [field for field in fields if field != 'customer']
+        return fields
+
+    def get_list_display(self, request):
+        fields = super(SharedServiceSettingsAdmin, self).get_list_display(request)
+        if self.model is models.SharedServiceSettings:
+            fields = [field for field in fields if field != 'customer']
+        return fields
+
+    def save_form(self, request, form, change):
+        obj = super(SharedServiceSettingsAdmin, self).save_form(request, form, change)
+        if not change:
+            obj.shared = self.model is models.SharedServiceSettings
+        return obj
 
 
 class ServiceAdmin(admin.ModelAdmin):
@@ -480,5 +478,5 @@ class VirtualMachineAdmin(ResourceAdmin):
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.PrivateServiceSettings, ServiceSettingsAdmin)
-admin.site.register(models.SharedServiceSettings, ServiceSettingsAdmin)
+admin.site.register(models.PrivateServiceSettings, PrivateServiceSettingsAdmin)
+admin.site.register(models.SharedServiceSettings, SharedServiceSettingsAdmin)
