@@ -361,20 +361,16 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 class SharedServiceSettingsAdmin(PrivateServiceSettingsAdmin):
     def get_fields(self, request, obj=None):
         fields = super(SharedServiceSettingsAdmin, self).get_fields(request, obj)
-        if self.model is models.SharedServiceSettings:
-            fields = [field for field in fields if field != 'customer']
-        return fields
+        return [field for field in fields if field != 'customer']
 
     def get_list_display(self, request):
         fields = super(SharedServiceSettingsAdmin, self).get_list_display(request)
-        if self.model is models.SharedServiceSettings:
-            fields = [field for field in fields if field != 'customer']
-        return fields
+        return [field for field in fields if field != 'customer']
 
     def save_form(self, request, form, change):
         obj = super(SharedServiceSettingsAdmin, self).save_form(request, form, change)
         if not change:
-            obj.shared = self.model is models.SharedServiceSettings
+            obj.shared = True
         return obj
 
 
