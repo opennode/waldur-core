@@ -185,7 +185,7 @@ rm -rf %{buildroot}
 
 %pre
 # User must exist in the system before package installation, otherwise setting file permissions will fail
-if ! id %{name} 2> /dev/null > /dev/null; then
+if ! id %{__user} 2> /dev/null > /dev/null; then
     echo "[%{name}] Adding new system user %{__user}..."
     useradd --home %{__work_dir} --shell /bin/sh --system --user-group %{__user}
 fi
