@@ -272,7 +272,7 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
     list_display = ('name', 'customer', 'get_type_display', 'state', 'error_message')
     list_filter = (ServiceTypeFilter, 'state')
     change_readonly_fields = ('customer',)
-    actions = ['pull', 'connect_shared']
+    actions = ['pull']
     form = ServiceSettingsAdminForm
     fields = ('type', 'name', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer',
@@ -280,7 +280,9 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
               'certifications', 'geolocations')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
-    common_fields = ('type', 'name', 'state', 'options', 'geolocations', 'certifications', 'customer')
+    common_fields = ('type', 'name', 'options', 'customer',
+                     'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
+                     'certifications', 'geolocations')
 
     # must be specified explicitly not to be constructed from model name by default.
     change_form_template = 'admin/structure/servicesettings/change_form.html'
@@ -342,16 +344,6 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     pull = Pull()
 
-    class ConnectShared(ExecutorAdminAction):
-        executor = executors.ServiceSettingsConnectSharedExecutor
-        short_description = _('Create SPLs and services for shared service settings')
-
-        def validate(self, service_settings):
-            if not service_settings.shared:
-                raise ValidationError(_('It is impossible to connect not shared settings.'))
-
-    connect_shared = ConnectShared()
-
     def save_model(self, request, obj, form, change):
         obj.save()
         if not change:
@@ -359,6 +351,8 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
 
 class SharedServiceSettingsAdmin(PrivateServiceSettingsAdmin):
+    actions = ['pull', 'connect_shared']
+
     def get_fields(self, request, obj=None):
         fields = super(SharedServiceSettingsAdmin, self).get_fields(request, obj)
         return [field for field in fields if field != 'customer']
@@ -372,6 +366,16 @@ class SharedServiceSettingsAdmin(PrivateServiceSettingsAdmin):
         if not change:
             obj.shared = True
         return obj
+
+    class ConnectShared(ExecutorAdminAction):
+        executor = executors.ServiceSettingsConnectSharedExecutor
+        short_description = _('Create SPLs and services for shared service settings')
+
+        def validate(self, service_settings):
+            if not service_settings.shared:
+                raise ValidationError(_('It is impossible to connect not shared settings.'))
+
+    connect_shared = ConnectShared()
 
 
 class ServiceAdmin(admin.ModelAdmin):
