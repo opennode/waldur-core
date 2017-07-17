@@ -280,7 +280,9 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
               'certifications', 'geolocations')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
-    common_fields = ('type', 'name', 'state', 'options', 'geolocations', 'certifications', 'customer')
+    common_fields = ('type', 'name', 'options', 'customer',
+                     'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
+                     'certifications', 'geolocations')
 
     # must be specified explicitly not to be constructed from model name by default.
     change_form_template = 'admin/structure/servicesettings/change_form.html'
