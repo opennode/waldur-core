@@ -374,6 +374,9 @@ class BaseLoggerRegistry(object):
             raise EventLoggerError("Logger '%s' already registered." % name)
         self.__dict__[name] = logger() if isinstance(logger, type) else logger
 
+    def unregister_all(self):
+        self.__dict__ = {}
+
     def get_all_types(self):
         events = set()
         for elogger in self.get_loggers():
