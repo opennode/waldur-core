@@ -57,8 +57,11 @@ class EventFilterBackend(filters.BaseFilterBackend):
         must_terms = {}
         must_not_terms = {}
         should_terms = {}
+        excluded_event_types = set()
+
         if 'event_type' in request.query_params:
             must_terms['event_type'] = request.query_params.getlist('event_type')
+
         if 'feature' in request.query_params:
             features = request.query_params.getlist('feature')
             must_terms['event_type'] = expand_event_groups(features)
@@ -66,10 +69,16 @@ class EventFilterBackend(filters.BaseFilterBackend):
         # Group events by features in order to prevent large HTTP GET request
         if 'exclude_features' in request.query_params:
             features = request.query_params.getlist('exclude_features')
-            must_not_terms['event_type'] = expand_event_groups(features)
+            excluded_event_types.update(expand_event_groups(features))
 
         if 'exclude_extra' in request.query_params:
-            must_not_terms['event_type'] = must_not_terms.get('event_type', []) + expand_event_groups(['update'])
+            excluded_event_types.update(expand_event_groups(['update']))
+
+        if not django_settings.DEBUG:
+            excluded_event_types.update(expand_event_groups(['debug_only']))
+
+        if excluded_event_types:
+            must_not_terms['event_type'] = list(excluded_event_types)
 
         if 'user_username' in request.query_params:
             must_terms['user_username'] = [request.query_params.get('user_username')]
