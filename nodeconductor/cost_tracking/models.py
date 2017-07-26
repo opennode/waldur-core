@@ -214,7 +214,7 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
             else:
                 return self.scope.name
         else:
-            return self.details['name']
+            return self.details.get('name')
 
     def collect_children(self):
         """
