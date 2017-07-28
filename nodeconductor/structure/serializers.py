@@ -303,6 +303,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
         fields = (
             'url',
             'uuid',
+            'created',
             'name', 'native_name', 'abbreviation', 'contact_details',
             'agreement_number', 'email', 'phone_number', 'access_subnets',
             'projects',
