@@ -372,6 +372,7 @@ class ServiceFilterMetaclass(FilterSetMetaclass):
 class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filters.FilterSet)):
     customer = django_filters.UUIDFilter(name='customer__uuid')
     name = django_filters.CharFilter(name='settings__name', lookup_expr='icontains')
+    name_exact = django_filters.CharFilter(name='settings__name', lookup_expr='exact')
     project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
     project_uuid = django_filters.UUIDFilter(name='projects__uuid', distinct=True)
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
@@ -394,7 +395,7 @@ class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filter
 
     class Meta(object):
         model = models.Service
-        fields = ('name', 'project_uuid', 'customer', 'project', 'settings', 'shared', 'type', 'tag', 'rtag')
+        fields = ('name', 'name_exact', 'project_uuid', 'customer', 'project', 'settings', 'shared', 'type', 'tag', 'rtag')
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
@@ -446,6 +447,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
                                                       lookup_expr='icontains')
     # resource
     name = django_filters.CharFilter(lookup_expr='icontains')
+    name_exact = django_filters.CharFilter(lookup_expr='exact')
     description = django_filters.CharFilter(lookup_expr='icontains')
     state = core_filters.MappedMultipleChoiceFilter(
         choices=[(representation, representation) for db_value, representation in core_models.StateMixin.States.CHOICES],
@@ -491,7 +493,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             # service settings
             'service_settings_name', 'service_settings_uuid',
             # resource
-            'name', 'description', 'state', 'uuid', 'tag', 'rtag',
+            'name', 'name_exact', 'description', 'state', 'uuid', 'tag', 'rtag',
         )
         strict = django_filters.STRICTNESS.IGNORE
 
@@ -562,13 +564,11 @@ class StartTimeFilter(BaseFilterBackend):
 
 
 class BaseServicePropertyFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(
-        name='name',
-        lookup_expr='icontains',
-    )
+    name = django_filters.CharFilter(name='name', lookup_expr='icontains')
+    name_exact = django_filters.CharFilter(name='name', lookup_expr='exact')
 
     class Meta(object):
-        fields = ('name',)
+        fields = ('name', 'name_exact')
 
 
 class ServicePropertySettingsFilter(BaseServicePropertyFilter):
