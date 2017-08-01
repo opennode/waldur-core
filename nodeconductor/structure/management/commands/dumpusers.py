@@ -25,7 +25,10 @@ def format_string_to_column_size(string):
     if len(string) <= COLUMN_MAX_WIDTH:
         return string
 
-    return '\n'.join(string[i:i + COLUMN_MAX_WIDTH] for i in range(0, len(string), COLUMN_MAX_WIDTH))
+    formatted = '\n'.join(string[i:i + COLUMN_MAX_WIDTH] for i in range(0, len(string), COLUMN_MAX_WIDTH))
+    if isinstance(formatted, str):
+        formatted = unicode(formatted, errors='replace')
+    return formatted
 
 
 def to_string(value):

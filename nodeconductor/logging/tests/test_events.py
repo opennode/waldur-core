@@ -1,7 +1,9 @@
 import unittest
 
 import mock
+
 from django.conf import settings
+from django.test import override_settings
 from rest_framework import test
 from rest_framework import status
 
@@ -10,33 +12,140 @@ from nodeconductor.structure.tests import factories as structure_factories
 
 from . import factories
 from .. import utils
+from ..loggers import EventLogger, event_logger
 
 
+def override_elasticsearch_settings(**kwargs):
+    nodeconductor_settings = settings.NODECONDUCTOR.copy()
+    nodeconductor_settings['ELASTICSEARCH'] = {
+        'username': 'username',
+        'password': 'password',
+        'host': 'example.com',
+        'port': '9999',
+        'protocol': 'https',
+    }
+    return override_settings(NODECONDUCTOR=nodeconductor_settings, **kwargs)
+
+
+@override_elasticsearch_settings()
 class BaseEventsApiTest(test.APITransactionTestCase):
     def setUp(self):
-        nodeconductor_section = settings.NODECONDUCTOR.copy()
-        nodeconductor_section['ELASTICSEARCH'] = {
-                'username': 'username',
-                'password': 'password',
-                'host': 'example.com',
-                'port': '9999',
-                'protocol': 'https',
-            }
-        self.settings_patcher = self.settings(NODECONDUCTOR=nodeconductor_section)
-        self.settings_patcher.enable()
-
         self.es_patcher = mock.patch('nodeconductor.logging.elasticsearch_client.Elasticsearch')
         self.mocked_es = self.es_patcher.start()
         self.mocked_es().search.return_value = {'hits': {'total': 0, 'hits': []}}
 
     def tearDown(self):
-        self.settings_patcher.disable()
         self.es_patcher.stop()
+
+    def get_term(self, name):
+        call_args = self.mocked_es().search.call_args[-1]
+        query = call_args['body']['query']['bool']
+        if name in query:
+            return query[name][-1]['terms']
 
     @property
     def must_terms(self):
-        call_args = self.mocked_es().search.call_args[-1]
-        return call_args['body']['query']['bool']['must'][-1]['terms']
+        return self.get_term('must')
+
+    @property
+    def must_not_terms(self):
+        return self.get_term('must_not')
+
+
+class DebugEventLogger(EventLogger):
+
+    class Meta:
+        event_types = (
+            'debug_started',
+            'debug_succeeded',
+            'debug_failed',
+        )
+        event_groups = {
+            'debug_only': event_types,
+        }
+
+
+class ExtraEventLogger(EventLogger):
+
+    class Meta:
+        event_types = (
+            'update_started',
+            'update_succeeded',
+            'update_failed',
+        )
+        event_groups = {
+            'update': event_types
+        }
+
+
+class UserEventLogger(EventLogger):
+
+    class Meta:
+        event_types = (
+            'user_created',
+            'user_deleted',
+        )
+        event_groups = {
+            'user': event_types
+        }
+
+
+class EventGetTest(BaseEventsApiTest):
+
+    def setUp(self):
+        super(EventGetTest, self).setUp()
+        staff = structure_factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff)
+
+        self.old_loggers = event_logger.__dict__.copy()
+        event_logger.unregister_all()
+        event_logger.register('debug_logger', DebugEventLogger)
+        event_logger.register('extra_logger', ExtraEventLogger)
+        event_logger.register('user_logger', UserEventLogger)
+
+    def tearDown(self):
+        event_logger.__dict__ = self.old_loggers
+
+    @override_elasticsearch_settings(DEBUG=True)
+    def test_debug_events_are_not_filtered_out_in_debug_mode(self):
+        self.get_events()
+        self.assertIsNone(self.must_not_terms)
+
+    @override_elasticsearch_settings(DEBUG=False)
+    def test_debug_events_are_filtered_out_in_production_mode(self):
+        self.get_events()
+
+        self.assertItemsEqual(self.must_not_terms['event_type'], [
+            'debug_started',
+            'debug_succeeded',
+            'debug_failed',
+        ])
+
+    @override_elasticsearch_settings(DEBUG=False)
+    def test_extra_and_debug_events_combined(self):
+        self.get_events({'exclude_extra': True})
+        self.assertItemsEqual(self.must_not_terms['event_type'], [
+            'debug_started',
+            'debug_succeeded',
+            'debug_failed',
+            'update_started',
+            'update_succeeded',
+            'update_failed',
+        ])
+
+    @override_elasticsearch_settings(DEBUG=False)
+    def test_features_and_debug_events_combined(self):
+        self.get_events({'exclude_features': ['user']})
+        self.assertItemsEqual(self.must_not_terms['event_type'], [
+            'debug_started',
+            'debug_succeeded',
+            'debug_failed',
+            'user_created',
+            'user_deleted',
+        ])
+
+    def get_events(self, params=None):
+        return self.client.get(factories.EventFactory.get_list_url(), params)
 
 
 class ScopeTypeTest(BaseEventsApiTest):
