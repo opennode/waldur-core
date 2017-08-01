@@ -7,7 +7,7 @@ from django.contrib.admin import SimpleListFilter
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.core.exceptions import ValidationError
 from django.db import models as django_models
-from django.forms import ModelMultipleChoiceField, ModelForm, PasswordInput, RadioSelect, ChoiceField, CharField
+from django.forms import ModelMultipleChoiceField, ModelForm, RadioSelect, ChoiceField, CharField
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils import six
@@ -16,7 +16,7 @@ from django.utils.translation import ungettext
 from jsoneditor.forms import JSONEditor
 
 from nodeconductor.core import utils as core_utils
-from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction
+from nodeconductor.core.admin import get_admin_url, ExecutorAdminAction, PasswordWidget
 from nodeconductor.core.models import User
 from nodeconductor.core.tasks import send_task
 from nodeconductor.core.validators import BackendURLValidator
@@ -245,7 +245,7 @@ class ServiceSettingsAdminForm(ModelForm):
         widgets = {
             'options': JSONEditor(),
             'geolocations': JSONEditor(),
-            'password': PasswordInput(render_value=True),
+            'password': PasswordWidget(),
         }
 
     def __init__(self, *args, **kwargs):

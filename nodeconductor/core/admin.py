@@ -35,6 +35,13 @@ class ReadonlyTextWidget(forms.TextInput):
         return render_to_readonly(self.format_value(value))
 
 
+class PasswordWidget(forms.PasswordInput):
+    template_name = 'admin/core/widgets/password-widget.html'
+
+    def __init__(self, attrs=None):
+        super(PasswordWidget, self).__init__(attrs, render_value=True)
+
+
 class OptionalChoiceField(forms.ChoiceField):
     def __init__(self, choices=(), *args, **kwargs):
         empty = [('', '---------')]
