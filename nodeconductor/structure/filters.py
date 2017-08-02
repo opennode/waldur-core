@@ -447,7 +447,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
                                                       lookup_expr='icontains')
     # resource
     name = django_filters.CharFilter(lookup_expr='icontains')
-    name_exact = django_filters.CharFilter(lookup_expr='exact')
+    name_exact = django_filters.CharFilter(name='name', lookup_expr='exact')
     description = django_filters.CharFilter(lookup_expr='icontains')
     state = core_filters.MappedMultipleChoiceFilter(
         choices=[(representation, representation) for db_value, representation in core_models.StateMixin.States.CHOICES],
