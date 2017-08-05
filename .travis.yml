@@ -17,4 +17,4 @@ deploy:
     secure: K4nUGpELCyhmEvqVh7Q74W+9tOYO/btsj9q2MdiUTbxIQHBeRTsN2UIsi4CJD8CoVwD95x/6Cfxqh86sHEOpU3sRYV7W5wKH4OJ1n5f/KRuKFqQ7VR6KVap9hWg1HvXkT/XIfprom5dYeHv+fvhF5hryk1V5fPF2pTdjP/pUS9E=
   on:
     tags: true
-    repo: opennode/nodeconductor
+    repo: opennode/waldur-core
