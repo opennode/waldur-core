@@ -49,3 +49,8 @@ class TestNewInstance(QuotaModelMixin, structure_models.VirtualMachine):
     @property
     def external_ips(self):
         return ['8.8.8.8']
+
+
+class TestSubResource(structure_models.SubResource):
+
+    service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)

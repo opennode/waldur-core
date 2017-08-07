@@ -109,4 +109,33 @@ class Migration(migrations.Migration):
             name='testservice',
             unique_together=set([('customer', 'settings')]),
         ),
+        migrations.CreateModel(
+            name='TestSubResource',
+            fields=[
+                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False,
+                                                                verbose_name='created')),
+                ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, editable=False,
+                                                                      verbose_name='modified')),
+                ('description', models.CharField(blank=True, max_length=500, verbose_name='description')),
+                ('name', models.CharField(max_length=150, validators=[nodeconductor.core.validators.validate_name],
+                                          verbose_name='name')),
+                ('uuid', nodeconductor.core.fields.UUIDField()),
+                ('error_message', models.TextField(blank=True)),
+                ('state', django_fsm.FSMIntegerField(
+                    choices=[(5, 'Creation Scheduled'), (6, 'Creating'), (1, 'Update Scheduled'), (2, 'Updating'),
+                             (7, 'Deletion Scheduled'), (8, 'Deleting'), (3, 'OK'), (4, 'Erred')], default=5)),
+                ('backend_id', models.CharField(blank=True, max_length=255)),
+                ('service_project_link', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT,
+                                                           to='structure_tests.TestServiceProjectLink')),
+                ('tags', taggit.managers.TaggableManager(blank=True, help_text='A comma-separated list of tags.',
+                                                         through='taggit.TaggedItem', to='taggit.Tag',
+                                                         verbose_name='Tags')),
+            ],
+            options={
+                'abstract': False,
+            },
+            bases=(nodeconductor.core.models.DescendantMixin, nodeconductor.core.models.BackendModelMixin,
+                   nodeconductor.logging.loggers.LoggableMixin, models.Model),
+        ),
     ]
