@@ -51,10 +51,10 @@ setup(
     version='0.145.1',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
-    url='https://github.com/opennode/nodeconductor',
-    description='NodeConductor is REST server for infrastructure management.',
+    url='https://github.com/opennode/waldur-core',
+    description='Waldur core is a core of Waldur cloud management service.',
     long_description=open('README.rst').read(),
-    packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+    packages=find_packages(),
     install_requires=install_requires,
     extras_require={
         'dev': dev_requires,
