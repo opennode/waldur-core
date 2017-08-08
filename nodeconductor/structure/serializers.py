@@ -24,7 +24,7 @@ from nodeconductor.quotas import serializers as quotas_serializers
 from nodeconductor.structure import (models, SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
                                      executors)
 from nodeconductor.structure.managers import filter_queryset_for_user
-from nodeconductor.structure.models import ServiceProjectLink
+from nodeconductor.structure.models import ServiceProjectLink, SubResource
 
 User = auth.get_user_model()
 logger = logging.getLogger(__name__)
@@ -1105,6 +1105,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     @cached_property
     def get_resources_count_map(self):
         resource_models = SupportedServices.get_service_resources(self.Meta.model)
+        resource_models = set(resource_models) - set(SubResource.get_all_models())
         counts = defaultdict(lambda: 0)
         user = self.context['request'].user
         for model in resource_models:

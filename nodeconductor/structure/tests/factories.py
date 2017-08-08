@@ -265,3 +265,8 @@ class ServiceCertificationFactory(factory.DjangoModelFactory):
         if extracted:
             for service_settings in extracted:
                 self.service_settings.add(service_settings)
+
+
+class TestSubResourceFactory(factory.DjangoModelFactory):
+    class Meta(object):
+        model = test_models.TestSubResource
