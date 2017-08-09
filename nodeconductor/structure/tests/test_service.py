@@ -70,6 +70,12 @@ class ServiceResourcesCounterTest(test.APITransactionTestCase):
         response = self.client.get(self.service_url)
         self.assertEqual(2, response.data['resources_count'])
 
+    def test_subresources_are_skipped(self):
+        subresource = factories.TestSubResourceFactory(service_project_link=self.spl1)
+        self.client.force_authenticate(self.user1)
+        response = self.client.get(self.service_url)
+        self.assertEqual(1, response.data['resources_count'])
+
 
 class UnlinkServiceTest(test.APITransactionTestCase):
     def test_when_service_is_unlinked_all_related_resources_are_unlinked_too(self):
