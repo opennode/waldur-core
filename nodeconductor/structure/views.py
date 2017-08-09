@@ -1571,6 +1571,10 @@ class BaseServiceViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
                 except ServiceBackendNotImplemented:
                     resources = []
 
+                page = self.paginate_queryset(resources)
+                if page is not None:
+                    return self.get_paginated_response(page)
+
                 return Response(resources)
             except (ServiceBackendError, ValidationError) as e:
                 raise APIException(e)
