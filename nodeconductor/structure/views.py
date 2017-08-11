@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import time
 import logging
 from collections import defaultdict
+from functools import partial
 
 from django.conf import settings as django_settings
 from django.contrib import auth
@@ -1279,11 +1280,23 @@ class ServicesViewSet(mixins.ListModelMixin,
 class BaseCounterView(viewsets.GenericViewSet):
     # Fix for schema generation
     queryset = []
+    extra_counters = {}
+
+    @classmethod
+    def register_counter(cls, name, func):
+        cls.extra_counters[name] = func
+
+    def get_counters(self):
+        counters = self.get_fields()
+        for name, func in self.extra_counters.items():
+            counters[name] = partial(func, self.object)
+        return counters
 
     def list(self, request, uuid=None):
         result = {}
-        fields = request.query_params.getlist('fields') or self.get_fields().keys()
-        for field, func in self.get_fields().items():
+        counters = self.get_counters()
+        fields = request.query_params.getlist('fields') or counters.keys()
+        for field, func in counters.items():
             if field in fields:
                 result[field] = func()
 
@@ -1570,6 +1583,10 @@ class BaseServiceViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
                     resources = backend.get_resources_for_import(**self.get_import_context())
                 except ServiceBackendNotImplemented:
                     resources = []
+
+                page = self.paginate_queryset(resources)
+                if page is not None:
+                    return self.get_paginated_response(page)
 
                 return Response(resources)
             except (ServiceBackendError, ValidationError) as e:
