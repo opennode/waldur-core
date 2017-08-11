@@ -8,7 +8,7 @@ from django.urls import reverse
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
-from nodeconductor.structure import signals, models
+from nodeconductor.structure import signals, models, views
 from nodeconductor.structure.models import CustomerRole, Project, ProjectRole
 from nodeconductor.structure.tests import factories, fixtures
 
@@ -467,6 +467,12 @@ class ProjectCountersListTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {'users': 2, 'apps': 0, 'vms': 1})
 
+    def test_additional_counters_could_be_registered(self):
+        views.ProjectCountersView.register_counter('test', lambda project: 100)
+        self.client.force_authenticate(self.fixture.owner)
+        response = self.client.get(self.url, {'fields': ['test']})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {'test': 100})
 
 @ddt
 class ProjectUpdateCertificationTest(test.APITransactionTestCase):
