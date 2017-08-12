@@ -1,5 +1,5 @@
-.. image:: https://travis-ci.org/opennode/nodeconductor.svg?branch=develop
-    :target: https://travis-ci.org/opennode/nodeconductor
+.. image:: https://travis-ci.org/opennode/waldur-core.svg?branch=develop
+    :target: https://travis-ci.org/opennode/waldur-core
     :alt: Build status
 
 Waldur Core
