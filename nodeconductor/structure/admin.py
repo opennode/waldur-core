@@ -151,16 +151,27 @@ class CustomerAdminForm(ModelForm):
         self.save_m2m()
 
 
+class BillingMixin(object):
+    def get_accounting_start_date(self, customer):
+        if not hasattr(customer, 'payment_details'):
+            return None
+        return customer.payment_details.accounting_start_date
+
+    get_accounting_start_date.short_description = _('Start day of accounting')
+
+
 class CustomerAdmin(FormRequestAdminMixin,
                     ResourceCounterFormMixin,
+                    BillingMixin,
                     ProtectedModelMixin,
                     admin.ModelAdmin):
     form = CustomerAdminForm
     fields = ('name', 'uuid', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'agreement_number', 'email', 'phone_number', 'access_subnets',
               'country', 'vat_code', 'is_company', 'owners', 'support_users')
-    list_display = ['name', 'uuid', 'abbreviation', 'created', 'get_vm_count', 'get_app_count',
-                    'get_private_cloud_count']
+    list_display = ['name', 'uuid', 'abbreviation',
+                    'created', 'get_accounting_start_date',
+                    'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     search_fields = ['name', 'uuid', 'abbreviation']
     readonly_fields = ['uuid']
     inlines = [QuotaInline]
