@@ -510,6 +510,14 @@ class Project(core_models.DescribableMixin,
             target_models=lambda: Storage.get_all_models(),
             path_to_scope='project',
         )
+        nc_volume_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Volume.get_all_models(),
+            path_to_scope='project',
+        )
+        nc_snapshot_count = quotas_fields.CounterQuotaField(
+            target_models=lambda: Snapshot.get_all_models(),
+            path_to_scope='project',
+        )
         nc_service_project_link_count = quotas_fields.CounterQuotaField(
             target_models=lambda: ServiceProjectLink.get_all_models(),
             path_to_scope='project',
@@ -1111,6 +1119,16 @@ class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin,
 class Storage(core_models.RuntimeStateMixin, NewResource):
     size = models.PositiveIntegerField(help_text=_('Size in MiB'))
 
+    class Meta(object):
+        abstract = True
+
+
+class Volume(Storage):
+    class Meta(object):
+        abstract = True
+
+
+class Snapshot(Storage):
     class Meta(object):
         abstract = True
 
