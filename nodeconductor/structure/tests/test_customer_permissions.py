@@ -46,7 +46,7 @@ class CustomerPermissionSerializerTest(unittest.TestCase):
             'url', 'role', 'pk', 'created', 'expiration_time', 'created_by',
             'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation', 'customer_uuid',
             'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email',
-            'is_expert_provider',
+
         ]
         self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
 
