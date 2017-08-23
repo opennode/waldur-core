@@ -55,7 +55,7 @@ class GenericRelatedFieldTest(APITransactionTestCase):
         self.request.user = self.user
 
         self.field = GenericRelatedField(related_models=get_loggable_models())
-        self.field.context = {'request': self.request}
+        self.field.root._context = {'request': self.request}
 
     def test_if_related_object_exists_it_is_deserialized(self):
         from nodeconductor.structure.tests.factories import CustomerFactory
