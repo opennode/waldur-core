@@ -22,4 +22,5 @@ class Command(BaseCommand):
             raise CommandError('Username %s is already taken.' % username)
 
         user.set_password(password)
+        user.save()
         self.stdout.write(self.style.SUCCESS('User %s has been created.' % username))
