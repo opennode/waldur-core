@@ -7,6 +7,7 @@ from functools import partial
 
 from django.conf import settings as django_settings
 from django.contrib import auth
+from django.db import transaction
 from django.db.models import Q
 from django.http import Http404
 from django.utils.functional import cached_property
@@ -1122,6 +1123,7 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             return {k: v for k, v in resource_models.items() if v in category_models}
         return {}
 
+    @transaction.atomic
     def list(self, request, *args, **kwargs):
         """
         To get a list of supported resources' actions, run **OPTIONS** against
