@@ -5,6 +5,7 @@ import logging
 from celery import shared_task
 from django.core import exceptions
 from django.db import transaction
+from django.db.utils import DatabaseError
 from django.utils import six
 
 from nodeconductor.core import utils as core_utils, tasks as core_tasks, models as core_models
@@ -96,7 +97,10 @@ class BackgroundPullTask(core_tasks.BackgroundTask):
     def on_pull_fail(self, instance, error):
         error_message = six.text_type(error)
         self.log_error_message(instance, error_message)
-        self.set_instance_erred(instance, error_message)
+        try:
+            self.set_instance_erred(instance, error_message)
+        except DatabaseError as e:
+            logger.debug(e, exc_info=True)
 
     def on_pull_success(self, instance):
         if instance.state == instance.States.ERRED:
