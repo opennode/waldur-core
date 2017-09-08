@@ -81,7 +81,11 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        A new customer can only be created by users with staff privilege (is_staff=True).
+        A new customer can only be created:
+
+         - by users with staff privilege (is_staff=True);
+         - by organization owners if OWNER_CAN_MANAGE_CUSTOMER is set to True;
+
         Example of a valid request:
 
         .. code-block:: http
