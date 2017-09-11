@@ -32,12 +32,12 @@ input {
   tcp {
     codec => json
     port => 5959
-    type => "nodeconductor-event"
+    type => "waldur-event"
   }
 }
 
 filter {
-  if [type] == "nodeconductor-event" {
+  if [type] == "waldur-event" {
     json {
       source => "message"
     }
