@@ -33,7 +33,7 @@ config_defaults = {
     'elasticsearch': {
         # This location is RHEL7-specific, may be different on other platforms
         'ca_certs': '/etc/pki/tls/certs/ca-bundle.crt',  # only has effect if verify_certs is true
-        'host': '',
+        'host': 'localhost',
         'password': '',
         'port': '9200',
         'protocol': 'http',
@@ -44,7 +44,7 @@ config_defaults = {
         'hook': 'false',
         'log_file': '',  # empty to disable logging events to file
         'log_level': 'INFO',
-        'logserver_host': '',
+        'logserver_host': 'localhost',
         'logserver_port': 5959,
         'syslog': 'false',
     },
@@ -226,13 +226,16 @@ LOGGING = {
         'tcp-event': {
             'class': 'nodeconductor.logging.log.TCPEventHandler',
             'filters': ['is-event'],
+            'host': config.get('events', 'logserver_host'),
             'level': config.get('events', 'log_level').upper(),
+            'port': config.getint('events', 'logserver_port'),
         },
+
         # Send logs to web hook
         'hook-event': {
             'class': 'nodeconductor.logging.log.HookHandler',
             'filters': ['is-event'],
-            'level': config.get('events', 'log_level').upper()
+            'level': config.get('events', 'log_level').upper(),
         },
     },
 
@@ -255,7 +258,7 @@ LOGGING = {
             'handlers': [],
         },
         'nodeconductor': {
-            'handlers': [],
+            'handlers': ['tcp-event'],
             'level': config.get('logging', 'log_level').upper(),
         },
         'requests': {
@@ -299,11 +302,6 @@ if config.get('logging', 'log_level').upper() == 'DEBUG':
 if config.get('events', 'log_file') != '':
     LOGGING['handlers']['file-event']['filename'] = config.get('events', 'log_file')
     LOGGING['loggers']['nodeconductor']['handlers'].append('file-event')
-
-if config.get('events', 'logserver_host') != '':
-    LOGGING['handlers']['tcp-event']['host'] = config.get('events', 'logserver_host')
-    LOGGING['handlers']['tcp-event']['port'] = config.getint('events', 'logserver_port')
-    LOGGING['loggers']['nodeconductor']['handlers'].append('tcp-event')
 
 if config.getboolean('events', 'syslog'):
     LOGGING['handlers']['syslog-event']['address'] = '/dev/log'
