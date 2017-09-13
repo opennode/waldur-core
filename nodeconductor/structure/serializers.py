@@ -1328,7 +1328,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     created = serializers.DateTimeField(read_only=True)
     resource_type = serializers.SerializerMethodField()
 
-    tags = TagListSerializerField()
+    tags = TagListSerializerField(required=False)
     access_url = serializers.SerializerMethodField()
     is_link_valid = serializers.BooleanField(
         source='service_project_link.is_valid',
