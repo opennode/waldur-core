@@ -7,6 +7,7 @@ from functools import partial
 
 from django.conf import settings as django_settings
 from django.contrib import auth
+from django.db import transaction
 from django.db.models import Q
 from django.http import Http404
 from django.utils.functional import cached_property
@@ -80,7 +81,11 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        A new customer can only be created by users with staff privilege (is_staff=True).
+        A new customer can only be created:
+
+         - by users with staff privilege (is_staff=True);
+         - by organization owners if OWNER_CAN_MANAGE_CUSTOMER is set to True;
+
         Example of a valid request:
 
         .. code-block:: http
@@ -1122,6 +1127,7 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             return {k: v for k, v in resource_models.items() if v in category_models}
         return {}
 
+    @transaction.atomic
     def list(self, request, *args, **kwargs):
         """
         To get a list of supported resources' actions, run **OPTIONS** against
