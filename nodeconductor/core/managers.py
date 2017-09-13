@@ -61,17 +61,17 @@ class GenericKeyMixin(object):
             kwargs[self.content_type_field + '__isnull'] = generic_key_value
         return kwargs
 
-    def filter(self, **kwargs):
+    def filter(self, *args, **kwargs):
         kwargs = self._preprocess_kwargs(kwargs)
-        return super(GenericKeyMixin, self).filter(**kwargs)
+        return super(GenericKeyMixin, self).filter(*args, **kwargs)
 
-    def get(self, **kwargs):
+    def get(self, *args, **kwargs):
         kwargs = self._preprocess_kwargs(kwargs)
-        return super(GenericKeyMixin, self).get(**kwargs)
+        return super(GenericKeyMixin, self).get(*args, **kwargs)
 
-    def get_or_create(self, **kwargs):
+    def get_or_create(self, *args, **kwargs):
         kwargs = self._preprocess_kwargs(kwargs)
-        return super(GenericKeyMixin, self).get_or_create(**kwargs)
+        return super(GenericKeyMixin, self).get_or_create(*args, **kwargs)
 
 
 class SummaryQuerySet(object):
