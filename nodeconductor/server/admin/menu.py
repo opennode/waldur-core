@@ -44,7 +44,7 @@ class CustomMenu(Menu):
         'nodeconductor_openstack.*',
         'nodeconductor_aws.*',
         'nodeconductor_digitalocean.*',
-        'nodeconductor_ldap.*',
+        'waldur_slurm.*',
     )
 
     USERS = (
@@ -56,16 +56,10 @@ class CustomMenu(Menu):
     ACCOUNTING = (
         'nodeconductor_assembly_waldur.invoices.*',
         'nodeconductor.cost_tracking.*',
+        'nodeconductor_assembly_waldur.slurm_invoices.*',
     )
 
     APPLICATION_PROVIDERS = (
-        'nodeconductor_sugarcrm.*',
-        'nodeconductor_saltstack.*',
-        'nodeconductor_zabbix.*',
-        'nodeconductor_jira.*',
-        'nodeconductor_gitlab.*',
-        'nodeconductor_oracle_dbaas.*',
-        'nodeconductor_paas_oracle.*',
         'waldur_ansible.*',
     )
 
