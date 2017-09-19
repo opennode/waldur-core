@@ -286,3 +286,12 @@ class ExtraActionsMixin(object):
 
     def _get_action_label(self, action):
         return getattr(action, 'name', action.__name__.replace('_', ' ').capitalize())
+
+
+class UpdateOnlyModelAdmin(object):
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
