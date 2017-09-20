@@ -45,6 +45,7 @@ class CustomMenu(Menu):
         'nodeconductor_aws.*',
         'nodeconductor_digitalocean.*',
         'waldur_slurm.*',
+        'nodeconductor_assembly_waldur.slurm_invoices.*',
     )
 
     USERS = (
@@ -56,7 +57,6 @@ class CustomMenu(Menu):
     ACCOUNTING = (
         'nodeconductor_assembly_waldur.invoices.*',
         'nodeconductor.cost_tracking.*',
-        'nodeconductor_assembly_waldur.slurm_invoices.*',
     )
 
     APPLICATION_PROVIDERS = (
