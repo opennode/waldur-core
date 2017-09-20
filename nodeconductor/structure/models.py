@@ -549,7 +549,7 @@ class Project(core_models.DescribableMixin,
         }
 
     def can_user_update_quotas(self, user):
-        return user.is_staff
+        return user.is_staff or self.customer.has_user(user, CustomerRole.OWNER)
 
     def can_manage_role(self, user, role, timestamp=False):
         """

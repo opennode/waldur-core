@@ -5,10 +5,9 @@ from django.test import TransactionTestCase
 from django.utils import timezone
 from freezegun import freeze_time
 
-from nodeconductor.core import utils as core_utils
-from nodeconductor.cost_tracking import CostTrackingRegister, models, ConsumableItem, tasks, exceptions
+from nodeconductor.cost_tracking import CostTrackingRegister, models, ConsumableItem, tasks
 from nodeconductor.cost_tracking.tests import factories
-from nodeconductor.structure.tests import factories as structure_factories, tasks as structure_test_tasks
+from nodeconductor.structure.tests import factories as structure_factories
 from nodeconductor.structure.tests.models import TestNewInstance
 
 
@@ -147,46 +146,6 @@ class ResourceUpdateTest(TransactionTestCase):
             estimate = models.PriceEstimate.objects.get(scope=scope, month=8, year=2016)
             self.assertAlmostEqual(estimate.total, expected)
 
-    def test_error_is_raised_if_resource_cost_is_over_limit(self):
-        resource = structure_factories.TestNewInstanceFactory(
-            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
-        models.PriceEstimate.objects.filter(scope=resource).update(limit=0)
-
-        resource.disk += 10 * 1024
-
-        self.assertRaises(exceptions.CostLimitExceeded, resource.save)
-
-    def test_error_is_raised_if_resource_ancestor_cost_is_over_limit(self):
-        resource = structure_factories.TestNewInstanceFactory(
-            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
-        models.PriceEstimate.objects.filter(scope=resource.service_project_link.project).update(limit=0)
-
-        resource.disk += 10 * 1024
-
-        self.assertRaises(exceptions.CostLimitExceeded, resource.save)
-
-    def test_error_is_not_raise_if_resource_price_has_been_decreased(self):
-        resource = structure_factories.TestNewInstanceFactory(
-            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
-        models.PriceEstimate.objects.filter(scope=resource).update(limit=0)
-
-        resource.disk -= 10 * 1024
-
-        try:
-            resource.save()
-        except exceptions.CostLimitExceeded:
-            self.fail('Resource price has been decreased, error should not be raised.')
-
-    def test_error_is_not_raised_inside_celery_task(self):
-        resource = structure_factories.TestNewInstanceFactory(
-            state=TestNewInstance.States.OK, runtime_state='online', disk=20 * 1024)
-        models.PriceEstimate.objects.filter(scope=resource).update(limit=0)
-
-        try:
-            structure_test_tasks.pull_instance(core_utils.serialize_instance(resource), pulled_disk=40 * 1024)
-        except exceptions.CostLimitExceeded:
-            self.fail('Resource was updated in celery task, error should not be raised.')
-
 
 class ResourceQuotaUpdateTest(TransactionTestCase):
 
@@ -272,17 +231,3 @@ class ScopeDeleteTest(TransactionTestCase):
         for scope in (self.spl, self.service, self.project, self.customer):
             for price_estimate in models.PriceEstimate.objects.filter(scope=scope):
                 self.assertEqual(price_estimate.total, 0)
-
-
-class CopyFromPreviousEstimateTest(TransactionTestCase):
-
-    def test_threshold_and_limit_were_copied_from_previous_month_estimate(self):
-        previous_month, previous_year = 3, 2017
-        previous_estimate = factories.PriceEstimateFactory(
-            month=previous_month, year=previous_year, limit=100, threshold=80)
-
-        current_estimate = factories.PriceEstimateFactory(
-            month=previous_month + 1, year=previous_year, scope=previous_estimate.scope)
-
-        self.assertEqual(current_estimate.limit, previous_estimate.limit)
-        self.assertEqual(current_estimate.threshold, previous_estimate.threshold)
