@@ -116,6 +116,19 @@ class EventFilterBackend(filters.BaseFilterBackend):
                     return EmptyQueryset()
                 for field, uuids in permitted_items:
                     must_terms[field] = [uuid.hex for uuid in uuids]
+
+        elif 'resource_type' in request.query_params and 'resource_uuid' in request.query_params:
+            # Filter events by resource type and uuid.
+            # Please note, that permission checks are skipped,
+            # because we can't check permission for deleted resources.
+            # Also note, that resource type validation is skipped as well,
+            # because resource type name formatting is defined in structure application,
+            # but we don't want to create circular dependency between logging and structure apps.
+            # This issue could be fixed by switching resource type name formatting to str(model._meta)
+            # as it is done for scope_type parameter validation.
+            must_terms[format_raw_field('resource_type')] = request.query_params['resource_type']
+            must_terms[format_raw_field('resource_uuid')] = request.query_params['resource_uuid']
+
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
 

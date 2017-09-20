@@ -1,12 +1,10 @@
 from __future__ import unicode_literals
 
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
-from django.utils.translation import ugettext_lazy as _
 
-from rest_framework import viewsets, exceptions, decorators, response, status
+from rest_framework import viewsets, exceptions
 
 from nodeconductor.core import views as core_views
 from nodeconductor.cost_tracking import models, serializers, filters
@@ -36,20 +34,6 @@ class PriceEstimateViewSet(core_views.ReadOnlyActionsViewSet):
             context['depth'] = min(depth, 10)  # DRF restriction - serializer depth cannot be > 10
         return context
 
-    def _user_can_set_threshold_and_limit(self, scope):
-        """
-        User can manage price limit and threshold.
-        :param scope: price estimate scope.
-        :return: True if user is staff. True if user is owner and OWNER_CAN_MODIFY_COST_LIMIT settings is set to True.
-        """
-
-        if self.request.user.is_staff:
-            return True
-
-        customer = structure_permissions._get_customer(scope)
-        is_owner = customer.has_user(self.request.user, structure_models.CustomerRole.OWNER)
-        return is_owner and settings.NODECONDUCTOR['OWNER_CAN_MODIFY_COST_LIMIT']
-
     def get_queryset(self):
         return models.PriceEstimate.objects.filtered_for_user(self.request.user).order_by(
             '-year', '-month')
@@ -69,85 +53,6 @@ class PriceEstimateViewSet(core_views.ReadOnlyActionsViewSet):
         price estimate will shows its children - project and service and grandchildren - serviceprojectlink.
         """
         return super(PriceEstimateViewSet, self).list(request, *args, **kwargs)
-
-    @decorators.list_route(methods=['post'])
-    def threshold(self, request, **kwargs):
-        """
-        Run **POST** request against */api/price-estimates/threshold/*
-        to set alert threshold for price estimate.
-        Example request:
-
-        .. code-block:: http
-
-            POST /api/price-estimates/threshold/
-            Accept: application/json
-            Content-Type: application/json
-            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-            Host: example.com
-
-            {
-                "scope": "http://example.com/api/projects/ab2e3d458e8a4ecb9dded36f3e46878d/",
-                "threshold": 100.0
-            }
-        """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        threshold = serializer.validated_data['threshold']
-        scope = serializer.validated_data['scope']
-
-        if not self._user_can_set_threshold_and_limit(scope):
-            raise exceptions.PermissionDenied()
-
-        price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
-        if created and isinstance(scope, structure_models.ResourceMixin):  # TODO: Check is it possible to move this code to manager.
-            models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
-        price_estimate.threshold = threshold
-        price_estimate.save(update_fields=['threshold'])
-        return response.Response({'detail': _('Threshold for price estimate is updated.')},
-                                 status=status.HTTP_200_OK)
-
-    threshold_serializer_class = serializers.PriceEstimateThresholdSerializer
-
-    @decorators.list_route(methods=['post'])
-    def limit(self, request, **kwargs):
-        """
-        Run **POST** request against */api/price-estimates/limit/*
-        to set price estimate limit. When limit is set, provisioning is disabled
-        if total estimated monthly cost of project and resource exceeds project cost limit.
-        If limit is -1, project cost limit do not apply. Example request:
-
-        .. code-block:: http
-
-            POST /api/price-estimates/limit/
-            Accept: application/json
-            Content-Type: application/json
-            Authorization: Token c84d653b9ec92c6cbac41c706593e66f567a7fa4
-            Host: example.com
-
-            {
-                "scope": "http://example.com/api/projects/ab2e3d458e8a4ecb9dded36f3e46878d/",
-                "limit": 100.0
-            }
-        """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        limit = serializer.validated_data['limit']
-        scope = serializer.validated_data['scope']
-
-        if not self._user_can_set_threshold_and_limit(scope):
-            raise exceptions.PermissionDenied()
-
-        price_estimate, created = models.PriceEstimate.objects.get_or_create_current(scope)
-        if created and isinstance(scope, structure_models.ResourceMixin):
-            models.ConsumptionDetails.get_or_create(price_estimate=price_estimate)
-        price_estimate.limit = limit
-        price_estimate.save(update_fields=['limit'])
-        return response.Response({'detail': _('Limit for price estimate is updated.')},
-                                 status=status.HTTP_200_OK)
-
-    limit_serializer_class = serializers.PriceEstimateLimitSerializer
 
 
 class PriceListItemViewSet(viewsets.ModelViewSet):
