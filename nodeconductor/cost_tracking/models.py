@@ -21,10 +21,9 @@ from nodeconductor.core import models as core_models, utils as core_utils
 from nodeconductor.core.fields import JSONField
 from nodeconductor.cost_tracking import managers, ConsumableItem
 from nodeconductor.logging.loggers import LoggableMixin
-from nodeconductor.logging.models import AlertThresholdMixin
 from nodeconductor.structure import models as structure_models, SupportedServices
 
-from . import CostTrackingRegister, exceptions
+from . import CostTrackingRegister
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class EstimateUpdateError(Exception):
 
 
 @python_2_unicode_compatible
-class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, core_models.DescendantMixin):
+class PriceEstimate(LoggableMixin, core_models.UuidMixin, core_models.DescendantMixin):
     """ Store prices based on both estimates and actual consumption.
 
         Every record holds a list of children estimates.
@@ -52,8 +51,6 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
 
     total = models.FloatField(default=0, help_text=_('Predicted price for scope for current month.'))
     consumed = models.FloatField(default=0, help_text=_('Price for resource until now.'))
-    limit = models.FloatField(
-        default=-1, help_text=_('How many funds object can consume in current month."-1" means no limit.'))
 
     month = models.PositiveSmallIntegerField(validators=[MaxValueValidator(12), MinValueValidator(1)])
     year = models.PositiveSmallIntegerField()
@@ -87,24 +84,10 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         return self.children.all()
 
     def get_log_fields(self):  # For LoggableMixin
-        return 'uuid', 'scope', 'threshold', 'total', 'consumed', 'limit'
-
-    def is_over_threshold(self):  # For AlertThresholdMixin
-        return self.total > self.threshold
-
-    @classmethod
-    def get_checkable_objects(cls):  # For AlertThresholdMixin
-        """ Raise alerts only for price estimates that describe current month. """
-        today = timezone.now()
-        return cls.objects.filter(year=today.year, month=today.month)
+        return 'uuid', 'scope', 'total', 'consumed'
 
     def is_resource_estimate(self):
         return issubclass(self.content_type.model_class(), structure_models.ResourceMixin)
-
-    def is_over_limit(self):
-        if self.limit == -1:
-            return False
-        return self.total > self.limit
 
     def get_previous(self):
         """ Get estimate for the same scope for previous month. """
@@ -144,8 +127,6 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
         diff = new_total - self.total
         with transaction.atomic():
             self.total = new_total
-            if diff > 0 and raise_exception and self.is_over_limit():
-                raise exceptions.CostLimitExceeded(self)
             self.save(update_fields=['total'])
             if update_ancestors:
                 self.update_ancestors_total(diff, raise_exception=raise_exception)
@@ -153,8 +134,6 @@ class PriceEstimate(LoggableMixin, AlertThresholdMixin, core_models.UuidMixin, c
     def update_ancestors_total(self, diff, raise_exception=False):
         for ancestor in self.get_ancestors():
             ancestor.total += diff
-            if diff > 0 and raise_exception and ancestor.is_over_limit():
-                raise exceptions.CostLimitExceeded(ancestor)
             ancestor.save(update_fields=['total'])
 
     def update_consumed(self):

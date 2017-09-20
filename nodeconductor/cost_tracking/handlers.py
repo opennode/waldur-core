@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import datetime
 import logging
 
 from celery import current_task
@@ -11,29 +10,7 @@ from nodeconductor.core import utils as core_utils
 from nodeconductor.cost_tracking import models, CostTrackingRegister, ResourceNotRegisteredError
 from nodeconductor.structure import models as structure_models
 
-from . import log
-
-
 logger = logging.getLogger(__name__)
-
-
-def copy_from_previous_price_estimate(sender, instance, created=False, **kwargs):
-    """ Copy limit and threshold from previous price estimate """
-    if created and instance.scope:
-        current_date = datetime.date.today().replace(year=instance.year, month=instance.month, day=1)
-        prev_date = current_date - relativedelta(months=1)
-        try:
-            prev_estimate = models.PriceEstimate.objects.get(
-                year=prev_date.year,
-                month=prev_date.month,
-                scope=instance.scope,
-            )
-        except models.PriceEstimate.DoesNotExist:
-            pass
-        else:
-            instance.threshold = prev_estimate.threshold
-            instance.limit = prev_estimate.limit
-            instance.save(update_fields=['threshold', 'limit'])
 
 
 def scope_deletion(sender, instance, **kwargs):
@@ -124,24 +101,3 @@ def _create_historical_estimates(resource, configuration):
     while month_start > resource.created:
         month_start -= relativedelta(months=1)
         models.PriceEstimate.create_historical(resource, configuration, max(month_start, resource.created))
-
-
-def log_price_estimate_limit_update(sender, instance, created=False, **kwargs):
-    if created:
-        return
-
-    if instance.tracker.has_changed('limit'):
-        if isinstance(instance.scope, structure_models.Customer):
-            event_type = 'project_price_limit_updated'
-        elif isinstance(instance.scope, structure_models.Project):
-            event_type = 'customer_price_limit_updated'
-        else:
-            logger.warning('A price estimate event for type of "%s" is not registered.', type(instance.scope))
-            return
-
-        message = 'Price limit for "%(scope)s" has been updated from "%(old)s" to "%(new)s".' % {
-            'scope': instance.scope,
-            'old': instance.tracker.previous('limit'),
-            'new': instance.limit
-        }
-        log.event_logger.price_estimate.info(message, event_type=event_type)

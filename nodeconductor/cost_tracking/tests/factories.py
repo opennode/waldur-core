@@ -17,8 +17,6 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
     total = factory.Iterator([10, 100, 1000, 10000, 980, 42])
     month = factory.Iterator(range(1, 13))
     year = factory.Iterator(range(2012, 2016))
-    limit = -1
-    threshold = fuzzy.FuzzyInteger(0, 1000, step=10)
 
     @classmethod
     def get_list_url(self, action=None):

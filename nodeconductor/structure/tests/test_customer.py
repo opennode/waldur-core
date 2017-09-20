@@ -8,6 +8,7 @@ from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
 from nodeconductor.core.tests.helpers import override_nodeconductor_settings
+from nodeconductor.quotas.tests import factories as quota_factories
 from nodeconductor.structure import signals
 from nodeconductor.structure.models import Customer, CustomerRole, ProjectRole
 from nodeconductor.structure.tests import factories, fixtures
@@ -324,6 +325,35 @@ class CustomerQuotasTest(test.APITransactionTestCase):
     def setUp(self):
         self.customer = factories.CustomerFactory()
         self.staff = factories.UserFactory(is_staff=True)
+
+    def test_staff_can_edit_customer_quotas(self):
+        self.client.force_login(self.staff)
+        quota = self.customer.quotas.get(name=Customer.Quotas.nc_project_count)
+
+        url = quota_factories.QuotaFactory.get_url(quota)
+        response = self.client.put(url, {
+            'limit': 100
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        quota.refresh_from_db()
+        self.assertEqual(quota.limit, 100)
+
+    def test_owner_can_not_edit_customer_quotas(self):
+        owner = factories.UserFactory()
+        self.customer.add_user(owner, CustomerRole.OWNER)
+
+        self.client.force_login(owner)
+        quota = self.customer.quotas.get(name=Customer.Quotas.nc_project_count)
+
+        url = quota_factories.QuotaFactory.get_url(quota)
+        response = self.client.put(url, {
+            'limit': 100
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        quota.refresh_from_db()
+        self.assertNotEqual(quota.limit, 100)
 
     def test_customer_projects_quota_increases_on_project_creation(self):
         factories.ProjectFactory(customer=self.customer)

@@ -8,6 +8,7 @@ from django.urls import reverse
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
+from nodeconductor.quotas.tests import factories as quota_factories
 from nodeconductor.structure import signals, models, views
 from nodeconductor.structure.models import CustomerRole, Project, ProjectRole
 from nodeconductor.structure.tests import factories, fixtures
@@ -560,3 +561,36 @@ class ProjectGetTest(test.APITransactionTestCase):
         self.assertIsNotNone('validation_state', response.data['services'][0])
         self.assertEqual(response.data['services'][0]['validation_state'], "ERRED")
         self.assertIn(project_certification.name, response.data['services'][0]['validation_message'])
+
+
+@ddt
+class ProjectQuotasTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ProjectFixture()
+        self.quota = self.fixture.project.quotas.get(name=Project.Quotas.nc_app_count)
+
+    def update_quota(self):
+        url = quota_factories.QuotaFactory.get_url(self.quota)
+        return self.client.put(url, {
+            'limit': 100
+        })
+
+    @data('staff', 'owner')
+    def test_authorized_user_can_edit_project_quota(self, user):
+        self.client.force_login(getattr(self.fixture, user))
+
+        response = self.update_quota()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.quota.refresh_from_db()
+        self.assertEqual(self.quota.limit, 100)
+
+    @data('admin', 'manager')
+    def test_non_authorized_user_can_not_edit_project_quota(self, user):
+        self.client.force_login(getattr(self.fixture, user))
+
+        response = self.update_quota()
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.quota.refresh_from_db()
+        self.assertNotEqual(self.quota.limit, 100)

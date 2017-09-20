@@ -34,15 +34,3 @@ class CostTrackingConfig(AppConfig):
             sender=quotas_models.Quota,
             dispatch_uid='nodeconductor.cost_tracking.handlers.resource_quota_update',
         )
-
-        signals.post_save.connect(
-            handlers.copy_from_previous_price_estimate,
-            sender=PriceEstimate,
-            dispatch_uid='nodeconductor.cost_tracking.handlers.copy_from_previous_price_estimate',
-        )
-
-        signals.post_save.connect(
-            handlers.log_price_estimate_limit_update,
-            sender=PriceEstimate,
-            dispatch_uid='nodeconductor.cost_tracking.handlers.log_price_estimate_limit_update',
-        )
