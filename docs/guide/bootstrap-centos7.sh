@@ -64,7 +64,7 @@ systemctl enable logstash
 # Set up Waldur Core
 yum -y install waldur-core
 
-su - waldur -c "nodeconductor migrate --noinput"
+su - waldur -c "waldur migrate --noinput"
 
 systemctl start waldur-uwsgi
 systemctl enable waldur-uwsgi

@@ -8,8 +8,8 @@ Additional requirements:
 - ``virtualenv``
 - C compiler and development libraries needed to build dependencies
 
-  - CentOS: ``gcc libffi-devel openssl-devel postgresql-devel python-devel``
-  - Ubuntu: ``gcc libffi-dev libsasl2-dev libssl-dev libpq-dev python-dev``
+  - CentOS: ``gcc libffi-devel openssl-devel postgresql-devel libjpeg-devel zlib-devel python-devel``
+  - Ubuntu: ``gcc libffi-dev libsasl2-dev libssl-dev libpq-dev libjpeg8-dev zlib1g-dev python-dev``
 
 **Waldur Core installation**
 
