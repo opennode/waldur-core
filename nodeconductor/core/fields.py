@@ -6,6 +6,7 @@ import uuid
 import copy
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
+from django.conf import settings
 from django.db import models
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext_lazy as _
@@ -145,6 +146,9 @@ class TimestampField(serializers.Field):
 class CountryField(models.CharField):
 
     COUNTRIES = [(country.alpha2, country.name) for country in pycountry.countries]
+
+    if hasattr(settings, 'COUNTRIES'):
+        COUNTRIES = [item for item in COUNTRIES if item[0] in settings.COUNTRIES]
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('max_length', 2)
