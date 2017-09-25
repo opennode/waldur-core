@@ -297,3 +297,6 @@ SWAGGER_SETTINGS = {
         },
     },
 }
+
+
+# COUNTRIES = ['EE', 'LV', 'LT']
