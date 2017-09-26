@@ -1,4 +1,5 @@
 from collections import defaultdict
+import json
 
 from django import forms
 from django.conf import settings
@@ -40,6 +41,13 @@ class PasswordWidget(forms.PasswordInput):
 
     def __init__(self, attrs=None):
         super(PasswordWidget, self).__init__(attrs, render_value=True)
+
+
+class ReadOnlyJSONWidget(forms.Textarea):
+    template_name = 'admin/core/widgets/readonly-json-widget.html'
+
+    def format_value(self, value):
+        return json.dumps(value, indent=True)
 
 
 class OptionalChoiceField(forms.ChoiceField):
