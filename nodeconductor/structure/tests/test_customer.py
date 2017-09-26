@@ -242,6 +242,28 @@ class CustomerApiManipulationTest(UrlResolverMixin, test.APITransactionTestCase)
         response = self.client.post(factories.CustomerFactory.get_list_url(), self._get_valid_payload())
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    @override_nodeconductor_settings(CREATE_DEFAULT_PROJECT_ON_ORGANIZATION_CREATION=True)
+    def test_default_project_is_created_if_configured(self):
+        self.client.force_authenticate(user=self.fixture.staff)
+
+        response = self.client.post(factories.CustomerFactory.get_list_url(), self._get_valid_payload())
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        customer = Customer.objects.get(uuid=response.data['uuid'])
+        self.assertEqual(customer.projects.count(), 1)
+        self.assertEqual(customer.projects.first().name, 'First project')
+        self.assertEqual(customer.projects.first().description, 'First project we have created for you')
+
+    @override_nodeconductor_settings(CREATE_DEFAULT_PROJECT_ON_ORGANIZATION_CREATION=False)
+    def test_default_project_is_not_created_if_configured(self):
+        self.client.force_authenticate(user=self.fixture.staff)
+
+        response = self.client.post(factories.CustomerFactory.get_list_url(), self._get_valid_payload())
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        customer = Customer.objects.get(uuid=response.data['uuid'])
+        self.assertEqual(customer.projects.count(), 0)
+
     @override_nodeconductor_settings(OWNER_CAN_MANAGE_CUSTOMER=True)
     def test_user_can_create_customer_if_he_is_not_staff_if_settings_are_tweaked(self):
         self.client.force_authenticate(user=self.fixture.user)
