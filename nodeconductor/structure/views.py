@@ -150,6 +150,14 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
         if not self.request.user.is_staff:
             customer.add_user(self.request.user, models.CustomerRole.OWNER, self.request.user)
 
+        if django_settings.NODECONDUCTOR.get('CREATE_DEFAULT_PROJECT_ON_ORGANIZATION_CREATION', False):
+            project = models.Project(
+                name=_('First project'),
+                description=_('First project we have created for you'),
+                customer=customer,
+            )
+            project.save()
+
     def perform_update(self, serializer):
         self.check_customer_permissions(serializer.instance)
         return super(CustomerViewSet, self).perform_update(serializer)
