@@ -20,4 +20,4 @@ Professional support options are available. Please contact info@opennodecloud.co
 Development environment setup
 -----------------------------
 
-Instructions here: http://nodeconductor.readthedocs.org/en/latest/guide/intro.html#installation-from-source.
+Instructions here: https://github.com/opennode/waldur-core/blob/develop/docs/guide/install-from-src.rst.

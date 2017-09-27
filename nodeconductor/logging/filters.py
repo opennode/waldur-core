@@ -126,8 +126,8 @@ class EventFilterBackend(filters.BaseFilterBackend):
             # but we don't want to create circular dependency between logging and structure apps.
             # This issue could be fixed by switching resource type name formatting to str(model._meta)
             # as it is done for scope_type parameter validation.
-            must_terms[format_raw_field('resource_type')] = request.query_params['resource_type']
-            must_terms[format_raw_field('resource_uuid')] = request.query_params['resource_uuid']
+            must_terms[format_raw_field('resource_type')] = [request.query_params['resource_type']]
+            must_terms[format_raw_field('resource_uuid')] = [request.query_params['resource_uuid']]
 
         else:
             should_terms.update(event_logger.get_permitted_objects_uuids(request.user))
