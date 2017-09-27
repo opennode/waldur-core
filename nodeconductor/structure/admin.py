@@ -35,9 +35,11 @@ class BackendModelAdmin(admin.ModelAdmin):
         if not obj:
             return fields
 
+        excluded = self.get_exclude(request, obj) or tuple()
         if not settings.NODECONDUCTOR['BACKEND_FIELDS_EDITABLE']:
             instance_class = type(obj)
             fields = fields + instance_class.get_backend_fields()
+            fields = filter(lambda field: field not in excluded, fields)
 
         return fields
 
