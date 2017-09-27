@@ -10,7 +10,7 @@ from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.urls import reverse
-from django.utils.html import format_html_join
+from django.utils.html import format_html_join, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import permissions as rf_permissions
@@ -43,11 +43,10 @@ class PasswordWidget(forms.PasswordInput):
         super(PasswordWidget, self).__init__(attrs, render_value=True)
 
 
-class ReadOnlyJSONWidget(forms.Textarea):
-    template_name = 'admin/core/widgets/readonly-json-widget.html'
-
-    def format_value(self, value):
-        return json.dumps(value, indent=True)
+def format_json_field(value):
+    template = '<div><pre style="overflow: hidden">{0}</pre></div>'
+    formatted_value = json.dumps(value, indent=True)
+    return template.format(formatted_value)
 
 
 class OptionalChoiceField(forms.ChoiceField):
