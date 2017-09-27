@@ -17,7 +17,8 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 
-from nodeconductor.core import (models as core_models, serializers as core_serializers, utils as core_utils)
+from nodeconductor.core import (models as core_models, fields as core_fields, serializers as core_serializers,
+                                utils as core_utils)
 from nodeconductor.core.fields import MappedChoiceField
 from nodeconductor.monitoring.serializers import MonitoringSerializerMixin
 from nodeconductor.quotas import serializers as quotas_serializers
@@ -297,6 +298,11 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
     support_users = BasicUserSerializer(source='get_support_users', many=True, read_only=True)
     image = serializers.SerializerMethodField()
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
+
+    COUNTRIES = core_fields.CountryField.COUNTRIES
+    if hasattr(settings, 'COUNTRIES'):
+        COUNTRIES = [item for item in COUNTRIES if item[0] in settings.COUNTRIES]
+    country = serializers.ChoiceField(required=False, choices=COUNTRIES)
 
     class Meta(object):
         model = models.Customer

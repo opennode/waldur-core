@@ -147,9 +147,6 @@ class CountryField(models.CharField):
 
     COUNTRIES = [(country.alpha2, country.name) for country in pycountry.countries]
 
-    if hasattr(settings, 'COUNTRIES'):
-        COUNTRIES = [item for item in COUNTRIES if item[0] in settings.COUNTRIES]
-
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('max_length', 2)
         kwargs.setdefault('choices', CountryField.COUNTRIES)
