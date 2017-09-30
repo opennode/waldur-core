@@ -1,4 +1,4 @@
-@import url("http://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,300italic,400italic,700italic");
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,300italic,400italic,700italic");
 /*! normalize.css v3.0.2 | MIT License | git.io/normalize */
 /**
  * 1. Set default font family to sans-serif.
@@ -23,16 +23,8 @@ body {
   color: #303030;
 }
 
-img {
-  display: inline-block;
-  vertical-align: top;
-  max-width: 100%;
-}
-
 a {
   color: #2980b9;
-}
-a:hover {
   text-decoration: none;
 }
 
@@ -40,58 +32,44 @@ body {
   background: url(../images/cmd.png);
 }
 
-.title {
-  width: auto;
-  z-index: 3;
-  display: inline-block;
-  vertical-align: middle;
-}
-.title h1 {
-  margin: 0;
-  font-size: 4.0625rem;
+h1.title {
+  font-size: 40pt;
   color: #595959;
+  text-align: center;
 }
 
-.documentation {
-  width: 50%;
-  float: left;
-  position: relative;
-  background: rgba(0, 128, 21, 0.17);
-}
-.documentation .documentation__link {
-  display: inline-block;
-  vertical-align: middle;
-  z-index: 3;
-  width: 220px;
-  text-align: center;
-  text-decoration: none;
-  padding: 10px 20px;
-  border: 3px solid rgba(0, 128, 21, 0.8);
-  color: rgba(56, 174, 76, 0.8);
-  -webkit-border-radius: 4px;
-          border-radius: 4px;
-  background: #fff;
-  font-size: 1.375rem;
+.list-unstyled {
+  padding-left: 0;
+  list-style: none;
 }
 
-.api {
-  width: 50%;
-  float: left;
-  position: relative;
-  background: rgba(0, 129, 255, 0.17);
-}
-.api .api__link {
+.waldur-link {
   display: inline-block;
-  vertical-align: middle;
-  z-index: 3;
-  width: 220px;
+  font-weight: 400;
   text-align: center;
-  text-decoration: none;
-  padding: 10px 20px;
-  border: 3px solid rgba(0, 129, 255, 0.8);
-  color: rgba(0, 129, 255, 0.8);
-  -webkit-border-radius: 4px;
-          border-radius: 4px;
-  background: #fff;
-  font-size: 1.375rem;
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: none;
+  border: 1px solid transparent;
+  border-color: #007bff;
+  border-radius: .3rem;
+  padding: .5rem .75rem;
+  line-height: 1.25;
+  transition: all .15s ease-in-out;
+  color: #007bff;
+  background-color: white;
+  padding: .5rem 1rem;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  margin: 15px;
+  min-width: 200px;
+}
+
+.well {
+  background-color: rgba(0, 128, 21, 0.17);
+  border: 1px solid #e3e3e3;
+  width: 270px;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 10px;
 }
