@@ -48,7 +48,7 @@ install_requires = [
 
 setup(
     name='nodeconductor',
-    version='0.148.1',
+    version='0.148.2',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/waldur-core',
