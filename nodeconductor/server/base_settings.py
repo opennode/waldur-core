@@ -252,7 +252,7 @@ NODECONDUCTOR = {
     'EXTENSIONS_AUTOREGISTER': True,
     'TOKEN_KEY': 'x-auth-token',
 
-    # wiki: https://opennode.atlassian.net/wiki/display/WD/MasterMind+configuration
+    # wiki: http://docs.waldur.com/MasterMind+configuration
     'TOKEN_LIFETIME': timedelta(hours=1),
     'CLOSED_ALERTS_LIFETIME': timedelta(weeks=1),
     'INVITATION_LIFETIME': timedelta(weeks=1),
@@ -271,7 +271,7 @@ for ext in NodeConductorExtension.get_extensions():
     for name, task in ext.celery_tasks().items():
         if name in CELERYBEAT_SCHEDULE:
             warnings.warn(
-                "Celery beat task %s from NodeConductor extension %s "
+                "Celery beat task %s from Waldur extension %s "
                 "is overlapping with primary tasks definition" % (name, ext.django_app()))
         else:
             CELERYBEAT_SCHEDULE[name] = task
