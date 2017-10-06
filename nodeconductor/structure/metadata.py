@@ -112,15 +112,17 @@ class ActionsMetadata(SimpleMetadata):
     @classmethod
     def get_resource_actions(cls, view):
         actions = {}
+        disabled_actions = getattr(view.__class__, 'disabled_actions', [])
+
         for key in dir(view.__class__):
             callback = getattr(view.__class__, key)
             if getattr(callback, 'deprecated', False):
                 continue
             if 'post' not in getattr(callback, 'bind_to_methods', []):
                 continue
+            if key in disabled_actions:
+                continue
             actions[key] = callback
-
-        disabled_actions = getattr(view.__class__, 'disabled_actions', [])
 
         if 'DELETE' in view.allowed_methods and 'destroy' not in disabled_actions:
             actions['destroy'] = view.destroy
