@@ -495,7 +495,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             # resource
             'name', 'name_exact', 'description', 'state', 'uuid', 'tag', 'rtag',
         )
-        strict = django_filters.STRICTNESS.IGNORE
 
 
 class TagsFilter(BaseFilterBackend):
