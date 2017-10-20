@@ -268,6 +268,7 @@ class SshPublicKey(LoggableMixin, UuidMixin, models.Model):
     public_key = models.TextField(
         validators=[validators.MaxLengthValidator(2000), validate_ssh_public_key]
     )
+    is_shared = models.BooleanField(default=False)
 
     class Meta(object):
         unique_together = ('user', 'name')

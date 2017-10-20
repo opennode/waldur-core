@@ -328,7 +328,8 @@ class SshKeyFilter(django_filters.FilterSet):
             'name',
             'fingerprint',
             'uuid',
-            'user_uuid'
+            'user_uuid',
+            'is_shared',
         ]
 
 

@@ -933,8 +933,21 @@ class SshKeyViewSet(mixins.CreateModelMixin,
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
-    filter_backends = (DjangoFilterBackend, core_filters.StaffOrUserFilter)
+    filter_backends = (DjangoFilterBackend,)
     filter_class = filters.SshKeyFilter
+
+    def get_queryset(self):
+        queryset = super(SshKeyViewSet, self).get_queryset()
+        if self.request.user.is_staff or self.request.user.is_support:
+            return queryset
+
+        return queryset.filter(Q(user=self.request.user) | Q(is_shared=True))
+
+    def perform_destroy(self, instance):
+        if instance.is_shared and not self.request.user.is_staff:
+            raise PermissionDenied(_('Only staff users are allowed to delete shared SSH public key.'))
+        else:
+            instance.delete()
 
     def list(self, request, *args, **kwargs):
         """
