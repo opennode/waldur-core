@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from ddt import data, ddt
-from mock import call
+from mock import call, patch
 
 from django.test import TransactionTestCase
 from django.urls import reverse
@@ -9,12 +9,12 @@ from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
 from nodeconductor.quotas.tests import factories as quota_factories
-from nodeconductor.structure import signals, models, views
+from nodeconductor.structure import executors, models, signals, views
 from nodeconductor.structure.models import CustomerRole, Project, ProjectRole
-from nodeconductor.structure.tests import factories, fixtures
+from nodeconductor.structure.tests import factories, fixtures, models as test_models
 
 
-class ProjectTest(TransactionTestCase):
+class ProjectPermissionGrantTest(TransactionTestCase):
     def setUp(self):
         self.project = factories.ProjectFactory()
         self.user = factories.UserFactory()
@@ -62,6 +62,12 @@ class ProjectTest(TransactionTestCase):
             self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
 
         self.assertFalse(receiver.called, 'structure_role_granted should not be emitted')
+
+
+class ProjectPermissionRevokeTest(TransactionTestCase):
+    def setUp(self):
+        self.project = factories.ProjectFactory()
+        self.user = factories.UserFactory()
 
     def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_project(self):
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
@@ -117,34 +123,6 @@ class ProjectTest(TransactionTestCase):
             self.project.remove_user(self.user, ProjectRole.MANAGER)
 
         self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
-
-
-class ProjectFilterTest(test.APITransactionTestCase):
-    def setUp(self):
-        self.staff = factories.UserFactory(is_staff=True)
-        self.project = factories.ProjectFactory()
-
-        self.client.force_authenticate(self.staff)
-
-    def test_project_filters_do_not_raise_errors(self):
-        for filter_name in [
-            'name', 'description',
-            'customer',
-            'backup',
-        ]:
-            data = {filter_name: 0}
-            response = self.client.get(factories.ProjectFactory.get_list_url(), data)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_project_ordering_does_not_raise_errors(self):
-        for ordering in [
-            'name',
-        ]:
-            data = {'o': ordering}
-            response = self.client.get(factories.ProjectFactory.get_list_url(), data)
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            # ordering should not modify number of elements
-            self.assertEqual(len(response.data), 1, 'Expected project to be returned when ordering by %s' % ordering)
 
 
 class ProjectUpdateDeleteTest(test.APITransactionTestCase):
@@ -475,8 +453,9 @@ class ProjectCountersListTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, {'test': 100})
 
+
 @ddt
-class ProjectUpdateCertificationTest(test.APITransactionTestCase):
+class ProjectCertificationUpdateTest(test.APITransactionTestCase):
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
         self.project = self.fixture.project
@@ -512,7 +491,7 @@ class ProjectUpdateCertificationTest(test.APITransactionTestCase):
         }
 
 
-class ProjectGetTest(test.APITransactionTestCase):
+class ProjectCertificationGetTest(test.APITransactionTestCase):
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
 
@@ -594,3 +573,70 @@ class ProjectQuotasTest(test.APITransactionTestCase):
 
         self.quota.refresh_from_db()
         self.assertNotEqual(self.quota.limit, 100)
+
+
+class TestExecutor(executors.BaseCleanupExecutor):
+    pre_models = (test_models.TestNewInstance,)
+
+
+@patch('nodeconductor.core.NodeConductorExtension.get_extensions')
+class ProjectCleanupTest(test.APITransactionTestCase):
+
+    def test_executors_are_sorted_in_topological_order(self, get_extensions):
+
+        class ParentExecutor(executors.BaseCleanupExecutor):
+            pass
+
+        class ParentExtension(object):
+            @staticmethod
+            def get_cleanup_executor():
+                return ParentExecutor
+
+        class ChildExecutor(executors.BaseCleanupExecutor):
+            related_executor = ParentExecutor
+
+        class ChildExtension(object):
+            @staticmethod
+            def get_cleanup_executor():
+                return ChildExecutor
+
+        get_extensions.return_value = [ParentExtension, ChildExtension]
+
+        self.assertEqual([ChildExecutor, ParentExecutor],
+                         executors.ProjectCleanupExecutor.get_executors())
+
+    def test_project_without_resources_is_deleted(self, get_extensions):
+        fixture = fixtures.ServiceFixture()
+        project = fixture.project
+
+        get_extensions.return_value = []
+        executors.ProjectCleanupExecutor.execute(fixture.project, async=False)
+
+        self.assertFalse(models.Project.objects.filter(id=project.id).exists())
+
+    def test_project_with_resources_without_executors_is_not_deleted(self, get_extensions):
+        fixture = fixtures.ServiceFixture()
+        project = fixture.project
+        resource = fixture.resource
+
+        get_extensions.return_value = []
+        executors.ProjectCleanupExecutor.execute(fixture.project, async=False)
+
+        self.assertTrue(models.Project.objects.filter(id=project.id).exists())
+        self.assertTrue(test_models.TestNewInstance.objects.filter(id=resource.id).exists())
+
+    def test_project_with_resources_and_executors_is_deleted(self, get_extensions):
+        fixture = fixtures.ServiceFixture()
+        project = fixture.project
+        resource = fixture.resource
+
+        class TestExtension(object):
+            @staticmethod
+            def get_cleanup_executor():
+                return TestExecutor
+
+        get_extensions.return_value = [TestExtension]
+        executors.ProjectCleanupExecutor.execute(fixture.project, async=False)
+
+        self.assertFalse(models.Project.objects.filter(id=project.id).exists())
+        self.assertFalse(test_models.TestNewInstance.objects.filter(id=resource.id).exists())

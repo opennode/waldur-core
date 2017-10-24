@@ -735,8 +735,8 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta(object):
         model = core_models.SshPublicKey
-        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint', 'user_uuid')
-        read_only_fields = ('fingerprint',)
+        fields = ('url', 'uuid', 'name', 'public_key', 'fingerprint', 'user_uuid', 'is_shared')
+        read_only_fields = ('fingerprint', 'is_shared')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }

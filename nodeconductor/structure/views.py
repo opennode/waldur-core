@@ -14,28 +14,27 @@ from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 from django.views.static import serve
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import mixins
+from rest_framework import generics, mixins, views, viewsets, status
 from rest_framework import permissions as rf_permissions
 from rest_framework import serializers as rf_serializers
-from rest_framework import status
-from rest_framework import views
-from rest_framework import viewsets
-from rest_framework import generics
 from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException, ValidationError
 from rest_framework.response import Response
 from reversion.models import Version
 
-from nodeconductor.core import (
-    filters as core_filters, mixins as core_mixins, models as core_models,
-    serializers as core_serializers, views as core_views, validators as core_validators, managers as core_managers)
+from nodeconductor.core import managers as core_managers
+from nodeconductor.core import mixins as core_mixins
+from nodeconductor.core import models as core_models
+from nodeconductor.core import serializers as core_serializers
+from nodeconductor.core import validators as core_validators
+from nodeconductor.core import views as core_views
 from nodeconductor.core.utils import datetime_to_timestamp, sort_dict
 from nodeconductor.logging import models as logging_models
 from nodeconductor.logging.loggers import expand_alert_groups
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import (
-    SupportedServices, ServiceBackendError, ServiceBackendNotImplemented, filters, permissions, models, serializers,
-    managers)
+    SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
+    executors, filters, managers, models, permissions, serializers)
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.signals import resource_imported
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -355,6 +354,14 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
 
     update_certifications_serializer_class = serializers.ServiceCertificationsUpdateSerializer
     update_certifications_permissions = [permissions.is_owner]
+
+    @detail_route(methods=['post'])
+    def cleanup(self, request, uuid=None):
+        instance = self.get_object()
+        executors.ProjectCleanupExecutor.execute(instance)
+        return Response(status=status.HTTP_202_ACCEPTED)
+
+    cleanup_permissions = [permissions.is_staff]
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -933,8 +940,21 @@ class SshKeyViewSet(mixins.CreateModelMixin,
     queryset = core_models.SshPublicKey.objects.all()
     serializer_class = serializers.SshKeySerializer
     lookup_field = 'uuid'
-    filter_backends = (DjangoFilterBackend, core_filters.StaffOrUserFilter)
+    filter_backends = (DjangoFilterBackend,)
     filter_class = filters.SshKeyFilter
+
+    def get_queryset(self):
+        queryset = super(SshKeyViewSet, self).get_queryset()
+        if self.request.user.is_staff or self.request.user.is_support:
+            return queryset
+
+        return queryset.filter(Q(user=self.request.user) | Q(is_shared=True))
+
+    def perform_destroy(self, instance):
+        if instance.is_shared and not self.request.user.is_staff:
+            raise PermissionDenied(_('Only staff users are allowed to delete shared SSH public key.'))
+        else:
+            instance.delete()
 
     def list(self, request, *args, **kwargs):
         """

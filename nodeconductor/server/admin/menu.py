@@ -49,9 +49,7 @@ class CustomMenu(Menu):
     )
 
     USERS = (
-        'nodeconductor.core.models.User',
-        'nodeconductor.core.models.SSHPublicKey',
-        'nodeconductor.users.models.Invitation',
+        'nodeconductor.core.models.*',
     )
 
     ACCOUNTING = (
