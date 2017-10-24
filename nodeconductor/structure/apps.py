@@ -11,9 +11,13 @@ class StructureConfig(AppConfig):
 
     def ready(self):
         from nodeconductor.core.models import CoordinatesMixin
+        from nodeconductor.structure.executors import check_cleanup_executors
         from nodeconductor.structure.models import ResourceMixin, Service, TagMixin, VirtualMachine
         from nodeconductor.structure import handlers
         from nodeconductor.structure import signals as structure_signals
+
+        from django.core import checks
+        checks.register(check_cleanup_executors)
 
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')
