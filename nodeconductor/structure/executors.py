@@ -44,23 +44,20 @@ class BaseCleanupExecutor(core_executors.BaseExecutor):
     """
     In order to delete project and related resources, we need to take into account three constraints:
 
-    1) dependencies between resources;
-    2) dependencies between applications;
+    1) dependencies between applications;
+    2) dependencies between resources;
     3) backend API calls to delete resources.
 
     All these steps are optional, because some applications don't have all these constraints.
-    In order to delete resources with respect to dependencies between them,
-    cleanup executor should specify models in the correct order.
 
-    For example, if Snapshot should be deleted before Virtual machine,
-    models should be equal to (Snapshot, VirtualMachine)
+    1) If `related_executor` is specified, then current executor is applied before related executor.
 
-    It is assumed that each model class can be filtered by project.
-    Models are deleted before executors are applied.
+    2) Project's resources are specified by the `pre_models` field.
+       It is assumed that each model class can be filtered by project.
 
-    executors is optional list of tuples (model class, executor class).
-    When executor is applied, all resources in the project are deleted using this executor.
-    If related_executor is specified, then current executor is applied before related executor.
+    3) The value of `executors` field is list of tuples (model class, executor class).
+       Executors are applied after resources specified by pre_models field are deleted.
+       When executor is applied, all resources in the project are deleted using this executor.
 
     Consider for example:
 
@@ -87,7 +84,6 @@ class BaseCleanupExecutor(core_executors.BaseExecutor):
             (models.Instance, InstanceDeleteExecutor),
             (models.Volume, VolumeDeleteExecutor),
         )
-
     """
 
     pre_models = []
