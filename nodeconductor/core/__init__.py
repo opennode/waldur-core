@@ -36,6 +36,11 @@ class NodeConductorExtension(object):
         return dict()
 
     @staticmethod
+    def get_cleanup_executor():
+        """ Returns a Celery task to cleanup project resources """
+        pass
+
+    @staticmethod
     def is_assembly():
         """ Return True if plugin is assembly and should be installed last """
         return False

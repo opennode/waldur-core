@@ -33,5 +33,5 @@ ADMIN_TOOLS_MENU = 'nodeconductor.server.admin.menu.CustomMenu'
 FLUENT_DASHBOARD_APP_GROUPS = ()
 
 FLUENT_DASHBOARD_QUICK_ACCESS_LINKS = [
-    # ['Nodeconductor - Cloud Service', 'https://nodeconductor.com'],
+    # ['Waldur cloud management service', 'https://waldur.com'],
 ]

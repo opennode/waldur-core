@@ -4,7 +4,7 @@ from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 
 from nodeconductor import __version__
-from nodeconductor.core import NodeConductorExtension, models as core_models
+from nodeconductor.core import models as core_models
 from nodeconductor.structure import models as structure_models, SupportedServices
 
 
@@ -12,43 +12,17 @@ class CustomIndexDashboard(FluentIndexDashboard):
     """
     Custom index dashboard for admin site.
     """
-    title = 'Waldur administration'
+    title = _('Waldur administration')
 
     def _get_installed_plugin_info(self):
-        result = [
+        return [
             {
-                'title': _('NodeConductor %s' % __version__),
-                'url': 'http://nodeconductor.readthedocs.org/en/stable/',
+                'title': _('Waldur %s') % __version__,
+                'url': 'http://docs.waldur.com/',
                 'external': True,
                 'attrs': {'target': '_blank'},
             },
         ]
-
-        documentation = {
-            'nodeconductor_organization': 'http://nodeconductor-organization.readthedocs.org/en/latest/',
-            'nodeconductor_saltstack': 'http://nodeconductor-saltstack.readthedocs.org/',
-            'nodeconductor_sugarcrm': 'http://nodeconductor-sugarcrm.readthedocs.org/',
-
-        }
-        plugins = set()
-        for ext in NodeConductorExtension.get_extensions():
-            base_name = ext.__module__.split('.')[0]
-            module = __import__(base_name)
-            name = 'NodeConductor %s' % ' '.join(base_name.split('_')[1:]).title()
-            plugins.add((name, getattr(module, '__version__', 'N/A'), module.__doc__))
-
-        for plugin, version, description in sorted(plugins):
-            result.append(
-                {
-                    'title': '%s %s' % (plugin, version),
-                    'url': documentation.get(plugin,
-                                             'http://nodeconductor.readthedocs.org/en/latest/#nodeconductor-plugins'),
-                    'description': description,
-                    'external': True
-                }
-            )
-
-        return result
 
     def _get_quick_access_info(self):
         """
@@ -73,14 +47,17 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_erred_resource_link(self, model, erred_amount, erred_state):
         result = self._get_link_to_model(model)
-        result['title'] = '%s %s in ERRED state' % (erred_amount, result['title'])
+        result['title'] = _('%(num)s %(resources)s in ERRED state') % {
+            'num': erred_amount,
+            'resources': result['title']
+        }
         result['url'] = '%s?shared__exact=1&state__exact=%s' % (result['url'], erred_state)
         return result
 
     def _get_link_to_model(self, model):
         return {
             'title': str(model._meta.verbose_name_plural).capitalize(),
-            'url': reverse("admin:%s_%s_changelist" % (model._meta.app_label, model._meta.model_name)),
+            'url': reverse('admin:%s_%s_changelist' % (model._meta.app_label, model._meta.model_name)),
             'external': True,
             'attrs': {'target': '_blank'},
         }
@@ -88,7 +65,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
     def _get_link_to_instance(self, instance):
         return {
             'title': str(instance),
-            'url': reverse("admin:%s_%s_change" % (instance._meta.app_label, instance._meta.model_name),
+            'url': reverse('admin:%s_%s_change' % (instance._meta.app_label, instance._meta.model_name),
                            args=(instance.pk,)),
             'external': True,
             'attrs': {'target': '_blank'},
@@ -98,7 +75,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         Returns a LinkList based module which contains link to shared service setting instances in ERRED state.
         """
-        result_module = modules.LinkList(title='Shared provider settings in erred state')
+        result_module = modules.LinkList(title=_('Shared provider settings in erred state'))
         result_module.template = 'admin/dashboard/erred_link_list.html'
         erred_state = structure_models.SharedServiceSettings.States.ERRED
 
@@ -112,7 +89,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
                 module_child['error'] = settings.error_message
                 result_module.children.append(module_child)
         else:
-            result_module.pre_content = 'Nothing found.'
+            result_module.pre_content = _('Nothing found.')
 
         return result_module
 
@@ -120,7 +97,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
         """
         Returns a list of links to resources which are in ERRED state and linked to a shared service settings.
         """
-        result_module = modules.LinkList(title='Resources in erred state')
+        result_module = modules.LinkList(title=_('Resources in erred state'))
         erred_state = structure_models.NewResource.States.ERRED
         children = []
 
@@ -138,7 +115,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
             result_module.title = '%s (%s)' % (result_module.title, resources_in_erred_state_overall)
             result_module.children = children
         else:
-            result_module.pre_content = 'Nothing found.'
+            result_module.pre_content = _('Nothing found.')
 
         return result_module
 
