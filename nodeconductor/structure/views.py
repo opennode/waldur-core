@@ -34,7 +34,7 @@ from nodeconductor.logging.loggers import expand_alert_groups
 from nodeconductor.quotas.models import QuotaModelMixin, Quota
 from nodeconductor.structure import (
     SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
-    executors, filters, managers, models, permissions, serializers)
+    filters, managers, models, permissions, serializers)
 from nodeconductor.structure.log import event_logger
 from nodeconductor.structure.signals import resource_imported
 from nodeconductor.structure.managers import filter_queryset_for_user
@@ -354,14 +354,6 @@ class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
 
     update_certifications_serializer_class = serializers.ServiceCertificationsUpdateSerializer
     update_certifications_permissions = [permissions.is_owner]
-
-    @detail_route(methods=['post'])
-    def cleanup(self, request, uuid=None):
-        instance = self.get_object()
-        executors.ProjectCleanupExecutor.execute(instance)
-        return Response(status=status.HTTP_202_ACCEPTED)
-
-    cleanup_permissions = [permissions.is_staff]
 
 
 class UserViewSet(viewsets.ModelViewSet):
