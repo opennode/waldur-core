@@ -243,6 +243,13 @@ class ProjectAdmin(FormRequestAdminMixin,
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
+    actions = ('cleanup',)
+
+    class Cleanup(ExecutorAdminAction):
+        executor = executors.ProjectCleanupExecutor
+        short_description = _('Delete projects with all resources')
+
+    cleanup = Cleanup()
 
 
 class ServiceCertificationAdmin(admin.ModelAdmin):

@@ -22,7 +22,7 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.149.0
+Version: 0.149.1
 Release: 1.el7
 License: MIT
 
@@ -58,7 +58,7 @@ Requires: python-redis = 2.10.3
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
-Requires: python-urllib3 >= 1.10.1, python-urllib3 < 1.18
+Requires: python-urllib3 >= 1.10.1
 Requires: python-vat >= 1.3.1, python-vat < 2.0
 Requires: PyYAML
 Requires: uwsgi-plugin-python
@@ -251,6 +251,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Sun Oct 29 2017 Jenkins <jenkins@opennodecloud.com> - 0.149.1-1.el7
+- New upstream release
+
 * Tue Oct 24 2017 Jenkins <jenkins@opennodecloud.com> - 0.149.0-1.el7
 - New upstream release
 
