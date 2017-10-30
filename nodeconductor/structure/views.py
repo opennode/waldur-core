@@ -26,6 +26,7 @@ from nodeconductor.core import managers as core_managers
 from nodeconductor.core import mixins as core_mixins
 from nodeconductor.core import models as core_models
 from nodeconductor.core import serializers as core_serializers
+from nodeconductor.core import signals as core_signals
 from nodeconductor.core import validators as core_validators
 from nodeconductor.core import views as core_views
 from nodeconductor.core.utils import datetime_to_timestamp, sort_dict
@@ -163,6 +164,13 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         self.check_customer_permissions(instance)
+
+        core_signals.pre_delete_validate.send(
+            sender=models.Customer,
+            instance=instance,
+            user=self.request.user
+        )
+
         return super(CustomerViewSet, self).perform_destroy(instance)
 
     @detail_route(filter_backends=[filters.GenericRoleFilter])
