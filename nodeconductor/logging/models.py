@@ -204,7 +204,7 @@ class PushHook(BaseHook):
 
                 # https://developers.google.com/mobile/add
                 NODECONDUCTOR['GOOGLE_API'] = {
-                    'NOTIFICATION_TITLE': "NodeConductor notification",
+                    'NOTIFICATION_TITLE': "Waldur notification",
                     'Android': {
                         'server_key': 'AIzaSyA2_7UaVIxXfKeFvxTjQNZbrzkXG9OTCkg',
                     },
@@ -229,7 +229,7 @@ class PushHook(BaseHook):
             'to': self.token,
             'notification': {
                 'body': event.get('message', 'New event'),
-                'title': conf.get('NOTIFICATION_TITLE', 'NodeConductor notification'),
+                'title': conf.get('NOTIFICATION_TITLE', 'Waldur notification'),
                 'image': 'icon',
             },
             'data': {
@@ -246,11 +246,16 @@ class EmailHook(BaseHook):
     email = models.EmailField(max_length=75)
 
     def process(self, event):
-        subject = 'Notifications from NodeConductor'
-        event['timestamp'] = timestamp_to_datetime(event['timestamp'])
-        text_message = event['message']
-        html_message = render_to_string('logging/email.html', {'events': [event]})
-        logger.debug('Submitting email hook to %s, payload: %s', self.email, event)
+        if not self.email:
+            logger.debug('Skipping processing of email hook (PK=%s) because email is not defined' % self.pk)
+            return
+        # Prevent mutations of event because otherwise subsequent hook processors would fail
+        context = event.copy()
+        subject = 'Notifications from Waldur'
+        context['timestamp'] = timestamp_to_datetime(event['timestamp'])
+        text_message = context['message']
+        html_message = render_to_string('logging/email.html', {'events': [context]})
+        logger.debug('Submitting email hook to %s, payload: %s', self.email, context)
         send_mail(subject, text_message, settings.DEFAULT_FROM_EMAIL, [self.email], html_message=html_message)
 
 
