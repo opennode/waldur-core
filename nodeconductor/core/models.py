@@ -167,6 +167,7 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     token_lifetime = models.PositiveIntegerField(null=True, help_text=_('Token lifetime in seconds.'),
                                                  validators=[validators.MinValueValidator(60)])
 
+    tracker = FieldTracker()
     objects = UserManager()
 
     USERNAME_FIELD = 'username'

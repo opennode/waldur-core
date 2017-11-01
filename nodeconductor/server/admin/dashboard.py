@@ -1,10 +1,11 @@
+from django.apps import apps
 from django.conf import settings
 from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
 
 from nodeconductor import __version__
-from nodeconductor.core import models as core_models
+from nodeconductor.core import models as core_models, NodeConductorExtension
 from nodeconductor.structure import models as structure_models, SupportedServices
 
 
@@ -15,14 +16,72 @@ class CustomIndexDashboard(FluentIndexDashboard):
     title = _('Waldur administration')
 
     def _get_installed_plugin_info(self):
-        return [
-            {
-                'title': _('Waldur %s') % __version__,
-                'url': 'http://docs.waldur.com/',
-                'external': True,
-                'attrs': {'target': '_blank'},
-            },
-        ]
+        links = []
+
+        for ext in NodeConductorExtension.get_extensions():
+            app_config = self._get_app_config(ext.django_app())
+            if not app_config:
+                # App is not found
+                continue
+
+            name = self._get_app_name(app_config)
+            version = self._get_app_version(app_config)
+
+            links.append(
+                {
+                    'title': '%s %s' % (name, version),
+                    'url': 'http://docs.waldur.com/',
+                    'external': True,
+                    'attrs': {'target': '_blank'},
+                }
+            )
+
+        # Order plugins by title
+        links = sorted(links, key=lambda item: item['title'].lower())
+
+        # Core is the most important component, therefore
+        # it should be the the first item in the list
+        links.insert(0, {
+            'title': _('Waldur Core %s') % __version__,
+            'url': 'http://docs.waldur.com/',
+            'external': True,
+            'attrs': {'target': '_blank'},
+        })
+
+        return links
+
+    def _get_app_config(self, app_name):
+        """
+        Returns an app config for the given name, not by label.
+        """
+
+        matches = [app_config for app_config in apps.get_app_configs()
+                   if app_config.name == app_name]
+        if not matches:
+            return
+        return matches[0]
+
+    def _get_app_name(self, app_config):
+        """
+        Strip redundant prefixes, because some apps
+        don't specify prefix, while others use deprecated prefix.
+        """
+
+        return app_config.verbose_name\
+            .replace('NodeConductor', '')\
+            .replace('Waldur', '')\
+            .strip()
+
+    def _get_app_version(self, app_config):
+        """
+        Some plugins ship multiple applications and extensions.
+        However all of them have the same version, because they are released together.
+        That's why only-top level module is used to fetch version information.
+        """
+
+        base_name = app_config.__module__.split('.')[0]
+        module = __import__(base_name)
+        return getattr(module, '__version__', 'N/A')
 
     def _get_quick_access_info(self):
         """

@@ -90,6 +90,16 @@ class TestHookService(test.APITransactionTestCase):
         # Trigger processing
         process_event(self.event)
 
-        # Event is captured and POST request is triggererd because event_type and user_uuid match
+        # Event is captured and POST request is triggered because event_type and user_uuid match
         requests_post.assert_called_once_with(
             self.web_hook.destination_url, json=mock.ANY, verify=settings.VERIFY_WEBHOOK_REQUESTS)
+
+    def test_email_hook_processor_can_be_called_twice(self):
+        # Create email hook for customer owner
+        email_hook = logging_models.EmailHook.objects.create(user=self.owner,
+                                                             email=self.owner.email,
+                                                             event_types=[self.event_type])
+
+        # If event is not mutated, exception is not raised, see also SENTRY-1396
+        email_hook.process(self.event)
+        email_hook.process(self.event)
