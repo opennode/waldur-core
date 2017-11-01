@@ -112,10 +112,10 @@ class HookUpdateTest(BaseHookApiTest):
         return response
 
 
-class HookPermisssionsViewTest(BaseHookApiTest):
+class HookPermissionsViewTest(BaseHookApiTest):
 
     def setUp(self):
-        super(HookPermisssionsViewTest, self).setUp()
+        super(HookPermissionsViewTest, self).setUp()
         self.url = WebHookFactory.get_url(WebHookFactory(user=self.author))
 
     def test_hook_visible_to_author(self):
