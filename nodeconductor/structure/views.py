@@ -660,7 +660,61 @@ class UserViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_200_OK)
 
 
-class ProjectPermissionViewSet(viewsets.ModelViewSet):
+class BasePermissionViewSet(viewsets.ModelViewSet):
+    """
+    This is a base class for both customer and project permissions.
+    scope_field is required parameter, it should be either 'customer' or 'project'.
+    quota_scope_field is optional parameter, it is used in order to validate quotas on permission creation.
+    """
+
+    scope_field = None
+    quota_scope_field = None
+
+    def perform_create(self, serializer):
+        scope = serializer.validated_data[self.scope_field]
+        role = serializer.validated_data['role']
+        affected_user = serializer.validated_data['user']
+        expiration_time = serializer.validated_data.get('expiration_time')
+
+        if not scope.can_manage_role(self.request.user, role, expiration_time):
+            raise PermissionDenied()
+
+        if self.quota_scope_field:
+            quota_scope = getattr(scope, self.quota_scope_field)
+        else:
+            quota_scope = scope
+        if not quota_scope.get_users().filter(pk=affected_user.pk).exists():
+            quota_scope.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
+
+        super(BasePermissionViewSet, self).perform_create(serializer)
+
+    def perform_update(self, serializer):
+        permission = serializer.instance
+        scope = getattr(permission, self.scope_field)
+        role = permission.role
+        affected_user = permission.user
+        expiration_time = serializer.validated_data.get('expiration_time', permission.expiration_time)
+
+        if not scope.can_manage_role(self.request.user, role, expiration_time)\
+                or affected_user == self.request.user:
+            raise PermissionDenied()
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        permission = instance
+        scope = getattr(permission, self.scope_field)
+        role = permission.role
+        affected_user = permission.user
+        expiration_time = permission.expiration_time
+
+        if not scope.can_manage_role(self.request.user, role, expiration_time):
+            raise PermissionDenied()
+
+        scope.remove_user(affected_user, role)
+
+
+class ProjectPermissionViewSet(BasePermissionViewSet):
     """
     - Projects are connected to customers, whereas the project may belong to one customer only,
       and the customer may have
@@ -679,6 +733,8 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ProjectPermissionSerializer
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,)
     filter_class = filters.ProjectPermissionFilter
+    scope_field = 'project'
+    quota_scope_field = 'customer'
 
     def list(self, request, *args, **kwargs):
         """
@@ -722,42 +778,6 @@ class ProjectPermissionViewSet(viewsets.ModelViewSet):
         """
         return super(ProjectPermissionViewSet, self).destroy(request, *args, **kwargs)
 
-    def perform_create(self, serializer):
-        affected_project = serializer.validated_data['project']
-        affected_user = serializer.validated_data['user']
-        role = serializer.validated_data['role']
-        expiration_time = serializer.validated_data.get('expiration_time')
-
-        if not affected_project.can_manage_role(self.request.user, role, expiration_time):
-            raise PermissionDenied()
-
-        if not affected_project.customer.get_users().filter(pk=affected_user.pk).exists():
-            affected_project.customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
-
-        super(ProjectPermissionViewSet, self).perform_create(serializer)
-
-    def perform_update(self, serializer):
-        affected_project = serializer.instance.project
-        role = serializer.instance.role
-        expiration_time = serializer.validated_data.get('expiration_time', serializer.instance.expiration_time)
-
-        if not affected_project.can_manage_role(self.request.user, role, expiration_time)\
-                or serializer.instance.user == self.request.user:
-            raise PermissionDenied()
-
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        affected_user = instance.user
-        affected_project = instance.project
-        role = instance.role
-        expiration_time = instance.expiration_time
-
-        if not affected_project.can_manage_role(self.request.user, role, expiration_time):
-            raise PermissionDenied()
-
-        affected_project.remove_user(affected_user, role)
-
 
 class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
                                   mixins.ListModelMixin,
@@ -768,7 +788,7 @@ class ProjectPermissionLogViewSet(mixins.RetrieveModelMixin,
     filter_class = filters.ProjectPermissionFilter
 
 
-class CustomerPermissionViewSet(viewsets.ModelViewSet):
+class CustomerPermissionViewSet(BasePermissionViewSet):
     """
     - Customers are connected to users through roles, whereas user may have role "customer owner".
     - Each customer may have multiple owners, and each user may own multiple customers.
@@ -780,6 +800,7 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
     queryset = models.CustomerPermission.objects.filter(is_active=True).order_by('-created')
     serializer_class = serializers.CustomerPermissionSerializer
     filter_class = filters.CustomerPermissionFilter
+    scope_field = 'customer'
 
     def get_queryset(self):
         queryset = super(CustomerPermissionViewSet, self).get_queryset()
@@ -830,43 +851,6 @@ class CustomerPermissionViewSet(viewsets.ModelViewSet):
             Host: example.com
         """
         return super(CustomerPermissionViewSet, self).retrieve(request, *args, **kwargs)
-
-    def perform_create(self, serializer):
-        affected_customer = serializer.validated_data['customer']
-        affected_user = serializer.validated_data['user']
-        expiration_time = serializer.validated_data.get('expiration_time')
-
-        if not affected_customer.can_manage_role(self.request.user, expiration_time):
-            raise PermissionDenied()
-
-        if not affected_customer.get_users().filter(pk=affected_user.pk).exists():
-            affected_customer.validate_quota_change({'nc_user_count': 1}, raise_exception=True)
-
-        # It would be nice to put customer.add_user() logic here as well.
-        # But it is pushed down to serializer.create() because otherwise
-        # no url will be rendered in response.
-        super(CustomerPermissionViewSet, self).perform_create(serializer)
-
-    def perform_update(self, serializer):
-        affected_customer = serializer.instance.customer
-        expiration_time = serializer.validated_data.get('expiration_time', serializer.instance.expiration_time)
-
-        if not affected_customer.can_manage_role(self.request.user, expiration_time) \
-                or serializer.instance.user == self.request.user:
-            raise PermissionDenied()
-
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        affected_user = instance.user
-        affected_customer = instance.customer
-        role = instance.role
-        expiration_time = instance.expiration_time
-
-        if not affected_customer.can_manage_role(self.request.user, expiration_time):
-            raise PermissionDenied()
-
-        affected_customer.remove_user(affected_user, role)
 
 
 class CustomerPermissionLogViewSet(mixins.RetrieveModelMixin,
