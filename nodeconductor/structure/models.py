@@ -396,7 +396,7 @@ class Customer(core_models.UuidMixin,
     def can_user_update_quotas(self, user):
         return user.is_staff
 
-    def can_manage_role(self, user, timestamp=False):
+    def can_manage_role(self, user, role=None, timestamp=False):
         """
         Checks whether user can grant/update/revoke customer permissions.
         `timestamp` can have following values:

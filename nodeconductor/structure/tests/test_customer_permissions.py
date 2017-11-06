@@ -2,18 +2,14 @@ from __future__ import unicode_literals
 
 import collections
 import datetime
-import unittest
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from rest_framework import status
-from rest_framework import test
+from rest_framework import status, test
 from rest_framework.reverse import reverse
 
 from nodeconductor.core.tests.helpers import override_nodeconductor_settings
-from nodeconductor.structure import serializers
 from nodeconductor.structure import tasks
-from nodeconductor.structure import views
 from nodeconductor.structure.models import CustomerRole, ProjectRole, CustomerPermission
 from nodeconductor.structure.tests import factories
 
@@ -22,36 +18,7 @@ User = get_user_model()
 TestRole = collections.namedtuple('TestRole', ['user', 'customer', 'role'])
 
 
-class CustomerPermissionViewSetTest(unittest.TestCase):
-    def setUp(self):
-        self.view_set = views.CustomerPermissionViewSet()
-
-    def test_cannot_modify_permission_in_place(self):
-        self.assertNotIn('PUT', self.view_set.allowed_methods)
-        self.assertNotIn('PATCH', self.view_set.allowed_methods)
-
-    def test_customer_permission_serializer_is_used(self):
-        self.assertIs(
-            serializers.CustomerPermissionSerializer,
-            self.view_set.get_serializer_class(),
-        )
-
-
-class CustomerPermissionSerializerTest(unittest.TestCase):
-    def setUp(self):
-        self.serializer = serializers.CustomerPermissionSerializer()
-
-    def test_payload_has_required_fields(self):
-        expected_fields = [
-            'url', 'role', 'pk', 'created', 'expiration_time', 'created_by',
-            'customer', 'customer_name', 'customer_native_name', 'customer_abbreviation', 'customer_uuid',
-            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email',
-
-        ]
-        self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
-
-
-class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
+class CustomerPermissionBaseTest(test.APITransactionTestCase):
     all_roles = (
         # user customer role
         TestRole('first', 'first', 'owner'),
@@ -85,7 +52,18 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
 
         project.add_user(self.users['first_admin'], ProjectRole.ADMINISTRATOR)
 
-    # List filtration tests
+    # Helper methods
+    def _get_permission_url(self, user, customer, role):
+        permission = CustomerPermission.objects.get(
+            user=self.users[user],
+            role=self.role_map[role],
+            customer=self.customers[customer],
+        )
+        return 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
+
+
+class CustomerPermissionListTest(CustomerPermissionBaseTest):
+
     def test_anonymous_user_cannot_list_customer_permissions(self):
         response = self.client.get(reverse('customer_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -138,7 +116,8 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
                     'he is not supposed to see: {1}'.format(user, role),
                 )
 
-    # Granting tests
+
+class CustomerPermissionGrantTest(CustomerPermissionBaseTest):
     @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     def test_customer_owner_can_grant_new_role_within_his_customer(self):
         self.assert_user_access_to_permission_granting(
@@ -251,7 +230,8 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
         if expected_payload is not None:
             self.assertDictContainsSubset(expected_payload, response.data)
 
-    # Revocation tests
+
+class CustomerPermissionRevokeTest(CustomerPermissionBaseTest):
     @override_nodeconductor_settings(OWNERS_CAN_MANAGE_OWNERS=True)
     def test_customer_owner_can_revoke_role_within_his_customer(self):
         self.assert_user_access_to_permission_revocation(
@@ -315,17 +295,8 @@ class CustomerPermissionApiPermissionTest(test.APITransactionTestCase):
         if expected_payload is not None:
             self.assertDictContainsSubset(expected_payload, response.data)
 
-    # Helper methods
-    def _get_permission_url(self, user, customer, role):
-        permission = CustomerPermission.objects.get(
-            user=self.users[user],
-            role=self.role_map[role],
-            customer=self.customers[customer],
-        )
-        return 'http://testserver' + reverse('customer_permission-detail', kwargs={'pk': permission.pk})
 
-
-class CustomerPermissionApiFiltrationTest(test.APITransactionTestCase):
+class CustomerPermissionFilterTest(test.APITransactionTestCase):
     def setUp(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)
