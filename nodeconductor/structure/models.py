@@ -282,6 +282,7 @@ class CustomerPermission(BasePermission):
 
     customer = models.ForeignKey('structure.Customer', verbose_name=_('organization'), related_name='permissions')
     role = CustomerRole(db_index=True)
+    tracker = FieldTracker(fields=['expiration_time'])
 
     @classmethod
     def get_url_name(cls):
@@ -460,6 +461,7 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
     role = ProjectRole(db_index=True)
+    tracker = FieldTracker(fields=['expiration_time'])
 
     @classmethod
     def get_url_name(cls):
