@@ -37,7 +37,7 @@ from nodeconductor.structure import (
     SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
     filters, managers, models, permissions, serializers)
 from nodeconductor.structure.log import event_logger
-from nodeconductor.structure.signals import resource_imported
+from nodeconductor.structure.signals import resource_imported, structure_role_updated
 from nodeconductor.structure.managers import filter_queryset_for_user
 from nodeconductor.structure.metadata import ActionsMetadata
 
@@ -692,12 +692,21 @@ class BasePermissionViewSet(viewsets.ModelViewSet):
         permission = serializer.instance
         scope = getattr(permission, self.scope_field)
         role = permission.role
-        expiration_time = serializer.validated_data.get('expiration_time', permission.expiration_time)
 
-        if not scope.can_manage_role(self.request.user, role, expiration_time):
+        new_expiration_time = serializer.validated_data.get('expiration_time')
+        old_expiration_time = permission.expiration_time
+        if new_expiration_time == old_expiration_time:
+            return
+
+        if not scope.can_manage_role(self.request.user, role, new_expiration_time):
             raise PermissionDenied()
 
         serializer.save()
+        structure_role_updated.send(
+            sender=self.queryset.model,
+            instance=permission,
+            user=self.request.user,
+        )
 
     def perform_destroy(self, instance):
         permission = instance

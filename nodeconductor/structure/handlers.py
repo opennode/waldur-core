@@ -112,17 +112,15 @@ def log_customer_role_revoked(sender, structure, user, role, **kwargs):
         })
 
 
-def log_customer_role_updated(sender, instance, created=False, **kwargs):
-    if created or not instance.tracker.has_changed('expiration_time'):
-        return
-
-    template = 'Permission expiration time for user {affected_user_username} ' \
-               'in customer {customer_name} has been changed from ' \
+def log_customer_role_updated(sender, instance, user, **kwargs):
+    template = 'User %(user_username)s has changed permission expiration time ' \
+               'for user {affected_user_username} in customer {customer_name} from ' \
                '%(old_expiration_time)s to %(new_expiration_time)s.'
 
     context = {
         'old_expiration_time': instance.tracker.previous('expiration_time'),
         'new_expiration_time': instance.expiration_time,
+        'user_username': user.full_name or user.username,
     }
 
     event_logger.customer_role.info(
@@ -160,17 +158,15 @@ def log_project_role_revoked(sender, structure, user, role, **kwargs):
         })
 
 
-def log_project_role_updated(sender, instance, created=False, **kwargs):
-    if created or not instance.tracker.has_changed('expiration_time'):
-        return
-
-    template = 'Permission expiration time for user {affected_user_username} ' \
-               'in project {project_name} has been changed from ' \
+def log_project_role_updated(sender, instance, user, **kwargs):
+    template = 'User %(user_username)s has changed permission expiration time ' \
+               'for user {affected_user_username} in project {project_name} from ' \
                '%(old_expiration_time)s to %(new_expiration_time)s.'
 
     context = {
         'old_expiration_time': instance.tracker.previous('expiration_time'),
         'new_expiration_time': instance.expiration_time,
+        'user_username': user.full_name or user.username,
     }
 
     event_logger.project_role.info(

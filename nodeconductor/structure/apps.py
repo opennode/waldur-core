@@ -80,7 +80,7 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_customer_role_revoked',
         )
 
-        signals.post_save.connect(
+        structure_signals.structure_role_updated.connect(
             handlers.log_customer_role_updated,
             sender=CustomerPermission,
             dispatch_uid='nodeconductor.structure.handlers.log_customer_role_updated',
@@ -98,7 +98,7 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_project_role_revoked',
         )
 
-        signals.post_save.connect(
+        structure_signals.structure_role_updated.connect(
             handlers.log_project_role_updated,
             sender=ProjectPermission,
             dispatch_uid='nodeconductor.structure.handlers.log_project_role_updated',

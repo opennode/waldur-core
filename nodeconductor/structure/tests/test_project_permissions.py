@@ -536,7 +536,9 @@ class ProjectPermissionExpirationTest(test.APITransactionTestCase):
             self.client.put(self.url, {'expiration_time': expiration_time})
             (args, kwargs) = mocked_info.call_args_list[-1]
             event_type = kwargs['extra']['event_type']
+            event_message = args[0]
             self.assertEqual(event_type, 'role_updated')
+            self.assertTrue(staff_user.full_name in event_message)
 
 
 class ProjectPermissionCreatedByTest(test.APITransactionTestCase):
