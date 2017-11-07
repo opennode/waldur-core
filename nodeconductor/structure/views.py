@@ -692,11 +692,9 @@ class BasePermissionViewSet(viewsets.ModelViewSet):
         permission = serializer.instance
         scope = getattr(permission, self.scope_field)
         role = permission.role
-        affected_user = permission.user
         expiration_time = serializer.validated_data.get('expiration_time', permission.expiration_time)
 
-        if not scope.can_manage_role(self.request.user, role, expiration_time)\
-                or affected_user == self.request.user:
+        if not scope.can_manage_role(self.request.user, role, expiration_time):
             raise PermissionDenied()
 
         serializer.save()

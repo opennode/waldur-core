@@ -441,6 +441,7 @@ class ProjectPermissionExpirationTest(test.APITransactionTestCase):
     def setUp(self):
         permission = factories.ProjectPermissionFactory()
         self.user = permission.user
+        self.project = permission.project
         self.url = reverse('project_permission-detail', kwargs={'pk': permission.pk})
 
     def test_user_can_not_update_permission_expiration_time(self):
@@ -452,9 +453,21 @@ class ProjectPermissionExpirationTest(test.APITransactionTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_can_update_permission_expiration_time(self):
+    def test_staff_can_update_permission_expiration_time(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.put(self.url, {
+            'expiration_time': expiration_time
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
+
+    def test_owner_can_update_permission_for_himself(self):
+        owner = factories.UserFactory()
+        self.project.customer.add_user(owner, CustomerRole.OWNER)
+        self.client.force_authenticate(user=owner)
 
         expiration_time = timezone.now() + datetime.timedelta(days=100)
         response = self.client.put(self.url, {
