@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import collections
 import datetime
+import mock
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -513,6 +514,17 @@ class CustomerPermissionExpirationTest(test.APITransactionTestCase):
             expired_permission.user, expired_permission.role))
         self.assertTrue(not_expired_permission.customer.has_user(
             not_expired_permission.user, not_expired_permission.role))
+
+    def test_when_expiration_time_is_updated_event_is_emitted(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+
+        with mock.patch('logging.LoggerAdapter.info') as mocked_info:
+            self.client.put(self.url, {'expiration_time': expiration_time})
+            (args, kwargs) = mocked_info.call_args_list[-1]
+            event_type = kwargs['extra']['event_type']
+            self.assertEqual(event_type, 'role_updated')
 
 
 class CustomerPermissionCreatedByTest(test.APITransactionTestCase):

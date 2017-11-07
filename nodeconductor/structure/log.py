@@ -36,7 +36,7 @@ class CustomerRoleEventLogger(EventLogger):
     role_name = six.text_type
 
     class Meta:
-        event_types = 'role_granted', 'role_revoked'
+        event_types = 'role_granted', 'role_revoked', 'role_updated'
         event_groups = {
             'customers': event_types,
             'users': event_types,
@@ -50,7 +50,7 @@ class ProjectRoleEventLogger(EventLogger):
     role_name = six.text_type
 
     class Meta:
-        event_types = 'role_granted', 'role_revoked'
+        event_types = 'role_granted', 'role_revoked', 'role_updated'
         event_groups = {
             'projects': event_types,
             'users': event_types,
