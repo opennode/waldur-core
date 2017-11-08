@@ -1,16 +1,15 @@
 from __future__ import unicode_literals
 
 import collections
-import unittest
-
 import datetime
+import mock
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
-from rest_framework import status
-from rest_framework import test
+from rest_framework import status, test
 
-from nodeconductor.structure import serializers, tasks, views
+from nodeconductor.structure import tasks
 from nodeconductor.structure.models import ProjectRole, CustomerRole, ProjectPermission
 from nodeconductor.structure.tests import factories, fixtures
 
@@ -19,35 +18,7 @@ User = get_user_model()
 TestRole = collections.namedtuple('TestRole', ['user', 'project', 'role'])
 
 
-class ProjectPermissionViewSetTest(unittest.TestCase):
-    def setUp(self):
-        self.view_set = views.ProjectPermissionViewSet()
-
-    def test_cannot_modify_permission_in_place(self):
-        self.assertNotIn('PUT', self.view_set.allowed_methods)
-        self.assertNotIn('PATCH', self.view_set.allowed_methods)
-
-    def test_project_permission_serializer_is_used(self):
-        self.assertIs(
-            serializers.ProjectPermissionSerializer,
-            self.view_set.get_serializer_class(),
-        )
-
-
-class ProjectPermissionSerializerTest(unittest.TestCase):
-    def setUp(self):
-        self.serializer = serializers.ProjectPermissionSerializer()
-
-    def test_payload_has_required_fields(self):
-        expected_fields = [
-            'url', 'role', 'project', 'project_name', 'pk', 'project_uuid', 'customer_name',
-            'created', 'expiration_time', 'created_by',
-            'user', 'user_full_name', 'user_native_name', 'user_username', 'user_uuid', 'user_email'
-        ]
-        self.assertItemsEqual(expected_fields, self.serializer.fields.keys())
-
-
-class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
+class ProjectPermissionBaseTest(test.APITransactionTestCase):
     all_roles = (
         #           user      project     role
         TestRole('admin1', 'project11', 'admin'),
@@ -106,7 +77,17 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
         for user, project, role in self.all_roles:
             self.projects[project].add_user(self.users[user], role)
 
-    # List filtration tests
+    # Helper methods
+    def _get_permission_url(self, user, project, role):
+        permission = ProjectPermission.objects.get(
+            user=self.users[user],
+            role=self.role_map[role],
+            project=self.projects[project],
+        )
+        return 'http://testserver' + reverse('project_permission-detail', kwargs={'pk': permission.pk})
+
+
+class ProjectPermissionListTest(ProjectPermissionBaseTest):
     def test_anonymous_user_cannot_list_project_permissions(self):
         response = self.client.get(reverse('project_permission-list'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
@@ -163,11 +144,20 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
                     'he is not supposed to see: {1}'.format(user, role),
                 )
 
-    # Granting tests
+
+class ProjectPermissionGrantTest(ProjectPermissionBaseTest):
     def test_customer_owner_can_grant_new_role_within_his_customers_project(self):
         self.assert_user_access_to_permission_granting(
             login_user='owner1',
             affected_user='no_role',
+            affected_project='project11',
+            expected_status=status.HTTP_201_CREATED,
+        )
+
+    def test_customer_owner_can_grant_new_role_within_his_customers_project_for_himself(self):
+        self.assert_user_access_to_permission_granting(
+            login_user='owner1',
+            affected_user='owner1',
             affected_project='project11',
             expected_status=status.HTTP_201_CREATED,
         )
@@ -264,9 +254,6 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
             affected_user='project_manager1',
             affected_project='project11',
             expected_status=status.HTTP_400_BAD_REQUEST,
-            expected_payload={
-                'user': ['It is impossible to edit permissions for yourself.'],
-            }
         )
 
     def test_project_admin_cannot_grant_role_within_another_project(self):
@@ -327,11 +314,21 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
         if expected_payload is not None:
             self.assertDictContainsSubset(expected_payload, response.data)
 
-    # Revocation tests
+
+class ProjectPermissionRevokeTest(ProjectPermissionBaseTest):
     def test_customer_owner_can_revoke_role_within_his_customers_project(self):
         self.assert_user_access_to_permission_revocation(
             login_user='owner1',
             affected_user='admin1',
+            affected_project='project11',
+            expected_status=status.HTTP_204_NO_CONTENT,
+        )
+
+    def test_customer_owner_can_revoke_role_within_his_customers_project_for_himself(self):
+        self.projects['project11'].add_user(self.users['owner1'], ProjectRole.ADMINISTRATOR)
+        self.assert_user_access_to_permission_revocation(
+            login_user='owner1',
+            affected_user='owner1',
             affected_project='project11',
             expected_status=status.HTTP_204_NO_CONTENT,
         )
@@ -408,15 +405,6 @@ class ProjectPermissionApiPermissionTest(test.APITransactionTestCase):
         if expected_payload is not None:
             self.assertDictContainsSubset(expected_payload, response.data)
 
-    # Helper methods
-    def _get_permission_url(self, user, project, role):
-        permission = ProjectPermission.objects.get(
-            user=self.users[user],
-            role=self.role_map[role],
-            project=self.projects[project],
-        )
-        return 'http://testserver' + reverse('project_permission-detail', kwargs={'pk': permission.pk})
-
 
 class ProjectPermissionFilterTest(test.APITransactionTestCase):
 
@@ -454,6 +442,7 @@ class ProjectPermissionExpirationTest(test.APITransactionTestCase):
     def setUp(self):
         permission = factories.ProjectPermissionFactory()
         self.user = permission.user
+        self.project = permission.project
         self.url = reverse('project_permission-detail', kwargs={'pk': permission.pk})
 
     def test_user_can_not_update_permission_expiration_time(self):
@@ -465,9 +454,21 @@ class ProjectPermissionExpirationTest(test.APITransactionTestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_can_update_permission_expiration_time(self):
+    def test_staff_can_update_permission_expiration_time(self):
         staff_user = factories.UserFactory(is_staff=True)
         self.client.force_authenticate(user=staff_user)
+
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+        response = self.client.put(self.url, {
+            'expiration_time': expiration_time
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['expiration_time'], expiration_time, response.data)
+
+    def test_owner_can_update_permission_for_himself(self):
+        owner = factories.UserFactory()
+        self.project.customer.add_user(owner, CustomerRole.OWNER)
+        self.client.force_authenticate(user=owner)
 
         expiration_time = timezone.now() + datetime.timedelta(days=100)
         response = self.client.put(self.url, {
@@ -525,6 +526,19 @@ class ProjectPermissionExpirationTest(test.APITransactionTestCase):
             expired_permission.user, expired_permission.role))
         self.assertTrue(not_expired_permission.project.has_user(
             not_expired_permission.user, not_expired_permission.role))
+
+    def test_when_expiration_time_is_updated_event_is_emitted(self):
+        staff_user = factories.UserFactory(is_staff=True)
+        self.client.force_authenticate(user=staff_user)
+        expiration_time = timezone.now() + datetime.timedelta(days=100)
+
+        with mock.patch('logging.LoggerAdapter.info') as mocked_info:
+            self.client.put(self.url, {'expiration_time': expiration_time})
+            (args, kwargs) = mocked_info.call_args_list[-1]
+            event_type = kwargs['extra']['event_type']
+            event_message = args[0]
+            self.assertEqual(event_type, 'role_updated')
+            self.assertTrue(staff_user.full_name in event_message)
 
 
 class ProjectPermissionCreatedByTest(test.APITransactionTestCase):

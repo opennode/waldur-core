@@ -282,6 +282,7 @@ class CustomerPermission(BasePermission):
 
     customer = models.ForeignKey('structure.Customer', verbose_name=_('organization'), related_name='permissions')
     role = CustomerRole(db_index=True)
+    tracker = FieldTracker(fields=['expiration_time'])
 
     @classmethod
     def get_url_name(cls):
@@ -396,7 +397,7 @@ class Customer(core_models.UuidMixin,
     def can_user_update_quotas(self, user):
         return user.is_staff
 
-    def can_manage_role(self, user, timestamp=False):
+    def can_manage_role(self, user, role=None, timestamp=False):
         """
         Checks whether user can grant/update/revoke customer permissions.
         `timestamp` can have following values:
@@ -460,6 +461,7 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
 
     project = models.ForeignKey('structure.Project', related_name='permissions')
     role = ProjectRole(db_index=True)
+    tracker = FieldTracker(fields=['expiration_time'])
 
     @classmethod
     def get_url_name(cls):

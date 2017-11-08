@@ -449,11 +449,6 @@ class BasePermissionSerializer(core_serializers.AugmentedSerializerMixin, serial
             'user': ('username', 'full_name', 'native_name', 'uuid', 'email'),
         }
 
-    def validate_user(self, user):
-        if self.context['request'].user == user:
-            raise serializers.ValidationError(_('It is impossible to edit permissions for yourself.'))
-        return user
-
 
 class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionSerializer):
     class Meta(BasePermissionSerializer.Meta):

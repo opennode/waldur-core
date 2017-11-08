@@ -22,6 +22,9 @@ class StructureConfig(AppConfig):
         Customer = self.get_model('Customer')
         Project = self.get_model('Project')
 
+        CustomerPermission = self.get_model('CustomerPermission')
+        ProjectPermission = self.get_model('ProjectPermission')
+
         signals.post_save.connect(
             handlers.log_customer_save,
             sender=Customer,
@@ -77,6 +80,12 @@ class StructureConfig(AppConfig):
             dispatch_uid='nodeconductor.structure.handlers.log_customer_role_revoked',
         )
 
+        structure_signals.structure_role_updated.connect(
+            handlers.log_customer_role_updated,
+            sender=CustomerPermission,
+            dispatch_uid='nodeconductor.structure.handlers.log_customer_role_updated',
+        )
+
         structure_signals.structure_role_granted.connect(
             handlers.log_project_role_granted,
             sender=Project,
@@ -87,6 +96,12 @@ class StructureConfig(AppConfig):
             handlers.log_project_role_revoked,
             sender=Project,
             dispatch_uid='nodeconductor.structure.handlers.log_project_role_revoked',
+        )
+
+        structure_signals.structure_role_updated.connect(
+            handlers.log_project_role_updated,
+            sender=ProjectPermission,
+            dispatch_uid='nodeconductor.structure.handlers.log_project_role_updated',
         )
 
         signals.pre_delete.connect(

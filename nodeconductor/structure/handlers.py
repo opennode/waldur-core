@@ -112,6 +112,28 @@ def log_customer_role_revoked(sender, structure, user, role, **kwargs):
         })
 
 
+def log_customer_role_updated(sender, instance, user, **kwargs):
+    template = 'User %(user_username)s has changed permission expiration time ' \
+               'for user {affected_user_username} in customer {customer_name} from ' \
+               '%(old_expiration_time)s to %(new_expiration_time)s.'
+
+    context = {
+        'old_expiration_time': instance.tracker.previous('expiration_time'),
+        'new_expiration_time': instance.expiration_time,
+        'user_username': user.full_name or user.username,
+    }
+
+    event_logger.customer_role.info(
+        template % context,
+        event_type='role_updated',
+        event_context={
+            'customer': instance.customer,
+            'affected_user': instance.user,
+            'structure_type': 'customer',
+            'role_name': instance.get_role_display(),
+        })
+
+
 def log_project_role_granted(sender, structure, user, role, **kwargs):
     event_logger.project_role.info(
         'User {affected_user_username} has gained role of {role_name} in project {project_name}.',
@@ -133,6 +155,28 @@ def log_project_role_revoked(sender, structure, user, role, **kwargs):
             'affected_user': user,
             'structure_type': 'project',
             'role_name': ProjectPermission(role=role).get_role_display()
+        })
+
+
+def log_project_role_updated(sender, instance, user, **kwargs):
+    template = 'User %(user_username)s has changed permission expiration time ' \
+               'for user {affected_user_username} in project {project_name} from ' \
+               '%(old_expiration_time)s to %(new_expiration_time)s.'
+
+    context = {
+        'old_expiration_time': instance.tracker.previous('expiration_time'),
+        'new_expiration_time': instance.expiration_time,
+        'user_username': user.full_name or user.username,
+    }
+
+    event_logger.project_role.info(
+        template % context,
+        event_type='role_updated',
+        event_context={
+            'project': instance.project,
+            'affected_user': instance.user,
+            'structure_type': 'project',
+            'role_name': instance.get_role_display(),
         })
 
 
