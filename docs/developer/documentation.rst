@@ -9,7 +9,7 @@ Documentation policy FAQ
 
     2 places:
 
-    - Link in NodeConductor docs.
+    - Link in Waldur docs.
     - Expanded overview in the Introduction section of the plugin docs.
 
 3. Where should I describe plugins objects features - quotas, cost tracking, etc?
@@ -18,7 +18,7 @@ Documentation policy FAQ
 
 5. Where can I see all development policies and guides?
 
-    - NodeConductor documentation, developer section.
+    - Waldur documentation, developer section.
 
 
 API documentation
@@ -37,7 +37,7 @@ Use following command to generate `RST` files for the API:
 
 .. code-block:: bash
 
-    $ nodeconductor drfdocs
+    $ waldur drfdocs
 
 Note that you should have all development requirements specified in `setup.py` file properly installed.
 

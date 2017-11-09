@@ -71,4 +71,4 @@ Also it is assumed that you've already activated virtual Python environment.
 
     DJANGO_SETTINGS_MODULE=nodeconductor.server.test_settings nodeconductor test nodeconductor_openstack
 
-.. _context managers and decorators: https://docs.djangoproject.com/en/1.10/topics/testing/tools/#overriding-settings
+.. _context managers and decorators: https://docs.djangoproject.com/en/1.11/topics/testing/tools/#overriding-settings

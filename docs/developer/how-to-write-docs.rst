@@ -5,7 +5,7 @@ Documentation for sysadmins
 ---------------------------
 
 Documentation for sysadmins should contain a description of settings that allows
-to setup and customize WaldurMasterMind. It should be located in
+to setup and customize Waldur MasterMind. It should be located in
 `wiki <https://opennode.atlassian.net/wiki/display/WD/MasterMind+configuration>`_.
 
 
