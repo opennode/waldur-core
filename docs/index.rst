@@ -1,7 +1,7 @@
-Welcome to NodeConductor's documentation!
-=========================================
+Welcome to Waldur Core documentation!
+=====================================
 
-NodeConductor is a RESTful server for management of IT infrastructure. It uses a project-based approach for
+Waldur is a RESTful server for management of IT infrastructure. It uses a project-based approach for
 separation of managed resources (VMs, subnets, applications and more).
 
 Features include:
@@ -39,38 +39,19 @@ IAAS
 
    api/api
 
-NodeConductor plugins
----------------------
-
-.. toctree::
-   :maxdepth: 1
-
-   plugins/azure
-   plugins/jira
-   plugins/killbill
-   plugins/openstack
-   plugins/oracle
-   plugins/organization
-   plugins/paypal
-   plugins/saltstack
-   plugins/saml2
-   plugins/sugarcrm
-   plugins/zabbix
-
-Developing NodeConductor
-------------------------
+Developing Waldur
+-----------------
 
 .. toctree::
    :maxdepth: 1
 
    developer/developer
-   developer/sample-data
 
 
 License
 -------
 
-NodeConductor is open-source under MIT license.
+Waldur is open-source under MIT license.
 
 
 Indices and tables

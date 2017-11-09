@@ -1,7 +1,7 @@
 Settings policy
 ===============
 
-Settings are used to configure behaviour of NodeConductor deployment. Settings can be used for configuration of both
+Settings are used to configure behaviour of Waldur deployment. Settings can be used for configuration of both
 core and plugins, or dependent libraries.
 
 Below is a policy for the settings.
@@ -21,13 +21,13 @@ plugin developer.
 Deployment settings
 -------------------
 
-Deployment specific settings (e.g. for CentOS-7) are maintained as Python files and are kept in **/etc/nodeconductor/**.
+Deployment specific settings (e.g. for CentOS-7) are maintained as Python files and are kept in **/etc/waldur/**.
 They are read in by a packaging specific **packaging/settings.py** file copied to PYTHONPATH
 (**nodeconductor.server.settings**) in packaging branch.
 
-The following settings files are read in from **/etc/nodeconductor/**:
+The following settings files are read in from **/etc/waldur/**:
 
- - **settings.py** - all settings overwritten for the deployment apart from logging settings.
+ - **override.conf.py** - all settings overwritten for the deployment apart from logging settings.
 
- - **logging.py** - contains definition of loggers for the deployment.
+ - **core.ini** - contains basic settings for the deployment in INI format.
 
