@@ -6,7 +6,7 @@ import warnings
 
 from ConfigParser import RawConfigParser
 
-conf_dir = '/etc/waldur'
+conf_dir = os.environ.get('WALDUR_BASE_CONFIG_DIR', '/etc/waldur')
 data_dir = '/usr/share/waldur'
 work_dir = '/var/lib/waldur'
 templates_dir = os.path.join(conf_dir, 'templates')
