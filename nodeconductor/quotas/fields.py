@@ -141,6 +141,9 @@ class CounterQuotaField(QuotaField):
 
     Automatically increases/decreases usage on target instances creation/deletion.
 
+    By default usage is increased by 1. You may tweak this delta by defining get_delta function,
+    which accepts target instance and returns number.
+
     Example:
         # This quota will increase/decrease own values on any resource creation/deletion
         nc_resource_count = CounterQuotaField(
@@ -155,11 +158,17 @@ class CounterQuotaField(QuotaField):
     And return count of current usage.
     """
 
-    def __init__(self, target_models, path_to_scope, get_current_usage=None, **kwargs):
+    def __init__(self, target_models, path_to_scope, get_current_usage=None, get_delta=None, **kwargs):
         self._raw_target_models = target_models
         self._raw_get_current_usage = get_current_usage
+        self._raw_get_delta = get_delta
         self.path_to_scope = path_to_scope
         super(CounterQuotaField, self).__init__(**kwargs)
+
+    def get_delta(self, target_instance):
+        if not self._raw_get_delta:
+            return 1
+        return self._raw_get_delta(target_instance)
 
     def get_current_usage(self, models, scope):
         if self._raw_get_current_usage is not None:
@@ -181,8 +190,9 @@ class CounterQuotaField(QuotaField):
 
     def add_usage(self, target_instance, delta, fail_silently=False):
         scope = self._get_scope(target_instance)
+        delta *= self.get_delta(target_instance)
         if self.is_connected_to_scope(scope):
-            scope.add_quota_usage(self.name, delta, fail_silently=fail_silently)
+            scope.add_quota_usage(self.name, delta, fail_silently=fail_silently, validate=True)
 
     def _get_scope(self, target_instance):
         return reduce(getattr, self.path_to_scope.split('.'), target_instance)
