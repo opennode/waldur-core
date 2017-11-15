@@ -71,6 +71,15 @@ class TestCounterQuotaField(TransactionTestCase):
         quota = self.parent.quotas.get(name=test_models.ParentModel.Quotas.two_targets_counter_quota)
         self.assertEqual(quota.usage, 2)
 
+    def test_delta_quota_usage_is_increased_on_child_creation(self):
+        quota = self.parent.quotas.get(name=test_models.ParentModel.Quotas.delta_quota)
+        self.assertEqual(quota.usage, 10)
+
+    def test_delta_quota_usage_is_decreased_on_child_deletion(self):
+        self.child.delete()
+        quota = self.parent.quotas.get(name=test_models.ParentModel.Quotas.delta_quota)
+        self.assertEqual(quota.usage, 0)
+
 
 class TestUsageAggregatorField(TransactionTestCase):
 
