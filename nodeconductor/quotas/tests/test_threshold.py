@@ -10,7 +10,7 @@ from nodeconductor.structure.tests.factories import ProjectFactory, UserFactory
 class QuotaThresholdAlertTest(test.APITestCase):
     def setUp(self):
         self.project = ProjectFactory()
-        self.quota = self.project.quotas.first()
+        self.quota = self.project.quotas.get(name='nc_resource_count')
 
     def test_if_quota_usage_is_over_threshold_alert_is_created(self):
         self.quota.threshold = 100

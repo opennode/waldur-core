@@ -23,6 +23,13 @@ class QuotaModelMixinTest(TestCase):
         except exceptions.QuotaValidationError:
             self.fail('add_quota_usage should not raise exception if quota is unlimited')
 
+    def test_add_usage_skips_validation_with_limited_quota_but_negative_delta(self):
+        instance = GrandparentModel.objects.create()
+        try:
+            instance.add_quota_usage('quota_with_default_limit', -10, validate=True)
+        except exceptions.QuotaValidationError:
+            self.fail('add_quota_usage should not raise exception if delta is negative')
+
     def test_add_usage_fails_if_quota_is_over_limit(self):
         instance = GrandparentModel.objects.create()
         self.assertRaises(exceptions.QuotaValidationError,
