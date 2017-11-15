@@ -30,6 +30,11 @@ class ParentModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_mod
             target_models=lambda: [ChildModel, SecondChildModel],
             path_to_scope='parent',
         )
+        delta_quota = fields.CounterQuotaField(
+            target_models=lambda: [ChildModel],
+            path_to_scope='parent',
+            get_delta=lambda scope: 10
+        )
         usage_aggregator_quota = fields.UsageAggregatorQuotaField(
             get_children=lambda scope: scope.children.all(),
         )
