@@ -1,11 +1,16 @@
 Tasks and executors
 ===================
 
-NodeConductor performs logical operations using executors that combine several
-tasks.
+Scheduling Celery task from signal handler
+------------------------------------------
+
+Please use transaction.on_commit wrapper if you need to schedule Celery task from signal handler.
+Otherwise, Celery task is scheduled too early and executed even if object is not yet saved to the database.
+See also `django docs <https://docs.djangoproject.com/en/1.11/topics/db/transactions/#performing-actions-after-commit>`_
 
 Executors
 ---------
+Waldur performs logical operations using executors that combine several tasks.
 
 Executor represents a logical operation on a backend, like VM creation or resize.
 It executes one or more background tasks and takes care of resource state updates

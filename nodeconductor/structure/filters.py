@@ -15,7 +15,7 @@ import taggit
 
 from nodeconductor.core import filters as core_filters
 from nodeconductor.core import models as core_models
-from nodeconductor.core.filters import BaseExternalFilter
+from nodeconductor.core.filters import BaseExternalFilter, ExternalFilterBackend
 from nodeconductor.logging.filters import ExternalAlertFilterBackend
 from nodeconductor.structure import models
 from nodeconductor.structure import SupportedServices
@@ -119,6 +119,10 @@ class CustomerFilter(django_filters.FilterSet):
             'native_name',
             'registration_code',
         ]
+
+
+class ExternalCustomerFilterBackend(ExternalFilterBackend):
+    pass
 
 
 class ProjectFilter(django_filters.FilterSet):

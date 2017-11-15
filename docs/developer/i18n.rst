@@ -4,7 +4,7 @@ Internationalization
 Per-request internationalization is enabled by default for English and Estonian languages.
 Client requests will respect the `Accept-Language`.
 
-Here are the guidelines for specifing translation strings:
+Here are the guidelines for specifying translation strings:
 
 * Build a proper sentence: start with a capital letter, end with a period.
 

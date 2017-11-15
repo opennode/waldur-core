@@ -1,7 +1,7 @@
 Cost tracking
 =============
 
-Add-on for NodeConductor plugins. It allows to calculate price estimates for resources.
+Add-on for Waldur plugins. It allows to calculate price estimates for resources.
 
 
 How to use

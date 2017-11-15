@@ -22,7 +22,7 @@ Flow for feature tasks
 
 - Perform brilliant work (don't forget about tests!)
 - Update CHANGELOG.rst
-- Verify that tests are passing
+- Verify that tests are passing.
 - Push all changes to origin (http://code.opennodecloud.com)
 - Create a Merge Request and assign it to a reviewer. Make sure that MR can be merged automatically. If not, resolve
    the conflicts by merging develop branch into yours:
@@ -31,6 +31,9 @@ Flow for feature tasks
 
     git checkout feature/task-id
     git pull origin develop
+
+- If MR consists of several commits, please squash them all to the single commit using
+  `interactive rebase <https://git-scm.com/docs/git-rebase#_interactive_mode>`_.
 
 - Resolve ticket in JIRA.
 
