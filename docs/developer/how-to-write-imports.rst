@@ -25,7 +25,7 @@ Example:
     from nodeconductor.structure import models as structure_models
     from nodeconductor_openstack.openstack import models as openstack_models
 
-    from nodeconductor_assembly_waldur.packages import models as package_models
+    from waldur_mastermind.packages import models as package_models
     from . import utils, managers
 
 
