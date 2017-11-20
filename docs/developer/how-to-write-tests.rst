@@ -64,11 +64,11 @@ Running tests
 -------------
 
 In order to run unit tests for specific module please execute the following command.
-Note that you should substitute module name instead of example nodeconductor_openstack.
+Note that you should substitute module name instead of example waldur_openstack.
 Also it is assumed that you've already activated virtual Python environment.
 
   .. code-block:: bash
 
-    DJANGO_SETTINGS_MODULE=nodeconductor.server.test_settings nodeconductor test nodeconductor_openstack
+    DJANGO_SETTINGS_MODULE=nodeconductor.server.test_settings waldur test waldur_openstack
 
 .. _context managers and decorators: https://docs.djangoproject.com/en/1.11/topics/testing/tools/#overriding-settings

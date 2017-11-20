@@ -23,7 +23,7 @@ Example:
 
     from nodeconductor.core import models as core_models, exceptions as core_exceptions
     from nodeconductor.structure import models as structure_models
-    from nodeconductor_openstack.openstack import models as openstack_models
+    from waldur_openstack.openstack import models as openstack_models
 
     from waldur_mastermind.packages import models as package_models
     from . import utils, managers
@@ -63,7 +63,7 @@ Wrong:
 
 .. code-block:: python
 
-    from nodeconductor_openstack.openstack import models
+    from waldur_openstack.openstack import models
 
 Right:
 
