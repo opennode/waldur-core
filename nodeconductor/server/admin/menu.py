@@ -41,7 +41,7 @@ class CustomMenu(Menu):
     IAAS_CLOUDS = (
         'waldur_mastermind.packages.*',
         'nodeconductor_azure.*',
-        'nodeconductor_openstack.*',
+        'waldur_openstack.*',
         'nodeconductor_aws.*',
         'nodeconductor_digitalocean.*',
         'waldur_slurm.*',
