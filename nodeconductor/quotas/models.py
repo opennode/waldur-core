@@ -57,6 +57,10 @@ class Quota(UuidMixin, AlertThresholdMixin, LoggableMixin, ReversionMixin, model
         if self.limit == -1:
             return False
 
+        # Allow to decrease quota usage
+        if delta < 0:
+            return False
+
         usage = self.usage
         limit = self.limit
 

@@ -39,13 +39,13 @@ class CustomMenu(Menu):
     """
 
     IAAS_CLOUDS = (
-        'nodeconductor_assembly_waldur.packages.*',
+        'waldur_mastermind.packages.*',
         'nodeconductor_azure.*',
-        'nodeconductor_openstack.*',
+        'waldur_openstack.*',
         'nodeconductor_aws.*',
         'nodeconductor_digitalocean.*',
         'waldur_slurm.*',
-        'nodeconductor_assembly_waldur.slurm_invoices.*',
+        'waldur_mastermind.slurm_invoices.*',
     )
 
     USERS = (
@@ -53,7 +53,7 @@ class CustomMenu(Menu):
     )
 
     ACCOUNTING = (
-        'nodeconductor_assembly_waldur.invoices.*',
+        'waldur_mastermind.invoices.*',
         'nodeconductor.cost_tracking.*',
     )
 
@@ -62,7 +62,7 @@ class CustomMenu(Menu):
     )
 
     SUPPORT_MODULES = (
-        'nodeconductor_assembly_waldur.support.*',
+        'waldur_mastermind.support.*',
     )
 
     def __init__(self, **kwargs):
