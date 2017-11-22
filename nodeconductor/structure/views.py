@@ -1053,7 +1053,8 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         """
         return super(ServiceSettingsViewSet, self).update(request, *args, **kwargs)
 
-    update_permissions = partial_update_permissions = [can_user_update_settings]
+    update_permissions = partial_update_permissions = [can_user_update_settings,
+                                                       permissions.check_access_to_services_management]
 
     @detail_route()
     def stats(self, request, uuid=None):
@@ -1107,7 +1108,7 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
         return Response(serialized_instance.data, status=status.HTTP_200_OK)
 
     update_certifications_serializer_class = serializers.ServiceCertificationsUpdateSerializer
-    update_certifications_permissions = [can_user_update_settings]
+    update_certifications_permissions = [can_user_update_settings, permissions.check_access_to_services_management]
 
 
 class ServiceMetadataViewSet(viewsets.GenericViewSet):
@@ -1499,7 +1500,7 @@ class BaseServiceViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
     filter_class = filters.BaseServiceFilter
     lookup_field = 'uuid'
     metadata_class = ActionsMetadata
-    unsafe_methods_permissions = [permissions.is_owner]
+    unsafe_methods_permissions = [permissions.is_owner, permissions.check_access_to_services_management]
 
     def list(self, request, *args, **kwargs):
         """

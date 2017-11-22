@@ -1,10 +1,14 @@
+from ddt import ddt, data
+
 from django.db import models
 from rest_framework import status, test
 
+from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure.models import ProjectRole
 from nodeconductor.structure.tests import factories, fixtures, models as test_models
 
 
+@ddt
 class ServiceCreateTest(test.APITransactionTestCase):
     def setUp(self):
         self.fixture = fixtures.ProjectFixture()
@@ -20,15 +24,31 @@ class ServiceCreateTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('username', response.data)
 
+    @data('owner', 'admin', 'manager')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_other_users_can_not_do_it(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.post(factories.TestServiceFactory.get_list_url(), self._get_valid_payload())
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_he_can_do_it(self):
+        self.client.force_authenticate(self.fixture.staff)
+        response = self.client.post(factories.TestServiceFactory.get_list_url(), self._get_valid_payload())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_validate_required_fields(self):
-        response = self.client.post(factories.TestServiceFactory.get_list_url(), {
+        response = self.client.post(factories.TestServiceFactory.get_list_url(), self._get_valid_payload())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def _get_valid_payload(self):
+        return {
             'name': 'Test service',
             'customer': self.customer_url,
             'backend_url': 'http://example.com/',
             'username': 'admin',
             'password': 'secret',
-        })
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        }
 
 
 class ServiceResourcesCounterTest(test.APITransactionTestCase):
@@ -100,3 +120,95 @@ class UnlinkServiceTest(test.APITransactionTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())
+
+
+@ddt
+class ServiceSettingsTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.service_settings = self.fixture.service.settings
+        self.url = factories.ServiceSettingsFactory.get_url(self.service_settings)
+
+    @data('owner', 'admin', 'manager')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_other_users_can_not_update_it(self, user):
+        self._403_update(user)
+
+    @data('staff')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_he_can_update_it(self, user):
+        self._200_update(user)
+
+    @data('admin', 'manager')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
+    def test_if_not_only_staff_manages_services_other_users_can_not_update_it(self, user):
+        self._404_update(user)
+
+    @data('staff', 'owner')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
+    def test_if_not_only_staff_manages_services_he_can_update_it(self, user):
+        self._200_update(user)
+
+    def _update(self, user, status):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.patch(self.url)
+        self.assertEqual(response.status_code, status)
+
+    def _200_update(self, user):
+        self._update(user, status.HTTP_200_OK)
+
+    def _404_update(self, user):
+        self._update(user, status.HTTP_404_NOT_FOUND)
+
+    def _403_update(self, user):
+        self._update(user, status.HTTP_403_FORBIDDEN)
+
+
+@ddt
+class ServiceDeleteTest(test.APITransactionTestCase):
+    @data('owner', 'admin', 'manager')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_other_users_can_not_delete_it(self, user):
+        self._403_delete(user)
+
+    @data('staff')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_he_can_delete_it(self, user):
+        self._204_delete(user)
+
+    @data('admin', 'manager')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
+    def test_if_not_only_staff_manages_services_other_users_can_not_delete_it(self, user):
+        self._404_delete(user)
+
+    @data('staff', 'owner')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
+    def test_if_not_only_staff_manages_services_he_can_delete_it(self, user):
+        self._204_delete(user)
+
+    def _delete(self, user):
+        fixture = fixtures.ServiceFixture()
+        service = fixture.service
+        url = factories.TestServiceFactory.get_url(service)
+        self.client.force_authenticate(getattr(fixture, user))
+        response = self.client.delete(url)
+        return response, service
+
+    def _successful_delete(self, user, status):
+        response, service = self._delete(user)
+        self.assertEqual(response.status_code, status)
+        self.assertRaises(models.ObjectDoesNotExist, service.refresh_from_db)
+
+    def _unsuccessful_delete(self, user, status):
+        response, service = self._delete(user)
+        self.assertEqual(response.status_code, status)
+        self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())
+
+    def _404_delete(self, user):
+        self._unsuccessful_delete(user, status.HTTP_404_NOT_FOUND)
+
+    def _403_delete(self, user):
+        self._unsuccessful_delete(user, status.HTTP_403_FORBIDDEN)
+
+    def _204_delete(self, user):
+        self._successful_delete(user, status.HTTP_204_NO_CONTENT)
