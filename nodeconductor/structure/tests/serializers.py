@@ -24,7 +24,7 @@ class ServiceProjectLinkSerializer(structure_serializers.BaseServiceProjectLinkS
         }
 
 
-class NewInstanceSerializer(structure_serializers.BaseResourceSerializer):
+class NewInstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
