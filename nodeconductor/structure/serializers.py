@@ -11,6 +11,7 @@ from django.contrib import auth
 import django.core.exceptions as django_exceptions
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models, transaction
+from django.db.models import Q
 from django.utils import six, timezone
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
@@ -736,14 +737,18 @@ class SshKeySerializer(serializers.HyperlinkedModelSerializer):
             'url': {'lookup_field': 'uuid'},
         }
 
-    def validate(self, attrs):
+    def validate_public_key(self, value):
+        value = value.strip()
+        if len(value.splitlines()) > 1:
+            raise serializers.ValidationError(_('Key is not valid: it should be single line.'))
+
         try:
-            fingerprint = core_models.get_ssh_key_fingerprint(attrs['public_key'])
+            fingerprint = core_models.get_ssh_key_fingerprint(value)
         except (IndexError, TypeError):
             raise serializers.ValidationError(_('Key is not valid: cannot generate fingerprint from it.'))
         if core_models.SshPublicKey.objects.filter(fingerprint=fingerprint).exists():
             raise serializers.ValidationError(_('Key with same fingerprint already exists.'))
-        return attrs
+        return value
 
     def get_fields(self):
         fields = super(SshKeySerializer, self).get_fields()
@@ -1512,11 +1517,14 @@ class VirtualMachineSerializer(BaseResourceSerializer):
             ssh_public_key = fields.get('ssh_public_key')
             if ssh_public_key:
                 ssh_public_key.query_params = {'user_uuid': user.uuid.hex}
-                ssh_public_key.queryset = ssh_public_key.queryset.filter(user=user)
+                if not user.is_staff:
+                    subquery = Q(user=user) | Q(is_shared=True)
+                    ssh_public_key.queryset = ssh_public_key.queryset.filter(subquery)
         return fields
 
     def create(self, validated_data):
-        validated_data['image_name'] = validated_data['image'].name
+        if 'image' in validated_data:
+            validated_data['image_name'] = validated_data['image'].name
         return super(VirtualMachineSerializer, self).create(validated_data)
 
 

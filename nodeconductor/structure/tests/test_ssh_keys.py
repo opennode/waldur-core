@@ -85,6 +85,20 @@ class SshKeyCreateTest(BaseSshKeyTest):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(core_models.SshPublicKey.objects.filter(**data).exists())
 
+    def test_user_cannot_add_ssh_key_with_new_lines(self):
+        staff = factories.UserFactory(is_staff=True)
+        key = factories.SshPublicKeyFactory.build()
+        data = {
+            'name': 'test',
+            'public_key': key.public_key+'\nABCD',
+        }
+
+        self.client.force_authenticate(staff)
+        response = self.client.post(factories.SshPublicKeyFactory.get_list_url(), data=data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(core_models.SshPublicKey.objects.filter(**data).exists())
+
 
 class SshKeyDeleteTest(BaseSshKeyTest):
 
