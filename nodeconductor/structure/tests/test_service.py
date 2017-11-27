@@ -9,46 +9,131 @@ from nodeconductor.structure.tests import factories, fixtures, models as test_mo
 
 
 @ddt
+class ServiceListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.service = self.fixture.service
+        self.spl = self.fixture.service_project_link
+
+    def get_list(self):
+        return self.client.get(factories.TestServiceFactory.get_list_url())
+
+    def test_anonymous_user_cannot_list_services(self):
+        response = self.get_list()
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @data('staff', 'owner', 'admin', 'manager')
+    def test_authorized_user_can_list_services(self, user):
+        self.client.force_authenticate(user=getattr(self.fixture, user))
+
+        response = self.get_list()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        service_url = factories.TestServiceFactory.get_url(self.service)
+        self.assertIn(service_url, [instance['url'] for instance in response.data])
+
+    def test_user_cannot_list_services_of_projects_he_has_no_role_in(self):
+        self.client.force_authenticate(user=self.fixture.user)
+
+        response = self.get_list()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(0, len(response.data))
+
+
+@ddt
 class ServiceCreateTest(test.APITransactionTestCase):
     def setUp(self):
         self.fixture = fixtures.ProjectFixture()
-        self.customer_url = factories.CustomerFactory.get_url(self.fixture.customer)
+        self.url = factories.TestServiceFactory.get_list_url()
+
+    def test_if_required_fields_are_specified_service_is_created(self):
+        self.client.force_authenticate(self.fixture.owner)
+        response = self.client.post(self.url, self._get_valid_payload())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_if_required_field_is_not_specified_error_raised(self):
         self.client.force_authenticate(self.fixture.owner)
 
-    def test_if_required_fields_is_not_specified_error_raised(self):
-        response = self.client.post(factories.TestServiceFactory.get_list_url(), {
-            'name': 'Test service',
-            'customer': self.customer_url,
-            'backend_url': 'http://example.com/',
-        })
+        payload = self._get_valid_payload()
+        del payload['username']
+        response = self.client.post(self.url, payload)
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('username', response.data)
 
+    @data('staff', 'owner')
+    def test_staff_and_owner_can_create_service(self, user):
+        self.assert_user_can_create_service(user)
+
+    @data('admin', 'manager')
+    def test_admin_and_manager_can_not_create_service(self, user):
+        self.assert_user_can_not_create_service(user)
+
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_he_can_create_it(self):
+        self.assert_user_can_create_service('staff')
+
     @data('owner', 'admin', 'manager')
     @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
-    def test_if_only_staff_manages_services_other_users_can_not_do_it(self, user):
+    def test_if_only_staff_manages_services_other_users_can_not_create_it(self, user):
+        self.assert_user_can_not_create_service(user)
+
+    def assert_user_can_create_service(self, user):
         self.client.force_authenticate(getattr(self.fixture, user))
-        response = self.client.post(factories.TestServiceFactory.get_list_url(), self._get_valid_payload())
+        response = self.client.post(self.url, self._get_valid_payload())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def assert_user_can_not_create_service(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.post(self.url, self._get_valid_payload())
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
-    def test_if_only_staff_manages_services_he_can_do_it(self):
-        self.client.force_authenticate(self.fixture.staff)
-        response = self.client.post(factories.TestServiceFactory.get_list_url(), self._get_valid_payload())
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_validate_required_fields(self):
-        response = self.client.post(factories.TestServiceFactory.get_list_url(), self._get_valid_payload())
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
     def _get_valid_payload(self):
+        customer_url = factories.CustomerFactory.get_url(self.fixture.customer)
         return {
             'name': 'Test service',
-            'customer': self.customer_url,
+            'customer': customer_url,
             'backend_url': 'http://example.com/',
             'username': 'admin',
             'password': 'secret',
         }
+
+
+@ddt
+class ServiceDeleteTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.service = self.fixture.service
+        self.url = factories.TestServiceFactory.get_url(self.service)
+
+    @data('staff', 'owner')
+    def test_staff_and_owner_can_delete_service(self, user):
+        self.assert_user_can_delete_service(user)
+
+    @data('admin', 'manager')
+    def test_admin_and_manager_can_not_delete_service(self, user):
+        self.assert_user_can_not_delete_service(user, status.HTTP_404_NOT_FOUND)
+
+    @data('staff')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_he_can_delete_it(self, user):
+        self.assert_user_can_delete_service(user)
+
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_owner_can_not_delete_it(self):
+        self.assert_user_can_not_delete_service('owner', status.HTTP_403_FORBIDDEN)
+
+    def assert_user_can_delete_service(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(test_models.TestService.objects.filter(pk=self.service.pk).exists())
+
+    def assert_user_can_not_delete_service(self, user, expected_status):
+        self.client.force_authenticate(getattr(self.fixture, user))
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, expected_status)
+        self.assertTrue(test_models.TestService.objects.filter(pk=self.service.pk).exists())
 
 
 class ServiceResourcesCounterTest(test.APITransactionTestCase):
@@ -97,13 +182,24 @@ class ServiceResourcesCounterTest(test.APITransactionTestCase):
         self.assertEqual(1, response.data['resources_count'])
 
 
-class UnlinkServiceTest(test.APITransactionTestCase):
+class ServiceUnlinkTest(test.APITransactionTestCase):
     def test_when_service_is_unlinked_all_related_resources_are_unlinked_too(self):
         resource = factories.TestNewInstanceFactory()
         service = resource.service_project_link.service
         unlink_url = factories.TestServiceFactory.get_url(service, 'unlink')
 
         self.client.force_authenticate(factories.UserFactory(is_staff=True))
+        response = self.client.post(unlink_url)
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertRaises(models.ObjectDoesNotExist, service.refresh_from_db)
+
+    def test_owner_can_unlink_managed_service(self):
+        fixture = fixtures.ServiceFixture()
+        service = fixture.service
+
+        unlink_url = factories.TestServiceFactory.get_url(service, 'unlink')
+        self.client.force_authenticate(fixture.owner)
         response = self.client.post(unlink_url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -121,94 +217,14 @@ class UnlinkServiceTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())
 
-
-@ddt
-class ServiceSettingsTest(test.APITransactionTestCase):
-    def setUp(self):
-        self.fixture = fixtures.ServiceFixture()
-        self.service_settings = self.fixture.service.settings
-        self.url = factories.ServiceSettingsFactory.get_url(self.service_settings)
-
-    @data('owner', 'admin', 'manager')
     @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
-    def test_if_only_staff_manages_services_other_users_can_not_update_it(self, user):
-        self._403_update(user)
-
-    @data('staff')
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
-    def test_if_only_staff_manages_services_he_can_update_it(self, user):
-        self._200_update(user)
-
-    @data('admin', 'manager')
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
-    def test_if_not_only_staff_manages_services_other_users_can_not_update_it(self, user):
-        self._404_update(user)
-
-    @data('staff', 'owner')
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
-    def test_if_not_only_staff_manages_services_he_can_update_it(self, user):
-        self._200_update(user)
-
-    def _update(self, user, status):
-        self.client.force_authenticate(getattr(self.fixture, user))
-        response = self.client.patch(self.url)
-        self.assertEqual(response.status_code, status)
-
-    def _200_update(self, user):
-        self._update(user, status.HTTP_200_OK)
-
-    def _404_update(self, user):
-        self._update(user, status.HTTP_404_NOT_FOUND)
-
-    def _403_update(self, user):
-        self._update(user, status.HTTP_403_FORBIDDEN)
-
-
-@ddt
-class ServiceDeleteTest(test.APITransactionTestCase):
-    @data('owner', 'admin', 'manager')
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
-    def test_if_only_staff_manages_services_other_users_can_not_delete_it(self, user):
-        self._403_delete(user)
-
-    @data('staff')
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
-    def test_if_only_staff_manages_services_he_can_delete_it(self, user):
-        self._204_delete(user)
-
-    @data('admin', 'manager')
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
-    def test_if_not_only_staff_manages_services_other_users_can_not_delete_it(self, user):
-        self._404_delete(user)
-
-    @data('staff', 'owner')
-    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=False)
-    def test_if_not_only_staff_manages_services_he_can_delete_it(self, user):
-        self._204_delete(user)
-
-    def _delete(self, user):
+    def test_if_only_staff_manages_services_owner_cannot_unlink_it(self):
         fixture = fixtures.ServiceFixture()
         service = fixture.service
-        url = factories.TestServiceFactory.get_url(service)
-        self.client.force_authenticate(getattr(fixture, user))
-        response = self.client.delete(url)
-        return response, service
 
-    def _successful_delete(self, user, status):
-        response, service = self._delete(user)
-        self.assertEqual(response.status_code, status)
-        self.assertRaises(models.ObjectDoesNotExist, service.refresh_from_db)
+        unlink_url = factories.TestServiceFactory.get_url(service, 'unlink')
+        self.client.force_authenticate(fixture.owner)
+        response = self.client.post(unlink_url)
 
-    def _unsuccessful_delete(self, user, status):
-        response, service = self._delete(user)
-        self.assertEqual(response.status_code, status)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(test_models.TestService.objects.filter(pk=service.pk).exists())
-
-    def _404_delete(self, user):
-        self._unsuccessful_delete(user, status.HTTP_404_NOT_FOUND)
-
-    def _403_delete(self, user):
-        self._unsuccessful_delete(user, status.HTTP_403_FORBIDDEN)
-
-    def _204_delete(self, user):
-        self._successful_delete(user, status.HTTP_204_NO_CONTENT)

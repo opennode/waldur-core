@@ -116,6 +116,6 @@ def _get_customer(obj):
     return _get_parent_by_permission_path(obj, 'customer_path')
 
 
-def check_access_to_services_management(request, *args, **kwargs):
+def check_access_to_services_management(request, view, obj=None):
     if django_settings.NODECONDUCTOR['ONLY_STAFF_MANAGES_SERVICES'] and not request.user.is_staff:
         raise exceptions.PermissionDenied()

@@ -2,6 +2,7 @@ from ddt import ddt, data
 
 from rest_framework import status, test
 
+from nodeconductor.core.tests.helpers import override_nodeconductor_settings
 from nodeconductor.structure import models
 
 from . import fixtures, factories
@@ -91,7 +92,62 @@ class ServiceSettingsListTest(test.APITransactionTestCase):
 
 
 @ddt
-class ServiceSettingUpdateTest(test.APITransactionTestCase):
+class ServiceSettingsUpdateTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.fixture = fixtures.ServiceFixture()
+        self.service_settings = self.fixture.service.settings
+        self.url = factories.ServiceSettingsFactory.get_url(self.service_settings)
+
+    @data('staff', 'owner')
+    def test_staff_and_owner_can_update_service_settings(self, user):
+        self.assert_user_can_update_service_settings(user)
+
+    @data('admin', 'manager')
+    def test_admin_and_owner_can_not_update_service_settings(self, user):
+        self.assert_user_can_not_get_service_settings(user)
+
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_he_can_update_it(self):
+        self.assert_user_can_update_service_settings('staff')
+
+    @data('owner', 'admin', 'manager')
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    def test_if_only_staff_manages_services_other_users_can_not_update_it(self, user):
+        self.assert_user_can_not_update_service_settings(user)
+
+    def assert_user_can_update_service_settings(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.update_service_settings()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.service_settings.refresh_from_db()
+        self.assertEqual(self.service_settings.name, 'Valid new name')
+
+    def assert_user_can_not_update_service_settings(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.update_service_settings()
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.service_settings.refresh_from_db()
+        self.assertNotEqual(self.service_settings.name, 'Valid new name')
+
+    def assert_user_can_not_get_service_settings(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        response = self.update_service_settings()
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.service_settings.refresh_from_db()
+        self.assertNotEqual(self.service_settings.name, 'Valid new name')
+
+    def update_service_settings(self):
+        return self.client.patch(self.url, {'name': 'Valid new name'})
+
+
+@ddt
+class SharedServiceSettingUpdateTest(test.APITransactionTestCase):
 
     def setUp(self):
         self.fixture = fixtures.ServiceFixture()
@@ -230,6 +286,16 @@ class ServiceSettingsUpdateCertifications(test.APITransactionTestCase):
         self.client.force_authenticate(getattr(self.fixture, user))
         payload = self._get_payload(self.associated_certification)
 
+        response = self.client.post(self.url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @override_nodeconductor_settings(ONLY_STAFF_MANAGES_SERVICES=True)
+    @data('owner', 'manager', 'admin')
+    def test_if_only_staff_manages_services_other_user_can_not_update_certifications(self, user):
+        self.client.force_authenticate(getattr(self.fixture, user))
+
+        payload = self._get_payload(self.associated_certification)
         response = self.client.post(self.url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
