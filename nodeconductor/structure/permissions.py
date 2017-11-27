@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings as django_settings
 from rest_framework import exceptions
 
 from nodeconductor.core.permissions import SAFE_METHODS, IsAdminOrReadOnly
@@ -113,3 +114,8 @@ def _get_project(obj):
 
 def _get_customer(obj):
     return _get_parent_by_permission_path(obj, 'customer_path')
+
+
+def check_access_to_services_management(request, view, obj=None):
+    if django_settings.NODECONDUCTOR['ONLY_STAFF_MANAGES_SERVICES'] and not request.user.is_staff:
+        raise exceptions.PermissionDenied()
