@@ -230,7 +230,7 @@ class ApiEndpoint(object):
         # XXX: Hotfix for openstack app docs.
         app_name = pattern.callback.cls.__module__.split('.')[-2]
         app_name = app_name.replace('waldur_openstack', 'openstack')
-        app_name = app_name.replace('nodeconductor_auth_social', 'nodeconductor_auth')
+        app_name = app_name.replace('waldur_auth_social', 'nodeconductor_auth')
         conf = apps.get_app_config(app_name)
         self.pattern = pattern
         self.callback = pattern.callback
