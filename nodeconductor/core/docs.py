@@ -1,6 +1,9 @@
+from __future__ import unicode_literals
+
 import importlib
 import inspect
 import logging
+import six
 
 from django.apps import apps
 from django.conf import settings
@@ -30,7 +33,7 @@ def getdoc(obj, warning=True):
             cls = obj.im_class
             name = '{}.{}.{}'.format(cls.__module__, cls.__name__, obj.im_func.func_name)
         else:
-            name = str(obj)
+            name = six.text_type(obj)
         logger.warning("Docstring is missing for %s", name)
     return doc
 

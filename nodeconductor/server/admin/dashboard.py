@@ -1,8 +1,11 @@
+from __future__ import unicode_literals
+
 from django.apps import apps
 from django.conf import settings
 from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 from fluent_dashboard.dashboard import modules, FluentIndexDashboard, FluentAppIndexDashboard
+import six
 
 from nodeconductor import __version__
 from nodeconductor.core import models as core_models, NodeConductorExtension
@@ -115,7 +118,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_link_to_model(self, model):
         return {
-            'title': str(model._meta.verbose_name_plural).capitalize(),
+            'title': six.text_type(model._meta.verbose_name_plural).capitalize(),
             'url': reverse('admin:%s_%s_changelist' % (model._meta.app_label, model._meta.model_name)),
             'external': True,
             'attrs': {'target': '_blank'},
@@ -123,7 +126,7 @@ class CustomIndexDashboard(FluentIndexDashboard):
 
     def _get_link_to_instance(self, instance):
         return {
-            'title': str(instance),
+            'title': six.text_type(instance),
             'url': reverse('admin:%s_%s_change' % (instance._meta.app_label, instance._meta.model_name),
                            args=(instance.pk,)),
             'external': True,

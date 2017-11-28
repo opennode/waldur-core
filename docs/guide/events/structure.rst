@@ -32,19 +32,6 @@ Structure events
 
 .. glossary::
 
-    **project_group_creation_succeeded**
-        Project group has been created.
-
-    **project_group_update_succeeded**
-        Project group has been updated.
-
-    **project_group_deletion_succeeded**
-        Project group has been deleted.
-
-------------
-
-.. glossary::
-
     **project_creation_succeeded**
         Project has been created.
 

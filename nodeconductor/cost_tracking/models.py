@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
+import six
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -189,7 +190,7 @@ class PriceEstimate(LoggableMixin, core_models.UuidMixin, core_models.Descendant
         if self.scope:
             if isinstance(self.scope, (structure_models.ServiceProjectLink, structure_models.Service)):
                 # We need to display some meaningful name for SPL.
-                return str(self.scope)
+                return six.text_type(self.scope)
             else:
                 return self.scope.name
         else:

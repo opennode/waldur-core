@@ -8,13 +8,13 @@ deployment and restoring it on other deployment.
 How it works
 ++++++++++++
 
-On DR backup creation NodeConductor creates cinder backups for each volume of 
+On DR backup creation Waldur creates cinder backups for each volume of
 the instance, stores instance metadata and exports and saves metadata records
 of cinder backups.
 
-On DR backup restoration NodeConductor creates cinder backups in a new tenant, 
+On DR backup restoration Waldur creates cinder backups in a new tenant,
 based on saved metadata records. After that it creates new volumes and
-restores cinder backups into them. Finally, NodeConductor creates new instance
+restores cinder backups into them. Finally, Waldur creates new instance
 based on restored volumes and backup metadata.
 
 

@@ -46,7 +46,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'NodeConductor'
+project = u'Waldur'
 copyright = u'2014-2016, OpenNode'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -201,7 +201,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'nodeconductor.tex', u'NodeConductor Documentation',
+  ('index', 'nodeconductor.tex', u'Waldur Documentation',
    u'Guide and API Reference', 'manual'),
 ]
 

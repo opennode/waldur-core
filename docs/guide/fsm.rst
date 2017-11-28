@@ -1,7 +1,7 @@
 State machines
 --------------
 
-Some of the models in NodeConductor have a state field representing their current condition. The state field
+Some of the models in Waldur have a state field representing their current condition. The state field
 is implemented as a finite state machine. Both user requests and background tasks can trigger state transition. A REST
 client can observe changes to the model instance through polling the 'state' field of the object.
 

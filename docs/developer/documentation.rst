@@ -24,7 +24,7 @@ Documentation policy FAQ
 API documentation
 =================
 
-NodeConductor generates API documentation based on docstrings from following classes:
+Waldur generates API documentation based on docstrings from following classes:
 
 - **AppConfig class** docstring should give general information about an app
 - **View class** docstring should describe intention of top-level endpoint
