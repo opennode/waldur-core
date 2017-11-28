@@ -1,23 +1,20 @@
 Listing permissions
 -------------------
 
-Entities of NodeConductor are grouped into *organisational units*.
-The following *organisational units* are supported: customer, project group and project.
+Entities of Waldur are grouped into *organisational units*.
+The following *organisational units* are supported: customer and project.
 
 Each *organisational unit* has a list of users associated with it.
 Getting a list of users connected to a certain *organisational unit* is done through running a
 GET request against a corresponding endpoint.
 
 - customer: endpoint **/api/customer-permissions/**
-- project_group: endpoint **/api/project-group-permissions/**
 - project: endpoint **/api/project-permissions/**
 
 Filtering by *organisational unit* UUID or URL is supported. Depending on the type, filter field is one of:
 
 - ?customer=<UUID>
 - ?customer_url=<URL>
-- ?project_group=<UUID>
-- ?project_group_url=<URL>
 - ?project=<UUID>
 - ?project_url=<URL>
 - ?user_url=<URL>

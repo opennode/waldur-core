@@ -1,8 +1,8 @@
 Background processing
 ---------------------
 
-For executing heavier requests and performing background tasks NodeConductor is using Celery_. Celery is a task
-queue that supports multiple backends for storing the tasks and results. Currently NodeConductor is relying on
+For executing heavier requests and performing background tasks Waldur is using Celery_. Celery is a task
+queue that supports multiple backends for storing the tasks and results. Currently Waldur is relying on
 Redis_ backend - Redis server **must be** running for requests triggering background scheduling to succeed.
 
 If you are developing on OS X and have brew installed:

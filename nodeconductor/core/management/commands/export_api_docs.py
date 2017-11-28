@@ -1,5 +1,6 @@
 import json
 import logging
+import six
 
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -43,7 +44,7 @@ class Command(BaseCommand):
 
         data = json.loads(response.content)
         if options['output'] is None:
-            self.stdout.write(str(data))
+            self.stdout.write(six.text_type(data))
         else:
             with open(options['output'], 'w') as output_file:
                 json.dump(data, output_file)

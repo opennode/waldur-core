@@ -1,7 +1,7 @@
 Customers, Projects, Services, Resources and Users
 --------------------------------------------------
 
-NodeConductor is a service for sharing resources across projects. It is based on the delegation model where a customer
+Waldur is a service for sharing resources across projects. It is based on the delegation model where a customer
 can allocate certain users to perform technical or non-technical actions in the projects.
 
 Glossary
@@ -10,8 +10,8 @@ Glossary
 .. glossary::
 
     User
-      An account in NodeConductor belonging to a person or a robot. A user can belong to groups that can grant him
-      different roles.
+      An account in Waldur belonging to a person or a robot. A user can belong to project or customer
+      that can grant him different roles.
 
     Customer
       A standalone entity. Represents a company or a department.
@@ -27,7 +27,7 @@ Glossary
       as connection between service settings and customer).
 
     Service
-      A standalone entity. Represents cloud service within NodeConductor and belongs to a customer.
+      A standalone entity. Represents cloud service within Waldur and belongs to a customer.
       Customer can have any number of any services. If service is "available_for_all" - it will be automatically
       connected to each customer project.
 
@@ -50,18 +50,13 @@ Glossary
       A project role responsible for the day-to-day technical operations within a project.
       Limited access to project management and billing.
 
+    Project manager
+      An optional non-technical role that a customer can use to delegate management of certain projects to selected
+      users. Project manager can create new projects and manage administrators within a scope of a certain project.
+
     Resource
       A resource is a provisioned entity of a service, for example, a VM in OpenStack or AWS, a repository in GitHub
       or a database in Oracle. Each resource belongs to a particular project.
-
-    Project group
-      Projects can be grouped together for convenience or permission delegation from Customer owner to Project group
-      manager.
-
-    Project group manager
-      An optional non-technical role that a customer can use to delegate management of certain projects to selected
-      users. Project group manager can create new projects and manage administrators within a scope of a certain
-      project group.
 
 
 Architecture

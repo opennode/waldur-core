@@ -1,7 +1,7 @@
 Version
 -------
 
-In order to retrieve current version of the NodeConductor authenticated user
+In order to retrieve current version of the Waldur authenticated user
 should send a GET request to **/api/version/**.
 
 Valid request example (token is user specific):

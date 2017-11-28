@@ -1,7 +1,7 @@
 Shareable services
 ------------------
 
-NodeConductor is designed to support multiple API-based services for access sharing. Services can range from IaaS to
+Waldur is designed to support multiple API-based services for access sharing. Services can range from IaaS to
 SaaS, the common denominator is the ability to control services over APIs. Currently supported services are listed below.
 
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
@@ -24,5 +24,5 @@ SaaS, the common denominator is the ability to control services over APIs. Curre
 | SugarCRM *       | CRM            | –      | yes     | user CRUD                 | –        | –          |
 +------------------+----------------+--------+---------+---------------------------+----------+------------+
 
-\* available via NodeConductor extensions
+\* available via Waldur extensions
 

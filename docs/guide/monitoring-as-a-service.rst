@@ -1,7 +1,7 @@
 Monitoring-as-a-service (MaaS)
 ------------------------------
 
-NodeConductor can be used for implementing a MaaS
+Waldur can be used for implementing a MaaS
 solution for OpenStack VMs with Zabbix monitoring service.
 
 Two approaches for MaaS are available:
@@ -9,7 +9,7 @@ Two approaches for MaaS are available:
 1. A pre-packaged Zabbix appliance deployed into defined OpenStack tenant for
 the highest flexibility.
 
-2. A pre-packaged Zabbix appliance configurable by NodeConductor after the
+2. A pre-packaged Zabbix appliance configurable by Waldur after the
 deployment of the appliance ("Advanced monitoring"). Intended for use cases
 when OpenStack hosts need to be registered manually or automatically in the
 monitoring server deployed in a tenant.
@@ -62,7 +62,7 @@ Advanced monitoring
 Provisioning flow
 *****************
 
-NodeConductor requires a separate template group for advanced monitoring that
+Waldur requires a separate template group for advanced monitoring that
 contains 2 templates:
 
 - OpenStack VM template - describing provision details of a new VM with Zabbix;
@@ -73,7 +73,7 @@ contains 2 templates:
 Setup
 *****
 
-1. Add settings for SMS sending to NodeConductor settings:
+1. Add settings for SMS sending to Waldur settings:
 
 .. code-block:: python
 
@@ -85,7 +85,7 @@ Setup
         },
     }
 
-See also: `NodeConductor Zabbix plugin configuration <http://nodeconductor-zabbix.readthedocs.io/en/latest/installation.html#configuration>`_.
+See also: `Waldur Zabbix plugin configuration <http://nodeconductor-zabbix.readthedocs.io/en/latest/installation.html#configuration>`_.
 
 2. Add Zabbix security group to all existing tenants:
 

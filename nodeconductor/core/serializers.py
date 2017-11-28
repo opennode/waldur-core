@@ -1,7 +1,10 @@
+from __future__ import unicode_literals
+
 import base64
 from collections import OrderedDict
 from datetime import timedelta
 import logging
+import six
 
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
 from django.urls import reverse, Resolver404
@@ -133,7 +136,7 @@ class GenericRelatedField(Field):
         except (Resolver404, AttributeError, MultipleObjectsReturned, ObjectDoesNotExist):
             raise serializers.ValidationError(_("Can't restore object from url: %s") % data)
         if model not in self.related_models:
-            raise serializers.ValidationError(_('%s object does not support such relationship.') % str(obj))
+            raise serializers.ValidationError(_('%s object does not support such relationship.') % six.text_type(obj))
         return obj
 
 

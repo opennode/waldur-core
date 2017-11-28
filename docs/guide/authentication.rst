@@ -2,7 +2,7 @@
 Authentication
 --------------
 
-NodeConductor uses token-based authentication for REST.
+Waldur uses token-based authentication for REST.
 
 In order to authenticate your requests first obtain token from any of the supported token backends.
 Then use the token in all the subsequent requests putting it into ``Authorization`` header:
