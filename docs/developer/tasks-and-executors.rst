@@ -57,7 +57,7 @@ To mark task as background you need to inherit it from core.BackgroundTask:
 
 .. code-block:: python
 
-    from nodeconductor.core import tasks as core_tasks
+    from waldur_core.core import tasks as core_tasks
     class MyTask(core_tasks.BackgroundTask):
         def run(self):
             print '** background task'

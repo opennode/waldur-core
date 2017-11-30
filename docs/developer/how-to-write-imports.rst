@@ -7,7 +7,7 @@ Grouping
 1. Imports from :code:`__future__`.
 2. Default python modules.
 3. Related third party imports.
-4. Imports from installed nodeconductor modules.
+4. Imports from installed Waldur modules.
 5. Local application imports.
 
 Example:
@@ -21,8 +21,8 @@ Example:
     from django.conf import settings
     from model_utils import FieldTracker
 
-    from nodeconductor.core import models as core_models, exceptions as core_exceptions
-    from nodeconductor.structure import models as structure_models
+    from waldur_core.core import models as core_models, exceptions as core_exceptions
+    from waldur_core.structure import models as structure_models
     from waldur_openstack.openstack import models as openstack_models
 
     from waldur_mastermind.packages import models as package_models
@@ -78,30 +78,30 @@ Wrong:
 
 .. code-block:: python
 
-    from nodeconductor.core import models as core_models
-    from nodeconductor.core import exceptions as core_exceptions
+    from waldur_core.core import models as core_models
+    from waldur_core.core import exceptions as core_exceptions
 
 Right:
 
 .. code-block:: python
 
-    from nodeconductor.core import models as core_models, exceptions as core_exceptions
+    from waldur_core.core import models as core_models, exceptions as core_exceptions
 
 
 Suggestions
 -----------
 
-1. It is suggested to import whole modules from nodeconductor plugin, not only
+1. It is suggested to import whole modules from waldur_core plugin, not only
 separate classes.
 
 Wrong:
 
 .. code-block:: python
 
-    from nodeconductor.structure.models import Project
+    from waldur_core.structure.models import Project
 
 Right:
 
 .. code-block:: python
 
-    from nodeconductor.structure import models as structure_models
+    from waldur_core.structure import models as structure_models

@@ -47,17 +47,17 @@ Wrong:
 
 .. code-block:: python
 
-    with self.settings(NODECONDUCTOR={'INVITATION_LIFETIME': timedelta(weeks=1)}):
+    with self.settings(WALDUR_CORE={'INVITATION_LIFETIME': timedelta(weeks=1)}):
         tasks.cancel_expired_invitations()
 
 Right:
 
 .. code-block:: python
 
-    nodeconductor_settings = settings.NODECONDUCTOR.copy()
-    nodeconductor_settings['INVITATION_LIFETIME'] = timedelta(weeks=1)
+    waldur_settings = settings.WALDUR_CORE.copy()
+    waldur_settings['INVITATION_LIFETIME'] = timedelta(weeks=1)
 
-    with self.settings(NODECONDUCTOR=nodeconductor_settings):
+    with self.settings(WALDUR_CORE=waldur_settings):
         tasks.cancel_expired_invitations()
 
 Running tests
@@ -69,6 +69,6 @@ Also it is assumed that you've already activated virtual Python environment.
 
   .. code-block:: bash
 
-    DJANGO_SETTINGS_MODULE=nodeconductor.server.test_settings waldur test waldur_openstack
+    DJANGO_SETTINGS_MODULE=waldur_core.server.test_settings waldur test waldur_openstack
 
 .. _context managers and decorators: https://docs.djangoproject.com/en/1.11/topics/testing/tools/#overriding-settings

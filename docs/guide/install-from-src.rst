@@ -37,8 +37,8 @@ Additional requirements:
 
   .. code-block:: bash
 
-    cp nodeconductor/server/settings.py.example nodeconductor/server/settings.py
-    vi nodeconductor/server/settings.py
+    cp waldur_core/server/settings.py.example waldur_core/server/settings.py
+    vi waldur_core/server/settings.py
 
 5. Initialise database -- SQLite3 database will be created in ``./db.sqlite3`` unless specified otherwise in settings files:
 

@@ -23,7 +23,7 @@ Deployment settings
 
 Deployment specific settings (e.g. for CentOS-7) are maintained as Python files and are kept in **/etc/waldur/**.
 They are read in by a packaging specific **packaging/settings.py** file copied to PYTHONPATH
-(**nodeconductor.server.settings**) in packaging branch.
+(**waldur_core.server.settings**) in packaging branch.
 
 The following settings files are read in from **/etc/waldur/**:
 

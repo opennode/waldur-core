@@ -85,9 +85,9 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/nodeconductor.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/waldur_core.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/nodeconductor.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/waldur_core.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
