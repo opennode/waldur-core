@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# nodeconductor documentation build configuration file, created by
+# Waldur Core Documentation build configuration file, created by
 # sphinx-quickstart on Sun May 18 17:27:42 2014.
 #
 # This file is execfile()d with the current directory set to its
@@ -46,7 +46,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'NodeConductor'
+project = u'Waldur'
 copyright = u'2014-2016, OpenNode'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -54,7 +54,7 @@ copyright = u'2014-2016, OpenNode'
 # built documents.
 #
 # The short X.Y version.
-from nodeconductor import __version__
+from waldur_core import __version__
 
 version =__version__
 # The full version, including alpha/beta/rc tags.
@@ -181,7 +181,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'nodeconductordoc'
+htmlhelp_basename = 'waldurdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -201,7 +201,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'nodeconductor.tex', u'NodeConductor Documentation',
+  ('index', 'waldur_core.tex', u'Waldur Documentation',
    u'Guide and API Reference', 'manual'),
 ]
 
@@ -231,7 +231,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'nodeconductor', u'nodeconductor Documentation',
+    ('index', 'waldur_core', u'Waldur Core Documentation',
      [u'OpenNode'], 1)
 ]
 
@@ -245,8 +245,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'nodeconductor', u'nodeconductor Documentation',
-   u'OpenNode', 'nodeconductor', 'One line description of project.',
+  ('index', 'waldur_core', u'Waldur Core Documentation',
+   u'OpenNode', 'waldur_core', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -267,9 +267,9 @@ texinfo_documents = [
 intersphinx_mapping = {'http://docs.python.org/': None}
 
 import django
-os.environ['DJANGO_SETTINGS_MODULE'] = 'nodeconductor.server.doc_settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'waldur_core.server.doc_settings'
 django.setup()
 
 # Generate API documentation
-from nodeconductor.core.management.commands.drfdocs import Command
+from waldur_core.core.management.commands.drfdocs import Command
 Command().handle(path='docs/drfapi')

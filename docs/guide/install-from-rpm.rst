@@ -1,18 +1,18 @@
 Installation from RPM repository
 --------------------------------
 
-To install NodeConductor standalone on RHEL7-compatible operating systems (CentOS 7, Scientific Linux 7):
+To install Waldur standalone on RHEL7-compatible operating systems (CentOS 7, Scientific Linux 7):
 
 .. literalinclude:: bootstrap-centos7.sh
    :language: bash
 
-All done. NodeConductor API should be available at http://myserver/api/ (port 80).
+All done. Waldur API should be available at http://myserver/api/ (port 80).
 
 Note that database server (PostgreSQL) and key-value store (Redis) may run on a separate servers -- in this case modify installation process accordingly.
 
-For plugin installation instructions see NodeConductor's plugin `section <../index.html#nodeconductor-plugins>`_.
+For plugin installation instructions see Waldur's plugin `section <../index.html#nodeconductor-plugins>`_.
 
 Configuration
 +++++++++++++
 
-NodeConductor configuration file can be found at ``/etc/nodeconductor/settings.ini``.
+Waldur configuration file can be found at ``/etc/waldur/core.ini``.

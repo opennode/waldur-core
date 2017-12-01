@@ -25,10 +25,10 @@ quotas names. Also ``add_quotas_to_scope`` handler has to be connected to object
     # in apps.py
 
     signals.post_save.connect(
-            quotas_handlers.add_quotas_to_scope,
-            sender=MyModel,
-            dispatch_uid='nodeconductor.myapp.handlers.add_quotas_to_mymodel',
-        )
+        quotas_handlers.add_quotas_to_scope,
+        sender=MyModel,
+        dispatch_uid='waldur_app.handlers.add_quotas_to_mymodel',
+    )
 
 
 Note that quotas can only be created in ``add_quotas_to_scope`` handler. They can not be added anywhere else in the code.

@@ -1,8 +1,7 @@
-# Django settings for nodeconductor project
-from nodeconductor.server.base_settings import *
+# Django settings for Waldur
+from waldur_core.server.base_settings import *
 
 import os
-import warnings
 
 from ConfigParser import RawConfigParser
 
@@ -151,15 +150,15 @@ LOGGING = {
     'filters': {
         # Filter out only events (user-facing messages)
         'is-event': {
-            '()': 'nodeconductor.logging.log.RequireEvent',
+            '()': 'waldur_core.logging.log.RequireEvent',
         },
         # Filter out only non-events (not user-facing messages)
         'is-not-event': {
-            '()': 'nodeconductor.logging.log.RequireNotEvent',
+            '()': 'waldur_core.logging.log.RequireNotEvent',
         },
         # Filter out messages from background tasks
         'is-not-background-task': {
-            '()': 'nodeconductor.logging.log.RequireNotBackgroundTask',
+            '()': 'waldur_core.logging.log.RequireNotBackgroundTask',
         },
     },
 
@@ -217,14 +216,14 @@ LOGGING = {
             'level': config.get('events', 'log_level').upper(),
         },
         # Send logs to log server
-        # Note that nodeconductor.logging.log.TCPEventHandler does not support exernal formatters
+        # Note that waldur_core.logging.log.TCPEventHandler does not support exernal formatters
         'tcp': {
-            'class': 'nodeconductor.logging.log.TCPEventHandler',
+            'class': 'waldur_core.logging.log.TCPEventHandler',
             'filters': ['is-not-event'],
             'level': config.get('logging', 'log_level').upper(),
         },
         'tcp-event': {
-            'class': 'nodeconductor.logging.log.TCPEventHandler',
+            'class': 'waldur_core.logging.log.TCPEventHandler',
             'filters': ['is-event'],
             'host': config.get('events', 'logserver_host'),
             'level': config.get('events', 'log_level').upper(),
@@ -233,7 +232,7 @@ LOGGING = {
 
         # Send logs to web hook
         'hook-event': {
-            'class': 'nodeconductor.logging.log.HookHandler',
+            'class': 'waldur_core.logging.log.HookHandler',
             'filters': ['is-event'],
             'level': config.get('events', 'log_level').upper(),
         },
@@ -257,7 +256,7 @@ LOGGING = {
         'django': {
             'handlers': [],
         },
-        'nodeconductor': {
+        'waldur_core': {
             'handlers': ['tcp-event'],
             'level': config.get('logging', 'log_level').upper(),
         },
@@ -271,17 +270,17 @@ LOGGING = {
 if config.get('logging', 'admin_email') != '':
     ADMINS += (('Admin', config.get('logging', 'admin_email')),)
     LOGGING['loggers']['celery.worker']['handlers'].append('email-admins')
-    LOGGING['loggers']['nodeconductor']['handlers'].append('email-admins')
+    LOGGING['loggers']['waldur_core']['handlers'].append('email-admins')
 
 if config.get('logging', 'log_file') != '':
     LOGGING['handlers']['file']['filename'] = config.get('logging', 'log_file')
     LOGGING['loggers']['django']['handlers'].append('file')
-    LOGGING['loggers']['nodeconductor']['handlers'].append('file')
+    LOGGING['loggers']['waldur_core']['handlers'].append('file')
 
 if config.getboolean('logging', 'syslog'):
     LOGGING['handlers']['syslog']['address'] = '/dev/log'
     LOGGING['loggers']['django']['handlers'].append('syslog')
-    LOGGING['loggers']['nodeconductor']['handlers'].append('syslog')
+    LOGGING['loggers']['waldur_core']['handlers'].append('syslog')
 
 if config.get('logging', 'log_level').upper() == 'DEBUG':
     # Enabling debugging at http.client level (requests->urllib3->http.client)
@@ -301,14 +300,14 @@ if config.get('logging', 'log_level').upper() == 'DEBUG':
 
 if config.get('events', 'log_file') != '':
     LOGGING['handlers']['file-event']['filename'] = config.get('events', 'log_file')
-    LOGGING['loggers']['nodeconductor']['handlers'].append('file-event')
+    LOGGING['loggers']['waldur_core']['handlers'].append('file-event')
 
 if config.getboolean('events', 'syslog'):
     LOGGING['handlers']['syslog-event']['address'] = '/dev/log'
-    LOGGING['loggers']['nodeconductor']['handlers'].append('syslog-event')
+    LOGGING['loggers']['waldur_core']['handlers'].append('syslog-event')
 
 if config.getboolean('events', 'hook'):
-    LOGGING['loggers']['nodeconductor']['handlers'].append('hook-event')
+    LOGGING['loggers']['waldur_core']['handlers'].append('hook-event')
 
 # Static files
 # See also: https://docs.djangoproject.com/en/1.11/ref/settings/#static-files
@@ -358,12 +357,12 @@ BROKER_URL = redis_url
 CELERY_RESULT_BACKEND = redis_url
 
 for app in INSTALLED_APPS:
-    if app.startswith('nodeconductor_'):
-        LOGGING['loggers'][app] = LOGGING['loggers']['nodeconductor']
+    if app.startswith('waldur_'):
+        LOGGING['loggers'][app] = LOGGING['loggers']['waldur_core']
 
 # Waldur Core internal configuration
-# See also: http://nodeconductor.readthedocs.io/en/stable/guide/intro.html#id1
-NODECONDUCTOR.update({
+# See also: http://docs.waldur.com/
+WALDUR_CORE.update({
     'ELASTICSEARCH': {
         'host': config.get('elasticsearch', 'host'),
         'password': config.get('elasticsearch', 'password'),
@@ -376,10 +375,10 @@ NODECONDUCTOR.update({
     'SHOW_ALL_USERS': config.getboolean('global', 'show_all_users'),
 })
 
-if NODECONDUCTOR['ELASTICSEARCH']['protocol'] == 'https':
-    NODECONDUCTOR['ELASTICSEARCH']['verify_certs'] = config.getboolean('elasticsearch', 'verify_certs')
-    if NODECONDUCTOR['ELASTICSEARCH']['verify_certs']:
-        NODECONDUCTOR['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
+if WALDUR_CORE['ELASTICSEARCH']['protocol'] == 'https':
+    WALDUR_CORE['ELASTICSEARCH']['verify_certs'] = config.getboolean('elasticsearch', 'verify_certs')
+    if WALDUR_CORE['ELASTICSEARCH']['verify_certs']:
+        WALDUR_CORE['ELASTICSEARCH']['ca_certs'] = config.get('elasticsearch', 'ca_certs')
 
 # Swagger uses DRF session authentication which can be enabled in DEBUG mode
 if config.getboolean('global', 'debug'):
@@ -402,21 +401,12 @@ if config.get('sentry', 'dsn') != '':
         'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
         'level': 'ERROR',
     }
-    for logger in ['celery.worker', 'django', 'nodeconductor', 'requests']:
+    for logger in ['celery.worker', 'django', 'waldur_core', 'requests']:
         LOGGING['loggers'][logger]['handlers'].append('sentry')
-
-# Additional configuration files for Waldur (deprectaed)
-extensions = ('nodeconductor_plus.py', 'nodeconductor_saml2.py')
-for extension_name in extensions:
-    # optionally load extension configurations
-    extension_conf_file_path = os.path.join('etc', 'nodeconductor', extension_name)
-    if os.path.isfile(extension_conf_file_path):
-        warnings.warn("Configuration file '%s' is deprecated" % extension_conf_file_path)
-        execfile(extension_conf_file_path)
 
 # Additional configuration files for Waldur
 # 'override.conf.py' must be the first element to override settings in core.ini but not plugin configuration.
-# Plugin configuration files must me ordered alphabetically to provide predicatable configuration handling order.
+# Plugin configuration files must me ordered alphabetically to provide predictable configuration handling order.
 extensions = ('override.conf.py', 'saml2.conf.py')
 for extension_name in extensions:
     # optionally load extension configurations

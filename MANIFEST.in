@@ -1,8 +1,8 @@
 include *.md *.rst
-recursive-include nodeconductor/locale *.mo *.po
-recursive-include nodeconductor/core/templates *.html
-recursive-include nodeconductor/templates *.html
-recursive-include nodeconductor/landing/templates *.html
-recursive-include nodeconductor/logging/templates *.html
-recursive-include nodeconductor/structure/templates *.html
-recursive-include nodeconductor/users/templates *.html *.txt
+recursive-include waldur_core/locale *.mo *.po
+recursive-include waldur_core/core/templates *.html
+recursive-include waldur_core/templates *.html
+recursive-include waldur_core/landing/templates *.html
+recursive-include waldur_core/logging/templates *.html
+recursive-include waldur_core/structure/templates *.html
+recursive-include waldur_core/users/templates *.html *.txt

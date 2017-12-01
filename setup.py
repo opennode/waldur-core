@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
-from nodeconductor.core.test_runner import Test
+from waldur_core.core.test_runner import Test
 
 dev_requires = [
     'Sphinx==1.2.2',
@@ -47,8 +47,8 @@ install_requires = [
 ]
 
 setup(
-    name='nodeconductor',
-    version='0.150.5',
+    name='waldur_core',
+    version='0.151.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/waldur-core',
@@ -62,8 +62,7 @@ setup(
     },
     entry_points={
         'console_scripts': (
-            'nodeconductor = nodeconductor.server.manage:main',
-            'waldur = nodeconductor.server.manage:main',
+            'waldur = waldur_core.server.manage:main',
         ),
     },
     tests_require=tests_requires,

@@ -22,7 +22,7 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.150.5
+Version: 0.151.0
 Release: 1.el7
 License: MIT
 
@@ -94,7 +94,7 @@ Additional information can be found at http://docs.waldur.com.
 %setup -q -n %{name}-%{version}
 
 %build
-cp packaging/settings.py nodeconductor/server/settings.py
+cp packaging/settings.py waldur_core/server/settings.py
 django-admin compilemessages
 %{__python} setup.py build
 
@@ -125,7 +125,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.staticfiles',
     'jsoneditor',
-    'nodeconductor.landing',
+    'waldur_core.landing',
     'rest_framework',
     'rest_framework_swagger',
     'django_filters',
@@ -137,7 +137,7 @@ STATIC_URL = '/static/'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['nodeconductor/templates'],
+        'DIRS': ['waldur_core/templates'],
         'OPTIONS': {
             'context_processors': (
                 'django.template.context_processors.debug',
@@ -158,7 +158,7 @@ TEMPLATES = [
     },
 ]
 EOF
-%{__python} manage.py collectstatic --noinput --settings=tmp_settings
+PYTHONPATH="${PYTHONPATH}:src" %{__python} manage.py collectstatic --noinput --settings=tmp_settings
 
 mkdir -p %{buildroot}%{__log_dir}
 
@@ -251,6 +251,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Fri Dec 1 2017 Jenkins <jenkins@opennodecloud.com> - 0.151.0-1.el7
+- New upstream release
+
 * Mon Nov 27 2017 Jenkins <jenkins@opennodecloud.com> - 0.150.5-1.el7
 - New upstream release
 

@@ -1,4 +1,4 @@
-Every NodeConductor REST request supports pagination. Links to the next, previous, first and last pages are included
+Every Waldur REST request supports pagination. Links to the next, previous, first and last pages are included
 in the Link header. *X-Result-Count* contains a count of all entries in the response set.
 
 By default page size is set to 10. Page size can be modified by passing **?page_size=N** query parameter. The maximum
