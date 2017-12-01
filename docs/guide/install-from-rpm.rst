@@ -15,4 +15,4 @@ For plugin installation instructions see Waldur's plugin `section <../index.html
 Configuration
 +++++++++++++
 
-Waldur configuration file can be found at ``/etc/nodeconductor/settings.ini``.
+Waldur configuration file can be found at ``/etc/waldur/core.ini``.

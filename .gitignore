@@ -15,7 +15,7 @@ dump.rdb
 /.settings
 /.sublime
 
-nodeconductor/server/settings.py
+waldur_core/server/settings.py
 
 # Editor artifacts
 # vim

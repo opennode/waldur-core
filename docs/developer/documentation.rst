@@ -30,7 +30,7 @@ Waldur generates API documentation based on docstrings from following classes:
 - **View class** docstring should describe intention of top-level endpoint
 - **View method** docstring should explain usage of particular method or actions
 
-Endpoints are grouped by `Django apps <https://docs.djangoproject.com/en/1.8/ref/applications/#module-django.apps>`_
+Endpoints are grouped by `Django apps <https://docs.djangoproject.com/en/1.11/ref/applications/#module-django.apps>`_
 in `RST` files located in *docs/drfapi*.
 
 Use following command to generate `RST` files for the API:
