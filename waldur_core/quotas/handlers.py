@@ -5,14 +5,6 @@ from waldur_core.quotas import models, utils, fields
 from waldur_core.quotas.exceptions import CreationConditionFailedQuotaError
 
 
-# Deprecated, new style quotas adds them self automatically
-def add_quotas_to_scope(sender, instance, created=False, **kwargs):
-    if created:
-        from waldur_core.quotas import models
-        for quota_name in sender.QUOTAS_NAMES:
-            models.Quota.objects.create(name=quota_name, scope=instance)
-
-
 # XXX: rewrite global quotas
 def create_global_quotas(**kwargs):
     for model in utils.get_models_with_quotas():

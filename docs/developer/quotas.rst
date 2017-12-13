@@ -4,35 +4,37 @@ Quotas application
 Overview
 --------
 
-TODO: This documentation is out of date. We need to update it.
-``quotas`` - Django application that provides implementation of per object resource limits and usages.
+quotas is Django application that provides generic implementation of quotas tracking functionality:
+
+1. Store and query resource limits and usages for project, customer or any other model.
+2. Aggregate quota usage in object hierarchies.
+3. Aggregate historical data for charting and analysis.
+4. Prevent user from consuming an entire system's resources by
+   raising alerts when quota threshold has been reached.
 
 
-Base model with quotas
-----------------------
+Define quota fields
+-------------------
 
-Base model with quotas have to inherit ``QuotaModelMixin`` and define ``QUOTAS_NAMES`` attribute as list of all object
-quotas names. Also ``add_quotas_to_scope`` handler has to be connected to object post save signal for quotas creation.
+Quotas are typically implemented on a per-model basis.
+Model with quotas should inherit ``QuotaModelMixin`` and define ``Quotas`` class.
+```Quotas``` class consists of set of quota fields. Consider the following example:
 
 .. code-block:: python
 
     # in models.py
 
-    class MyModel(QuotaModelMixin, models.Model):
-        # ...
-        QUOTAS_NAMES = ['quotaA', 'quotaB' ...]
+    from waldur_core.quotas import models as quotas_models, fields as quotas_fields
 
-    # in apps.py
+    class Tenant(quotas_models.QuotaModelMixin, models.Model):
 
-    signals.post_save.connect(
-        quotas_handlers.add_quotas_to_scope,
-        sender=MyModel,
-        dispatch_uid='waldur_app.handlers.add_quotas_to_mymodel',
-    )
+        class Quotas(quotas_models.QuotaModelMixin.Quotas):
+            vcpu = quotas_fields.QuotaField(default_limit=20, is_backend=True)
+            ram = quotas_fields.QuotaField(default_limit=51200, is_backend=True)
+            storage = quotas_fields.QuotaField(default_limit=1024000, is_backend=True)
 
 
-Note that quotas can only be created in ``add_quotas_to_scope`` handler. They can not be added anywhere else in the code.
-This assures that objects of the same model will have the same quotas.
+As you can see, Tenant model defines quota fields for number of virtual CPU cores, amount of RAM and storage.
 
 
 Change object quotas usage and limit
