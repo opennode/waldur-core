@@ -109,7 +109,6 @@ class QuotaModelMixin(models.Model):
     For quotas implementation such methods and fields have to be defined:
       - class Quota(QuotaModelMixin) - class with quotas fields as attributes.
       - can_user_update_quotas(self, user) - Return True if user has permission to update quotas of this object.
-      - QUOTAS_NAMES - List of names for object quotas. Deprecated, define quotas as fields in Quotas class instead.
       - GLOBAL_COUNT_QUOTA_NAME - Name of global count quota. It presents - global quota will be automatically created
                                   for model. Optional attribute.
 
@@ -132,7 +131,6 @@ class QuotaModelMixin(models.Model):
     Helper methods validate_quota_change and get_sum_of_quotas_as_dict provide common operations with objects quotas.
     Check methods docstrings for more details.
     """
-    QUOTAS_NAMES = []  # this list has to be overridden. Deprecated use class Quotas instead
 
     class Quotas(six.with_metaclass(fields.FieldsContainerMeta)):
         enable_fields_caching = True
@@ -283,7 +281,7 @@ class QuotaModelMixin(models.Model):
 
     @classmethod
     def get_quotas_names(cls):
-        return cls.QUOTAS_NAMES + [f.name for f in cls.get_quotas_fields()]
+        return [f.name for f in cls.get_quotas_fields()]
 
 
 class ExtendableQuotaModelMixin(QuotaModelMixin):

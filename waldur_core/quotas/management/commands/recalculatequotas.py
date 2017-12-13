@@ -26,7 +26,7 @@ class Command(BaseCommand):
         self.stdout.write('Deleting stale quotas')
         for model in get_models_with_quotas():
             for obj in model.objects.all():
-                quotas_names = model.QUOTAS_NAMES + [f.name for f in model.get_quotas_fields()]
+                quotas_names = model.get_quotas_names()
                 obj.quotas.exclude(name__in=quotas_names).delete()
         self.stdout.write('...done')
 
