@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import unittest
 from collections import namedtuple
 
-from django.test.client import RequestFactory
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, APITransactionTestCase, force_authenticate
