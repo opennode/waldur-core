@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-from collections import defaultdict
 import json
+from collections import defaultdict
 
 import six
 from django import forms
@@ -9,6 +9,7 @@ from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.admin import forms as admin_forms
+from django.contrib.admin import widgets
 from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
@@ -305,3 +306,17 @@ class UpdateOnlyModelAdmin(object):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class GBtoMBWidget(widgets.AdminIntegerFieldWidget):
+    def value_from_datadict(self, data, files, name):
+        value = super(GBtoMBWidget, self).value_from_datadict(data, files, name) or 0
+        value = int(value) * 1024
+        return value
+
+    def format_value(self, value):
+        return int(value) / 1024
+
+    def render(self, name, value, attrs=None, renderer=None):
+        result = super(GBtoMBWidget, self).render(name, value, attrs)
+        return '<label>%s GB</label>' % result
