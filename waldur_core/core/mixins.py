@@ -1,18 +1,34 @@
 from __future__ import unicode_literals
 
+from functools import wraps
+
+from django.db import transaction
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import status, response
 
 from waldur_core.core import models
 
 
+def ensure_atomic_transaction(func):
+    @wraps(func)
+    def wrapped(self, *args, **kwargs):
+        if self.use_atomic_transaction:
+            with transaction.atomic():
+                return func(self, *args, **kwargs)
+        else:
+            return func(self, *args, **kwargs)
+    return wrapped
+
+
 class AsyncExecutor(object):
     async_executor = True
+    use_atomic_transaction = False
 
 
 class CreateExecutorMixin(AsyncExecutor):
     create_executor = NotImplemented
 
+    @ensure_atomic_transaction
     def perform_create(self, serializer):
         instance = serializer.save()
         self.create_executor.execute(instance, async=self.async_executor)
@@ -22,6 +38,7 @@ class CreateExecutorMixin(AsyncExecutor):
 class UpdateExecutorMixin(AsyncExecutor):
     update_executor = NotImplemented
 
+    @ensure_atomic_transaction
     def perform_update(self, serializer):
         instance = self.get_object()
         # Save all instance fields before update.
@@ -38,6 +55,7 @@ class UpdateExecutorMixin(AsyncExecutor):
 class DeleteExecutorMixin(AsyncExecutor):
     delete_executor = NotImplemented
 
+    @ensure_atomic_transaction
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.delete_executor.execute(
