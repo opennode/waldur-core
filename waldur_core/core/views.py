@@ -1,12 +1,13 @@
 import logging
 
+from django.conf import settings
 from django.contrib import auth
 from django.core.cache import cache
 from django.db.models import ProtectedError
 from django.utils import timezone
 from django.utils.encoding import force_text
+from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
-
 from rest_framework import status, mixins as rf_mixins, viewsets, permissions as rf_permissions, exceptions
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
@@ -15,11 +16,10 @@ from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
 
 from waldur_core import __version__
-from waldur_core.core import permissions
+from waldur_core.core import permissions, WaldurExtension
 from waldur_core.core.exceptions import IncorrectStateException
 from waldur_core.core.serializers import AuthTokenSerializer
 from waldur_core.logging.loggers import event_logger
-
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ obtain_auth_token = ObtainAuthToken.as_view()
 
 
 @api_view(['GET'])
-@permission_classes((rf_permissions.AllowAny, ))
+@permission_classes((rf_permissions.AllowAny,))
 def version_detail(request):
     """Retrieve version of the application"""
 
@@ -278,3 +278,42 @@ class ActionsViewSet(viewsets.ModelViewSet):
 
 class ReadOnlyActionsViewSet(ActionsViewSet):
     disabled_actions = ['create', 'update', 'partial_update', 'destroy']
+
+
+@lru_cache(maxsize=1)
+def get_public_settings():
+    public_settings = {}
+
+    # Processing a special extension WALDUR_CORE
+    public_settings['WALDUR_CORE'] = {}
+    extension_settings = settings.WALDUR_CORE
+    for s in settings.WALDUR_CORE_PUBLIC_SETTINGS:
+        try:
+            public_settings['WALDUR_CORE'][s] = extension_settings[s]
+        except KeyError:
+            pass
+
+    # Processing a others extensions
+    for ext in WaldurExtension.get_extensions():
+        settings_name = filter(lambda x: x.startswith('WALDUR_'), dir(ext.Settings))
+        if not settings_name:
+            continue
+
+        settings_name = settings_name[0]
+        extension_settings = getattr(settings, settings_name, None)
+        if extension_settings and extension_settings.get('ENABLED', True):
+            public_settings[settings_name] = {}
+
+            for s in ext.get_public_settings():
+                try:
+                    public_settings[settings_name][s] = extension_settings[s]
+                except KeyError:
+                    pass
+
+    return public_settings
+
+
+@api_view(['GET'])
+@permission_classes((rf_permissions.AllowAny,))
+def configuration_detail(request):
+    return Response(get_public_settings())
