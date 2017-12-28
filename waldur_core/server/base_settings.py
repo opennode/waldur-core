@@ -265,6 +265,10 @@ WALDUR_CORE = {
     'ONLY_STAFF_MANAGES_SERVICES': False,
 }
 
+WALDUR_CORE_PUBLIC_SETTINGS = [
+    'OWNER_CAN_MANAGE_CUSTOMER',
+    'OWNERS_CAN_MANAGE_OWNERS'
+]
 
 for ext in WaldurExtension.get_extensions():
     INSTALLED_APPS += (ext.django_app(),)
