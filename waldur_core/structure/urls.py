@@ -7,6 +7,7 @@ from waldur_core.structure import views
 
 def register_in(router):
     router.register(r'customers', views.CustomerViewSet)
+    router.register(r'project-types', views.ProjectTypeViewSet, base_name='project_type')
     router.register(r'projects', views.ProjectViewSet)
     router.register(r'customer-permissions', views.CustomerPermissionViewSet, base_name='customer_permission')
     router.register(r'customer-permissions-log', views.CustomerPermissionLogViewSet, base_name='customer_permission_log')
