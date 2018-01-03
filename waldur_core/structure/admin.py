@@ -236,9 +236,11 @@ class ProjectAdmin(FormRequestAdminMixin,
                    admin.ModelAdmin):
     form = ProjectAdminForm
 
-    fields = ('name', 'description', 'customer', 'admins', 'managers', 'support_users', 'certifications')
+    fields = ('name', 'description', 'customer', 'type',
+              'admins', 'managers', 'support_users', 'certifications')
 
-    list_display = ['name', 'uuid', 'customer', 'created', 'get_vm_count', 'get_app_count', 'get_private_cloud_count']
+    list_display = ['name', 'uuid', 'customer', 'created', 'get_type_name',
+                    'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     search_fields = ['name', 'uuid']
     change_readonly_fields = ['customer']
     inlines = [QuotaInline]
@@ -250,6 +252,12 @@ class ProjectAdmin(FormRequestAdminMixin,
         short_description = _('Delete projects with all resources')
 
     cleanup = Cleanup()
+
+    def get_type_name(self, project):
+        return project.type and project.type.name or ''
+
+    get_type_name.short_description = _('Type')
+    get_type_name.admin_order_field = 'type__name'
 
 
 class ServiceCertificationAdmin(admin.ModelAdmin):
@@ -498,6 +506,7 @@ class VirtualMachineAdmin(ResourceAdmin):
 
 admin.site.register(models.ServiceCertification, ServiceCertificationAdmin)
 admin.site.register(models.Customer, CustomerAdmin)
+admin.site.register(models.ProjectType, admin.ModelAdmin)
 admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.PrivateServiceSettings, PrivateServiceSettingsAdmin)
 admin.site.register(models.SharedServiceSettings, SharedServiceSettingsAdmin)

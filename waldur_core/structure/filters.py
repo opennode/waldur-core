@@ -125,6 +125,14 @@ class ExternalCustomerFilterBackend(ExternalFilterBackend):
     pass
 
 
+class ProjectTypeFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains')
+
+    class Meta(object):
+        model = models.ProjectType
+        fields = ['name']
+
+
 class ProjectFilter(django_filters.FilterSet):
     customer = django_filters.UUIDFilter(
         name='customer__uuid',
