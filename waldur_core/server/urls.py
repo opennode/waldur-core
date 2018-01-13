@@ -45,6 +45,7 @@ urlpatterns += [
     url(r'^api/', include('waldur_core.logging.urls')),
     url(r'^api/', include('waldur_core.structure.urls')),
     url(r'^api/version/', core_views.version_detail),
+    url(r'^api/configuration/', core_views.configuration_detail),
     url(r'^api-auth/password/', core_views.obtain_auth_token, name='auth-password'),
     url(r'^$', TemplateView.as_view(template_name='landing/index.html')),
 ]

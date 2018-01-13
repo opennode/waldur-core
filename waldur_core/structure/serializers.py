@@ -188,6 +188,16 @@ class NestedServiceCertificationSerializer(core_serializers.AugmentedSerializerM
         }
 
 
+class ProjectTypeSerializer(serializers.HyperlinkedModelSerializer):
+
+    class Meta(object):
+        model = models.ProjectType
+        fields = ('uuid', 'url', 'name', 'description')
+        extra_kwargs = {
+            'url': {'lookup_field': 'uuid', 'view_name': 'project_type-detail'},
+        }
+
+
 class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
                         PermissionFieldFilteringMixin,
                         core_serializers.AugmentedSerializerMixin,
@@ -209,14 +219,17 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'services',
             'created',
             'certifications',
+            'type', 'type_name',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
             'customer': {'lookup_field': 'uuid'},
             'certifications': {'lookup_field': 'uuid'},
+            'type': {'lookup_field': 'uuid', 'view_name': 'project_type-detail'},
         }
         related_paths = {
-            'customer': ('uuid', 'name', 'native_name', 'abbreviation')
+            'customer': ('uuid', 'name', 'native_name', 'abbreviation'),
+            'type': ('name',),
         }
         protected_fields = ('certifications',)
 

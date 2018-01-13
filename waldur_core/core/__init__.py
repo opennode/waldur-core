@@ -65,3 +65,9 @@ class WaldurExtension(object):
             if extension == ext.django_app():
                 return True
         return False
+
+    @staticmethod
+    def get_public_settings():
+        """ Return extension public settings
+        :return: list """
+        return []

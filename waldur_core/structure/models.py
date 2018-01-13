@@ -485,6 +485,21 @@ class ProjectPermission(core_models.UuidMixin, BasePermission):
 
 
 @python_2_unicode_compatible
+class ProjectType(core_models.DescribableMixin, core_models.UuidMixin, core_models.NameMixin):
+    class Meta(object):
+        verbose_name = _('Project type')
+        verbose_name_plural = _('Project types')
+        ordering = ['name']
+
+    @classmethod
+    def get_url_name(cls):
+        return 'project_type'
+
+    def __str__(self):
+        return self.name
+
+
+@python_2_unicode_compatible
 class Project(core_models.DescribableMixin,
               core_models.UuidMixin,
               core_models.NameMixin,
@@ -549,6 +564,8 @@ class Project(core_models.DescribableMixin,
     customer = models.ForeignKey(
         Customer, verbose_name=_('organization'), related_name='projects', on_delete=models.PROTECT)
     tracker = FieldTracker()
+    type = models.ForeignKey(
+        ProjectType, verbose_name=_('project type'), blank=True, null=True, on_delete=models.PROTECT)
 
     @property
     def full_name(self):

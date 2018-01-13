@@ -224,6 +224,14 @@ class CustomerImageView(generics.RetrieveAPIView, generics.UpdateAPIView, generi
         raise PermissionDenied()
 
 
+class ProjectTypeViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.ProjectType.objects.all()
+    serializer_class = serializers.ProjectTypeSerializer
+    lookup_field = 'uuid'
+    filter_backends = (DjangoFilterBackend,)
+    filter_class = filters.ProjectTypeFilter
+
+
 class ProjectViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
     queryset = models.Project.objects.all().order_by('name')
     serializer_class = serializers.ProjectSerializer
