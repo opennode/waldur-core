@@ -538,6 +538,17 @@ class CustomerUsersListTest(test.APITransactionTestCase):
         for serialized_user, expected_user in zip(response.data, expected_order[::-1]):
             self.assertEqual(serialized_user['uuid'], expected_user.uuid.hex)
 
+    def test_filter_by_email(self):
+        walter = factories.UserFactory(full_name='', username='walter', email='walter@gmail.com')
+        admin = factories.UserFactory(full_name='admin', username='zzz', email='admin@waldur.com')
+        alice = factories.UserFactory(full_name='', username='alice', email='alice@gmail.com')
+
+        for user in [admin, alice, walter]:
+            self.fixture.customer.add_user(user, CustomerRole.OWNER)
+        self.client.force_authenticate(self.fixture.staff)
+
+        response = self.client.get(self.url, {'email': 'gmail.com'})
+        self.assertEqual(len(response.data), 2)
 
 @ddt
 class CustomerCountersListTest(test.APITransactionTestCase):
