@@ -357,7 +357,7 @@ BROKER_URL = redis_url
 CELERY_RESULT_BACKEND = redis_url
 
 for app in INSTALLED_APPS:
-    if app.startswith('waldur_'):
+    if app.startswith('waldur_') and not app.startswith('waldur_core'):
         LOGGING['loggers'][app] = LOGGING['loggers']['waldur_core']
 
 # Waldur Core internal configuration
