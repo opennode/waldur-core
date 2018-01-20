@@ -217,20 +217,13 @@ class ProjectUserFilter(DjangoFilterBackend):
         ).distinct()
 
 
-class UserFilter(django_filters.FilterSet):
+class BaseUserFilter(django_filters.FilterSet):
     full_name = django_filters.CharFilter(lookup_expr='icontains')
     username = django_filters.CharFilter()
     native_name = django_filters.CharFilter(lookup_expr='icontains')
     job_title = django_filters.CharFilter(lookup_expr='icontains')
     email = django_filters.CharFilter(lookup_expr='icontains')
     is_active = django_filters.BooleanFilter()
-
-    o = django_filters.OrderingFilter(
-        fields=('full_name', 'native_name', 'organization',
-                'organization_approved', 'email', 'phone_number',
-                'description', 'job_title', 'username',
-                'is_active', 'registration_method')
-    )
 
     class Meta(object):
         model = User
@@ -250,9 +243,22 @@ class UserFilter(django_filters.FilterSet):
         ]
 
 
+class UserFilter(BaseUserFilter):
+    o = django_filters.OrderingFilter(
+        fields=('full_name', 'native_name', 'organization',
+                'organization_approved', 'email', 'phone_number',
+                'description', 'job_title', 'username',
+                'is_active', 'registration_method')
+    )
+
+
 class UserConcatenatedNameOrderingBackend(DjangoFilterBackend):
     """ Filter user by concatenated full_name + username with ?o=concatenated_name """
     def filter_queryset(self, request, queryset, view):
+        queryset = self._filter_queryset(request, queryset, view)
+        return BaseUserFilter(request.query_params, queryset=queryset, request=request).qs
+
+    def _filter_queryset(self, request, queryset, view):
         if 'o' not in request.query_params:
             return queryset
         if request.query_params['o'] == 'concatenated_name':
