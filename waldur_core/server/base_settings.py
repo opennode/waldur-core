@@ -263,6 +263,12 @@ WALDUR_CORE = {
     'INITIAL_CUSTOMER_AGREEMENT_NUMBER': 4000,
     'CREATE_DEFAULT_PROJECT_ON_ORGANIZATION_CREATION': False,
     'ONLY_STAFF_MANAGES_SERVICES': False,
+    'COMPANY_TYPES': (
+        'Ministry',
+        'Private company',
+        'Public company',
+        'Government owned company',
+    ),
 }
 
 WALDUR_CORE_PUBLIC_SETTINGS = [
