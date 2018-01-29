@@ -115,7 +115,8 @@ class UserAdmin(auth_admin.UserAdmin):
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_support', 'customer_roles', 'project_roles')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined', 'agreement_date')}),
     )
-    readonly_fields = ('registration_method', 'agreement_date', 'customer_roles', 'project_roles', 'uuid')
+    readonly_fields = ('registration_method', 'agreement_date', 'customer_roles', 'project_roles', 'uuid',
+                       'last_login', 'date_joined')
     form = UserChangeForm
     add_form = UserCreationForm
 
