@@ -273,7 +273,8 @@ WALDUR_CORE = {
 
 WALDUR_CORE_PUBLIC_SETTINGS = [
     'OWNER_CAN_MANAGE_CUSTOMER',
-    'OWNERS_CAN_MANAGE_OWNERS'
+    'OWNERS_CAN_MANAGE_OWNERS',
+    'COMPANY_TYPES',
 ]
 
 for ext in WaldurExtension.get_extensions():
