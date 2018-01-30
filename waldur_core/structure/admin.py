@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.conf import settings
 from django.conf.urls import url
@@ -22,6 +23,9 @@ from waldur_core.core.tasks import send_task
 from waldur_core.core.validators import BackendURLValidator
 from waldur_core.quotas.admin import QuotaInline
 from waldur_core.structure import models, SupportedServices, executors, utils
+
+
+logger = logging.getLogger(__name__)
 
 
 class BackendModelAdmin(admin.ModelAdmin):
@@ -280,6 +284,22 @@ class ServiceCertificationAdmin(admin.ModelAdmin):
 class ServiceSettingsAdminForm(ModelForm):
     backend_url = CharField(max_length=200, required=False, validators=[BackendURLValidator()])
 
+    def clean(self):
+        cleaned_data = super(ServiceSettingsAdminForm, self).clean()
+        service_field_names, service_fields_required = utils.get_all_services_field_names()
+        service_type = cleaned_data.get('type')
+        if not service_type:
+            return
+
+        for field in service_fields_required[service_type]:
+            value = cleaned_data.get(field)
+            if not value:
+                try:
+                    self.add_error(field, _('This field is required.'))
+                except ValueError:
+                    logger.error('Incorect field %s in %s required_fields' %
+                                 (field, service_type))
+
     class Meta:
         widgets = {
             'options': JSONEditor(),
@@ -337,10 +357,11 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         extra_context = extra_context or {}
-        service_field_names = utils.get_all_services_field_names()
+        service_field_names, service_fields_required = utils.get_all_services_field_names()
         for service_name in service_field_names:
             service_field_names[service_name].extend(self.common_fields)
         extra_context['service_fields'] = json.dumps(service_field_names)
+        extra_context['service_fields_required'] = json.dumps(service_fields_required)
         return super(PrivateServiceSettingsAdmin, self).changeform_view(request, object_id, form_url, extra_context)
 
     def get_readonly_fields(self, request, obj=None):

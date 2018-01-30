@@ -50,8 +50,9 @@ var service_settings_module = (function(self, jQuery) {
 
     self.initialize = initialize;
 
-    function initialize(service_fields) {
+    function initialize(service_fields, service_fields_required) {
         self.service_fields = service_fields;
+        self.service_fields_required = service_fields_required;
         $(onDocumentReady);
     }
 
@@ -73,6 +74,7 @@ var service_settings_module = (function(self, jQuery) {
             var selectedServiceType = $(".field-type input:checked").val();
             displayOnlyServiceFields(selectedServiceType);
             diplayOnlyServiceRelatedHints(selectedServiceType);
+            markRequiredFields(selectedServiceType);
         });
 
         if ($(".field-type input:checked").val() !== undefined) {
@@ -97,6 +99,17 @@ var service_settings_module = (function(self, jQuery) {
                 $(field).hide();
             }
         });
+    }
+
+    function markRequiredFields(serviceName) {
+        var required_class = 'required';
+        var mark_class = 'mark_required';
+        $("." + mark_class).removeClass(required_class).removeClass(mark_class);
+        var fields = self.service_fields_required[serviceName];
+        for (var f in fields)  {
+            $("[for='id_" + fields[f] + "']").addClass(mark_class).addClass(required_class)
+        }
+
     }
 
     function getFieldName(fieldElement) {
@@ -124,6 +137,7 @@ var service_settings_module = (function(self, jQuery) {
 }(service_settings_module || {}, django.jQuery));
 
 var service_fields = {{ service_fields|safe }};
-service_settings_module.initialize(service_fields);
+var service_fields_required = {{ service_fields_required|safe }};
+service_settings_module.initialize(service_fields, service_fields_required);
 </script>
 {% endblock %}
