@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django import forms
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
@@ -23,7 +24,6 @@ from waldur_core.core.tasks import send_task
 from waldur_core.core.validators import BackendURLValidator
 from waldur_core.quotas.admin import QuotaInline
 from waldur_core.structure import models, SupportedServices, executors, utils
-
 
 logger = logging.getLogger(__name__)
 
@@ -311,6 +311,8 @@ class ServiceSettingsAdminForm(ModelForm):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
         self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
                                           widget=RadioSelect)
+        self.fields['username'] = CharField(widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+        self.fields['password'] = CharField(widget=forms.PasswordInput(attrs={'autocomplete': 'off'}))
 
 
 class ServiceTypeFilter(SimpleListFilter):
