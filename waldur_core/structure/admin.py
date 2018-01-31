@@ -12,7 +12,7 @@ from django.db import models as django_models
 from django.forms import ModelMultipleChoiceField, ModelForm, RadioSelect, ChoiceField, CharField
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.utils import six
+from django.utils import six, timezone
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ungettext
 from jsoneditor.forms import JSONEditor
@@ -158,6 +158,18 @@ class CustomerAdminForm(ModelForm):
                 customer.add_user(user, role, self.request.user)
 
         self.save_m2m()
+
+    def clean_accounting_start_date(self):
+        accounting_start_date = self.cleaned_data['accounting_start_date']
+        if 'accounting_start_date' in self.changed_data and \
+                accounting_start_date < timezone.now():
+                    # If accounting_start_date < timezone.now(), we change accounting_start_date
+                    # but not raise an exception, because accounting_start_date default value is
+                    # timezone.now(), but init time of form and submit time of form are always diff.
+                    # And user will get an exception always if set default value.
+                    return timezone.now()
+
+        return accounting_start_date
 
 
 class BillingMixin(object):
@@ -312,7 +324,7 @@ class ServiceSettingsAdminForm(ModelForm):
         self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
                                           widget=RadioSelect)
         self.fields['username'] = CharField(widget=forms.TextInput(attrs={'autocomplete': 'off'}))
-        self.fields['password'] = CharField(widget=forms.PasswordInput(attrs={'autocomplete': 'off'}))
+        self.fields['password'] = CharField(widget=PasswordWidget(attrs={'autocomplete': 'off'}))
 
 
 class ServiceTypeFilter(SimpleListFilter):

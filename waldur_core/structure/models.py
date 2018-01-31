@@ -456,13 +456,6 @@ class Customer(core_models.UuidMixin,
             'abbreviation': self.abbreviation
         }
 
-    def save(self, *args, **kwargs):
-        if 'accounting_start_date' in self.tracker.changed().keys() and \
-                self.accounting_start_date < timezone.now():
-                    self.accounting_start_date = timezone.now()
-
-        super(Customer, self).save(*args, **kwargs)
-
 
 class ProjectRole(models.CharField):
     ADMINISTRATOR = 'admin'
