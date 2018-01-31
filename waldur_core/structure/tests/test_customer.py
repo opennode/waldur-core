@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 from ddt import data, ddt
 from django.test import TransactionTestCase
 from django.urls import reverse
+from django.utils import timezone as django_timezone
+from freezegun import freeze_time
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
 
@@ -25,6 +27,7 @@ class UrlResolverMixin(object):
         return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid})
 
 
+@freeze_time('2017-11-01 00:00:00')
 class CustomerTest(TransactionTestCase):
     def setUp(self):
         self.customer = factories.CustomerFactory()
