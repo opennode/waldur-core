@@ -113,20 +113,6 @@ class CustomerTest(TransactionTestCase):
 
         self.assertFalse(receiver.called, 'structure_role_remove should not be emitted')
 
-    def test_available_future_accounting_start_date(self):
-        new_accounting_start_date = self.customer.accounting_start_date + django_timezone.timedelta(days=1)
-        self.customer.accounting_start_date = new_accounting_start_date
-        self.customer.save()
-        self.customer.refresh_from_db()
-        self.assertEqual(new_accounting_start_date, self.customer.accounting_start_date)
-
-    def test_unavailable_past_accounting_start_date(self):
-        new_accounting_start_date = self.customer.accounting_start_date - django_timezone.timedelta(days=1)
-        self.customer.accounting_start_date = new_accounting_start_date
-        self.customer.save()
-        self.customer.refresh_from_db()
-        self.assertNotEqual(new_accounting_start_date, self.customer.accounting_start_date)
-
 
 class CustomerRoleTest(TransactionTestCase):
     def setUp(self):
