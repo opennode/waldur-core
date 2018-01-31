@@ -315,7 +315,11 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
     COUNTRIES = core_fields.CountryField.COUNTRIES
     if hasattr(settings, 'COUNTRIES'):
         COUNTRIES = [item for item in COUNTRIES if item[0] in settings.COUNTRIES]
-    country = serializers.ChoiceField(required=False, choices=COUNTRIES)
+    country = MappedChoiceField(
+        choices={v: v for _, v in COUNTRIES},
+        choice_mappings={v: k for k, v in COUNTRIES},
+        required=False,
+    )
 
     class Meta(object):
         model = models.Customer
@@ -330,10 +334,12 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'registration_code',
             'quotas',
             'image',
-            'country', 'vat_code', 'is_company'
+            'country', 'vat_code', 'is_company',
+            'type', 'postal', 'address', 'bank_name', 'bank_account',
+            'default_tax_percent', 'accounting_start_date',
         )
         protected_fields = ('agreement_number',)
-        read_only_fields = ('access_subnets',)
+        read_only_fields = ('access_subnets', 'accounting_start_date', 'default_tax_percent')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
