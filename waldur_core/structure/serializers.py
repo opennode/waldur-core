@@ -313,7 +313,7 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     COUNTRIES = core_fields.CountryField.COUNTRIES
-    if settings.WALDUR_CORE['COUNTRIES']:
+    if settings.WALDUR_CORE.get('COUNTRIES'):
         COUNTRIES = [item for item in COUNTRIES if item[0] in settings.WALDUR_CORE['COUNTRIES']]
     country = serializers.ChoiceField(required=False, choices=COUNTRIES, allow_blank=True)
     country_name = serializers.ReadOnlyField(source='get_country_display')
