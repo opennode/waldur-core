@@ -269,6 +269,7 @@ WALDUR_CORE = {
         'Public company',
         'Government owned company',
     ),
+    # 'COUNTRIES': ['EE', 'LV', 'LT'],
 }
 
 WALDUR_CORE_PUBLIC_SETTINGS = [
@@ -311,5 +312,3 @@ SWAGGER_SETTINGS = {
     },
 }
 
-
-# COUNTRIES = ['EE', 'LV', 'LT']
