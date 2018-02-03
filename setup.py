@@ -48,7 +48,7 @@ install_requires = [
 
 setup(
     name='waldur_core',
-    version='0.153.0',
+    version='0.154.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/waldur-core',

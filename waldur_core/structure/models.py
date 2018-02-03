@@ -5,6 +5,7 @@ import itertools
 
 from django.apps import apps
 from django.core.cache import cache
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -327,6 +328,16 @@ class Customer(core_models.UuidMixin,
                                                   'CIDR addresses from where connection to self-service is allowed.'))
     registration_code = models.CharField(max_length=160, default='', blank=True)
 
+    type = models.CharField(blank=True, max_length=150)
+    address = models.CharField(blank=True, max_length=300)
+    postal = models.CharField(blank=True, max_length=20)
+    bank_name = models.CharField(blank=True, max_length=150)
+    bank_account = models.CharField(blank=True, max_length=50)
+    accounting_start_date = models.DateTimeField(_('Start date of accounting'), default=timezone.now)
+    default_tax_percent = models.DecimalField(default=0, max_digits=4, decimal_places=2,
+                                              validators=[MinValueValidator(0), MaxValueValidator(100)])
+    tracker = FieldTracker()
+
     class Meta(object):
         verbose_name = _('organization')
 
@@ -423,6 +434,9 @@ class Customer(core_models.UuidMixin,
     def get_children(self):
         return itertools.chain.from_iterable(
             m.objects.filter(customer=self) for m in [Project] + Service.get_all_models())
+
+    def is_billable(self):
+        return timezone.now() >= self.accounting_start_date
 
     @classmethod
     def get_permitted_objects_uuids(cls, user):

@@ -1,5 +1,7 @@
 import json
+import logging
 
+from django import forms
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib import admin, messages
@@ -10,7 +12,7 @@ from django.db import models as django_models
 from django.forms import ModelMultipleChoiceField, ModelForm, RadioSelect, ChoiceField, CharField
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.utils import six
+from django.utils import six, timezone
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ungettext
 from jsoneditor.forms import JSONEditor
@@ -22,6 +24,8 @@ from waldur_core.core.tasks import send_task
 from waldur_core.core.validators import BackendURLValidator
 from waldur_core.quotas.admin import QuotaInline
 from waldur_core.structure import models, SupportedServices, executors, utils
+
+logger = logging.getLogger(__name__)
 
 
 class BackendModelAdmin(admin.ModelAdmin):
@@ -124,6 +128,9 @@ class CustomerAdminForm(ModelForm):
         textarea_attrs = {'cols': '40', 'rows': '4'}
         self.fields['contact_details'].widget.attrs = textarea_attrs
         self.fields['access_subnets'].widget.attrs = textarea_attrs
+        type_choices = ['']
+        type_choices.extend(settings.WALDUR_CORE['COMPANY_TYPES'])
+        self.fields['type'] = ChoiceField(choices=[(t, t) for t in type_choices])
 
     def save(self, commit=True):
         customer = super(CustomerAdminForm, self).save(commit=False)
@@ -152,6 +159,18 @@ class CustomerAdminForm(ModelForm):
 
         self.save_m2m()
 
+    def clean_accounting_start_date(self):
+        accounting_start_date = self.cleaned_data['accounting_start_date']
+        if 'accounting_start_date' in self.changed_data and \
+                accounting_start_date < timezone.now():
+                    # If accounting_start_date < timezone.now(), we change accounting_start_date
+                    # but not raise an exception, because accounting_start_date default value is
+                    # timezone.now(), but init time of form and submit time of form are always diff.
+                    # And user will get an exception always if set default value.
+                    return timezone.now()
+
+        return accounting_start_date
+
 
 class BillingMixin(object):
     def get_accounting_start_date(self, customer):
@@ -170,13 +189,21 @@ class CustomerAdmin(FormRequestAdminMixin,
     form = CustomerAdminForm
     fields = ('name', 'uuid', 'image', 'native_name', 'abbreviation', 'contact_details', 'registration_code',
               'agreement_number', 'email', 'phone_number', 'access_subnets',
-              'country', 'vat_code', 'is_company', 'owners', 'support_users')
+              'country', 'vat_code', 'is_company', 'owners', 'support_users',
+              'type', 'address', 'postal', 'bank_name', 'bank_account',
+              'accounting_start_date', 'default_tax_percent')
     list_display = ['name', 'uuid', 'abbreviation',
                     'created', 'get_accounting_start_date',
                     'get_vm_count', 'get_app_count', 'get_private_cloud_count']
     search_fields = ['name', 'uuid', 'abbreviation']
     readonly_fields = ['uuid']
     inlines = [QuotaInline]
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = super(CustomerAdmin, self).get_readonly_fields(request, obj)
+        if obj and obj.is_billable():
+            fields += ('accounting_start_date',)
+        return fields
 
 
 class ProjectAdminForm(ModelForm):
@@ -269,6 +296,22 @@ class ServiceCertificationAdmin(admin.ModelAdmin):
 class ServiceSettingsAdminForm(ModelForm):
     backend_url = CharField(max_length=200, required=False, validators=[BackendURLValidator()])
 
+    def clean(self):
+        cleaned_data = super(ServiceSettingsAdminForm, self).clean()
+        service_field_names, service_fields_required = utils.get_all_services_field_names()
+        service_type = cleaned_data.get('type')
+        if not service_type:
+            return
+
+        for field in service_fields_required[service_type]:
+            value = cleaned_data.get(field)
+            if not value:
+                try:
+                    self.add_error(field, _('This field is required.'))
+                except ValueError:
+                    logger.error('Incorect field %s in %s required_fields' %
+                                 (field, service_type))
+
     class Meta:
         widgets = {
             'options': JSONEditor(),
@@ -280,6 +323,8 @@ class ServiceSettingsAdminForm(ModelForm):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
         self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
                                           widget=RadioSelect)
+        self.fields['username'] = CharField(widget=forms.TextInput(attrs={'autocomplete': 'off'}))
+        self.fields['password'] = CharField(widget=PasswordWidget(attrs={'autocomplete': 'off'}))
 
 
 class ServiceTypeFilter(SimpleListFilter):
@@ -326,10 +371,11 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         extra_context = extra_context or {}
-        service_field_names = utils.get_all_services_field_names()
+        service_field_names, service_fields_required = utils.get_all_services_field_names()
         for service_name in service_field_names:
             service_field_names[service_name].extend(self.common_fields)
         extra_context['service_fields'] = json.dumps(service_field_names)
+        extra_context['service_fields_required'] = json.dumps(service_fields_required)
         return super(PrivateServiceSettingsAdmin, self).changeform_view(request, object_id, form_url, extra_context)
 
     def get_readonly_fields(self, request, obj=None):

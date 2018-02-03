@@ -263,11 +263,19 @@ WALDUR_CORE = {
     'INITIAL_CUSTOMER_AGREEMENT_NUMBER': 4000,
     'CREATE_DEFAULT_PROJECT_ON_ORGANIZATION_CREATION': False,
     'ONLY_STAFF_MANAGES_SERVICES': False,
+    'COMPANY_TYPES': (
+        'Ministry',
+        'Private company',
+        'Public company',
+        'Government owned company',
+    ),
+    # 'COUNTRIES': ['EE', 'LV', 'LT'],
 }
 
 WALDUR_CORE_PUBLIC_SETTINGS = [
     'OWNER_CAN_MANAGE_CUSTOMER',
-    'OWNERS_CAN_MANAGE_OWNERS'
+    'OWNERS_CAN_MANAGE_OWNERS',
+    'COMPANY_TYPES',
 ]
 
 for ext in WaldurExtension.get_extensions():
@@ -304,5 +312,3 @@ SWAGGER_SETTINGS = {
     },
 }
 
-
-# COUNTRIES = ['EE', 'LV', 'LT']

@@ -313,9 +313,10 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
 
     COUNTRIES = core_fields.CountryField.COUNTRIES
-    if hasattr(settings, 'COUNTRIES'):
-        COUNTRIES = [item for item in COUNTRIES if item[0] in settings.COUNTRIES]
-    country = serializers.ChoiceField(required=False, choices=COUNTRIES)
+    if settings.WALDUR_CORE.get('COUNTRIES'):
+        COUNTRIES = [item for item in COUNTRIES if item[0] in settings.WALDUR_CORE['COUNTRIES']]
+    country = serializers.ChoiceField(required=False, choices=COUNTRIES, allow_blank=True)
+    country_name = serializers.ReadOnlyField(source='get_country_display')
 
     class Meta(object):
         model = models.Customer
@@ -330,10 +331,12 @@ class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
             'registration_code',
             'quotas',
             'image',
-            'country', 'vat_code', 'is_company'
+            'country', 'country_name', 'vat_code', 'is_company',
+            'type', 'postal', 'address', 'bank_name', 'bank_account',
+            'default_tax_percent', 'accounting_start_date',
         )
         protected_fields = ('agreement_number',)
-        read_only_fields = ('access_subnets',)
+        read_only_fields = ('access_subnets', 'accounting_start_date', 'default_tax_percent')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }

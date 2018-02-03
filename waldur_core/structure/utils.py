@@ -62,6 +62,7 @@ def sort_dependencies(service_model, resources):
 @lru_cache(maxsize=1)
 def get_all_services_field_names():
     result = dict()
+    required = dict()
     service_models = SupportedServices.get_service_models()
 
     for service_name in service_models:
@@ -71,9 +72,14 @@ def get_all_services_field_names():
         if fields is NotImplemented:
             fields = {}
 
+        if hasattr(service_serializer.Meta, 'required_fields'):
+            required[service_name] = service_serializer.Meta.required_fields
+        else:
+            required[service_name] = []
+
         result[service_name] = fields.keys()
 
-    return result
+    return result, required
 
 
 def update_pulled_fields(instance, imported_instance, fields):
