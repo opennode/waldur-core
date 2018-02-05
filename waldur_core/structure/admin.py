@@ -192,17 +192,17 @@ class CustomerAdmin(FormRequestAdminMixin,
               'country', 'vat_code', 'is_company', 'owners', 'support_users',
               'type', 'address', 'postal', 'bank_name', 'bank_account',
               'accounting_start_date', 'default_tax_percent')
-    list_display = ['name', 'uuid', 'abbreviation',
+    list_display = ('name', 'uuid', 'abbreviation',
                     'created', 'get_accounting_start_date',
-                    'get_vm_count', 'get_app_count', 'get_private_cloud_count']
-    search_fields = ['name', 'uuid', 'abbreviation']
-    readonly_fields = ['uuid']
+                    'get_vm_count', 'get_app_count', 'get_private_cloud_count')
+    search_fields = ('name', 'uuid', 'abbreviation')
+    readonly_fields = ('uuid',)
     inlines = [QuotaInline]
 
     def get_readonly_fields(self, request, obj=None):
         fields = super(CustomerAdmin, self).get_readonly_fields(request, obj)
         if obj and obj.is_billable():
-            fields += ('accounting_start_date',)
+            return fields + ('accounting_start_date',)
         return fields
 
 
