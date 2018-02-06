@@ -298,19 +298,33 @@ class ServiceSettingsAdminForm(ModelForm):
 
     def clean(self):
         cleaned_data = super(ServiceSettingsAdminForm, self).clean()
-        service_field_names, service_fields_required = utils.get_all_services_field_names()
         service_type = cleaned_data.get('type')
         if not service_type:
             return
 
-        for field in service_fields_required[service_type]:
+        field_info = utils.get_all_services_field_info()
+        fields_required = field_info.fields_required
+        extra_fields_required = field_info.extra_fields_required
+
+        # Check required fields of service type
+        for field in fields_required[service_type]:
             value = cleaned_data.get(field)
             if not value:
                 try:
                     self.add_error(field, _('This field is required.'))
                 except ValueError:
-                    logger.error('Incorect field %s in %s required_fields' %
+                    logger.warning('Incorrect field %s in %s required_fields' %
                                  (field, service_type))
+
+        # Check required extra fields of service type
+        try:
+            options = json.loads(cleaned_data.get('options'))
+            unfilled = set(extra_fields_required[service_type]) - set(options.keys())
+            if unfilled:
+                self.add_error('options', _('This field must include keys: %s') %
+                               ', '.join(unfilled))
+        except ValueError:
+            self.add_error('options', _('JSON is not valid'))
 
     class Meta:
         widgets = {
@@ -371,9 +385,13 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
         extra_context = extra_context or {}
-        service_field_names, service_fields_required = utils.get_all_services_field_names()
+        field_info = utils.get_all_services_field_info()
+        service_field_names = field_info.fields
+        service_fields_required = field_info.fields_required
+
         for service_name in service_field_names:
             service_field_names[service_name].extend(self.common_fields)
+
         extra_context['service_fields'] = json.dumps(service_field_names)
         extra_context['service_fields_required'] = json.dumps(service_fields_required)
         return super(PrivateServiceSettingsAdmin, self).changeform_view(request, object_id, form_url, extra_context)
