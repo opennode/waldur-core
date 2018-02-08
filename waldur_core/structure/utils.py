@@ -11,6 +11,7 @@ from . import SupportedServices
 
 logger = logging.getLogger(__name__)
 Coordinates = collections.namedtuple('Coordinates', ('latitude', 'longitude'))
+FieldInfo = collections.namedtuple('FieldInfo', 'fields fields_required extra_fields_required')
 
 
 class GeoIpException(Exception):
@@ -83,7 +84,6 @@ def get_all_services_field_info():
         services_fields_required[service_name] = list(set(fields) & set(fields_required))
         services_extra_fields_required[service_name] = list(set(fields_extra) & set(fields_required))
 
-    FieldInfo = collections.namedtuple('FieldInfo', 'fields fields_required extra_fields_required')
     return FieldInfo(fields=services_fields,
                      fields_required=services_fields_required,
                      extra_fields_required=services_extra_fields_required)
