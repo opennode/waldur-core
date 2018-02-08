@@ -11,6 +11,7 @@ from . import SupportedServices
 
 logger = logging.getLogger(__name__)
 Coordinates = collections.namedtuple('Coordinates', ('latitude', 'longitude'))
+FieldInfo = collections.namedtuple('FieldInfo', 'fields fields_required extra_fields_required')
 
 
 class GeoIpException(Exception):
@@ -60,26 +61,32 @@ def sort_dependencies(service_model, resources):
 
 
 @lru_cache(maxsize=1)
-def get_all_services_field_names():
-    result = dict()
-    required = dict()
+def get_all_services_field_info():
+    services_fields = dict()
+    services_fields_required = dict()
+    services_extra_fields_required = dict()
     service_models = SupportedServices.get_service_models()
 
     for service_name in service_models:
         service_model = service_models[service_name]['service']
         service_serializer = SupportedServices.get_service_serializer(service_model)
-        fields = service_serializer.SERVICE_ACCOUNT_FIELDS
-        if fields is NotImplemented:
-            fields = {}
 
-        if hasattr(service_serializer.Meta, 'required_fields'):
-            required[service_name] = service_serializer.Meta.required_fields
-        else:
-            required[service_name] = []
+        fields = service_serializer.SERVICE_ACCOUNT_FIELDS.keys() \
+            if service_serializer.SERVICE_ACCOUNT_FIELDS is not NotImplemented else []
 
-        result[service_name] = fields.keys()
+        fields_extra = service_serializer.SERVICE_ACCOUNT_EXTRA_FIELDS.keys() \
+            if service_serializer.SERVICE_ACCOUNT_EXTRA_FIELDS is not NotImplemented else []
 
-    return result, required
+        fields_required = service_serializer.Meta.required_fields \
+            if hasattr(service_serializer.Meta, 'required_fields') else []
+
+        services_fields[service_name] = list(fields)
+        services_fields_required[service_name] = list(set(fields) & set(fields_required))
+        services_extra_fields_required[service_name] = list(set(fields_extra) & set(fields_required))
+
+    return FieldInfo(fields=services_fields,
+                     fields_required=services_fields_required,
+                     extra_fields_required=services_extra_fields_required)
 
 
 def update_pulled_fields(instance, imported_instance, fields):
