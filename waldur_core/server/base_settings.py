@@ -269,6 +269,7 @@ WALDUR_CORE = {
         'Public company',
         'Government owned company',
     ),
+    'SITE_NAME': 'Waldur MasterMind',
     # 'COUNTRIES': ['EE', 'LV', 'LT'],
 }
 
