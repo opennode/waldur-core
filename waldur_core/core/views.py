@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib import auth
 from django.core.cache import cache
 from django.db.models import ProtectedError
+from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.utils.encoding import force_text
 from django.utils.lru_cache import lru_cache
@@ -14,6 +15,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as rf_exception_handler
+from six.moves.urllib.parse import urlencode
 
 from waldur_core import __version__
 from waldur_core.core import permissions, WaldurExtension
@@ -317,3 +319,29 @@ def get_public_settings():
 @permission_classes((rf_permissions.AllowAny,))
 def configuration_detail(request):
     return Response(get_public_settings())
+
+
+def redirect_with(url_template, **kwargs):
+    params = urlencode(kwargs)
+    url = '%s?%s' % (url_template, params)
+    return HttpResponseRedirect(url)
+
+
+def login_completed(token, method='default'):
+    url_template = settings.WALDUR_CORE['LOGIN_COMPLETED_URL']
+    url = url_template.format(token=token, method=method)
+    return HttpResponseRedirect(url)
+
+
+def login_failed(message):
+    url_template = settings.WALDUR_CORE['LOGIN_FAILED_URL']
+    return redirect_with(url_template, message=message)
+
+
+def logout_completed():
+    return HttpResponseRedirect(settings.WALDUR_CORE['LOGOUT_COMPLETED_URL'])
+
+
+def logout_failed(message):
+    url_template = settings.WALDUR_CORE['LOGOUT_FAILED_URL']
+    return redirect_with(url_template, message=message)
