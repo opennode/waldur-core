@@ -270,7 +270,7 @@ WALDUR_CORE = {
         'Government owned company',
     ),
     'SITE_NAME': 'Waldur MasterMind',
-    'LOGIN_COMPLETED_URL': 'https://example.com/#/login_completed/{token}/',
+    'LOGIN_COMPLETED_URL': 'https://example.com/#/login_completed/{token}/{method}/',
     'LOGIN_FAILED_URL': 'https://example.com/#/login_failed/',
     'LOGOUT_COMPLETED_URL': 'https://example.com/#/logout_completed/',
     'LOGOUT_FAILED_URL': 'https://example.com/#/logout_failed/',
