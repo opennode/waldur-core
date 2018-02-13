@@ -130,7 +130,7 @@ class CustomerAdminForm(ModelForm):
         self.fields['access_subnets'].widget.attrs = textarea_attrs
         type_choices = ['']
         type_choices.extend(settings.WALDUR_CORE['COMPANY_TYPES'])
-        self.fields['type'] = ChoiceField(choices=[(t, t) for t in type_choices])
+        self.fields['type'] = ChoiceField(required=False, choices=[(t, t) for t in type_choices])
 
     def save(self, commit=True):
         customer = super(CustomerAdminForm, self).save(commit=False)
