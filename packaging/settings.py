@@ -63,6 +63,7 @@ config_defaults = {
     'redis': {
         'host': 'localhost',
         'port': '6379',
+        'password': '',
     },
     'rest_api': {
         'cors_allowed_domains': 'localhost,127.0.0.1',
@@ -79,7 +80,13 @@ for section, options in config_defaults.items():
         if not config.has_option(section, option):
             config.set(section, option, value)
 
-redis_url = 'redis://%s:%s' % (config.get('redis', 'host'), config.get('redis', 'port'))
+
+if config.get('redis', 'password'):
+    redis_url = 'redis://:%s@%s:%s' % (config.get('redis', 'password'),
+                                       config.get('redis', 'host'),
+                                       config.get('redis', 'port'))
+else:
+    redis_url = 'redis://%s:%s' % (config.get('redis', 'host'), config.get('redis', 'port'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config.get('global', 'secret_key')
