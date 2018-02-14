@@ -123,7 +123,7 @@ class Migration(migrations.Migration):
                 ('backend_url', waldur_core.core.fields.BackendURLField(null=True, blank=True)),
                 ('username', models.CharField(max_length=100, null=True, blank=True)),
                 ('password', models.CharField(max_length=100, null=True, blank=True)),
-                ('certificate', models.FileField(null=True, upload_to='certs', blank=True)),
+                ('certificate', models.FileField(blank=True, null=True, upload_to='certs', validators=[waldur_core.core.validators.FileTypeValidator(allowed_extensions=['pem'], allowed_types=['application/x-pem-file', 'application/x-x509-ca-cert', 'text/plain'])])),
                 ('token', models.CharField(max_length=255, null=True, blank=True)),
                 ('type', models.SmallIntegerField(choices=[(1, b'OpenStack'), (2, b'DigitalOcean'), (3, b'Amazon'), (4, b'Jira'), (5, b'GitLab'), (6, b'Oracle'), (7, b'Azure')])),
                 ('options', waldur_core.core.fields.JSONField(help_text='Extra options', blank=True)),
