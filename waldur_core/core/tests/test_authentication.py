@@ -9,6 +9,8 @@ from freezegun import freeze_time
 from rest_framework import test, status
 from rest_framework.authtoken.models import Token
 
+from . import helpers
+
 
 class TokenAuthenticationTest(test.APITransactionTestCase):
     def setUp(self):
@@ -136,4 +138,8 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
             response = self.client.get(self.test_url)
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-
+    @helpers.override_waldur_core_settings(AUTHENTICATION_METHODS=[])
+    def test_authentication_fails_if_local_signin_is_disabled(self):
+        response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue('Authentication method is disabled.' in response.content)
