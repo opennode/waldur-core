@@ -1,10 +1,13 @@
+from __future__ import unicode_literals
+
+import functools
 import logging
 
 from django.conf import settings
 from django.contrib import auth
 from django.core.cache import cache
 from django.db.models import ProtectedError
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.utils import timezone
 from django.utils.encoding import force_text
 from django.utils.lru_cache import lru_cache
@@ -24,6 +27,22 @@ from waldur_core.core.serializers import AuthTokenSerializer
 from waldur_core.logging.loggers import event_logger
 
 logger = logging.getLogger(__name__)
+
+
+def validate_authentication_method(method):
+    def wrapper(view_func):
+        @functools.wraps(view_func)
+        def wrapped_view(*args, **kwargs):
+            if method not in settings.WALDUR_CORE['AUTHENTICATION_METHODS']:
+                message = 'Authentication method is disabled. ' \
+                          'Please use another authentication method or contact staff.'
+                return JsonResponse(
+                    status=status.HTTP_401_UNAUTHORIZED,
+                    data={'detail': message}
+                )
+            return view_func(*args, **kwargs)
+        return wrapped_view
+    return wrapper
 
 
 class RefreshTokenMixin(object):
@@ -110,6 +129,7 @@ class ObtainAuthToken(RefreshTokenMixin, APIView):
     permission_classes = ()
     serializer_class = AuthTokenSerializer
 
+    @validate_authentication_method('LOCAL_SIGNIN')
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
