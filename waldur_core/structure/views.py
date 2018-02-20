@@ -1146,6 +1146,7 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         resource_models = {k: v for k, v in SupportedServices.get_resource_models().items()}
         resource_models = self._filter_by_category(resource_models)
         resource_models = self._filter_by_types(resource_models)
+        resource_models = self._filter_resources(resource_models)
 
         queryset = managers.ResourceSummaryQuerySet(resource_models.values())
         return serializers.SummaryResourceSerializer.eager_load(queryset)
@@ -1171,6 +1172,10 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if category_models:
             return {k: v for k, v in resource_models.items() if v in category_models}
         return {}
+
+    def _filter_resources(self, resource_models):
+        return {k: v for k, v in resource_models.items()
+                if v in models.ResourceMixin.get_all_models()}
 
     @transaction.atomic
     def list(self, request, *args, **kwargs):
