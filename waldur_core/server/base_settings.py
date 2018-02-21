@@ -274,6 +274,7 @@ WALDUR_CORE = {
         'Public company',
         'Government owned company',
     ),
+    'NATIVE_NAME_ENABLED': False,
     'SITE_NAME': 'Waldur MasterMind',
     'LOGIN_COMPLETED_URL': 'https://example.com/#/login_completed/{token}/{method}/',
     'LOGIN_FAILED_URL': 'https://example.com/#/login_failed/',

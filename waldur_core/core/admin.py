@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import copy
 import json
 from collections import defaultdict
 
@@ -14,6 +15,7 @@ from django.contrib.auth import admin as auth_admin, get_user_model
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from django.utils.functional import cached_property
 from django.utils.html import format_html_join
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
@@ -101,7 +103,52 @@ class UserChangeForm(auth_admin.UserChangeForm):
         return None
 
 
-class UserAdmin(auth_admin.UserAdmin):
+class ExcludedFieldsAdminMixin(admin.ModelAdmin):
+    """
+    This mixin allows to toggle display of fields in Django model admin according to custom logic.
+    It's expected that inherited class has implemented excluded_fields property.
+    """
+
+    @cached_property
+    def excluded_fields(self):
+        return []
+
+    def filter_excluded_fields(self, fields):
+        return [field for field in fields if field not in self.excluded_fields]
+
+    def exclude_fields_from_fieldset(self, fieldset):
+        name, options = fieldset
+        fields = options.get('fields', ())
+        options = copy.copy(options)
+        options['fields'] = self.filter_excluded_fields(fields)
+        return (name, options)
+
+    def get_fields(self, request, obj=None):
+        fields = super(ExcludedFieldsAdminMixin, self).get_fields(request, obj)
+        return self.filter_excluded_fields(fields)
+
+    def get_list_display(self, request):
+        fields = super(ExcludedFieldsAdminMixin, self).get_list_display(request)
+        return self.filter_excluded_fields(fields)
+
+    def get_search_fields(self, request):
+        fields = super(ExcludedFieldsAdminMixin, self).get_search_fields(request)
+        return self.filter_excluded_fields(fields)
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super(ExcludedFieldsAdminMixin, self).get_fieldsets(request, obj)
+        return map(self.exclude_fields_from_fieldset, fieldsets)
+
+
+class NativeNameAdminMixin(ExcludedFieldsAdminMixin):
+    @cached_property
+    def excluded_fields(self):
+        if not settings.WALDUR_CORE['NATIVE_NAME_ENABLED']:
+            return ['native_name']
+        return []
+
+
+class UserAdmin(NativeNameAdminMixin, auth_admin.UserAdmin):
     list_display = ('username', 'uuid', 'email', 'full_name', 'native_name', 'is_active', 'is_staff', 'is_support')
     search_fields = ('username', 'uuid', 'full_name', 'native_name', 'email', 'civil_number')
     list_filter = ('is_active', 'is_staff', 'is_support')
