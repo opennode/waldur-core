@@ -4,8 +4,10 @@ import six
 from urlparse import urlparse
 
 from django.contrib.contenttypes.models import ContentType
+from django.forms.fields import MultipleChoiceField
 from django.urls import resolve
 import django_filters
+from django_filters.filters import MultipleChoiceFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters.constants import EMPTY_VALUES
 from rest_framework.filters import BaseFilterBackend
@@ -91,6 +93,19 @@ class MappedMultipleChoiceFilter(MappedFilterMixin, django_filters.MultipleChoic
     def filter(self, qs, value):
         value = [self.mapped_to_model[v] for v in value if v in self.mapped_to_model]
         return super(MappedMultipleChoiceFilter, self).filter(qs, value)
+
+
+class LooseMultipleChoiceField(MultipleChoiceField):
+    def valid_value(self, value):
+        return True
+
+
+class LooseMultipleChoiceFilter(MultipleChoiceFilter):
+    """
+    A multiple choice filter field that skips validation of values.
+    Based on https://github.com/carltongibson/django-filter/issues/137#issuecomment-37820702
+    """
+    field_class = LooseMultipleChoiceField
 
 
 class StateFilter(MappedMultipleChoiceFilter):
