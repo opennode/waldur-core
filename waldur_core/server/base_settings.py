@@ -274,6 +274,7 @@ WALDUR_CORE = {
         'Public company',
         'Government owned company',
     ),
+    'NATIVE_NAME_ENABLED': False,
     'SITE_NAME': 'Waldur MasterMind',
     'LOGIN_COMPLETED_URL': 'https://example.com/#/login_completed/{token}/{method}/',
     'LOGIN_FAILED_URL': 'https://example.com/#/login_failed/',
@@ -290,6 +291,7 @@ WALDUR_CORE_PUBLIC_SETTINGS = [
     'OWNER_CAN_MANAGE_CUSTOMER',
     'OWNERS_CAN_MANAGE_OWNERS',
     'COMPANY_TYPES',
+    'NATIVE_NAME_ENABLED',
 ]
 
 for ext in WaldurExtension.get_extensions():

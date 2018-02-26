@@ -18,7 +18,7 @@ from django.utils.translation import ungettext
 from jsoneditor.forms import JSONEditor
 
 from waldur_core.core import utils as core_utils
-from waldur_core.core.admin import get_admin_url, ExecutorAdminAction, PasswordWidget
+from waldur_core.core.admin import get_admin_url, ExecutorAdminAction, PasswordWidget, NativeNameAdminMixin
 from waldur_core.core.models import User
 from waldur_core.core.tasks import send_task
 from waldur_core.core.validators import BackendURLValidator
@@ -184,6 +184,7 @@ class BillingMixin(object):
 class CustomerAdmin(FormRequestAdminMixin,
                     ResourceCounterFormMixin,
                     BillingMixin,
+                    NativeNameAdminMixin,
                     ProtectedModelMixin,
                     admin.ModelAdmin):
     form = CustomerAdminForm
