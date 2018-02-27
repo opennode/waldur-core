@@ -35,6 +35,7 @@ Requires: mailcap
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
+Requires: python-cryptography
 Requires: python-django >= 1.11, python-django < 2.0
 Requires: python-django-admin-tools = 0.8.0
 Requires: python-django-cors-headers = 2.1.0
