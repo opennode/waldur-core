@@ -22,7 +22,7 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.156.1
+Version: 0.156.2
 Release: 1.el7
 License: MIT
 
@@ -252,6 +252,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Thu Mar 1 2018 Jenkins <jenkins@opennodecloud.com> - 0.156.2-1.el7
+- New upstream release
+
 * Mon Feb 26 2018 Jenkins <jenkins@opennodecloud.com> - 0.156.1-1.el7
 - New upstream release
 
