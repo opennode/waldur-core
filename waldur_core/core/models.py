@@ -5,6 +5,9 @@ import pytz
 import logging
 
 from croniter.croniter import croniter
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat import backends
+from cryptography.hazmat.primitives import serialization
 from datetime import datetime
 from django.apps import apps
 from django.conf import settings
@@ -215,32 +218,11 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
 
 
 def validate_ssh_public_key(ssh_key):
-    # http://stackoverflow.com/a/2494645
-    import base64
-    import struct
-
     try:
-        key_parts = ssh_key.split(' ', 2)
-        key_type, key_body = key_parts[0], key_parts[1]
-
-        if key_type != 'ssh-rsa':
-            raise ValidationError(_('Invalid SSH public key type %s, only ssh-rsa is supported.') % key_type)
-
-        data = base64.decodestring(key_body)
-        int_len = 4
-        # Unpack the first 4 bytes of the decoded key body
-        str_len = struct.unpack('>I', data[:int_len])[0]
-
-        encoded_key_type = data[int_len:int_len + str_len]
-        # Check if the encoded key type equals to the decoded key type
-        if encoded_key_type != key_type:
-            raise ValidationError(_("Invalid encoded SSH public key type %s within the key's body, "
-                                    "only ssh-rsa is supported.") % encoded_key_type)
-    except IndexError:
-        raise ValidationError(_('Invalid SSH public key structure.'))
-
-    except (base64.binascii.Error, struct.error):
-        raise ValidationError(_('Invalid SSH public key body.'))
+        serialization.load_ssh_public_key(ssh_key, backends.default_backend())
+    except (ValueError, UnsupportedAlgorithm) as e:
+        logger.debug('Invalid SSH public key %s. Error: %s', ssh_key, e)
+        raise ValidationError(_('Invalid SSH public key.'))
 
 
 def get_ssh_key_fingerprint(ssh_key):

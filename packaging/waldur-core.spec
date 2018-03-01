@@ -22,7 +22,7 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.156.1
+Version: 0.156.2
 Release: 1.el7
 License: MIT
 
@@ -35,6 +35,7 @@ Requires: mailcap
 Requires: python-celery >= 3.1.23, python-celery < 3.2
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
+Requires: python-cryptography
 Requires: python-django >= 1.11, python-django < 2.0
 Requires: python-django-admin-tools = 0.8.0
 Requires: python-django-cors-headers = 2.1.0
@@ -251,6 +252,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Thu Mar 1 2018 Jenkins <jenkins@opennodecloud.com> - 0.156.2-1.el7
+- New upstream release
+
 * Mon Feb 26 2018 Jenkins <jenkins@opennodecloud.com> - 0.156.1-1.el7
 - New upstream release
 

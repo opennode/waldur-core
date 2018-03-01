@@ -14,6 +14,7 @@ from django.utils import six
 from django_fsm import TransitionNotAllowed
 
 from waldur_core.core import models, utils
+from waldur_core.core.exceptions import RuntimeStateException
 
 
 logger = logging.getLogger(__name__)
@@ -426,3 +427,46 @@ def log_celery_task(request):
 
 # XXX: drop the hack and use shadow name in celery 4.0
 Request.__str__ = log_celery_task
+
+
+class PollRuntimeStateTask(Task):
+    max_retries = 300
+    default_retry_delay = 5
+
+    @classmethod
+    def get_description(cls, instance, backend_pull_method, *args, **kwargs):
+        return 'Poll instance "%s" with method "%s"' % (instance, backend_pull_method)
+
+    def get_backend(self, instance):
+        return instance.get_backend()
+
+    def execute(self, instance, backend_pull_method, success_state, erred_state):
+        backend = self.get_backend(instance)
+        getattr(backend, backend_pull_method)(instance)
+        instance.refresh_from_db()
+        if instance.runtime_state not in (success_state, erred_state):
+            self.retry()
+        elif instance.runtime_state == erred_state:
+            raise RuntimeStateException(
+                '%s (PK: %s) runtime state become erred: %s' % (
+                    instance.__class__.__name__, instance.pk, erred_state))
+        return instance
+
+
+class PollBackendCheckTask(Task):
+    max_retries = 60
+    default_retry_delay = 5
+
+    @classmethod
+    def get_description(cls, instance, backend_check_method, *args, **kwargs):
+        return 'Check instance "%s" with method "%s"' % (instance, backend_check_method)
+
+    def get_backend(self, instance):
+        return instance.get_backend()
+
+    def execute(self, instance, backend_check_method):
+        # backend_check_method should return True if object does not exist at backend
+        backend = self.get_backend(instance)
+        if not getattr(backend, backend_check_method)(instance):
+            self.retry()
+        return instance
