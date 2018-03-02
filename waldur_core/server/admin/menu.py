@@ -60,6 +60,8 @@ class CustomMenu(Menu):
 
     APPLICATION_PROVIDERS = (
         'waldur_ansible.*',
+        'waldur_zabbix.*',
+        'waldur_jira.*',
     )
 
     SUPPORT_MODULES = (
