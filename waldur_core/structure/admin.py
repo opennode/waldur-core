@@ -357,19 +357,20 @@ class ServiceTypeFilter(SimpleListFilter):
 
 
 class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
-    readonly_fields = ('error_message',)
-    list_display = ('name', 'customer', 'get_type_display', 'state', 'error_message')
+    readonly_fields = ('error_message', 'uuid')
+    list_display = ('name', 'customer', 'get_type_display', 'state', 'error_message', 'uuid')
     list_filter = (ServiceTypeFilter, 'state')
+    search_fields = ('name', 'uuid')
     change_readonly_fields = ('customer',)
     actions = ['pull']
     form = ServiceSettingsAdminForm
-    fields = ('type', 'name', 'backend_url', 'username', 'password',
+    fields = ('type', 'name', 'uuid', 'backend_url', 'username', 'password',
               'token', 'domain', 'certificate', 'options', 'customer',
               'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
               'certifications', 'geolocations')
     inlines = [QuotaInline]
     filter_horizontal = ('certifications',)
-    common_fields = ('type', 'name', 'options', 'customer',
+    common_fields = ('type', 'name', 'uuid', 'options', 'customer',
                      'state', 'error_message', 'tags', 'homepage', 'terms_of_services',
                      'certifications', 'geolocations')
 
