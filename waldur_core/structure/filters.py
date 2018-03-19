@@ -473,6 +473,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
         choice_mappings={representation: db_value for db_value, representation in core_models.StateMixin.States.CHOICES},
     )
     uuid = django_filters.UUIDFilter(lookup_expr='exact')
+    backend_id = django_filters.CharFilter(name='backend_id', lookup_expr='exact')
     tag = django_filters.ModelMultipleChoiceFilter(
         name='tags__name',
         label='tag',
@@ -512,7 +513,7 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
             # service settings
             'service_settings_name', 'service_settings_uuid',
             # resource
-            'name', 'name_exact', 'description', 'state', 'uuid', 'tag', 'rtag',
+            'name', 'name_exact', 'description', 'state', 'uuid', 'backend_id', 'tag', 'rtag',
         )
 
 
