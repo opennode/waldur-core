@@ -39,6 +39,7 @@ Requires: python-cryptography
 Requires: python-django >= 1.11, python-django < 2.0
 Requires: python-django-admin-tools = 0.8.0
 Requires: python-django-cors-headers = 2.1.0
+Requires: python-django-defender >= 0.5.3
 Requires: python-django-filter = 1.0.2
 Requires: python-django-fluent-dashboard = 0.6.1
 Requires: python-django-fsm = 2.3.0

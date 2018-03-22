@@ -49,6 +49,7 @@ INSTALLED_APPS = (
     'rest_framework_swagger',
     'django_filters',
 
+    'defender',
     'django_fsm',
     'reversion',
     'taggit',
@@ -65,6 +66,7 @@ MIDDLEWARE = (
     'waldur_core.logging.middleware.CaptureEventContextMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'defender.middleware.FailedLoginMiddleware',
 )
 
 REST_FRAMEWORK = {
@@ -167,6 +169,9 @@ LANGUAGES = (
 )
 
 USE_TZ = True
+
+# Defender configuration
+DEFENDER_REDIS_URL = 'redis://localhost:6379/0'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
