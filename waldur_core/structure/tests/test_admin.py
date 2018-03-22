@@ -1,12 +1,26 @@
 import json
 import copy
 
+from django.contrib.admin.sites import AdminSite
 from django.test import TestCase
 
-from waldur_core.structure.admin import ServiceSettingsAdminForm, PrivateServiceSettingsAdmin
+from waldur_core.structure.admin import PrivateServiceSettingsAdmin
 from waldur_core.structure.models import PrivateServiceSettings
 from waldur_core.structure.tests.serializers import ServiceSerializer
 from waldur_core.structure.utils import get_all_services_field_info, FieldInfo
+
+
+class MockRequest:
+    pass
+
+
+class MockSuperUser:
+    def has_perm(self, perm):
+        return True
+
+
+request = MockRequest()
+request.user = MockSuperUser()
 
 
 class override_serializer(object):
@@ -40,12 +54,6 @@ class override_serializer(object):
         ServiceSerializer.Meta.required_fields = self.required
         ServiceSerializer.SERVICE_ACCOUNT_FIELDS = self.fields
         ServiceSerializer.SERVICE_ACCOUNT_EXTRA_FIELDS = self.extra_fields
-
-
-class ServiceSettingsAdminFormTest(ServiceSettingsAdminForm):
-    class Meta:
-        model = PrivateServiceSettings
-        fields = PrivateServiceSettingsAdmin.fields
 
 
 class ServiceSettingAdminTest(TestCase):
@@ -112,12 +120,15 @@ class ServiceSettingAdminTest(TestCase):
         data.update(kwargs)
         return data
 
-    def assert_form_valid(self, fields, data):
+    def form_is_valid(self, fields, data):
         with override_serializer(fields):
-            form = ServiceSettingsAdminFormTest(data)
-            self.assertTrue(form.is_valid())
+            site = AdminSite()
+            model_admin = PrivateServiceSettingsAdmin(PrivateServiceSettings, site)
+            form = model_admin.get_form(request)(data)
+            return form.is_valid()
+
+    def assert_form_valid(self, fields, data):
+        self.assertTrue(self.form_is_valid(fields, data))
 
     def assert_form_invalid(self, fields, data):
-        with override_serializer(fields):
-            form = ServiceSettingsAdminFormTest(data)
-            self.assertFalse(form.is_valid())
+        self.assertFalse(self.form_is_valid(fields, data))
