@@ -85,6 +85,10 @@ class SummaryQuerySet(object):
         self.querysets = [qs.filter(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
         return self
 
+    def exclude(self, *args, **kwargs):
+        self.querysets = [qs.exclude(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
+        return self
+
     def distinct(self, *args, **kwargs):
         self.querysets = [qs.distinct(*copy.deepcopy(args), **copy.deepcopy(kwargs)) for qs in self.querysets]
         return self
