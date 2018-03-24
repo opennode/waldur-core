@@ -23,6 +23,7 @@ install_requires = [
     'cryptography',
     'Django>=1.11,<2.0',
     'django-admin-tools==0.8.0',
+    'django-defender>=0.5.3',
     'django-filter==1.0.2',
     'django-fluent-dashboard==0.6.1',
     'django-fsm==2.3.0',
@@ -49,7 +50,7 @@ install_requires = [
 
 setup(
     name='waldur_core',
-    version='0.156.2',
+    version='0.157.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/waldur-core',
