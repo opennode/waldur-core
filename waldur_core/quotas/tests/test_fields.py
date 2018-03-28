@@ -81,6 +81,34 @@ class TestCounterQuotaField(TransactionTestCase):
         self.assertEqual(quota.usage, 0)
 
 
+class TestTotalQuotaField(TransactionTestCase):
+
+    def setUp(self):
+        self.grandparent = test_models.GrandparentModel.objects.create()
+        self.parent = test_models.ParentModel.objects.create(parent=self.grandparent)
+        self.child = test_models.SecondChildModel.objects.create(parent=self.parent, size=100)
+        self.quota_field = test_models.ParentModel.Quotas.total_quota
+
+    def test_counter_quota_usage_is_increased_on_child_creation(self):
+        quota = self.parent.quotas.get(name=self.quota_field)
+        self.assertEqual(quota.usage, 100)
+
+    def test_counter_quota_usage_is_decreased_on_child_deletion(self):
+        self.child.delete()
+        quota = self.parent.quotas.get(name=self.quota_field)
+        self.assertEqual(quota.usage, 0)
+
+    def test_counter_quota_usage_is_right_after_recalculation(self):
+        quota = self.parent.quotas.get(name=self.quota_field)
+        quota.usage = 0
+        quota.save()
+
+        silent_call('recalculatequotas')
+
+        quota = self.parent.quotas.get(name=self.quota_field)
+        self.assertEqual(quota.usage, 100)
+
+
 class TestUsageAggregatorField(TransactionTestCase):
 
     def setUp(self):

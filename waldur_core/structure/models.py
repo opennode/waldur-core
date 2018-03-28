@@ -378,15 +378,15 @@ class Customer(core_models.UuidMixin,
             target_models=lambda: Storage.get_all_models(),
             path_to_scope='project.customer',
         )
-        nc_volume_size = quotas_fields.CounterQuotaField(
+        nc_volume_size = quotas_fields.TotalQuotaField(
             target_models=lambda: Volume.get_all_models(),
             path_to_scope='customer',
-            get_delta=lambda obj: obj.size,
+            target_field='size',
         )
-        nc_snapshot_size = quotas_fields.CounterQuotaField(
+        nc_snapshot_size = quotas_fields.TotalQuotaField(
             target_models=lambda: Snapshot.get_all_models(),
             path_to_scope='customer',
-            get_delta=lambda obj: obj.size
+            target_field='size',
         )
 
     def get_log_fields(self):
@@ -563,15 +563,15 @@ class Project(core_models.DescribableMixin,
             target_models=lambda: ServiceProjectLink.get_all_models(),
             path_to_scope='project',
         )
-        nc_volume_size = quotas_fields.CounterQuotaField(
+        nc_volume_size = quotas_fields.TotalQuotaField(
             target_models=lambda: Volume.get_all_models(),
             path_to_scope='project',
-            get_delta=lambda obj: obj.size,
+            target_field='size',
         )
-        nc_snapshot_size = quotas_fields.CounterQuotaField(
+        nc_snapshot_size = quotas_fields.TotalQuotaField(
             target_models=lambda: Snapshot.get_all_models(),
             path_to_scope='project',
-            get_delta=lambda obj: obj.size
+            target_field='size',
         )
 
     certifications = models.ManyToManyField(to='ServiceCertification', related_name='projects', blank=True)

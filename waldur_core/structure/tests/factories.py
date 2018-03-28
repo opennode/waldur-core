@@ -270,3 +270,17 @@ class ServiceCertificationFactory(factory.DjangoModelFactory):
 class TestSubResourceFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = test_models.TestSubResource
+
+
+class TestVolumeFactory(factory.DjangoModelFactory):
+    size = factory.fuzzy.FuzzyInteger(1024, 102400, step=1024)
+
+    class Meta(object):
+        model = test_models.TestVolume
+
+
+class TestSnapshotFactory(factory.DjangoModelFactory):
+    size = factory.fuzzy.FuzzyInteger(1024, 102400, step=1024)
+
+    class Meta(object):
+        model = test_models.TestSnapshot
