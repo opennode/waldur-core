@@ -80,3 +80,11 @@ class ServiceFixture(ProjectFixture):
     @cached_property
     def resource(self):
         return factories.TestNewInstanceFactory(service_project_link=self.service_project_link)
+
+    @cached_property
+    def volume(self):
+        return factories.TestVolumeFactory(service_project_link=self.service_project_link)
+
+    @cached_property
+    def snapshot(self):
+        return factories.TestSnapshotFactory(service_project_link=self.service_project_link)

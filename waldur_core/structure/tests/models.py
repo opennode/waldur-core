@@ -54,3 +54,13 @@ class TestNewInstance(QuotaModelMixin, structure_models.VirtualMachine):
 class TestSubResource(structure_models.SubResource):
 
     service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
+
+
+class TestVolume(structure_models.Volume):
+
+    service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)
+
+
+class TestSnapshot(structure_models.Snapshot):
+
+    service_project_link = models.ForeignKey(TestServiceProjectLink, on_delete=models.PROTECT)

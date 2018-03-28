@@ -46,6 +46,11 @@ class ParentModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_mod
             get_children=lambda scope: scope.children.all(),
             child_quota_name='usage_aggregator_quota',
         )
+        total_quota = fields.TotalQuotaField(
+            target_models=lambda: [SecondChildModel],
+            path_to_scope='parent',
+            target_field='size',
+        )
 
     def get_parents(self):
         return [self.parent]
@@ -73,6 +78,7 @@ class ChildModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_mode
 
 class SecondChildModel(core_models.UuidMixin, quotas_models.QuotaModelMixin, core_models.DescendantMixin):
     parent = django_models.ForeignKey(ParentModel, related_name='second_children')
+    size = django_models.IntegerField(default=0)
 
     def get_parents(self):
         return [self.parent]
