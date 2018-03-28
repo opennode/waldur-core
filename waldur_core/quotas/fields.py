@@ -202,6 +202,14 @@ class TotalQuotaField(CounterQuotaField):
     """
     This field aggregates sum of value for the same field of children objects.
     For example, it allows to compute total volume size for the project.
+
+     class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        nc_volume_size = quotas_fields.TotalQuotaField(
+            target_models=lambda: Volume.get_all_models(),
+            path_to_scope='project',
+            target_field='size',
+        )
+
     """
     def __init__(self, target_models, path_to_scope, target_field):
         self.target_field = target_field
