@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import functools
 import inspect
 from collections import defaultdict
+import logging
 
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
@@ -18,6 +19,9 @@ from waldur_core.logging.loggers import LoggableMixin
 from waldur_core.logging.models import AlertThresholdMixin
 from waldur_core.quotas import exceptions, managers, fields
 from waldur_core.core.models import UuidMixin, ReversionMixin, DescendantMixin
+
+
+logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
@@ -163,6 +167,11 @@ class QuotaModelMixin(models.Model):
                 _('%(quota)s "%(name)s" quota is over limit. Required: %(usage)s, limit: %(limit)s.') % dict(
                     quota=self, name=quota_name, usage=quota.usage + usage_delta, limit=quota.limit))
         quota.usage += usage_delta
+        if quota.usage < 0:
+            logger.error('%(quota)s "%(name)s" quota usage should not be negative. '
+                         'Current usage: %(usage)s, delta: %(usage_delta)s',
+                         dict(quota=self, name=quota_name, usage=quota.usage, usage_delta=usage_delta))
+            quota.usage = 0
         quota.save(update_fields=['usage'])
 
     def get_quota_ancestors(self):

@@ -1,5 +1,5 @@
-from django import VERSION as DJANGO_VERSION
 from django.db import models
+from django.db.models import Sum
 from django.utils import six
 
 from . import exceptions
@@ -196,6 +196,39 @@ class CounterQuotaField(QuotaField):
 
     def _get_scope(self, target_instance):
         return reduce(getattr, self.path_to_scope.split('.'), target_instance)
+
+
+class TotalQuotaField(CounterQuotaField):
+    """
+    This field aggregates sum of value for the same field of children objects.
+    For example, it allows to compute total volume size for the project.
+
+     class Quotas(quotas_models.QuotaModelMixin.Quotas):
+        nc_volume_size = quotas_fields.TotalQuotaField(
+            target_models=lambda: Volume.get_all_models(),
+            path_to_scope='project',
+            target_field='size',
+        )
+
+    """
+    def __init__(self, target_models, path_to_scope, target_field):
+        self.target_field = target_field
+        super(TotalQuotaField, self).__init__(target_models, path_to_scope)
+
+    def get_current_usage(self, models, scope):
+        total_usage = 0
+        filter_path_to_scope = self.path_to_scope.replace('.', '__')
+        query = {filter_path_to_scope: scope}
+        for model in models:
+            resources = model.objects.filter(**query)
+            subtotal = (resources.values(self.target_field)
+                        .aggregate(total_usage=Sum(self.target_field))['total_usage'])
+            if subtotal:
+                total_usage += subtotal
+        return total_usage
+
+    def get_delta(self, target_instance):
+        return getattr(target_instance, self.target_field)
 
 
 class AggregatorQuotaField(QuotaField):
