@@ -19,7 +19,7 @@ def _get_version(package_name='waldur_core'):
 
         try:
             with open(os.devnull, 'w') as DEV_NULL:
-                description = subprocess.check_output(
+                description = subprocess.check_output(   # nosec
                     ['git', 'describe', '--tags', '--dirty=.dirty'],
                     cwd=repo_dir, stderr=DEV_NULL
                 ).strip()
