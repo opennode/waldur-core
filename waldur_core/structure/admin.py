@@ -331,15 +331,14 @@ class ServiceSettingsAdminForm(ModelForm):
         widgets = {
             'options': JSONEditor(),
             'geolocations': JSONEditor(),
-            'password': PasswordWidget(),
+            'username': forms.TextInput(attrs={'autocomplete': 'off'}),
+            'password': PasswordWidget(attrs={'autocomplete': 'off'}),
         }
 
     def __init__(self, *args, **kwargs):
         super(ServiceSettingsAdminForm, self).__init__(*args, **kwargs)
         self.fields['type'] = ChoiceField(choices=SupportedServices.get_choices(),
                                           widget=RadioSelect)
-        self.fields['username'] = CharField(widget=forms.TextInput(attrs={'autocomplete': 'off'}))
-        self.fields['password'] = CharField(widget=PasswordWidget(attrs={'autocomplete': 'off'}))
 
 
 class ServiceTypeFilter(SimpleListFilter):
