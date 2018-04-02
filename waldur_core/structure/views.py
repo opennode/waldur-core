@@ -1677,7 +1677,7 @@ class BaseServiceViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
             spl_class = SupportedServices.get_related_models(service)['service_project_link']
             try:
                 spl = spl_class.objects.get(project__uuid=project_uuid, service=service)
-            except BaseException:
+            except spl_class.DoesNotExist:
                 raise NotFound(_("Can't find project %s.") % project_uuid)
             else:
                 return spl.get_backend()
