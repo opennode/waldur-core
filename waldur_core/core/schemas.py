@@ -13,7 +13,6 @@ from rest_framework.utils import formatting
 from rest_framework.views import APIView
 from rest_framework_swagger import renderers
 
-
 from waldur_core.core import (permissions as core_permissions, views as core_views,
                               utils as core_utils, filters as core_filters, serializers as core_serializers)
 from waldur_core.cost_tracking.filters import ResourceTypeFilter

@@ -8,7 +8,6 @@ import six
 
 from waldur_core.core.utils import datetime_to_timestamp
 
-
 logger = logging.getLogger(__name__)
 
 

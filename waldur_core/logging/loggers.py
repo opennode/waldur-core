@@ -1,25 +1,23 @@
-from __future__ import unicode_literals
-
 """ Custom loggers that allows to store logs in DB and Elastic """
 
-import uuid
-import types
-import decimal
+from __future__ import unicode_literals
+
+from collections import defaultdict
 import datetime
+import decimal
 import importlib
 import logging
-from collections import defaultdict
+import types
+import uuid
 
 from django.apps import apps
 from django.contrib.contenttypes import models as ct_models
 from django.db import transaction, IntegrityError
-from django.utils import six
 import six
 
 from waldur_core.logging import models
 from waldur_core.logging.log import EventLoggerAdapter
 from waldur_core.logging.middleware import get_event_context
-
 
 logger = logging.getLogger(__name__)
 
@@ -372,10 +370,10 @@ class BaseLoggerRegistry(object):
     def get_loggers(self):
         raise NotImplementedError('Method "get_loggers" is not implemented.')
 
-    def register(self, name, logger):
+    def register(self, name, logger_class):
         if name in self.__dict__:
             raise EventLoggerError("Logger '%s' already registered." % name)
-        self.__dict__[name] = logger() if isinstance(logger, type) else logger
+        self.__dict__[name] = logger_class() if isinstance(logger, type) else logger_class
 
     def unregister_all(self):
         self.__dict__ = {}
@@ -411,7 +409,7 @@ class EventLoggerRegistry(BaseLoggerRegistry):
         permitted_objects_uuids = {}
         for model in get_loggable_models():
             for field, uuids in model.get_permitted_objects_uuids(user).items():
-                permitted_objects_uuids[field] = [uuid.hex for uuid in uuids]
+                permitted_objects_uuids[field] = [uuid_obj.hex for uuid_obj in uuids]
         return permitted_objects_uuids
 
 

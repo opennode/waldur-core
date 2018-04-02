@@ -2,12 +2,12 @@ from __future__ import unicode_literals
 
 import collections
 import datetime
-from six.moves import mock
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status, test
 from rest_framework.reverse import reverse
+from six.moves import mock
 
 from waldur_core.core.tests.helpers import override_waldur_core_settings
 from waldur_core.structure import tasks
@@ -396,7 +396,7 @@ class CustomerPermissionFilterTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for permission in response.data:
-                self.assertEqual(value, permission['user_' + field])
+            self.assertEqual(value, permission['user_' + field])
 
     def _ensure_non_matching_entries_not_in(self, field, value):
         user = factories.UserFactory()
@@ -409,7 +409,7 @@ class CustomerPermissionFilterTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         for permission in response.data:
-                self.assertNotEqual(value, permission['user_' + field])
+            self.assertNotEqual(value, permission['user_' + field])
 
     def _get_customer_url(self, customer):
         return 'http://testserver' + reverse('customer-detail', kwargs={'uuid': customer.uuid})

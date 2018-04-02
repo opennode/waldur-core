@@ -20,11 +20,11 @@ Usage:
 
 """
 
+from ctypes import c_char_p, c_int, c_size_t, c_void_p
 import ctypes.util
 import glob
 import sys
 import threading
-from ctypes import c_char_p, c_int, c_size_t, c_void_p
 
 import six
 
@@ -77,7 +77,7 @@ class Magic:
                 # if we're on python3, convert buf to bytes
                 # otherwise this string is passed as wchar*
                 # which is not what libmagic expects
-                if type(buf) == str and str != bytes:
+                if isinstance(buf, str) and str != bytes:
                     buf = buf.encode('utf-8', errors='replace')
                 return maybe_decode(magic_buffer(self.cookie, buf))
             except MagicException as e:
@@ -157,8 +157,8 @@ def from_buffer(buffer, mime=False):
 libmagic = None
 # Let's try to find magic or magic1
 dll = ctypes.util.find_library('magic') \
-      or ctypes.util.find_library('magic1') \
-      or ctypes.util.find_library('cygmagic-1')
+    or ctypes.util.find_library('magic1') \
+    or ctypes.util.find_library('cygmagic-1')
 
 # necessary because find_library returns None if it doesn't find the library
 if dll:
@@ -168,8 +168,8 @@ if not libmagic or not libmagic._name:
     windows_dlls = ['magic1.dll', 'cygmagic-1.dll']
     platform_to_lib = {'darwin': ['/opt/local/lib/libmagic.dylib',
                                   '/usr/local/lib/libmagic.dylib'] +
-                                 # Assumes there will only be one version installed
-                                 glob.glob('/usr/local/Cellar/libmagic/*/lib/libmagic.dylib'),  # flake8:noqa
+                       # Assumes there will only be one version installed
+                       glob.glob('/usr/local/Cellar/libmagic/*/lib/libmagic.dylib'),  # flake8:noqa
                        'win32': windows_dlls,
                        'cygwin': windows_dlls,
                        'linux': ['libmagic.so.1'],

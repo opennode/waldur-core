@@ -1,5 +1,4 @@
 from ddt import ddt, data
-
 from rest_framework import status, test
 
 from waldur_core.core.tests.helpers import override_waldur_core_settings

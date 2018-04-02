@@ -27,7 +27,6 @@ class TestDetectVMCoordinatesTask(TestCase):
 
     @mock.patch('requests.get')
     def test_task_does_not_set_coordinates_if_response_is_not_ok(self, mock_request_get):
-        ip_address = "127.0.0.1"
         instance = factories.TestNewInstanceFactory()
 
         mock_request_get.return_value.ok = False

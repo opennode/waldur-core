@@ -1,13 +1,12 @@
 import calendar
+from collections import OrderedDict
 import datetime
 import importlib
-import re
-
-import os
-import time
-
-from collections import OrderedDict
+from itertools import chain
 from operator import itemgetter
+import os
+import re
+import time
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
@@ -17,6 +16,10 @@ from django.urls import resolve
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.utils.encoding import force_text
+
+
+def flatten(*xs):
+    return tuple(chain.from_iterable(xs))
 
 
 def sort_dict(unsorted_dict):

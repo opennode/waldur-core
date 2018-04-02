@@ -1,22 +1,21 @@
 from __future__ import unicode_literals
 
+from functools import reduce
 import importlib
 import inspect
 import logging
-import six
-from six.moves import reduce
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.admindocs.views import simplify_regex
 from django.urls import RegexURLResolver, RegexURLPattern
 from django_filters import ModelMultipleChoiceFilter
-
 from rest_framework.fields import ChoiceField, ReadOnlyField, ModelField
 from rest_framework.relations import HyperlinkedRelatedField, ManyRelatedField
 from rest_framework.serializers import ListSerializer, ModelSerializer
 from rest_framework.settings import api_settings
 from rest_framework.views import APIView
+import six
 
 from waldur_core.core.filters import ContentTypeFilter, MappedMultipleChoiceFilter
 from waldur_core.core.serializers import GenericRelatedField
@@ -198,7 +197,6 @@ class ApiDocs(object):
 
 
 class ApiEndpoint(object):
-
     FIELDS = {
         # filter
         'BooleanFilter': 'boolean',

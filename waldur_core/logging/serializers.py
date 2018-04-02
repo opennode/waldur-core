@@ -2,8 +2,8 @@ from django.db import IntegrityError
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
-from waldur_core.core.serializers import GenericRelatedField
 from waldur_core.core.fields import MappedChoiceField, NaturalChoiceField, JsonField
+from waldur_core.core.serializers import GenericRelatedField
 from waldur_core.logging import models, utils, loggers
 
 

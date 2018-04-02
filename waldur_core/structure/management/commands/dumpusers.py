@@ -1,9 +1,8 @@
-import prettytable
-
 from collections import OrderedDict
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+import prettytable
 import six
 
 from waldur_core.structure import models

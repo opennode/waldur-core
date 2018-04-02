@@ -1,27 +1,25 @@
 from __future__ import unicode_literals
 
-import functools
-import inspect
 from collections import defaultdict
+import functools
+from functools import reduce
+import inspect
 import logging
 
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models
 from django.db.models import Sum
-from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from model_utils import FieldTracker
 from reversion import revisions as reversion
 import six
-from six.moves import reduce
 
+from waldur_core.core.models import UuidMixin, ReversionMixin, DescendantMixin
 from waldur_core.logging.loggers import LoggableMixin
 from waldur_core.logging.models import AlertThresholdMixin
 from waldur_core.quotas import exceptions, managers, fields
-from waldur_core.core.models import UuidMixin, ReversionMixin, DescendantMixin
-
 
 logger = logging.getLogger(__name__)
 

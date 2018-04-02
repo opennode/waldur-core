@@ -51,6 +51,7 @@ class RefreshTokenMixin(object):
     Mixin allows to create new token if it does not exist yet or if it has already expired.
     Token is refreshed if it has not expired yet.
     """
+
     def refresh_token(self, user):
         token, created = Token.objects.get_or_create(user=user)
 

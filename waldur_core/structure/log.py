@@ -1,4 +1,4 @@
-from django.utils import six
+import six
 
 from waldur_core.core.models import User
 from waldur_core.logging.loggers import EventLogger, event_logger

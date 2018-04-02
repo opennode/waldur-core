@@ -6,7 +6,6 @@ from waldur_core.core import models as core_models
 from waldur_core.structure.models import NewResource, ServiceSettings
 from waldur_core.structure.tests import factories, fixtures, models as test_models
 
-
 States = core_models.StateMixin.States
 
 

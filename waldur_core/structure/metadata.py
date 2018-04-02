@@ -69,6 +69,7 @@ class ActionsMetadata(SimpleMetadata):
     2) Don't expose choices for fields with queryset in order to reduce size of response.
     3) Attach actions metadata
     """
+
     def determine_metadata(self, request, view):
         self.request = request
         metadata = OrderedDict()

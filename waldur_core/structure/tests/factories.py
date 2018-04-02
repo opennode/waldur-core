@@ -2,10 +2,7 @@
 from __future__ import unicode_literals
 
 import django.contrib.auth
-
-import factory
 import factory.fuzzy
-
 from rest_framework.reverse import reverse
 
 from waldur_core.core import models as core_models
@@ -52,7 +49,7 @@ class UserFactory(factory.DjangoModelFactory):
         return 'http://testserver' + reverse('user-detail', kwargs={'uuid': user.uuid}) + 'password/'
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('user-list')
 
 
@@ -63,21 +60,21 @@ class SshPublicKeyFactory(factory.DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
     name = factory.Sequence(lambda n: 'ssh_public_key%s' % n)
     public_key = factory.Sequence(lambda n:
-        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
-        "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
-        "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
-        "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
-        "vEAFdOJcqjyyH4%010d test" % n
-    )
+                                  "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDURXDP5YhOQUYoDuTxJ84DuzqMJYJqJ8+SZT28"
+                                  "TtLm5yBDRLKAERqtlbH2gkrQ3US58gd2r8H9jAmQOydfvgwauxuJUE4eDpaMWupqquMYsYLB5f+vVGhdZbbzfc6DTQ2rY"
+                                  "dknWoMoArlG7MvRMA/xQ0ye1muTv+mYMipnd7Z+WH0uVArYI9QBpqC/gpZRRIouQ4VIQIVWGoT6M4Kat5ZBXEa9yP+9du"
+                                  "D2C05GX3gumoSAVyAcDHn/xgej9pYRXGha4l+LKkFdGwAoXdV1z79EG1+9ns7wXuqMJFHM2KDpxAizV0GkZcojISvDwuh"
+                                  "vEAFdOJcqjyyH4%010d test" % n
+                                  )
 
     @classmethod
-    def get_url(self, key):
+    def get_url(cls, key):
         if key is None:
             key = SshPublicKeyFactory()
         return 'http://testserver' + reverse('sshpublickey-detail', kwargs={'uuid': str(key.uuid)})
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('sshpublickey-list')
 
 
@@ -97,7 +94,7 @@ class CustomerFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('customer-list')
 
 
@@ -136,7 +133,7 @@ class ProjectPermissionFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('project_permission-list')
 
 

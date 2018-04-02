@@ -7,7 +7,6 @@ from waldur_core.core.utils import get_fake_context
 from waldur_core.structure import SupportedServices
 from waldur_core.structure.serializers import BaseServiceSerializer
 
-
 register = template.Library()
 
 

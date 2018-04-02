@@ -2,8 +2,8 @@ import unittest
 
 from django.conf import settings
 from django.test import override_settings
-from rest_framework import test
 from rest_framework import status
+from rest_framework import test
 from six.moves import mock
 
 from waldur_core.structure import models as structure_models

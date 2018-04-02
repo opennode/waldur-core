@@ -1,12 +1,10 @@
-import factory
-from factory import fuzzy
-
-from django.urls import reverse
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
+import factory
 
 from waldur_core.cost_tracking import models, CostTrackingStrategy, ConsumableItem
-from waldur_core.structure.tests import models as test_models
 from waldur_core.structure.tests import factories as structure_factories
+from waldur_core.structure.tests import models as test_models
 
 
 class PriceEstimateFactory(factory.DjangoModelFactory):
@@ -24,7 +22,7 @@ class PriceEstimateFactory(factory.DjangoModelFactory):
         return url if action is None else url + action + '/'
 
     @classmethod
-    def get_url(self, price_estimate, action=None):
+    def get_url(cls, price_estimate, action=None):
         if price_estimate is None:
             price_estimate = PriceEstimateFactory()
         url = 'http://testserver' + reverse('priceestimate-detail', kwargs={'uuid': price_estimate.uuid})
@@ -58,11 +56,11 @@ class DefaultPriceListItemFactory(AbstractPriceListItemFactory):
     item_type = factory.Iterator(['flavor', 'storage'])
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('defaultpricelistitem-list')
 
     @classmethod
-    def get_url(self, default_price_list_item, action=None):
+    def get_url(cls, default_price_list_item, action=None):
         if default_price_list_item is None:
             default_price_list_item = DefaultPriceListItemFactory()
         url = 'http://testserver' + reverse(
@@ -78,11 +76,11 @@ class PriceListItemFactory(AbstractPriceListItemFactory):
     default_price_list_item = factory.SubFactory(DefaultPriceListItemFactory)
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('pricelistitem-list')
 
     @classmethod
-    def get_url(self, price_list_item, action=None):
+    def get_url(cls, price_list_item, action=None):
         if price_list_item is None:
             price_list_item = PriceListItemFactory()
         url = 'http://testserver' + reverse('pricelistitem-detail', kwargs={'uuid': price_list_item.uuid})

@@ -43,6 +43,7 @@ class SlaFilter(BaseFilterBackend):
 
         /api/openstack-instances/?o=actual_sla&period=2016-02
     """
+
     def filter_queryset(self, request, queryset, view):
         period = get_period(request)
 
@@ -86,6 +87,7 @@ class MonitoringItemFilter(BaseFilterBackend):
 
         /api/openstack-instances/?o=monitoring__installation_state
     """
+
     def filter_queryset(self, request, queryset, view):
         for key in request.query_params.keys():
             item_name = self._get_item_name(key)

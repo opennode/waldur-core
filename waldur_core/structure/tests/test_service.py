@@ -1,5 +1,4 @@
 from ddt import ddt, data
-
 from django.db import models
 from rest_framework import status, test
 
@@ -142,6 +141,7 @@ class ServiceResourcesCounterTest(test.APITransactionTestCase):
     There's one VM in each project. Service counters for each user should equal 1.
     For staff user resource counter should equal 2.
     """
+
     def setUp(self):
         self.customer = factories.CustomerFactory()
         self.settings = factories.ServiceSettingsFactory(shared=True)
@@ -176,7 +176,7 @@ class ServiceResourcesCounterTest(test.APITransactionTestCase):
         self.assertEqual(2, response.data['resources_count'])
 
     def test_subresources_are_skipped(self):
-        subresource = factories.TestSubResourceFactory(service_project_link=self.spl1)
+        factories.TestSubResourceFactory(service_project_link=self.spl1)
         self.client.force_authenticate(self.user1)
         response = self.client.get(self.service_url)
         self.assertEqual(1, response.data['resources_count'])

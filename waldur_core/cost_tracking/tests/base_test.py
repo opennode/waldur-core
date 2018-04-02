@@ -3,8 +3,8 @@ from rest_framework import test
 from waldur_core.structure import models as structure_models
 from waldur_core.structure.tests import factories as structure_factories
 
-from .. import CostTrackingRegister, models
 from . import factories
+from .. import CostTrackingRegister, models
 
 
 class BaseCostTrackingTest(test.APITransactionTestCase):

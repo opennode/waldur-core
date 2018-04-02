@@ -7,7 +7,6 @@ from django.utils import timezone
 from waldur_core.logging.loggers import alert_logger, event_logger
 from waldur_core.logging.models import BaseHook, Alert, AlertThresholdMixin
 
-
 logger = logging.getLogger(__name__)
 
 

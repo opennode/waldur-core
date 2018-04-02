@@ -1,20 +1,19 @@
 from __future__ import unicode_literals
 
+from collections import defaultdict
 import json
 import logging
 
-from collections import defaultdict
-
-import pyvat
 from django.conf import settings
 from django.contrib import auth
-import django.core.exceptions as django_exceptions
+from django.core import exceptions as django_exceptions
 from django.core.validators import RegexValidator, MaxLengthValidator
 from django.db import models as django_models, transaction
 from django.db.models import Q
-from django.utils import six, timezone
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
+import pyvat
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 import six
@@ -88,6 +87,7 @@ class PermissionListSerializer(serializers.ListSerializer):
     >>> class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     >>>     projects = PermissionProjectSerializer(many=True, read_only=True)
     """
+
     def to_representation(self, data):
         try:
             request = self.context['request']
@@ -190,7 +190,6 @@ class NestedServiceCertificationSerializer(core_serializers.AugmentedSerializerM
 
 
 class ProjectTypeSerializer(serializers.HyperlinkedModelSerializer):
-
     class Meta(object):
         model = models.ProjectType
         fields = ('uuid', 'url', 'name', 'description')
@@ -246,7 +245,7 @@ class ProjectSerializer(core_serializers.RestrictedSerializerMixin,
             'customer__native_name',
             'customer__abbreviation',
         )
-        return queryset.select_related('customer').only(*related_fields)\
+        return queryset.select_related('customer').only(*related_fields) \
             .prefetch_related('quotas', 'certifications')
 
     def create(self, validated_data):
@@ -306,7 +305,7 @@ class CustomerImageSerializer(serializers.ModelSerializer):
 
 class CustomerSerializer(core_serializers.RestrictedSerializerMixin,
                          core_serializers.AugmentedSerializerMixin,
-                         serializers.HyperlinkedModelSerializer,):
+                         serializers.HyperlinkedModelSerializer, ):
     projects = PermissionProjectSerializer(many=True, read_only=True)
     owners = BasicUserSerializer(source='get_owners', many=True, read_only=True)
     support_users = BasicUserSerializer(source='get_support_users', many=True, read_only=True)
@@ -919,11 +918,10 @@ class ServiceSerializerMetaclass(serializers.SerializerMetaclass):
 
 
 class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
-                            PermissionFieldFilteringMixin,
-                            core_serializers.RestrictedSerializerMixin,
-                            core_serializers.AugmentedSerializerMixin,
-                            serializers.HyperlinkedModelSerializer)):
-
+                                               PermissionFieldFilteringMixin,
+                                               core_serializers.RestrictedSerializerMixin,
+                                               core_serializers.AugmentedSerializerMixin,
+                                               serializers.HyperlinkedModelSerializer)):
     SERVICE_ACCOUNT_FIELDS = NotImplemented
     SERVICE_ACCOUNT_EXTRA_FIELDS = NotImplemented
 
@@ -1137,7 +1135,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
             else:
                 query = {service_path: self.instance}
             queryset = filter_queryset_for_user(model.objects.all(), user)
-            rows = queryset.filter(**query).values(service_path)\
+            rows = queryset.filter(**query).values(service_path) \
                 .annotate(count=django_models.Count('id'))
             for row in rows:
                 service_id = row[service_path]
@@ -1200,6 +1198,7 @@ class ResourceSerializerMetaclass(serializers.SerializerMetaclass):
     """ Build a list of supported resource via serializers definition.
         See SupportedServices for details.
     """
+
     def __new__(cls, name, bases, args):
         serializer = super(ResourceSerializerMetaclass, cls).__new__(cls, name, bases, args)
         SupportedServices.register_resource_serializer(args['Meta'].model, serializer)
@@ -1227,6 +1226,7 @@ class TagList(list):
     """
     This class serializes tags as JSON list as the last step of serialization process.
     """
+
     def __str__(self):
         return json.dumps(self)
 
@@ -1235,6 +1235,7 @@ class TagSerializer(serializers.Serializer):
     """
     This serializer updates tags field using django-taggit API.
     """
+
     def create(self, validated_data):
         if 'tags' in validated_data:
             tags = validated_data.pop('tags')
@@ -1295,13 +1296,12 @@ class TagListSerializerField(serializers.Field):
 
 
 class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
-                             core_serializers.RestrictedSerializerMixin,
-                             MonitoringSerializerMixin,
-                             PermissionFieldFilteringMixin,
-                             core_serializers.AugmentedSerializerMixin,
-                             TagSerializer,
-                             serializers.HyperlinkedModelSerializer)):
-
+                                                core_serializers.RestrictedSerializerMixin,
+                                                MonitoringSerializerMixin,
+                                                PermissionFieldFilteringMixin,
+                                                core_serializers.AugmentedSerializerMixin,
+                                                TagSerializer,
+                                                serializers.HyperlinkedModelSerializer)):
     state = serializers.ReadOnlyField(source='get_state_display')
 
     project = serializers.HyperlinkedRelatedField(

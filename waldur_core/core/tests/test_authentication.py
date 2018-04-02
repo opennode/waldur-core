@@ -1,11 +1,9 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
-from django.core.cache import cache
-
 from freezegun import freeze_time
-
 from rest_framework import test, status
 from rest_framework.authtoken.models import Token
 

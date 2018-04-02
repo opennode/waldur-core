@@ -1,12 +1,11 @@
 from __future__ import unicode_literals
 
+import copy
 import json
 import uuid
 
-import copy
 from django.core.exceptions import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
-from django.conf import settings
 from django.db import models
 from django.utils.encoding import smart_text
 from django.utils.translation import ugettext_lazy as _
@@ -14,8 +13,8 @@ import pycountry
 from rest_framework import serializers
 import six
 
-from waldur_core.core.validators import validate_cron_schedule
 from waldur_core.core import utils, validators as core_validators
+from waldur_core.core.validators import validate_cron_schedule
 
 
 class CronScheduleField(models.CharField):
@@ -76,6 +75,7 @@ class MappedChoiceField(serializers.ChoiceField):
     >>> serializer2.validated_data["flavor"] == IceCream.VANILLA
     True
     """
+
     def __init__(self, choice_mappings, **kwargs):
         super(MappedChoiceField, self).__init__(**kwargs)
 
@@ -133,6 +133,7 @@ class TimestampField(serializers.Field):
     """
     Unix timestamp field mapped to datetime object.
     """
+
     def to_representation(self, value):
         return utils.datetime_to_timestamp(value)
 
@@ -159,6 +160,7 @@ class StringUUID(uuid.UUID):
     Default UUID class __str__ method returns hyphenated string.
     This class returns non-hyphenated string.
     """
+
     def __unicode__(self):
         return six.text_type(str(self))
 
@@ -174,6 +176,7 @@ class UUIDField(models.UUIDField):
     This class implements backward-compatible non-hyphenated rendering of UUID values.
     Default field parameters are not exposed in migrations.
     """
+
     def __init__(self, **kwargs):
         kwargs['default'] = lambda: StringUUID(uuid.uuid4().hex)
         kwargs['editable'] = False

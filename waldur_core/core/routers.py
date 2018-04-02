@@ -2,7 +2,6 @@ from collections import OrderedDict
 from operator import itemgetter
 
 from django.urls import NoReverseMatch
-
 from rest_framework import views
 from rest_framework.response import Response
 from rest_framework.reverse import reverse

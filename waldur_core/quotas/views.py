@@ -4,7 +4,6 @@ from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions as rf_exceptions, decorators, response, status
 from rest_framework import mixins
 from rest_framework import viewsets
-from reversion import revisions as reversion
 from reversion.models import Version
 
 from waldur_core.core.pagination import UnlimitedLinkHeaderPagination

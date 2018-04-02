@@ -1,6 +1,6 @@
-import datetime
 import unittest
 
+import datetime
 from rest_framework import status, test
 from rest_framework.reverse import reverse
 

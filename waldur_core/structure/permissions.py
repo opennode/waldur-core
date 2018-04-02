@@ -1,8 +1,8 @@
+from functools import reduce
 import logging
 
 from django.conf import settings as django_settings
 from rest_framework import exceptions
-from six.moves import reduce
 
 from waldur_core.core.permissions import SAFE_METHODS, IsAdminOrReadOnly
 from waldur_core.structure import models

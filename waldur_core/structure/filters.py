@@ -6,19 +6,19 @@ from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.db.models.functions import Concat
-from django.utils import six
 import django_filters
 from django_filters.filterset import FilterSetMetaclass
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import BaseFilterBackend
+import six
 import taggit
 
 from waldur_core.core import filters as core_filters
 from waldur_core.core import models as core_models
 from waldur_core.core.filters import BaseExternalFilter, ExternalFilterBackend
 from waldur_core.logging.filters import ExternalAlertFilterBackend
-from waldur_core.structure import models
 from waldur_core.structure import SupportedServices
+from waldur_core.structure import models
 from waldur_core.structure.managers import filter_queryset_for_user
 
 User = auth.get_user_model()
@@ -254,6 +254,7 @@ class UserFilter(BaseUserFilter):
 
 class UserConcatenatedNameOrderingBackend(DjangoFilterBackend):
     """ Filter user by concatenated full_name + username with ?o=concatenated_name """
+
     def filter_queryset(self, request, queryset, view):
         queryset = self._filter_queryset(request, queryset, view)
         return BaseUserFilter(request.query_params, queryset=queryset, request=request).qs
@@ -368,7 +369,6 @@ class ServiceSettingsFilter(django_filters.FilterSet):
 
 
 class ServiceSettingsScopeFilterBackend(core_filters.GenericKeyFilterBackend):
-
     def get_related_models(self):
         return models.ResourceMixin.get_all_models()
 
@@ -380,6 +380,7 @@ class ServiceFilterMetaclass(FilterSetMetaclass):
     """ Build a list of supported resource via serializers definition.
         See SupportedServices for details.
     """
+
     def __new__(mcs, name, bases, args):
         service_filter = super(ServiceFilterMetaclass, mcs).__new__(mcs, name, bases, args)
         model = args['Meta'].model
@@ -414,7 +415,8 @@ class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filter
 
     class Meta(object):
         model = models.Service
-        fields = ('name', 'name_exact', 'project_uuid', 'customer', 'project', 'settings', 'shared', 'type', 'tag', 'rtag')
+        fields = ('name', 'name_exact', 'project_uuid',
+                  'customer', 'project', 'settings', 'shared', 'type', 'tag', 'rtag')
 
 
 class BaseServiceProjectLinkFilter(django_filters.FilterSet):
@@ -432,6 +434,7 @@ class ResourceFilterMetaclass(FilterSetMetaclass):
     """ Build a list of supported resource via serializers definition.
         See SupportedServices for details.
     """
+
     def __new__(cls, name, bases, args):
         resource_filter = super(ResourceFilterMetaclass, cls).__new__(cls, name, bases, args)
         SupportedServices.register_resource_filter(args['Meta'].model, resource_filter)
@@ -439,7 +442,7 @@ class ResourceFilterMetaclass(FilterSetMetaclass):
 
 
 class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
-                         django_filters.FilterSet)):
+                                            django_filters.FilterSet)):
     def __init__(self, *args, **kwargs):
         super(BaseResourceFilter, self).__init__(*args, **kwargs)
         self.filters['o'] = django_filters.OrderingFilter(fields=self.ORDERING_FIELDS)
@@ -459,7 +462,8 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     project_name = django_filters.CharFilter(name='service_project_link__project__name', lookup_expr='icontains')
     # service
     service_uuid = django_filters.UUIDFilter(name='service_project_link__service__uuid')
-    service_name = django_filters.CharFilter(name='service_project_link__service__settings__name', lookup_expr='icontains')
+    service_name = django_filters.CharFilter(name='service_project_link__service__settings__name',
+                                             lookup_expr='icontains')
     # service settings
     service_settings_uuid = django_filters.UUIDFilter(name='service_project_link__service__settings__uuid')
     service_settings_name = django_filters.CharFilter(name='service_project_link__service__settings__name',
@@ -469,8 +473,10 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     name_exact = django_filters.CharFilter(name='name', lookup_expr='exact')
     description = django_filters.CharFilter(lookup_expr='icontains')
     state = core_filters.MappedMultipleChoiceFilter(
-        choices=[(representation, representation) for db_value, representation in core_models.StateMixin.States.CHOICES],
-        choice_mappings={representation: db_value for db_value, representation in core_models.StateMixin.States.CHOICES},
+        choices=[(representation, representation) for db_value, representation in
+                 core_models.StateMixin.States.CHOICES],
+        choice_mappings={representation: db_value for db_value, representation in
+                         core_models.StateMixin.States.CHOICES},
     )
     uuid = django_filters.UUIDFilter(lookup_expr='exact')
     backend_id = django_filters.CharFilter(name='backend_id', lookup_expr='exact')
@@ -568,6 +574,7 @@ class StartTimeFilter(BaseFilterBackend):
     In MySQL NULL values come *first* with ascending sort order.
     This filter provides unified sorting for both databases.
     """
+
     def filter_queryset(self, request, queryset, view):
         order = request.query_params.get('o', None)
         if order == 'start_time':
@@ -649,6 +656,7 @@ def filter_alerts_by_aggregate(queryset, aggregate, user, uuid=None):
 
     return queryset.filter(aggregate_query)
 
+
 ExternalAlertFilterBackend.register(AggregateFilter())
 
 
@@ -666,7 +674,6 @@ class ResourceSummaryFilterBackend(core_filters.SummaryFilter):
 
 
 class ServiceSummaryFilterBackend(core_filters.SummaryFilter):
-
     def get_queryset_filter(self, queryset):
         try:
             return SupportedServices.get_service_filter(queryset.model)

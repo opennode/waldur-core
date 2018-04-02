@@ -8,7 +8,6 @@ import requests
 
 from . import SupportedServices
 
-
 logger = logging.getLogger(__name__)
 Coordinates = collections.namedtuple('Coordinates', ('latitude', 'longitude'))
 FieldInfo = collections.namedtuple('FieldInfo', 'fields fields_required extra_fields_required')

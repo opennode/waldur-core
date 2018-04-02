@@ -1,4 +1,5 @@
 import inspect
+
 import pkg_resources
 
 default_app_config = 'waldur_core.core.apps.CoreConfig'

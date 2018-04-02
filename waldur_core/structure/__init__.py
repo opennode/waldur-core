@@ -5,8 +5,8 @@ import importlib
 import logging
 
 from django.conf import settings
-from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
+from django.utils.lru_cache import lru_cache
 from rest_framework.reverse import reverse
 import six
 

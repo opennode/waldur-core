@@ -3,9 +3,9 @@ from rest_framework import status
 
 from waldur_core.structure.tests import factories as structure_factories
 
-from .. import models
 from . import factories
 from .base_test import BaseCostTrackingTest
+from .. import models
 
 
 @ddt

@@ -4,9 +4,8 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.forms import ModelForm
-import six
-
 from jsoneditor.forms import JSONEditor
+import six
 
 from waldur_core.logging import models
 from waldur_core.logging.loggers import get_valid_events
