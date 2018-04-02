@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import re
 import pytz
 import logging
+import six
 
 from croniter.croniter import croniter
 from cryptography.exceptions import UnsupportedAlgorithm
@@ -218,6 +219,9 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
 
 
 def validate_ssh_public_key(ssh_key):
+    if isinstance(ssh_key, six.text_type):
+        ssh_key = ssh_key.encode('utf-8')
+
     try:
         serialization.load_ssh_public_key(ssh_key, backends.default_backend())
     except (ValueError, UnsupportedAlgorithm) as e:

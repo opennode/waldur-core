@@ -1,4 +1,4 @@
-import mock
+from six.moves import mock
 from django.test import TestCase
 
 from waldur_core.logging import models as logging_models
@@ -43,7 +43,7 @@ class AggregateFilterTest(TestCase):
         result = self._make_aggregate_request('customer', self.customer.uuid.hex)
         actual_alerts_ids = [alert.uuid for alert in result]
 
-        self.assertItemsEqual(expected_alerts_ids, actual_alerts_ids)
+        self.assertEqual(expected_alerts_ids, actual_alerts_ids)
 
     def test_service_project_link_alert_is_not_returned_when_its_scope_is_related_to_another_project(self):
         not_owned_alert = logging_factories.AlertFactory(scope=factories.TestServiceProjectLinkFactory())

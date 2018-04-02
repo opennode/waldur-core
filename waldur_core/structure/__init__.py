@@ -8,6 +8,7 @@ from django.conf import settings
 from django.utils.lru_cache import lru_cache
 from django.utils.encoding import force_text
 from rest_framework.reverse import reverse
+import six
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ class SupportedServices(object):
 
     @classmethod
     def get_service_backend(cls, key):
-        if not isinstance(key, basestring):
+        if not isinstance(key, six.string_types):
             key = cls.get_model_key(key)
         try:
             return cls._registry[key]['backend']
@@ -394,7 +395,7 @@ class SupportedServices(object):
     @lru_cache(maxsize=1)
     def get_choices(cls):
         items = [(code, service['name']) for code, service in cls._registry.items()]
-        return sorted(items, key=lambda (code, name): name)
+        return sorted(items, key=lambda pair: pair[1])
 
     @classmethod
     def has_service_type(cls, service_type):

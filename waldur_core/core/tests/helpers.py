@@ -5,6 +5,7 @@ import copy
 from django.conf import settings
 from django.test.utils import override_settings
 from rest_framework import test, status
+import six
 
 
 class PermissionsTest(test.APITransactionTestCase):
@@ -123,7 +124,7 @@ class ListPermissionsTest(test.APITransactionTestCase):
                 'User %s receive wrong number of objects. Expected: %s, received %s'
                 % (user, len(expected_results), len(response.data)))
             for actual, expected in zip(response.data, expected_results):
-                for key, value in expected.iteritems():
+                for key, value in six.iteritems(expected):
                     self.assertEqual(actual[key], value)
 
 

@@ -79,6 +79,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='priceestimate',
             name='leafs',
-            field=models.ManyToManyField(related_name='_priceestimate_leafs_+', to=b'cost_tracking.PriceEstimate'),
+            field=models.ManyToManyField(related_name='_priceestimate_leafs_+', to='cost_tracking.PriceEstimate'),
         ),
     ]

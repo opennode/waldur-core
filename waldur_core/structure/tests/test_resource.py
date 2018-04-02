@@ -111,7 +111,7 @@ class ResourceTagsTest(test.APITransactionTestCase):
 
         response = self.client.post(url, payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
-        self.assertItemsEqual(response.data['tags'], ['tag1', 'tag2'])
+        self.assertEqual(set(response.data['tags']), {'tag1', 'tag2'})
 
     def test_tags_are_saved_on_resource_modification(self):
         resource = self.fixture.resource

@@ -4,6 +4,7 @@ import importlib
 import inspect
 import logging
 import six
+from six.moves import reduce
 
 from django.apps import apps
 from django.conf import settings

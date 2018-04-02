@@ -1,11 +1,10 @@
 import unittest
 
-import mock
-
 from django.conf import settings
 from django.test import override_settings
 from rest_framework import test
 from rest_framework import status
+from six.moves import mock
 
 from waldur_core.structure import models as structure_models
 from waldur_core.structure.tests import factories as structure_factories
@@ -33,6 +32,7 @@ class BaseEventsApiTest(test.APITransactionTestCase):
         self.es_patcher = mock.patch('waldur_core.logging.elasticsearch_client.Elasticsearch')
         self.mocked_es = self.es_patcher.start()
         self.mocked_es().search.return_value = {'hits': {'total': 0, 'hits': []}}
+        self.mocked_es().count.return_value = {'count': 0}
 
     def tearDown(self):
         self.es_patcher.stop()
@@ -115,34 +115,34 @@ class EventGetTest(BaseEventsApiTest):
     def test_debug_events_are_filtered_out_in_production_mode(self):
         self.get_events()
 
-        self.assertItemsEqual(self.must_not_terms['event_type'], [
+        self.assertEqual(set(self.must_not_terms['event_type']), {
             'debug_started',
             'debug_succeeded',
             'debug_failed',
-        ])
+        })
 
     @override_elasticsearch_settings(DEBUG=False)
     def test_extra_and_debug_events_combined(self):
         self.get_events({'exclude_extra': True})
-        self.assertItemsEqual(self.must_not_terms['event_type'], [
+        self.assertEqual(set(self.must_not_terms['event_type']), {
             'debug_started',
             'debug_succeeded',
             'debug_failed',
             'update_started',
             'update_succeeded',
             'update_failed',
-        ])
+        })
 
     @override_elasticsearch_settings(DEBUG=False)
     def test_features_and_debug_events_combined(self):
         self.get_events({'exclude_features': ['user']})
-        self.assertItemsEqual(self.must_not_terms['event_type'], [
+        self.assertEqual(set(self.must_not_terms['event_type']), {
             'debug_started',
             'debug_succeeded',
             'debug_failed',
             'user_created',
             'user_deleted',
-        ])
+        })
 
     def get_events(self, params=None):
         return self.client.get(factories.EventFactory.get_list_url(), params)

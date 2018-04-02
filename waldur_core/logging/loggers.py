@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 """ Custom loggers that allows to store logs in DB and Elastic """
 
 import uuid
@@ -12,6 +14,7 @@ from django.apps import apps
 from django.contrib.contenttypes import models as ct_models
 from django.db import transaction, IntegrityError
 from django.utils import six
+import six
 
 from waldur_core.logging import models
 from waldur_core.logging.log import EventLoggerAdapter
@@ -48,7 +51,7 @@ class BaseLogger(object):
         return getattr(self._meta, 'nullable_fields', [])
 
     def get_field_model(self, model):
-        if not isinstance(model, basestring):
+        if not isinstance(model, six.string_types):
             return model
 
         try:
@@ -67,7 +70,7 @@ class BaseLogger(object):
         except KeyError as e:
             raise LoggerError(
                 "Cannot find %s context field. Choices are: %s" % (
-                    str(e), ', '.join(context.keys())))
+                    six.text_type(e), ', '.join(context.keys())))
         return msg
 
     def validate_logging_type(self, logging_type):
@@ -82,7 +85,7 @@ class BaseLogger(object):
             self.fields = {
                 k: self.get_field_model(v)
                 for k, v in self.__class__.__dict__.items()
-                if not k.startswith('_') and not isinstance(v, (types.ClassType, types.FunctionType))}
+                if not k.startswith('_') and not isinstance(v, types.FunctionType) and k != 'Meta'}
 
         missed = set(self.fields.keys()) - set(self.get_nullable_fields()) - set(kwargs.keys())
         if missed:
@@ -115,7 +118,7 @@ class BaseLogger(object):
 
             if isinstance(entity, LoggableMixin):
                 context.update(entity._get_log_context(entity_name))
-            elif isinstance(entity, (int, float, basestring, dict, tuple, list, bool)):
+            elif isinstance(entity, (int, float, six.string_types, dict, tuple, list, bool)):
                 context[entity_name] = entity
             elif entity is None:
                 pass
@@ -148,7 +151,7 @@ class EventLogger(BaseLogger):
                 tenant = Tenant
                 project = 'structure.Project'
                 threshold = float
-                quota_type = basestring
+                quota_type = six.string_types
 
                 class Meta:
                     event_types = 'quota_threshold_reached',

@@ -1,6 +1,7 @@
 from operator import or_
 
 from django.db import models
+from six.moves import reduce
 
 from waldur_core.core.managers import GenericKeyMixin, SummaryQuerySet
 

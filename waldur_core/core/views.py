@@ -317,7 +317,7 @@ def get_public_settings():
 
     # Processing a others extensions
     for ext in WaldurExtension.get_extensions():
-        settings_name = filter(lambda x: x.startswith('WALDUR_'), dir(ext.Settings))
+        settings_name = [x for x in dir(ext.Settings) if x.startswith('WALDUR_')]
         if not settings_name:
             continue
 

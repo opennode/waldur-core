@@ -42,7 +42,7 @@ class Test(TestCommand):
                     ).run(suite)
             test_runner_class = XMLTestRunner
         except ImportError:
-            print "Not generating XML reports, run 'pip install unittest-xml-reporting' to enable XML report generation"
+            print("Not generating XML reports, run 'pip install unittest-xml-reporting' to enable XML report generation")
 
         if self.parallel:
             parallel = default_test_processes()

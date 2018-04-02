@@ -93,7 +93,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('name', models.CharField(max_length=150, verbose_name='name', validators=[waldur_core.core.validators.validate_name])),
                 ('customer', models.ForeignKey(verbose_name='organization', related_name='project_groups', on_delete=django.db.models.deletion.PROTECT, to='structure.Customer')),
-                ('projects', models.ManyToManyField(related_name='project_groups', to=b'structure.Project')),
+                ('projects', models.ManyToManyField(related_name='project_groups', to='structure.Project')),
             ],
             options={
                 'abstract': False,

@@ -322,7 +322,7 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         if minutes_from_last_update < 0:
             raise ConsumptionDetailCalculateError('Cannot calculate consumption if time < last modification date.')
         _consumed = {}
-        for consumable_item in set(self.configuration.keys() + self.consumed_before_update.keys()):
+        for consumable_item in set(list(self.configuration.keys()) + list(self.consumed_before_update.keys())):
             after_update = self.configuration.get(consumable_item, 0) * minutes_from_last_update
             before_update = self.consumed_before_update.get(consumable_item, 0)
             _consumed[consumable_item] = after_update + before_update

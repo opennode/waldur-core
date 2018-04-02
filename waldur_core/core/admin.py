@@ -58,7 +58,7 @@ def format_json_field(value):
 class OptionalChoiceField(forms.ChoiceField):
     def __init__(self, choices=(), *args, **kwargs):
         empty = [('', '---------')]
-        choices = empty + sorted(choices, key=lambda (code, label): label)
+        choices = empty + sorted(choices, key=lambda pair: pair[1])
         super(OptionalChoiceField, self).__init__(choices, *args, **kwargs)
 
 

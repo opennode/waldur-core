@@ -45,11 +45,13 @@ class Base64Field(serializers.CharField):
         try:
             base64.b64decode(value)
             return value
-        except TypeError:
+        except (TypeError, ValueError):
             raise serializers.ValidationError(_('This field should a be valid Base64 encoded string.'))
 
     def to_representation(self, value):
         value = super(Base64Field, self).to_representation(value)
+        if isinstance(value, six.text_type):
+            value = value.encode('utf-8')
         return base64.b64encode(value)
 
 

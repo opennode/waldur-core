@@ -4,6 +4,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.forms import ModelForm
+import six
 
 from jsoneditor.forms import JSONEditor
 
@@ -14,7 +15,7 @@ from waldur_core.logging.loggers import get_valid_events
 class JSONMultipleChoiceField(forms.MultipleChoiceField):
 
     def prepare_value(self, value):
-        if isinstance(value, basestring):
+        if isinstance(value, six.string_types):
             return json.loads(value)
         return value
 

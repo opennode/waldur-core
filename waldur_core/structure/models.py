@@ -22,6 +22,7 @@ from model_utils.models import TimeStampedModel
 from model_utils.fields import AutoCreatedField
 from taggit.managers import TaggableManager
 import pyvat
+from six.moves import reduce
 
 from waldur_core.core import fields as core_fields
 from waldur_core.core.fields import JSONField
