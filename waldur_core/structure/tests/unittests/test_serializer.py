@@ -1,8 +1,8 @@
-from urlparse import urlparse
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import resolve
+from six.moves.urllib.parse import urlparse
 
 from rest_framework.test import APIRequestFactory
 from .. import factories as structure_factories

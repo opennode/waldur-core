@@ -60,7 +60,7 @@ def migrate_project_permissions(apps, project_managers, project_admins):
     Project = apps.get_model('structure', 'Project')
     ProjectPermission = apps.get_model('structure', 'ProjectPermission')
 
-    projects = Project.objects.filter(uuid__in=project_managers.keys() + project_admins.keys())
+    projects = Project.objects.filter(uuid__in=list(project_managers.keys()) + list(project_admins.keys()))
     projects_map = {project.uuid.hex: project for project in projects}
 
     project_permissions = [

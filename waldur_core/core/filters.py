@@ -1,8 +1,8 @@
 import uuid
 
 import six
-from urlparse import urlparse
 
+from six.moves.urllib.parse import urlparse
 from django.contrib.contenttypes.models import ContentType
 from django.forms.fields import MultipleChoiceField
 from django.urls import resolve

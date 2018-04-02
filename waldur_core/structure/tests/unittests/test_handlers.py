@@ -1,13 +1,12 @@
-from mock import patch
-
 from django.test import TestCase
+from six.moves import mock
 
 from .. import factories
 
 
 class LogProjectSaveTest(TestCase):
 
-    @patch('waldur_core.structure.handlers.event_logger')
+    @mock.patch('waldur_core.structure.handlers.event_logger')
     def test_logger_called_once_on_project_create(self, logger_mock):
         new_project = factories.ProjectFactory()
 
@@ -23,7 +22,7 @@ class LogProjectSaveTest(TestCase):
         new_project = factories.ProjectFactory()
         old_name = new_project.name
 
-        with patch('waldur_core.structure.handlers.event_logger') as logger_mock:
+        with mock.patch('waldur_core.structure.handlers.event_logger') as logger_mock:
             new_project.name = 'new name'
             new_project.save()
 
@@ -41,7 +40,7 @@ class LogProjectSaveTest(TestCase):
     def test_logger_logs_project_name_and_description_when_updated(self):
         new_project = factories.ProjectFactory(description='description', name='name')
 
-        with patch('waldur_core.structure.handlers.event_logger') as logger_mock:
+        with mock.patch('waldur_core.structure.handlers.event_logger') as logger_mock:
             new_project.name = 'new name'
             new_project.description = 'new description'
             new_project.save()
@@ -56,4 +55,3 @@ class LogProjectSaveTest(TestCase):
                     'project': new_project,
                 },
             )
-

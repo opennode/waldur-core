@@ -160,7 +160,7 @@ class StringUUID(uuid.UUID):
     This class returns non-hyphenated string.
     """
     def __unicode__(self):
-        return unicode(str(self))
+        return six.text_type(str(self))
 
     def __str__(self):
         return self.hex

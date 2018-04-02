@@ -17,6 +17,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
+import six
 
 from waldur_core.core import (models as core_models, fields as core_fields, serializers as core_serializers,
                               utils as core_utils)
@@ -1081,7 +1082,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
                 for field in settings_fields:
                     if field in required and (field not in attrs or attrs[field] is None):
                         error = self.fields[field].error_messages['required']
-                        raise serializers.ValidationError({field: unicode(error)})
+                        raise serializers.ValidationError({field: six.text_type(error)})
 
                 args = {f: attrs.get(f) for f in settings_fields if f in attrs}
                 if extra_fields:

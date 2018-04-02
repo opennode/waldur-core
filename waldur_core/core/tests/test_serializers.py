@@ -24,7 +24,7 @@ class Base64FieldTest(unittest.TestCase):
         serializer = Base64Serializer(instance={'content': 'hello'})
         actual = serializer.data['content']
 
-        self.assertEqual('aGVsbG8=', actual)
+        self.assertEqual(b'aGVsbG8=', actual)
 
     def test_text_remains_base64_encoded_on_deserialization(self):
         serializer = Base64Serializer(data={'content': 'Zm9vYmFy'})
@@ -159,7 +159,7 @@ class RestrictedSerializerTest(APITransactionTestCase):
     def test_serializer_returns_fields_required_in_request(self):
         fields = ['name', 'url']
         response = self.make_request(fields)
-        self.assertEqual(fields, response.data.keys())
+        self.assertEqual(fields, list(response.data.keys()))
 
     def make_request(self, fields):
         from waldur_core.structure.tests.factories import UserFactory

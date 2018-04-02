@@ -1,5 +1,5 @@
 from datetime import timedelta
-import mock
+from six.moves import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType

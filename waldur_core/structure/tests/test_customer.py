@@ -178,7 +178,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         users = set(c['url'] for c in response.data[response_field])
 
         user_url = self._get_user_url(getattr(self.fixture, user))
-        self.assertItemsEqual([user_url], users)
+        self.assertEqual([user_url], list(users))
 
     @data('staff', 'global_support')
     def test_user_can_access_all_customers_if_he_is_staff(self, user):

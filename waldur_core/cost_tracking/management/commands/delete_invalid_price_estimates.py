@@ -4,6 +4,7 @@ import six
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+from six.moves import input
 
 from waldur_core.cost_tracking import CostTrackingRegister
 from waldur_core.cost_tracking.models import PriceEstimate
@@ -45,7 +46,7 @@ class Command(BaseCommand):
     def confirm(self):
         if self.assume_yes:
             return True
-        confirm = raw_input('Enter [y] to continue: ')
+        confirm = input('Enter [y] to continue: ')
         return confirm.strip().lower() == 'y'
 
     def delete_price_estimates_for_invalid_month(self):
@@ -104,7 +105,7 @@ class Command(BaseCommand):
             if any(map(lambda table: len(table[date]) == 0, tables.values())):
                 for table in tables.values():
                     invalid_estimates.extend(table[date])
-        print invalid_estimates
+        print(invalid_estimates)
         return invalid_estimates
 
     def get_price_estimates_for_customer(self, customer):

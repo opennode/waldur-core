@@ -1805,7 +1805,7 @@ class QuotaTimelineStatsView(views.APIView):
                 for (end, start), (limit, usage) in zip(ranges, values):
                     collector.add_quota(start, end, item, limit, usage)
 
-        stats = map(sort_dict, collector.to_dict())[::-1]
+        stats = list(map(sort_dict, collector.to_dict()))[::-1]
         return Response(stats, status=status.HTTP_200_OK)
 
     def get_quota_scopes(self, request):
@@ -1839,7 +1839,7 @@ class QuotaTimelineStatsView(views.APIView):
         for end, start in dates:
             try:
                 while version is None or version.revision.date_created > end:
-                    version = versions.next()
+                    version = next(versions)
                 stats_data.append((version._object_version.object.limit,
                                    version._object_version.object.usage))
             except StopIteration:
@@ -1860,7 +1860,7 @@ class QuotaTimelineStatsView(views.APIView):
 
         date_points = serializer.get_date_points()
         reversed_dates = date_points[::-1]
-        ranges = zip(reversed_dates[:-1], reversed_dates[1:])
+        ranges = list(zip(reversed_dates[:-1], reversed_dates[1:]))
         return ranges
 
 

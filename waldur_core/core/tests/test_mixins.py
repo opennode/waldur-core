@@ -1,4 +1,4 @@
-import mock
+from six.moves import mock
 
 from django.contrib import auth
 from rest_framework import serializers, test

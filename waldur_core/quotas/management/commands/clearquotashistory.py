@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from reversion.models import Version
+from six.moves import input
 
 from waldur_core.quotas.models import Quota
 
@@ -17,7 +18,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write('There are %s duplicates for quotas versions.' % len(duplicates))
             while True:
-                delete = raw_input('  Do you want to delete them? [Y/n]:') or 'y'
+                delete = input('  Do you want to delete them? [Y/n]:') or 'y'
                 if delete.lower() not in ('y', 'n'):
                     self.stdout.write('  Please enter letter "y" or "n"')
                 else:

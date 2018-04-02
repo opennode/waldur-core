@@ -1,12 +1,11 @@
 from __future__ import unicode_literals
 
 from ddt import data, ddt
-from mock import call, patch
-
 from django.test import TransactionTestCase
 from django.urls import reverse
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
+from six.moves import mock
 
 from waldur_core.quotas.tests import factories as quota_factories
 from waldur_core.structure import executors, models, signals, views
@@ -77,7 +76,7 @@ class ProjectPermissionRevokeTest(TransactionTestCase):
             self.project.remove_user(self.user)
 
         calls = [
-            call(
+            mock.call(
                 structure=self.project,
                 user=self.user,
                 role=ProjectRole.MANAGER,
@@ -86,7 +85,7 @@ class ProjectPermissionRevokeTest(TransactionTestCase):
                 signal=signals.structure_role_revoked,
             ),
 
-            call(
+            mock.call(
                 structure=self.project,
                 user=self.user,
                 role=ProjectRole.ADMINISTRATOR,
@@ -579,7 +578,7 @@ class TestExecutor(executors.BaseCleanupExecutor):
     pre_models = (test_models.TestNewInstance,)
 
 
-@patch('waldur_core.core.WaldurExtension.get_extensions')
+@mock.patch('waldur_core.core.WaldurExtension.get_extensions')
 class ProjectCleanupTest(test.APITransactionTestCase):
 
     def test_executors_are_sorted_in_topological_order(self, get_extensions):

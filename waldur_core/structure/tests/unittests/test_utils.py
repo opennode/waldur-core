@@ -1,5 +1,6 @@
-import mock
 import unittest
+
+from six.moves import mock
 
 from waldur_core.structure.utils import update_pulled_fields
 
