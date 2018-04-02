@@ -373,7 +373,7 @@ class BaseLoggerRegistry(object):
     def register(self, name, logger_class):
         if name in self.__dict__:
             raise EventLoggerError("Logger '%s' already registered." % name)
-        self.__dict__[name] = logger_class() if isinstance(logger, type) else logger_class
+        self.__dict__[name] = logger_class()
 
     def unregister_all(self):
         self.__dict__ = {}
