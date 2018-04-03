@@ -11,7 +11,7 @@ import waldur_core.core.fields
 
 class Migration(migrations.Migration):
 
-    replaces = [('logging', '0001_initial'), ('logging', '0002_alert_acknowledged'), ('logging', '0003_emailhook_webhook')]
+    #replaces = [('logging', '0001_initial'), ('logging', '0002_alert_acknowledged'), ('logging', '0003_emailhook_webhook')]
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),

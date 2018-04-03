@@ -6,7 +6,7 @@ from django.db import models, migrations
 
 class Migration(migrations.Migration):
 
-    replaces = [('logging', '0002_index_alert_type')]
+    #replaces = [('logging', '0002_index_alert_type')]
 
     dependencies = [
         ('logging', '0001_squashed_0003_emailhook_webhook'),
