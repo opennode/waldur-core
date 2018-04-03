@@ -10,7 +10,7 @@ import waldur_core.core.validators
 
 class Migration(migrations.Migration):
 
-    replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage'), ('cost_tracking', '0009_defaultpricelistitem_name'), ('cost_tracking', '0010_applicationtype'), ('cost_tracking', '0011_applicationtype_slug'), ('cost_tracking', '0012_fix_fields_length')]
+    #replaces = [('cost_tracking', '0001_initial'), ('cost_tracking', '0002_price_list'), ('cost_tracking', '0003_new_price_list_items'), ('cost_tracking', '0004_remove_connection_to_resource'), ('cost_tracking', '0005_expand_item_type_size'), ('cost_tracking', '0006_add_backend_cache_fields_to_pricelist'), ('cost_tracking', '0007_remove_obsolete_billing_fields'), ('cost_tracking', '0008_delete_resourceusage'), ('cost_tracking', '0009_defaultpricelistitem_name'), ('cost_tracking', '0010_applicationtype'), ('cost_tracking', '0011_applicationtype_slug'), ('cost_tracking', '0012_fix_fields_length')]
 
     dependencies = [
         ('contenttypes', '0001_initial'),

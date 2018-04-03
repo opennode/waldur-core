@@ -13,7 +13,7 @@ import django.core.validators
 
 class Migration(migrations.Migration):
 
-    replaces = [('core', '0001_initial'), ('core', '0002_user_organization_approved'), ('core', '0003_ssh_key_name_length_changed')]
+    #replaces = [('core', '0001_initial'), ('core', '0002_user_organization_approved'), ('core', '0003_ssh_key_name_length_changed')]
 
     dependencies = [
         ('auth', '0001_initial'),

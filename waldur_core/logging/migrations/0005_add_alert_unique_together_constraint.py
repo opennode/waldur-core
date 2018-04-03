@@ -24,7 +24,7 @@ def init_is_closed_attribute(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    replaces = [('logging', '0003_add_alert_unique_together_constraint')]
+    #replaces = [('logging', '0003_add_alert_unique_together_constraint')]
 
     dependencies = [
         ('logging', '0004_index_alert_type'),
