@@ -1,10 +1,9 @@
-from django.conf import settings
 from django.contrib import admin
-from django.contrib.contenttypes.admin import GenericTabularInline
 from django.contrib.contenttypes import models as ct_models
+from django.contrib.contenttypes.admin import GenericTabularInline
 from django.forms import ModelForm
 
-from waldur_core.core.admin import ReversionAdmin, ReadonlyTextWidget
+from waldur_core.core.admin import ReversionAdmin
 from waldur_core.quotas import models, utils
 
 
@@ -42,20 +41,21 @@ class QuotaForm(ModelForm):
         model = models.Quota
         fields = ('name', 'limit', 'usage')
 
-    def __init__(self, *args, **kwargs):
-        super(QuotaForm, self).__init__(*args, **kwargs)
-
-        if (self.instance
-                and self._is_backend_quota_field(self.instance)
-                and not settings.WALDUR_CORE['BACKEND_FIELDS_EDITABLE']):
-            self.fields['limit'].widget = ReadonlyTextWidget()
-
-    def _is_backend_quota_field(self, quota):
-        if not quota.scope:
-            return False
-
-        field = getattr(quota.scope.Quotas, quota.name)
-        return field.is_backend
+    # TODO: Temporarily disabled because it breaks validation
+    # def __init__(self, *args, **kwargs):
+    #     super(QuotaForm, self).__init__(*args, **kwargs)
+    #
+    #     if (self.instance
+    #             and self._is_backend_quota_field(self.instance)
+    #             and not settings.WALDUR_CORE['BACKEND_FIELDS_EDITABLE']):
+    #         self.fields['limit'].widget = ReadonlyTextWidget()
+    #
+    # def _is_backend_quota_field(self, quota):
+    #     if not quota.scope:
+    #         return False
+    #
+    #     field = getattr(quota.scope.Quotas, quota.name)
+    #     return field.is_backend
 
 
 class QuotaAdmin(QuotaFieldTypeLimit, ReversionAdmin):
@@ -68,5 +68,6 @@ class QuotaInline(QuotaFieldTypeLimit, GenericTabularInline):
     form = QuotaForm
     extra = 0
     can_delete = False
+
 
 admin.site.register(models.Quota, QuotaAdmin)

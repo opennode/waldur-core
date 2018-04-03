@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.utils.text import capfirst
 from django.utils.translation import ugettext_lazy as _
 
+from waldur_core.core.utils import flatten
+
 
 class CustomAppList(items.AppList):
     def init_with_context(self, context):
@@ -68,6 +70,14 @@ class CustomMenu(Menu):
         'waldur_mastermind.support.*',
     )
 
+    EXTRA_MODELS = (
+        'django.core.*',
+        'django_openid_auth.*',
+        'rest_framework.authtoken.*',
+        'waldur_core.core.*',
+        'waldur_core.structure.*',
+    )
+
     def __init__(self, **kwargs):
         Menu.__init__(self, **kwargs)
         self.children += [
@@ -101,17 +111,13 @@ class CustomMenu(Menu):
             ),
             CustomAppList(
                 _('Utilities'),
-                exclude=('django.core.*',
-                         'django_openid_auth.*',
-                         'rest_framework.authtoken.*',
-                         'waldur_core.core.*',
-                         'waldur_core.structure.*',
-                         )
-                        + self.IAAS_CLOUDS
-                        + self.APPLICATION_PROVIDERS
-                        + self.SUPPORT_MODULES
-                        + self.ACCOUNTING
-                        + self.USERS
+                exclude=flatten(
+                    self.EXTRA_MODELS,
+                    self.IAAS_CLOUDS,
+                    self.APPLICATION_PROVIDERS,
+                    self.SUPPORT_MODULES,
+                    self.ACCOUNTING,
+                    self.USERS,
+                )
             ),
-
         ]

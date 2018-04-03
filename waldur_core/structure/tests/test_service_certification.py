@@ -2,7 +2,6 @@ from ddt import ddt, data
 from rest_framework import test, status
 
 from waldur_core.structure import models
-
 from . import fixtures, factories
 
 

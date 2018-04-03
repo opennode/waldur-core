@@ -1,16 +1,15 @@
 import uuid
 
-import six
-
-from six.moves.urllib.parse import urlparse
 from django.contrib.contenttypes.models import ContentType
 from django.forms.fields import MultipleChoiceField
 from django.urls import resolve
 import django_filters
+from django_filters.constants import EMPTY_VALUES
 from django_filters.filters import MultipleChoiceFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from django_filters.constants import EMPTY_VALUES
 from rest_framework.filters import BaseFilterBackend
+import six
+from six.moves.urllib.parse import urlparse
 
 from waldur_core.core import serializers as core_serializers, fields as core_fields, models as core_models
 
@@ -172,6 +171,7 @@ class TimestampFilter(django_filters.NumberFilter):
     """
     Filter for dates in timestamp format
     """
+
     def filter(self, qs, value):
         if value in EMPTY_VALUES:
             return qs
@@ -188,6 +188,7 @@ class CategoryFilter(django_filters.CharFilter):
 
     :param categories: dictionary of category names as keys and category elements as values.
     """
+
     def __init__(self, categories, **kwargs):
         super(CategoryFilter, self).__init__(**kwargs)
         self.categories = categories
@@ -222,6 +223,7 @@ class ContentTypeFilter(django_filters.CharFilter):
 
 class BaseExternalFilter(object):
     """ Interface for external alert filter """
+
     def filter(self, request, queryset, view):
         raise NotImplementedError
 

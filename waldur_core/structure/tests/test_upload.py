@@ -4,9 +4,9 @@ from rest_framework import status
 from rest_framework import test
 
 from waldur_core.core.tests.helpers import override_waldur_core_settings
+from waldur_core.structure.images import dummy_image
 from waldur_core.structure.models import CustomerRole
 from waldur_core.structure.tests.factories import UserFactory, CustomerFactory
-from waldur_core.structure.images import dummy_image
 
 
 @override_settings(MEDIA_URL='/media/')

@@ -2,7 +2,6 @@ from django.apps import AppConfig
 
 from waldur_core.structure import SupportedServices, ServiceBackend
 
-
 default_app_config = 'waldur_core.structure.tests.TestConfig'
 
 

@@ -1,5 +1,5 @@
-from six.moves import mock
 from django.test import TestCase
+from six.moves import mock
 
 from waldur_core.logging import models as logging_models
 from waldur_core.logging.tests import factories as logging_factories

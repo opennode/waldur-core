@@ -14,11 +14,11 @@ class QuotaFactory(factory.DjangoModelFactory):
     name = factory.Iterator(['vcpu', 'storage', 'max_instances', 'ram'])
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('quota-list')
 
     @classmethod
-    def get_url(self, quota, action=None):
+    def get_url(cls, quota, action=None):
         if quota is None:
             quota = QuotaFactory()
         url = 'http://testserver' + reverse('quota-detail', kwargs={'uuid': quota.uuid})

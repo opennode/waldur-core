@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 from django.conf import settings
 from django.forms import model_to_dict
-from django.utils import six
 from rest_framework.authtoken.models import Token
+import six
 
 from waldur_core.core.log import event_logger
 from waldur_core.core.models import StateMixin

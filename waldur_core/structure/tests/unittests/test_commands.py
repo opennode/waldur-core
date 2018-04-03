@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 
 from django.core.management import call_command
 from django.test import TestCase
-from six import StringIO
 import six
+from six import StringIO
 
 from .. import factories
 

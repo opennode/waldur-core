@@ -4,18 +4,17 @@ import base64
 from collections import OrderedDict
 from datetime import timedelta
 import logging
-import six
 
 from django.core.exceptions import ImproperlyConfigured, MultipleObjectsReturned, ObjectDoesNotExist
 from django.urls import reverse, Resolver404
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.fields import Field, ReadOnlyField
+import six
 
 from waldur_core.core import utils as core_utils
 from waldur_core.core.fields import TimestampField
 from waldur_core.core.signals import pre_serializer_fields
-
 
 logger = logging.getLogger(__name__)
 
@@ -312,6 +311,7 @@ class RequiredFieldsMixin(object):
     This mixin allows to specify list of required fields.
     It expects list of field names as Meta.required_fields attribute.
     """
+
     def get_fields(self):
         fields = super(RequiredFieldsMixin, self).get_fields()
         required_fields = getattr(self.Meta, 'required_fields') or []
@@ -327,6 +327,7 @@ class ExtraFieldOptionsMixin(object):
     This mixin allows to specify extra fields metadata.
     It expects dictionary of field name and options as Meta.extra_field_options attribute.
     """
+
     def get_fields(self):
         fields = super(ExtraFieldOptionsMixin, self).get_fields()
         extra_field_options = getattr(self.Meta, 'extra_field_options') or {}

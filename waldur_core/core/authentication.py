@@ -8,7 +8,6 @@ import rest_framework.authentication
 
 import waldur_core.logging.middleware
 
-
 TOKEN_KEY = settings.WALDUR_CORE.get('TOKEN_KEY', 'x-auth-token')
 
 
@@ -101,6 +100,7 @@ def user_capturing_auth(auth):
             return result
 
     return CapturingAuthentication
+
 
 SessionAuthentication = user_capturing_auth(rest_framework.authentication.SessionAuthentication)
 TokenAuthentication = user_capturing_auth(TokenAuthentication)

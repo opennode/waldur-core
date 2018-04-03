@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 from ddt import data, ddt
 from django.test import TransactionTestCase
 from django.urls import reverse
-from django.utils import timezone as django_timezone
 from freezegun import freeze_time
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
@@ -552,6 +551,7 @@ class CustomerUsersListTest(test.APITransactionTestCase):
 
         response = self.client.get(self.url, {'email': 'gmail.com'})
         self.assertEqual(len(response.data), 2)
+
 
 @ddt
 class CustomerCountersListTest(test.APITransactionTestCase):

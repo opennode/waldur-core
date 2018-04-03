@@ -422,7 +422,7 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
         response = self.client.post(url, data={'organization': self.customer.abbreviation})
         self.assertEquals(response.status_code, status.HTTP_200_OK, response.data)
 
-        #check the status of the claim
+        # check the status of the claim
         response = self.client.get(client_url)
         self.assertDictContainsSubset(
             {'organization': self.customer.abbreviation,
@@ -439,7 +439,7 @@ class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
         response = self.client.post(url)
         self.assertEquals(response.status_code, status.HTTP_200_OK, response.data)
 
-        #check the status of the claim
+        # check the status of the claim
         response = self.client.get(client_url)
         self.assertDictContainsSubset(
             {'organization': '',

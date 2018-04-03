@@ -90,7 +90,7 @@ class SshKeyCreateTest(BaseSshKeyTest):
         key = factories.SshPublicKeyFactory.build()
         data = {
             'name': 'test',
-            'public_key': key.public_key+'\nABCD',
+            'public_key': key.public_key + '\nABCD',
         }
 
         self.client.force_authenticate(staff)

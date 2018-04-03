@@ -1,5 +1,4 @@
 from ddt import data, ddt
-
 from django.core.exceptions import ValidationError
 from rest_framework import test
 

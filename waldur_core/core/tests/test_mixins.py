@@ -1,10 +1,8 @@
-from six.moves import mock
-
 from django.contrib import auth
 from rest_framework import serializers, test
+from six.moves import mock
 
 from .. import exceptions, mixins
-
 
 User = auth.get_user_model()
 

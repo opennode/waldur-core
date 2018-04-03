@@ -8,4 +8,5 @@ class InvitationAdmin(admin.ModelAdmin):
     list_filter = ('state', 'created')
     search_fields = ('email', 'customer__name')
 
+
 admin.site.register(models.Invitation, InvitationAdmin)

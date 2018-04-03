@@ -1,15 +1,13 @@
 from __future__ import unicode_literals
 
-import re
-import pytz
+from datetime import datetime
 import logging
-import six
+import re
 
 from croniter.croniter import croniter
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat import backends
 from cryptography.hazmat.primitives import serialization
-from datetime import datetime
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -24,13 +22,14 @@ from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
 from django_fsm import transition, FSMIntegerField
 from model_utils import FieldTracker
+import pytz
 from reversion import revisions as reversion
 from reversion.models import Version
+import six
 
 from waldur_core.core.fields import CronScheduleField, UUIDField
 from waldur_core.core.validators import validate_name, MinCronValueValidator
 from waldur_core.logging.loggers import LoggableMixin
-
 
 logger = logging.getLogger(__name__)
 
@@ -415,6 +414,7 @@ class DescendantMixin(object):
     """ Mixin to provide child-parent relationships.
         Each related model can provide list of its parents/children.
     """
+
     def get_parents(self):
         """ Return list instance parents. """
         return []
@@ -448,6 +448,7 @@ class AbstractFieldTracker(FieldTracker):
     Workaround for abstract models
     https://gist.github.com/sbnoemi/7618916
     """
+
     def finalize_class(self, sender, name, **kwargs):
         self.name = name
         self.attname = '_%s' % name
@@ -457,7 +458,7 @@ class AbstractFieldTracker(FieldTracker):
 
 class BackendModelMixin(object):
     """
-    Represents model that is connected to backend object. 
+    Represents model that is connected to backend object.
 
     This model cannot be created or updated via admin, because we do not support queries to backend from admin interface.
     """

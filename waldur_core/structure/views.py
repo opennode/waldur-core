@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
-import time
-import logging
 from collections import defaultdict
 from functools import partial
+import logging
+import time
 
 from django.conf import settings as django_settings
 from django.contrib import auth
@@ -37,9 +37,9 @@ from waldur_core.structure import (
     SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
     filters, managers, models, permissions, serializers)
 from waldur_core.structure.log import event_logger
-from waldur_core.structure.signals import resource_imported, structure_role_updated
 from waldur_core.structure.managers import filter_queryset_for_user
 from waldur_core.structure.metadata import ActionsMetadata
+from waldur_core.structure.signals import resource_imported, structure_role_updated
 
 logger = logging.getLogger(__name__)
 
@@ -895,6 +895,7 @@ class CreationTimeStatsView(views.APIView):
     """
     Historical information about creation time of projects and customers.
     """
+
     def get(self, request, format=None):
         month = 60 * 60 * 24 * 30
         data = {
@@ -1676,7 +1677,7 @@ class BaseServiceViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
             spl_class = SupportedServices.get_related_models(service)['service_project_link']
             try:
                 spl = spl_class.objects.get(project__uuid=project_uuid, service=service)
-            except:
+            except spl_class.DoesNotExist:
                 raise NotFound(_("Can't find project %s.") % project_uuid)
             else:
                 return spl.get_backend()
@@ -1753,6 +1754,7 @@ class AggregatedStatsView(views.APIView):
           result will contain only object with given uuid)
         - ?quota_name - optional list of quota names, for example ram, vcpu, storage
     """
+
     def get(self, request, format=None):
         serializer = serializers.AggregateSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
@@ -1883,6 +1885,7 @@ class QuotaTimelineCollector(object):
             }
         ]
     """
+
     def __init__(self):
         self.ranges = set()
         self.items = set()

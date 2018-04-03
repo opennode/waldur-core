@@ -1,17 +1,17 @@
 from __future__ import unicode_literals
 
-import unittest
 from collections import namedtuple
+import unittest
 
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, APITransactionTestCase, force_authenticate
 from rest_framework.views import APIView
 
+from waldur_core.core import utils
 from waldur_core.core.fields import JsonField
 from waldur_core.core.fields import TimestampField
 from waldur_core.core.serializers import Base64Field, RestrictedSerializerMixin, GenericRelatedField
-from waldur_core.core import utils
 from waldur_core.logging.utils import get_loggable_models
 
 

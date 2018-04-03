@@ -1,8 +1,7 @@
 from rest_framework import serializers
-from six.moves import reduce
 
-from waldur_core.quotas import models, utils
 from waldur_core.core.serializers import GenericRelatedField
+from waldur_core.quotas import models, utils
 
 
 class QuotaSerializer(serializers.HyperlinkedModelSerializer):

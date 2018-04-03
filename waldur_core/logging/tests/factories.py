@@ -68,11 +68,11 @@ class AlertFactory(factory.DjangoModelFactory):
     scope = factory.SubFactory(structure_factories.CustomerFactory)
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('alert-list')
 
     @classmethod
-    def get_url(self, alert=None, action=None):
+    def get_url(cls, alert=None, action=None):
         if alert is None:
             alert = AlertFactory()
         url = 'http://testserver' + reverse('alert-detail', kwargs={'uuid': alert.uuid})
@@ -87,11 +87,11 @@ class WebHookFactory(factory.DjangoModelFactory):
     destination_url = 'http://example.com/'
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('webhook-list')
 
     @classmethod
-    def get_url(self, hook=None):
+    def get_url(cls, hook=None):
         if hook is None:
             hook = WebHookFactory()
         return 'http://testserver' + reverse('webhook-detail', kwargs={'uuid': hook.uuid})
@@ -106,11 +106,11 @@ class PushHookFactory(factory.DjangoModelFactory):
     type = models.PushHook.Type.ANDROID
 
     @classmethod
-    def get_list_url(self):
+    def get_list_url(cls):
         return 'http://testserver' + reverse('pushhook-list')
 
     @classmethod
-    def get_url(self, hook=None):
+    def get_url(cls, hook=None):
         if hook is None:
             hook = PushHookFactory()
         return 'http://testserver' + reverse('pushhook-detail', kwargs={'uuid': hook.uuid})

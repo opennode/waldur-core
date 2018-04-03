@@ -11,7 +11,6 @@ from django.utils.translation import ugettext_lazy as _
 from iptools.ipv4 import validate_cidr as is_valid_ipv4_cidr
 from iptools.ipv6 import validate_cidr as is_valid_ipv6_cidr
 
-
 from waldur_core.core import exceptions
 from waldur_core.core import magic
 
@@ -27,7 +26,7 @@ def validate_cron_schedule(value):
 @deconstructible
 class MinCronValueValidator(BaseValidator):
     """
-    Validate that the period of cron schedule is greater than or equal to provided limit_value in hours, 
+    Validate that the period of cron schedule is greater than or equal to provided limit_value in hours,
     otherwise raise ValidationError.
     """
     message = _('Ensure schedule period is greater than or equal to %(limit_value)s hour(s).')

@@ -1,7 +1,8 @@
+from functools import reduce
+
 from django.db import models
 from django.db.models import Sum
-from django.utils import six
-from six.moves import reduce
+import six
 
 from . import exceptions
 
@@ -43,6 +44,7 @@ class QuotaLimitField(models.IntegerField):
                 return instance.quotas.get(name=quota_field).limit
             except instance.quotas.model.DoesNotExist:
                 return quota_field.default_limit
+
         return func
 
     def _set_func(self):
@@ -51,6 +53,7 @@ class QuotaLimitField(models.IntegerField):
             # a hook to properly init quota after object saved to DB
             quota_field.scope_default_limit(instance, value)
             instance.set_quota_limit(quota_field, value, fail_silently=True)
+
         return func
 
 
@@ -61,6 +64,7 @@ class FieldsContainerMeta(type):
         Example:
             example_quota = QuotaField()  # this quota field will have name 'example_quota'
     """
+
     def __new__(self, name, bases, attrs):
         for key in attrs:
             if isinstance(attrs[key], QuotaField):
@@ -212,6 +216,7 @@ class TotalQuotaField(CounterQuotaField):
         )
 
     """
+
     def __init__(self, target_models, path_to_scope, target_field):
         self.target_field = target_field
         super(TotalQuotaField, self).__init__(target_models, path_to_scope)

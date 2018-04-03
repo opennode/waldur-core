@@ -3,6 +3,7 @@
 # test only models, but it is not really supported by Django.
 
 from django.test import TestCase
+
 from waldur_core.structure import models as structure_models
 from waldur_core.structure.tests import factories as structure_factories
 

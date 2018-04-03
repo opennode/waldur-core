@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from waldur_core.structure import serializers as structure_serializers
-
 from . import models
 
 

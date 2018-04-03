@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-import json
 import hashlib
+import json
 import logging
 
 from celery import Task as CeleryTask
@@ -10,12 +10,11 @@ from celery.worker.job import Request
 from django.core.cache import cache
 from django.db import IntegrityError, models as django_models
 from django.db.models import ObjectDoesNotExist
-from django.utils import six
 from django_fsm import TransitionNotAllowed
+import six
 
 from waldur_core.core import models, utils
 from waldur_core.core.exceptions import RuntimeStateException
-
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +97,6 @@ class Task(CeleryTask):
 
 
 class EmptyTask(CeleryTask):
-
     def run(self, *args, **kwargs):
         pass
 
@@ -158,6 +156,7 @@ class RuntimeStateChangeTask(Task):
      - runtime_state - to change instance runtime state during execution.
      - success_runtime_state - to change instance runtime state after success tasks execution.
     """
+
     @classmethod
     def get_description(cls, instance, *args, **kwargs):
         runtime_state = kwargs.get('runtime_state')
@@ -187,6 +186,7 @@ class RuntimeStateChangeTask(Task):
 
 class BackendMethodTask(RuntimeStateChangeTask, StateTransitionTask):
     """ Execute method of instance backend """
+
     @classmethod
     def get_description(cls, instance, backend_method, *args, **kwargs):
         actions = ['Run backend method "%s" for instance "%s".' % (backend_method, instance)]
@@ -214,6 +214,7 @@ class IndependentBackendMethodTask(BackendMethodTask):
 
 class DeletionTask(Task):
     """ Delete instance """
+
     @classmethod
     def get_description(cls, *args, **kwargs):
         instance = args[0]
@@ -231,6 +232,7 @@ class ErrorMessageTask(Task):
     This task should not be called as immutable, because it expects result_uuid
     as input argument.
     """
+
     @classmethod
     def get_description(cls, result_id, instance, *args, **kwargs):
         return 'Add error message to instance "%s".' % instance
@@ -259,6 +261,7 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
     This task should not be called as immutable, because it expects result_uuid
     as input argument.
     """
+
     @classmethod
     def get_description(cls, result_id, instance, *args, **kwargs):
         return 'Add error message and set erred instance "%s".' % instance
@@ -270,6 +273,7 @@ class ErrorStateTransitionTask(ErrorMessageTask, StateTransitionTask):
 
 class RecoverTask(StateTransitionTask):
     """ Change instance state from ERRED to OK and clear error_message """
+
     @classmethod
     def get_description(cls, instance, *args, **kwargs):
         return 'Recover instance "%s".' % instance
@@ -282,6 +286,7 @@ class RecoverTask(StateTransitionTask):
 
 class ExecutorTask(Task):
     """ Run executor as a task """
+
     @classmethod
     def get_description(cls, executor, instance, *args, **kwargs):
         return 'Run executor "%s" for instance "%s".' % (executor, instance)

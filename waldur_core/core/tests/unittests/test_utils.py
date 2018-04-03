@@ -14,7 +14,7 @@ class TestFormatTimeAndValueToSegmentList(unittest.TestCase):
         # when
         segment_list = utils.format_time_and_value_to_segment_list(
             [], segments_count, start_timestamp, end_timestamp)
-        #then
+        # then
         self.assertEqual(len(segment_list), segments_count)
         step = (end_timestamp - start_timestamp) / segments_count
         for index, segment in enumerate(segment_list):
@@ -28,10 +28,10 @@ class TestFormatTimeAndValueToSegmentList(unittest.TestCase):
         first_segment_time_value_list = [(22, 1), (23, 2)]
         second_segment_time_value_list = [(52, 2), (59, 2), (43, 3)]
         time_and_value_list = first_segment_time_value_list + second_segment_time_value_list
-        #when
+        # when
         segment_list = utils.format_time_and_value_to_segment_list(
             time_and_value_list, segments_count, start_timestamp, end_timestamp)
-        #then
+        # then
         first_segment, second_segment = segment_list
         expected_first_segment_value = sum([value for _, value in first_segment_time_value_list])
         expected_second_segment_value = sum([value for _, value in second_segment_time_value_list])

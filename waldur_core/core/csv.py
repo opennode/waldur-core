@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
-import csv
 import codecs
+import csv
 
 import six
 from six import StringIO
@@ -11,6 +11,7 @@ class UTF8Recoder:
     """
     Iterator that reads an encoded stream and reencodes the input to UTF-8
     """
+
     def __init__(self, f, encoding):
         self.reader = codecs.getreader(encoding)(f)
 

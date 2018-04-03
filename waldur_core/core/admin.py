@@ -1,10 +1,9 @@
 from __future__ import unicode_literals
 
+from collections import defaultdict
 import copy
 import json
-from collections import defaultdict
 
-import six
 from django import forms
 from django.conf import settings
 from django.conf.urls import url
@@ -21,6 +20,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import permissions as rf_permissions
 from reversion.admin import VersionAdmin
+import six
 
 from waldur_core.core import models
 from waldur_core.core.authentication import can_access_admin_site
@@ -227,6 +227,7 @@ class CustomAdminSite(admin.AdminSite):
         instance._actions = admin.site._actions.copy()
         instance._global_actions = admin.site._global_actions.copy()
         return instance
+
 
 admin_site = CustomAdminSite.clone_default()
 admin.site = admin_site

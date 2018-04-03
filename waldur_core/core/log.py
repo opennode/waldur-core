@@ -1,7 +1,7 @@
 import six
 
-from waldur_core.logging.loggers import EventLogger, event_logger
 from waldur_core.core.models import User, SshPublicKey
+from waldur_core.logging.loggers import EventLogger, event_logger
 
 
 class AuthEventLogger(EventLogger):

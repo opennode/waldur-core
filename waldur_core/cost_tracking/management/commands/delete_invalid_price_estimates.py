@@ -1,9 +1,9 @@
 import collections
-import six
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+import six
 from six.moves import input
 
 from waldur_core.cost_tracking import CostTrackingRegister

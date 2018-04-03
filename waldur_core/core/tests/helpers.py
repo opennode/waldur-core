@@ -100,6 +100,7 @@ class ListPermissionsTest(test.APITransactionTestCase):
     Method `get_users_and_expected_results` has to be overridden.
     Method `get_url` have to be defined.
     """
+
     def get_url(self):
         return None
 

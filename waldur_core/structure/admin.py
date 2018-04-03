@@ -12,10 +12,11 @@ from django.db import models as django_models
 from django.forms import ModelMultipleChoiceField, ModelForm, RadioSelect, ChoiceField, CharField
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.utils import six, timezone
+from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ungettext
 from jsoneditor.forms import JSONEditor
+import six
 
 from waldur_core.core import utils as core_utils
 from waldur_core.core.admin import get_admin_url, ExecutorAdminAction, PasswordWidget, NativeNameAdminMixin
@@ -29,7 +30,6 @@ logger = logging.getLogger(__name__)
 
 
 class BackendModelAdmin(admin.ModelAdmin):
-
     def has_add_permission(self, request):
         return False
 
@@ -54,6 +54,7 @@ class FormRequestAdminMixin(object):
     which then passed to add_user method, so that user which granted role,
     is stored in the permission model.
     """
+
     def get_form(self, request, obj=None, **kwargs):
         form = super(FormRequestAdminMixin, self).get_form(request, obj=obj, **kwargs)
         form.request = request
@@ -61,7 +62,6 @@ class FormRequestAdminMixin(object):
 
 
 class ChangeReadonlyMixin(object):
-
     add_readonly_fields = ()
     change_readonly_fields = ()
 
@@ -89,7 +89,6 @@ class ProtectedModelMixin(object):
 
 
 class ResourceCounterFormMixin(object):
-
     def get_vm_count(self, obj):
         return obj.quotas.get(name=obj.Quotas.nc_vm_count).usage
 
@@ -161,13 +160,12 @@ class CustomerAdminForm(ModelForm):
 
     def clean_accounting_start_date(self):
         accounting_start_date = self.cleaned_data['accounting_start_date']
-        if 'accounting_start_date' in self.changed_data and \
-                accounting_start_date < timezone.now():
-                    # If accounting_start_date < timezone.now(), we change accounting_start_date
-                    # but not raise an exception, because accounting_start_date default value is
-                    # timezone.now(), but init time of form and submit time of form are always diff.
-                    # And user will get an exception always if set default value.
-                    return timezone.now()
+        if 'accounting_start_date' in self.changed_data and accounting_start_date < timezone.now():
+            # If accounting_start_date < timezone.now(), we change accounting_start_date
+            # but not raise an exception, because accounting_start_date default value is
+            # timezone.now(), but init time of form and submit time of form are always diff.
+            # And user will get an exception always if set default value.
+            return timezone.now()
 
         return accounting_start_date
 
@@ -315,7 +313,7 @@ class ServiceSettingsAdminForm(ModelForm):
                     self.add_error(field, _('This field is required.'))
                 except ValueError:
                     logger.warning('Incorrect field %s in %s required_fields' %
-                                 (field, service_type))
+                                   (field, service_type))
 
         # Check required extra fields of service type
         try:
@@ -378,6 +376,7 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
 
     def get_type_display(self, obj):
         return obj.get_type_display()
+
     get_type_display.short_description = 'Type'
 
     def add_view(self, *args, **kwargs):
