@@ -176,8 +176,12 @@ class QuotaModelMixin(models.Model):
 
     def get_quota_ancestors(self):
         if isinstance(self, DescendantMixin):
-            return [a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin)]
-        return []
+            # We need to use set in order to eliminate duplicates.
+            # Consider, for example, two ways of traversing from resource to customer:
+            # resource -> spl -> project -> customer
+            # resource -> spl -> service -> customer
+            return {a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin)}
+        return {}
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """
