@@ -24,4 +24,3 @@ class ServiceProjectLinkTest(TestCase):
         self.link.service.settings.certifications.add(*certifications)
 
         self.assertEqual(self.link.States.OK, self.link.validation_state)
-

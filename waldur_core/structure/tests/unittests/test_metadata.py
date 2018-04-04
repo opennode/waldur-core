@@ -15,6 +15,9 @@ class ResourceProvisioningMetadataTest(TestCase):
             def all(self):
                 return {'key': 'value'}
 
+            def __iter__(self):
+                return iter([])
+
         class VirtualMachineSerializer(serializers.Serializer):
             name = serializers.CharField(max_length=100, read_only=True)
             description = serializers.CharField(max_length=100)

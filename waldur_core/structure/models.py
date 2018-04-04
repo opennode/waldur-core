@@ -1,16 +1,17 @@
 from __future__ import unicode_literals
 
 import datetime
+from functools import reduce
 import itertools
 
 from django.apps import apps
-from django.core.cache import cache
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.validators import MaxLengthValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -18,25 +19,25 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
 from model_utils import FieldTracker
-from model_utils.models import TimeStampedModel
 from model_utils.fields import AutoCreatedField
-from taggit.managers import TaggableManager
+from model_utils.models import TimeStampedModel
 import pyvat
+from taggit.managers import TaggableManager
 
 from waldur_core.core import fields as core_fields
-from waldur_core.core.fields import JSONField
 from waldur_core.core import models as core_models
 from waldur_core.core import utils as core_utils
+from waldur_core.core.fields import JSONField
 from waldur_core.core.models import CoordinatesMixin, AbstractFieldTracker
 from waldur_core.core.validators import validate_name, validate_cidr_list, FileTypeValidator
+from waldur_core.logging.loggers import LoggableMixin
 from waldur_core.monitoring.models import MonitoringModelMixin
 from waldur_core.quotas import models as quotas_models, fields as quotas_fields
-from waldur_core.logging.loggers import LoggableMixin
+from waldur_core.structure import SupportedServices
+from waldur_core.structure.images import ImageModelMixin
 from waldur_core.structure.managers import StructureManager, filter_queryset_for_user, \
     ServiceSettingsManager, PrivateServiceSettingsManager, SharedServiceSettingsManager
 from waldur_core.structure.signals import structure_role_granted, structure_role_revoked
-from waldur_core.structure.images import ImageModelMixin
-from waldur_core.structure import SupportedServices
 from waldur_core.structure.utils import get_coordinates_by_ip, sort_dependencies
 
 

@@ -1,6 +1,5 @@
 import factory
 import factory.fuzzy
-
 from rest_framework.reverse import reverse
 
 from waldur_core.structure import models as structure_models

@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
-
 from rest_framework import viewsets, exceptions
 
 from waldur_core.core import views as core_views

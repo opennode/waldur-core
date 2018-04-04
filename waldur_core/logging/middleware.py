@@ -4,7 +4,6 @@ import threading
 
 from django.utils.deprecation import MiddlewareMixin
 
-
 _locals = threading.local()
 
 
@@ -29,7 +28,7 @@ def set_current_user(user):
 
 def get_ip_address(request):
     """
-    Correct IP address is expected as first element of HTTP_X_FORWARDED_FOR or REMOTE_ADDR 
+    Correct IP address is expected as first element of HTTP_X_FORWARDED_FOR or REMOTE_ADDR
     """
     if 'HTTP_X_FORWARDED_FOR' in request.META:
         return request.META['HTTP_X_FORWARDED_FOR'].split(',')[0].strip()

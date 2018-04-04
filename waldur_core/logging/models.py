@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-import uuid
 import logging
+import uuid
 
 from django.apps import apps
 from django.conf import settings
@@ -11,15 +11,14 @@ from django.core import validators
 from django.core.mail import send_mail
 from django.db import models
 from django.template.loader import render_to_string
-from django.utils.lru_cache import lru_cache
 from django.utils import timezone
+from django.utils.lru_cache import lru_cache
 from model_utils.models import TimeStampedModel
 import requests
 
 from waldur_core.core.fields import JSONField, UUIDField
 from waldur_core.core.utils import timestamp_to_datetime
 from waldur_core.logging import managers
-
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 from ddt import ddt, data
 from django.test import TestCase
-from mock import patch, Mock
+from six.moves import mock
 
 from waldur_core.core import utils
 from waldur_core.structure import tasks
@@ -9,7 +9,7 @@ from waldur_core.structure.tests import factories, models
 
 class TestDetectVMCoordinatesTask(TestCase):
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_task_sets_coordinates(self, mock_request_get):
         ip_address = "127.0.0.1"
         expected_latitude = 20
@@ -25,9 +25,8 @@ class TestDetectVMCoordinatesTask(TestCase):
         self.assertEqual(instance.latitude, expected_latitude)
         self.assertEqual(instance.longitude, expected_longitude)
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_task_does_not_set_coordinates_if_response_is_not_ok(self, mock_request_get):
-        ip_address = "127.0.0.1"
         instance = factories.TestNewInstanceFactory()
 
         mock_request_get.return_value.ok = False
@@ -55,7 +54,7 @@ class ThrottleProvisionTaskTest(TestCase):
             state=models.TestNewInstance.States.CREATION_SCHEDULED,
             service_project_link=link)
         serialized_vm = utils.serialize_instance(vm)
-        mocked_retry = Mock()
+        mocked_retry = mock.Mock()
         tasks.ThrottleProvisionTask.retry = mocked_retry
         tasks.ThrottleProvisionTask().si(
             serialized_vm,

@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import datetime
 import logging
-import six
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -14,9 +13,9 @@ from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.lru_cache import lru_cache
 from django.utils.translation import ugettext_lazy as _
-
 from model_utils import FieldTracker
 from model_utils.models import TimeStampedModel
+import six
 
 from waldur_core.core import models as core_models, utils as core_utils
 from waldur_core.core.fields import JSONField
@@ -245,6 +244,7 @@ class ConsumableItemsField(JSONField):
             ...
         ]
     """
+
     def to_python(self, value):
         value = super(ConsumableItemsField, self).to_python(value)
         if isinstance(value, list):
@@ -322,7 +322,7 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         if minutes_from_last_update < 0:
             raise ConsumptionDetailCalculateError('Cannot calculate consumption if time < last modification date.')
         _consumed = {}
-        for consumable_item in set(self.configuration.keys() + self.consumed_before_update.keys()):
+        for consumable_item in set(list(self.configuration.keys()) + list(self.consumed_before_update.keys())):
             after_update = self.configuration.get(consumable_item, 0) * minutes_from_last_update
             before_update = self.consumed_before_update.get(consumable_item, 0)
             _consumed[consumable_item] = after_update + before_update
@@ -364,7 +364,7 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
     resource_content_type = models.ForeignKey(ContentType, default=None)
     # Field "metadata" is deprecated. We decided to store objects separately from their prices.
     metadata = JSONField(default={},
-        blank=True, help_text=_('Details of the item, that corresponds price list item. Example: details of flavor.'))
+                         blank=True, help_text=_('Details of the item, that corresponds price list item. Example: details of flavor.'))
 
     tracker = FieldTracker()
 
@@ -403,7 +403,7 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
         return created_items
 
     @classmethod
-    def _create_or_update_default_price_list_item(self, resource_content_type, consumable_item):
+    def _create_or_update_default_price_list_item(cls, resource_content_type, consumable_item):
         default_item, created = DefaultPriceListItem.objects.update_or_create(
             resource_content_type=resource_content_type,
             item_type=consumable_item.item_type,

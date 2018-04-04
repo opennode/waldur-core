@@ -6,13 +6,12 @@ from django.conf import settings
 from django.utils import timezone
 
 from waldur_core.core import utils
-from waldur_core.core.tasks import send_task
 from waldur_core.core.models import StateMixin
+from waldur_core.core.tasks import send_task
 from waldur_core.structure import SupportedServices, signals
 from waldur_core.structure.log import event_logger
 from waldur_core.structure.models import (Customer, CustomerPermission, Project, ProjectPermission,
                                           Service, ServiceSettings)
-
 
 logger = logging.getLogger(__name__)
 

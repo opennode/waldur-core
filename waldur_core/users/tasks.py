@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import logging
-
 from smtplib import SMTPException
 
 from celery import shared_task
@@ -12,7 +11,6 @@ from django.utils import timezone
 
 from waldur_core.structure.models import ProjectRole
 from waldur_core.users import models
-
 
 logger = logging.getLogger(__name__)
 

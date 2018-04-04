@@ -2,6 +2,7 @@ from django.test import TransactionTestCase
 from reversion.models import Version
 
 from waldur_core.core.utils import silent_call
+
 from . import models as test_models
 
 

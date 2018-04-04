@@ -1,11 +1,9 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
-from django.core.cache import cache
-
 from freezegun import freeze_time
-
 from rest_framework import test, status
 from rest_framework.authtoken.models import Token
 
@@ -142,4 +140,4 @@ class TokenAuthenticationTest(test.APITransactionTestCase):
     def test_authentication_fails_if_local_signin_is_disabled(self):
         response = self.client.post(self.auth_url, data={'username': self.username, 'password': self.password})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertTrue('Authentication method is disabled.' in response.content)
+        self.assertTrue(b'Authentication method is disabled.' in response.content)

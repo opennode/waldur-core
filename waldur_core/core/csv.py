@@ -1,14 +1,17 @@
 from __future__ import absolute_import
 
-import csv
 import codecs
-import cStringIO
+import csv
+
+import six
+from six import StringIO
 
 
 class UTF8Recoder:
     """
     Iterator that reads an encoded stream and reencodes the input to UTF-8
     """
+
     def __init__(self, f, encoding):
         self.reader = codecs.getreader(encoding)(f)
 
@@ -16,7 +19,7 @@ class UTF8Recoder:
         return self
 
     def next(self):
-        return self.reader.next().encode("utf-8")
+        return next(self.reader).encode("utf-8")
 
 
 class UnicodeDictReader:
@@ -28,11 +31,11 @@ class UnicodeDictReader:
     def __init__(self, f, encoding="utf-8", **kwargs):
         f = UTF8Recoder(f, encoding)
         self.reader = csv.reader(f, **kwargs)
-        self.header = self.reader.next()
+        self.header = next(self.reader)
 
     def next(self):
-        row = self.reader.next()
-        vals = [unicode(s, "utf-8") for s in row]
+        row = next(self.reader)
+        vals = [six.text_type(s, "utf-8") for s in row]
         return dict((self.header[x], vals[x]) for x in range(len(self.header)))
 
     def __iter__(self):
@@ -48,7 +51,7 @@ class UnicodeDictWriter:
     def __init__(self, f, fieldnames, encoding="utf-8", **kwargs):
         # Redirect output to a queue
         self.fieldnames = fieldnames
-        self.queue = cStringIO.StringIO()
+        self.queue = StringIO()
         self.writer = csv.writer(self.queue, **kwargs)
         self.stream = f
         self.encoder = codecs.getincrementalencoder(encoding)()
@@ -57,7 +60,7 @@ class UnicodeDictWriter:
         self.writer.writerow(self.fieldnames)
 
     def writerow(self, row):
-        self.writer.writerow([unicode(row[x]).encode("utf-8") for x in self.fieldnames])
+        self.writer.writerow([six.text_type(row[x]).encode("utf-8") for x in self.fieldnames])
         # Fetch UTF-8 output from the queue ...
         data = self.queue.getvalue()
         data = data.decode("utf-8")

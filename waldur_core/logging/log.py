@@ -1,7 +1,7 @@
 """ Formatters, handlers and other stuff for default logging configuration """
 
-import json
 import datetime
+import json
 import logging
 
 from celery import current_app

@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 import uuid
 
-import django_filters
 from django.db.models import Q
+import django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 
 from waldur_core.core import filters as core_filters

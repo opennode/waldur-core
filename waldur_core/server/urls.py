@@ -16,7 +16,6 @@ from waldur_core.quotas import urls as quotas_urls
 from waldur_core.structure import urls as structure_urls
 from waldur_core.users import urls as users_urls
 
-
 CostTrackingRegister.autodiscover()
 
 router = DefaultRouter()

@@ -5,6 +5,7 @@ import itertools
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+import six
 
 
 class GenericKeyMixin(object):
@@ -116,7 +117,7 @@ class SummaryQuerySet(object):
             return list(itertools.islice(chained_querysets, val.start, val.stop))
         else:
             try:
-                return itertools.islice(chained_querysets, val, val + 1).next()
+                return next(itertools.islice(chained_querysets, val, val + 1))
             except StopIteration:
                 raise IndexError
 
@@ -134,9 +135,10 @@ class SummaryQuerySet(object):
         @functools.total_ordering
         class Compared(object):
             """ Order objects by their attributes, reverse ordering if <reverse> is True """
+
             def __init__(self, obj, attr, reverse=False):
-                self.attr = reduce(Compared.get_obj_attr, attr.split("__"), obj)
-                if isinstance(self.attr, basestring):
+                self.attr = functools.reduce(Compared.get_obj_attr, attr.split("__"), obj)
+                if isinstance(self.attr, six.string_types):
                     self.attr = self.attr.lower()
                 self.reverse = reverse
 

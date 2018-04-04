@@ -1,10 +1,10 @@
 import logging
-import mock
 import time
 
 from django.conf import settings
 from django.core import mail
 from rest_framework import test
+from six.moves import mock
 
 from waldur_core.logging import models as logging_models
 from waldur_core.logging.log import HookHandler

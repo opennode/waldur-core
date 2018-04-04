@@ -4,9 +4,9 @@ import logging
 
 from django.conf import settings
 from elasticsearch import Elasticsearch
+import six
 
 from waldur_core.core.utils import datetime_to_timestamp
-
 
 logger = logging.getLogger(__name__)
 
@@ -111,15 +111,21 @@ class ElasticsearchClient(object):
 
         @_execute_if_not_empty
         def set_should_terms(self, terms):
-            self.should_terms_filter.update({key: map(str, value) for key, value in terms.items()})
+            self.should_terms_filter.update(self.serialize_terms(terms))
 
         @_execute_if_not_empty
         def set_must_terms(self, terms):
-            self.must_terms_filter.update({key: map(str, value) for key, value in terms.items()})
+            self.must_terms_filter.update(self.serialize_terms(terms))
 
         @_execute_if_not_empty
         def set_must_not_terms(self, terms):
-            self.must_not_terms_filter.update({key: map(str, value) for key, value in terms.items()})
+            self.must_not_terms_filter.update(self.serialize_terms(terms))
+
+        def serialize_terms(self, terms):
+            result = {}
+            for key, values in terms.items():
+                result[key] = [six.text_type(value) for value in values]
+            return result
 
         @_execute_if_not_empty
         def set_search_text(self, search_text):

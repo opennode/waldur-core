@@ -1,10 +1,10 @@
-from urlparse import urlparse
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import resolve
-
 from rest_framework.test import APIRequestFactory
+from six.moves.urllib.parse import urlparse
+
 from .. import factories as structure_factories
 from ...serializers import BasicUserSerializer
 

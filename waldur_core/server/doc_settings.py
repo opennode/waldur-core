@@ -1,5 +1,5 @@
 # Django settings for generating documentation for Waldur Core.
-from waldur_core.server.base_settings import *
+from waldur_core.server.base_settings import *  # noqa
 
 SECRET_KEY = 'test-key'
 

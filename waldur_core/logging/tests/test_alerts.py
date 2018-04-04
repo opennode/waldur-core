@@ -1,11 +1,11 @@
 from datetime import timedelta
-import mock
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import test, status
+from six.moves import mock
 
 from waldur_core.core import utils as core_utils
 from waldur_core.logging import models, loggers
@@ -82,12 +82,12 @@ class AlertsListTest(test.APITransactionTestCase):
 
     def test_alert_list_can_be_filtered_by_created_date(self):
         project = structure_factories.ProjectFactory(customer=self.customer)
-        alert1 = factories.AlertFactory(scope=project, created=timezone.now()-timedelta(days=1))
-        alert2 = factories.AlertFactory(scope=project, created=timezone.now()-timedelta(days=3))
+        alert1 = factories.AlertFactory(scope=project, created=timezone.now() - timedelta(days=1))
+        alert2 = factories.AlertFactory(scope=project, created=timezone.now() - timedelta(days=3))
 
         self.client.force_authenticate(self.owner)
         response = self.client.get(factories.AlertFactory.get_list_url(), data={
-            'created_from': core_utils.datetime_to_timestamp(timezone.now()-timedelta(days=2)),
+            'created_from': core_utils.datetime_to_timestamp(timezone.now() - timedelta(days=2)),
             'created_to': core_utils.datetime_to_timestamp(timezone.now())})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

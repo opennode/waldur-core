@@ -1,4 +1,5 @@
 from django.db import models as django_models
+
 from waldur_core.core.managers import GenericKeyMixin
 
 

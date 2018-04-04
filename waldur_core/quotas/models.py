@@ -1,25 +1,25 @@
 from __future__ import unicode_literals
 
-import functools
-import inspect
 from collections import defaultdict
+import functools
+from functools import reduce
+import inspect
 import logging
 
 from django.contrib.contenttypes import fields as ct_fields
 from django.contrib.contenttypes import models as ct_models
 from django.db import models
 from django.db.models import Sum
-from django.utils import six
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from model_utils import FieldTracker
 from reversion import revisions as reversion
+import six
 
+from waldur_core.core.models import UuidMixin, ReversionMixin, DescendantMixin
 from waldur_core.logging.loggers import LoggableMixin
 from waldur_core.logging.models import AlertThresholdMixin
 from waldur_core.quotas import exceptions, managers, fields
-from waldur_core.core.models import UuidMixin, ReversionMixin, DescendantMixin
-
 
 logger = logging.getLogger(__name__)
 
@@ -176,8 +176,12 @@ class QuotaModelMixin(models.Model):
 
     def get_quota_ancestors(self):
         if isinstance(self, DescendantMixin):
-            return [a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin)]
-        return []
+            # We need to use set in order to eliminate duplicates.
+            # Consider, for example, two ways of traversing from resource to customer:
+            # resource -> spl -> project -> customer
+            # resource -> spl -> service -> customer
+            return {a for a in self.get_ancestors() if isinstance(a, QuotaModelMixin)}
+        return {}
 
     def validate_quota_change(self, quota_deltas, raise_exception=False):
         """
@@ -195,7 +199,7 @@ class QuotaModelMixin(models.Model):
 
         """
         errors = []
-        for name, delta in quota_deltas.iteritems():
+        for name, delta in six.iteritems(quota_deltas):
             quota = self.quotas.get(name=name)
             if quota.is_exceeded(delta):
                 errors.append('%s quota limit: %s, requires %s (%s)\n' % (

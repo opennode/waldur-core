@@ -14,7 +14,7 @@ import waldur_core.core.validators
 
 class Migration(migrations.Migration):
 
-    replaces = [('structure', '0001_initial'), ('structure', '0002_customer_native_name'), ('structure', '0003_protect_non_empty_customers'), ('structure', '0004_init_new_quotas'), ('structure', '0005_init_customers_quotas'), ('structure', '0006_inherit_namemixin'), ('structure', '0007_add_service_model'), ('structure', '0008_add_customer_billing_fields'), ('structure', '0009_update_service_models'), ('structure', '0010_add_oracle_service_type'), ('structure', '0011_customer_registration_code'), ('structure', '0012_customer_image'), ('structure', '0013_servicesettings_customer'), ('structure', '0014_servicesettings_options'), ('structure', '0015_drop_service_polymorphic'), ('structure', '0016_init_nc_resource_count_quotas'), ('structure', '0017_add_azure_service_type'), ('structure', '0018_service_settings_plural_form'), ('structure', '0019_rename_nc_service_count_to_nc_service_project_link_count'), ('structure', '0020_servicesettings_certificate'), ('structure', '0021_balancehistory')]
+    #replaces = [('structure', '0001_initial'), ('structure', '0002_customer_native_name'), ('structure', '0003_protect_non_empty_customers'), ('structure', '0004_init_new_quotas'), ('structure', '0005_init_customers_quotas'), ('structure', '0006_inherit_namemixin'), ('structure', '0007_add_service_model'), ('structure', '0008_add_customer_billing_fields'), ('structure', '0009_update_service_models'), ('structure', '0010_add_oracle_service_type'), ('structure', '0011_customer_registration_code'), ('structure', '0012_customer_image'), ('structure', '0013_servicesettings_customer'), ('structure', '0014_servicesettings_options'), ('structure', '0015_drop_service_polymorphic'), ('structure', '0016_init_nc_resource_count_quotas'), ('structure', '0017_add_azure_service_type'), ('structure', '0018_service_settings_plural_form'), ('structure', '0019_rename_nc_service_count_to_nc_service_project_link_count'), ('structure', '0020_servicesettings_certificate'), ('structure', '0021_balancehistory')]
 
     dependencies = [
         ('auth', '0001_initial'),
@@ -93,7 +93,7 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('name', models.CharField(max_length=150, verbose_name='name', validators=[waldur_core.core.validators.validate_name])),
                 ('customer', models.ForeignKey(verbose_name='organization', related_name='project_groups', on_delete=django.db.models.deletion.PROTECT, to='structure.Customer')),
-                ('projects', models.ManyToManyField(related_name='project_groups', to=b'structure.Project')),
+                ('projects', models.ManyToManyField(related_name='project_groups', to='structure.Project')),
             ],
             options={
                 'abstract': False,

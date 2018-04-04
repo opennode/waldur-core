@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 from ddt import data, ddt
 from django.test import TransactionTestCase
 from django.urls import reverse
-from django.utils import timezone as django_timezone
 from freezegun import freeze_time
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
@@ -178,7 +177,7 @@ class CustomerApiPermissionTest(UrlResolverMixin, test.APITransactionTestCase):
         users = set(c['url'] for c in response.data[response_field])
 
         user_url = self._get_user_url(getattr(self.fixture, user))
-        self.assertItemsEqual([user_url], users)
+        self.assertEqual([user_url], list(users))
 
     @data('staff', 'global_support')
     def test_user_can_access_all_customers_if_he_is_staff(self, user):
@@ -552,6 +551,7 @@ class CustomerUsersListTest(test.APITransactionTestCase):
 
         response = self.client.get(self.url, {'email': 'gmail.com'})
         self.assertEqual(len(response.data), 2)
+
 
 @ddt
 class CustomerCountersListTest(test.APITransactionTestCase):

@@ -6,11 +6,10 @@ from celery import shared_task
 from django.core import exceptions
 from django.db import transaction
 from django.db.utils import DatabaseError
-from django.utils import six
+import six
 
 from waldur_core.core import utils as core_utils, tasks as core_tasks, models as core_models
 from waldur_core.structure import SupportedServices, models, utils, ServiceBackendError
-
 
 logger = logging.getLogger(__name__)
 
@@ -200,4 +199,3 @@ class ThrottleProvisionTask(BaseThrottleProvisionTask, core_tasks.BackendMethodT
 
 class ThrottleProvisionStateTask(BaseThrottleProvisionTask, core_tasks.StateTransitionTask):
     pass
-

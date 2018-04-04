@@ -1,17 +1,17 @@
 from __future__ import unicode_literals
 
-import unittest
 from collections import namedtuple
+import unittest
 
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, APITransactionTestCase, force_authenticate
 from rest_framework.views import APIView
 
+from waldur_core.core import utils
 from waldur_core.core.fields import JsonField
 from waldur_core.core.fields import TimestampField
 from waldur_core.core.serializers import Base64Field, RestrictedSerializerMixin, GenericRelatedField
-from waldur_core.core import utils
 from waldur_core.logging.utils import get_loggable_models
 
 
@@ -24,7 +24,7 @@ class Base64FieldTest(unittest.TestCase):
         serializer = Base64Serializer(instance={'content': 'hello'})
         actual = serializer.data['content']
 
-        self.assertEqual('aGVsbG8=', actual)
+        self.assertEqual(b'aGVsbG8=', actual)
 
     def test_text_remains_base64_encoded_on_deserialization(self):
         serializer = Base64Serializer(data={'content': 'Zm9vYmFy'})
@@ -159,7 +159,7 @@ class RestrictedSerializerTest(APITransactionTestCase):
     def test_serializer_returns_fields_required_in_request(self):
         fields = ['name', 'url']
         response = self.make_request(fields)
-        self.assertEqual(fields, response.data.keys())
+        self.assertEqual(fields, list(response.data.keys()))
 
     def make_request(self, fields):
         from waldur_core.structure.tests.factories import UserFactory

@@ -1,5 +1,5 @@
-import json
 import copy
+import json
 
 from django.contrib.admin.sites import AdminSite
 from django.test import TestCase

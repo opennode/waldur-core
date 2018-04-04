@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
 from django.db import IntegrityError
-from django.utils import six
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 from rest_framework.reverse import reverse
+import six
 
 from waldur_core.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
 from waldur_core.cost_tracking import models

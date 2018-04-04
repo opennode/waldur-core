@@ -1,12 +1,12 @@
 import json
 import logging
-import six
 
-from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from rest_framework import status
 from rest_framework.test import APIClient
+import six
 
 User = get_user_model()
 

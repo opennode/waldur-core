@@ -1,5 +1,4 @@
 from ddt import ddt, data
-
 from rest_framework import status, test
 
 from waldur_core.core.tests.helpers import override_waldur_core_settings
@@ -46,17 +45,17 @@ class ServiceSettingsListTest(test.APITransactionTestCase):
         self.client.force_authenticate(user=self.users['owner'])
 
         response = self.client.get(factories.ServiceSettingsFactory.get_list_url())
-        uuids_recieved = [d['uuid'] for d in response.data]
-        uuids_expected = [self.settings[s].uuid.hex for s in ('shared', 'owned')]
-        self.assertItemsEqual(uuids_recieved, uuids_expected, response.data)
+        uuids_recieved = {d['uuid'] for d in response.data}
+        uuids_expected = {self.settings[s].uuid.hex for s in ('shared', 'owned')}
+        self.assertEqual(uuids_recieved, uuids_expected, response.data)
 
     def test_admin_can_see_all_settings(self):
         self.client.force_authenticate(user=self.users['staff'])
 
         response = self.client.get(factories.ServiceSettingsFactory.get_list_url())
-        uuids_recieved = [d['uuid'] for d in response.data]
-        uuids_expected = [s.uuid.hex for s in self.settings.values()]
-        self.assertItemsEqual(uuids_recieved, uuids_expected, uuids_recieved)
+        uuids_recieved = {d['uuid'] for d in response.data}
+        uuids_expected = {s.uuid.hex for s in self.settings.values()}
+        self.assertEqual(uuids_recieved, uuids_expected, uuids_recieved)
 
     def test_user_can_see_credentials_of_own_settings(self):
         self.client.force_authenticate(user=self.users['owner'])

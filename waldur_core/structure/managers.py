@@ -1,3 +1,4 @@
+from functools import reduce
 from operator import or_
 
 from django.db import models
@@ -168,12 +169,10 @@ class ServiceSettingsManager(GenericKeyMixin, models.Manager):
 
 
 class SharedServiceSettingsManager(ServiceSettingsManager):
-
     def get_queryset(self):
         return super(SharedServiceSettingsManager, self).get_queryset().filter(shared=True)
 
 
 class PrivateServiceSettingsManager(ServiceSettingsManager):
-
     def get_queryset(self):
         return super(PrivateServiceSettingsManager, self).get_queryset().filter(shared=False)

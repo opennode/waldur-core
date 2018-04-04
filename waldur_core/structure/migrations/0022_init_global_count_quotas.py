@@ -31,7 +31,7 @@ def create_quotas(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('structure', '0021_balancehistory'),
+        ('structure', '0001_squashed_0021_balancehistory'),
         ('quotas', '0002_make_quota_scope_nullable'),
     ]
 

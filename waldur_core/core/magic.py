@@ -20,13 +20,13 @@ Usage:
 
 """
 
-import sys
-import glob
-import ctypes
+from ctypes import c_char_p, c_int, c_size_t, c_void_p
 import ctypes.util
+import glob
+import sys
 import threading
 
-from ctypes import c_char_p, c_int, c_size_t, c_void_p
+import six
 
 
 class MagicException(Exception):
@@ -77,7 +77,7 @@ class Magic:
                 # if we're on python3, convert buf to bytes
                 # otherwise this string is passed as wchar*
                 # which is not what libmagic expects
-                if type(buf) == str and str != bytes:
+                if isinstance(buf, str) and str != bytes:
                     buf = buf.encode('utf-8', errors='replace')
                 return maybe_decode(magic_buffer(self.cookie, buf))
             except MagicException as e:
@@ -116,6 +116,7 @@ class Magic:
         if self.cookie and magic_close:
             magic_close(self.cookie)
             self.cookie = None
+
 
 _instances = {}
 
@@ -171,8 +172,9 @@ if not libmagic or not libmagic._name:
                        glob.glob('/usr/local/Cellar/libmagic/*/lib/libmagic.dylib'),  # flake8:noqa
                        'win32': windows_dlls,
                        'cygwin': windows_dlls,
-                       'linux': ['libmagic.so.1'],  # fallback for some Linuxes (e.g. Alpine) where library search does not work # flake8:noqa
-                      }
+                       'linux': ['libmagic.so.1'],
+                       # fallback for some Linuxes (e.g. Alpine) where library search does not work # flake8:noqa
+                       }
     platform = 'linux' if sys.platform.startswith('linux') else sys.platform
     for dll in platform_to_lib.get(platform, []):
         try:
@@ -187,12 +189,14 @@ if not libmagic or not libmagic._name:
 
 magic_t = ctypes.c_void_p
 
+
 def errorcheck_null(result, func, args):
     if result is None:
         err = magic_error(args[0])
         raise MagicException(err)
     else:
         return result
+
 
 def errorcheck_negative_one(result, func, args):
     if result is -1:
@@ -210,6 +214,7 @@ def maybe_decode(s):
     else:
         return s.decode('utf-8')
 
+
 def coerce_filename(filename):
     if filename is None:
         return None
@@ -219,13 +224,14 @@ def coerce_filename(filename):
     # then you'll get inconsistent behavior (crashes) depending on the user's
     # LANG environment variable
     is_unicode = (sys.version_info[0] <= 2 and
-                  isinstance(filename, unicode)) or \
-                  (sys.version_info[0] >= 3 and
-                   isinstance(filename, str))
+                  isinstance(filename, six.text_type)) or \
+                 (sys.version_info[0] >= 3 and
+                  isinstance(filename, str))
     if is_unicode:
         return filename.encode('utf-8', 'surrogateescape')
     else:
         return filename
+
 
 magic_open = libmagic.magic_open
 magic_open.restype = magic_t
@@ -248,13 +254,16 @@ _magic_file.restype = c_char_p
 _magic_file.argtypes = [magic_t, c_char_p]
 _magic_file.errcheck = errorcheck_null
 
+
 def magic_file(cookie, filename):
     return _magic_file(cookie, coerce_filename(filename))
+
 
 _magic_buffer = libmagic.magic_buffer
 _magic_buffer.restype = c_char_p
 _magic_buffer.argtypes = [magic_t, c_void_p, c_size_t]
 _magic_buffer.errcheck = errorcheck_null
+
 
 def magic_buffer(cookie, buf):
     return _magic_buffer(cookie, buf, len(buf))
@@ -265,8 +274,10 @@ _magic_load.restype = c_int
 _magic_load.argtypes = [magic_t, c_char_p]
 _magic_load.errcheck = errorcheck_negative_one
 
+
 def magic_load(cookie, filename):
     return _magic_load(cookie, coerce_filename(filename))
+
 
 magic_setflags = libmagic.magic_setflags
 magic_setflags.restype = c_int
@@ -280,27 +291,25 @@ magic_compile = libmagic.magic_compile
 magic_compile.restype = c_int
 magic_compile.argtypes = [magic_t, c_char_p]
 
+MAGIC_NONE = 0x000000  # No flags
+MAGIC_DEBUG = 0x000001  # Turn on debugging
+MAGIC_SYMLINK = 0x000002  # Follow symlinks
+MAGIC_COMPRESS = 0x000004  # Check inside compressed files
+MAGIC_DEVICES = 0x000008  # Look at the contents of devices
+MAGIC_MIME = 0x000010  # Return a mime string
+MAGIC_MIME_ENCODING = 0x000400  # Return the MIME encoding
+MAGIC_CONTINUE = 0x000020  # Return all matches
+MAGIC_CHECK = 0x000040  # Print warnings to stderr
+MAGIC_PRESERVE_ATIME = 0x000080  # Restore access time on exit
+MAGIC_RAW = 0x000100  # Don't translate unprintable chars
+MAGIC_ERROR = 0x000200  # Handle ENOENT etc as real errors
 
-
-MAGIC_NONE = 0x000000 # No flags
-MAGIC_DEBUG = 0x000001 # Turn on debugging
-MAGIC_SYMLINK = 0x000002 # Follow symlinks
-MAGIC_COMPRESS = 0x000004 # Check inside compressed files
-MAGIC_DEVICES = 0x000008 # Look at the contents of devices
-MAGIC_MIME = 0x000010 # Return a mime string
-MAGIC_MIME_ENCODING = 0x000400 # Return the MIME encoding
-MAGIC_CONTINUE = 0x000020 # Return all matches
-MAGIC_CHECK = 0x000040 # Print warnings to stderr
-MAGIC_PRESERVE_ATIME = 0x000080 # Restore access time on exit
-MAGIC_RAW = 0x000100 # Don't translate unprintable chars
-MAGIC_ERROR = 0x000200 # Handle ENOENT etc as real errors
-
-MAGIC_NO_CHECK_COMPRESS = 0x001000 # Don't check for compressed files
-MAGIC_NO_CHECK_TAR = 0x002000 # Don't check for tar files
-MAGIC_NO_CHECK_SOFT = 0x004000 # Don't check magic entries
-MAGIC_NO_CHECK_APPTYPE = 0x008000 # Don't check application type
-MAGIC_NO_CHECK_ELF = 0x010000 # Don't check for elf details
-MAGIC_NO_CHECK_ASCII = 0x020000 # Don't check for ascii files
-MAGIC_NO_CHECK_TROFF = 0x040000 # Don't check ascii/troff
-MAGIC_NO_CHECK_FORTRAN = 0x080000 # Don't check ascii/fortran
-MAGIC_NO_CHECK_TOKENS = 0x100000 # Don't check ascii/tokens
+MAGIC_NO_CHECK_COMPRESS = 0x001000  # Don't check for compressed files
+MAGIC_NO_CHECK_TAR = 0x002000  # Don't check for tar files
+MAGIC_NO_CHECK_SOFT = 0x004000  # Don't check magic entries
+MAGIC_NO_CHECK_APPTYPE = 0x008000  # Don't check application type
+MAGIC_NO_CHECK_ELF = 0x010000  # Don't check for elf details
+MAGIC_NO_CHECK_ASCII = 0x020000  # Don't check for ascii files
+MAGIC_NO_CHECK_TROFF = 0x040000  # Don't check ascii/troff
+MAGIC_NO_CHECK_FORTRAN = 0x080000  # Don't check ascii/fortran
+MAGIC_NO_CHECK_TOKENS = 0x100000  # Don't check ascii/tokens

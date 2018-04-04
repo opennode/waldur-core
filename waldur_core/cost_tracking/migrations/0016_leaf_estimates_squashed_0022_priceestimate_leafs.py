@@ -10,7 +10,7 @@ import waldur_core.core.fields
 
 class Migration(migrations.Migration):
 
-    replaces = [('cost_tracking', '0016_leaf_estimates'), ('cost_tracking', '0017_nullable_object_id'), ('cost_tracking', '0018_priceestimate_threshold'), ('cost_tracking', '0019_priceestimate_limit'), ('cost_tracking', '0020_reset_price_list_item'), ('cost_tracking', '0021_delete_applicationtype'), ('cost_tracking', '0022_priceestimate_leafs')]
+    #replaces = [('cost_tracking', '0016_leaf_estimates'), ('cost_tracking', '0017_nullable_object_id'), ('cost_tracking', '0018_priceestimate_threshold'), ('cost_tracking', '0019_priceestimate_limit'), ('cost_tracking', '0020_reset_price_list_item'), ('cost_tracking', '0021_delete_applicationtype'), ('cost_tracking', '0022_priceestimate_leafs')]
 
     dependencies = [
         ('structure', '__latest__'),
@@ -79,6 +79,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='priceestimate',
             name='leafs',
-            field=models.ManyToManyField(related_name='_priceestimate_leafs_+', to=b'cost_tracking.PriceEstimate'),
+            field=models.ManyToManyField(related_name='_priceestimate_leafs_+', to='cost_tracking.PriceEstimate'),
         ),
     ]

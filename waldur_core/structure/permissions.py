@@ -1,3 +1,4 @@
+from functools import reduce
 import logging
 
 from django.conf import settings as django_settings

@@ -1,22 +1,23 @@
 """ Custom loggers that allows to store logs in DB and Elastic """
 
-import uuid
-import types
-import decimal
+from __future__ import unicode_literals
+
+from collections import defaultdict
 import datetime
+import decimal
 import importlib
 import logging
-from collections import defaultdict
+import types
+import uuid
 
 from django.apps import apps
 from django.contrib.contenttypes import models as ct_models
 from django.db import transaction, IntegrityError
-from django.utils import six
+import six
 
 from waldur_core.logging import models
 from waldur_core.logging.log import EventLoggerAdapter
 from waldur_core.logging.middleware import get_event_context
-
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class BaseLogger(object):
         return getattr(self._meta, 'nullable_fields', [])
 
     def get_field_model(self, model):
-        if not isinstance(model, basestring):
+        if not isinstance(model, six.string_types):
             return model
 
         try:
@@ -67,7 +68,7 @@ class BaseLogger(object):
         except KeyError as e:
             raise LoggerError(
                 "Cannot find %s context field. Choices are: %s" % (
-                    str(e), ', '.join(context.keys())))
+                    six.text_type(e), ', '.join(context.keys())))
         return msg
 
     def validate_logging_type(self, logging_type):
@@ -82,7 +83,7 @@ class BaseLogger(object):
             self.fields = {
                 k: self.get_field_model(v)
                 for k, v in self.__class__.__dict__.items()
-                if not k.startswith('_') and not isinstance(v, (types.ClassType, types.FunctionType))}
+                if not k.startswith('_') and not isinstance(v, types.FunctionType) and k != 'Meta'}
 
         missed = set(self.fields.keys()) - set(self.get_nullable_fields()) - set(kwargs.keys())
         if missed:
@@ -115,7 +116,7 @@ class BaseLogger(object):
 
             if isinstance(entity, LoggableMixin):
                 context.update(entity._get_log_context(entity_name))
-            elif isinstance(entity, (int, float, basestring, dict, tuple, list, bool)):
+            elif isinstance(entity, (int, float, six.string_types, dict, tuple, list, bool)):
                 context[entity_name] = entity
             elif entity is None:
                 pass
@@ -148,7 +149,7 @@ class EventLogger(BaseLogger):
                 tenant = Tenant
                 project = 'structure.Project'
                 threshold = float
-                quota_type = basestring
+                quota_type = six.string_types
 
                 class Meta:
                     event_types = 'quota_threshold_reached',
@@ -369,10 +370,10 @@ class BaseLoggerRegistry(object):
     def get_loggers(self):
         raise NotImplementedError('Method "get_loggers" is not implemented.')
 
-    def register(self, name, logger):
+    def register(self, name, logger_class):
         if name in self.__dict__:
             raise EventLoggerError("Logger '%s' already registered." % name)
-        self.__dict__[name] = logger() if isinstance(logger, type) else logger
+        self.__dict__[name] = logger_class()
 
     def unregister_all(self):
         self.__dict__ = {}
@@ -408,7 +409,7 @@ class EventLoggerRegistry(BaseLoggerRegistry):
         permitted_objects_uuids = {}
         for model in get_loggable_models():
             for field, uuids in model.get_permitted_objects_uuids(user).items():
-                permitted_objects_uuids[field] = [uuid.hex for uuid in uuids]
+                permitted_objects_uuids[field] = [uuid_obj.hex for uuid_obj in uuids]
         return permitted_objects_uuids
 
 
