@@ -32,6 +32,9 @@ def get_permission_subquery(permissions, user):
 
 
 def filter_queryset_for_user(queryset, user):
+    if not queryset:
+        return queryset
+
     if user is None or user.is_staff or user.is_support:
         return queryset
 
