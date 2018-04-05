@@ -1,68 +1,49 @@
-from functools import reduce
-from operator import or_
-
 from django.db import models
 
 from waldur_core.core.managers import GenericKeyMixin, SummaryQuerySet
 
 
-def filter_queryset_for_user(queryset, user):
-    filtered_relations = ('customer', 'project')
+def get_permission_subquery(permissions, user):
+    subquery = models.Q()
+    for entity in ('customer', 'project'):
+        path = getattr(permissions, '%s_path' % entity, None)
+        if not path:
+            continue
 
+        if path == 'self':
+            prefix = 'permissions__'
+        else:
+            prefix = path + '__permissions__'
+
+        kwargs = {
+            prefix + 'user': user,
+            prefix + 'is_active': True
+        }
+
+        subquery |= models.Q(**kwargs)
+
+    # Add extra query which basically allows to
+    # additionally filter by some flag and ignore permissions
+    extra_query = getattr(permissions, 'extra_query', None)
+    if extra_query:
+        subquery |= models.Q(**extra_query)
+
+    return subquery
+
+
+def filter_queryset_for_user(queryset, user):
     if user is None or user.is_staff or user.is_support:
         return queryset
 
-    def create_q(entity):
-        try:
-            path = getattr(permissions, '%s_path' % entity)
-        except AttributeError:
-            return None
-
-        role = getattr(permissions, '%s_role' % entity, None)
-
-        if path == 'self':
-            prefix = ''
-        else:
-            prefix = path + '__'
-
-        kwargs = {
-            prefix + 'permissions__user': user,
-            prefix + 'permissions__is_active': True
-        }
-
-        if role:
-            kwargs[prefix + 'permissions__role'] = role
-
-        return models.Q(**kwargs)
-
-    try:
-        permissions = queryset.model.Permissions
-    except AttributeError:
+    permissions = getattr(queryset.model, 'Permissions', None)
+    if not permissions:
         return queryset
 
-    q_objects = [q_object for q_object in (
-        create_q(entity) for entity in filtered_relations
-    ) if q_object is not None]
-
-    try:
-        # Add extra query which basically allows to
-        # additionally filter by some flag and ignore permissions
-        extra_q = getattr(permissions, 'extra_query')
-    except AttributeError:
-        pass
-    else:
-        q_objects.append(models.Q(**extra_q))
-
-    try:
-        # Whether both customer and project filtering requested?
-        any_of_q = reduce(or_, q_objects)
-        return queryset.filter(any_of_q).distinct()
-    except TypeError:
-        # Or any of customer and project filtering requested?
-        return queryset.filter(q_objects[0])
-    except IndexError:
-        # Looks like no filters are there
+    subquery = get_permission_subquery(permissions, user)
+    if not subquery:
         return queryset
+
+    return queryset.filter(subquery).distinct()
 
 
 class StructureQueryset(models.QuerySet):
