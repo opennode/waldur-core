@@ -2,16 +2,17 @@ from __future__ import unicode_literals
 
 import uuid
 
+import django_filters
+import six
+import taggit
+from django.conf import settings as django_settings
 from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.db.models.functions import Concat
-import django_filters
 from django_filters.filterset import FilterSetMetaclass
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import BaseFilterBackend
-import six
-import taggit
 
 from waldur_core.core import filters as core_filters
 from waldur_core.core import models as core_models
@@ -215,6 +216,66 @@ class ProjectUserFilter(DjangoFilterBackend):
             projectpermission__project__uuid=project_uuid,
             projectpermission__is_active=True
         ).distinct()
+
+
+class UserFilterBackend(DjangoFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+        user = request.user
+
+        # ?current
+        current_user = request.query_params.get('current')
+        if current_user is not None and not user.is_anonymous:
+            queryset = User.objects.filter(uuid=user.uuid)
+
+        # TODO: refactor to a separate endpoint or structure
+        # a special query for all users with assigned privileges that the current user can remove privileges from
+        if (not django_settings.WALDUR_CORE.get('SHOW_ALL_USERS', False) and
+                not (user.is_staff or user.is_support)):
+            connected_customers_query = models.Customer.objects.all()
+            # is user is not staff, allow only connected customers
+            if not (user.is_staff or user.is_support):
+                # XXX: Let the DB cry...
+                connected_customers_query = connected_customers_query.filter(
+                    Q(permissions__user=user, permissions__is_active=True) |
+                    Q(projects__permissions__user=user, projects__permissions__is_active=True)
+                ).distinct()
+
+            connected_customers = list(connected_customers_query.all())
+
+            queryset = queryset.filter(is_staff=False).filter(
+                # customer users
+                Q(customerpermission__customer__in=connected_customers,
+                  customerpermission__is_active=True) |
+                Q(projectpermission__project__customer__in=connected_customers,
+                  projectpermission__is_active=True) |
+                Q(uuid=user.uuid) |
+                self.get_extra_q(user)
+            ).distinct()
+
+        if not (user.is_staff or user.is_support):
+            queryset = queryset.filter(is_active=True)
+            # non-staff users cannot see staff through rest
+            queryset = queryset.filter(is_staff=False)
+
+        return queryset.order_by('username')
+
+    _extra_query = []
+
+    @classmethod
+    def register_extra_query(cls, func_get_query):
+        """
+        Add extra Q for user list queryset
+        :param func_get_query: a function that takes User object and returns Q object
+        :return: None
+        """
+        cls._extra_query.append(func_get_query)
+
+    @classmethod
+    def get_extra_q(cls, user):
+        result = Q()
+        for q in cls._extra_query:
+            result = result | q(user)
+        return result
 
 
 class BaseUserFilter(django_filters.FilterSet):
