@@ -230,8 +230,6 @@ class BaseUserFilter(django_filters.FilterSet):
         fields = [
             'full_name',
             'native_name',
-            'organization',
-            'organization_approved',
             'email',
             'phone_number',
             'description',

@@ -57,17 +57,6 @@ class ProjectRoleEventLogger(EventLogger):
         }
 
 
-class UserOrganizationEventLogger(EventLogger):
-    affected_user = User
-    affected_organization = six.text_type
-
-    class Meta:
-        event_types = ('user_organization_claimed',
-                       'user_organization_approved',
-                       'user_organization_rejected',
-                       'user_organization_removed')
-
-
 class ResourceEventLogger(EventLogger):
     resource = models.ResourceMixin
 
@@ -103,7 +92,6 @@ class ResourceEventLogger(EventLogger):
 
 event_logger.register('customer_role', CustomerRoleEventLogger)
 event_logger.register('project_role', ProjectRoleEventLogger)
-event_logger.register('user_organization', UserOrganizationEventLogger)
 event_logger.register('customer', CustomerEventLogger)
 event_logger.register('project', ProjectEventLogger)
 event_logger.register('resource', ResourceEventLogger)

@@ -146,9 +146,6 @@ class User(LoggableMixin, UuidMixin, DescribableMixin, AbstractBaseUser, Permiss
     full_name = models.CharField(_('full name'), max_length=100, blank=True)
     native_name = models.CharField(_('native name'), max_length=100, blank=True)
     phone_number = models.CharField(_('phone number'), max_length=255, blank=True)
-    organization = models.CharField(_('organization'), max_length=80, blank=True)
-    organization_approved = models.BooleanField(_('organization approved'), default=False,
-                                                help_text=_('Designates whether user organization was approved.'))
     job_title = models.CharField(_('job title'), max_length=40, blank=True)
     email = models.EmailField(_('email address'), max_length=75, blank=True)
 
