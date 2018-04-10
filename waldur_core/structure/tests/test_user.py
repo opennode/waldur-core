@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework import test
 
 from waldur_core.core.models import User
+from waldur_core.structure.models import CustomerRole
 from waldur_core.structure.serializers import PasswordSerializer
 from waldur_core.structure.tests import factories
 
@@ -20,7 +21,13 @@ class UserPermissionApiTest(test.APITransactionTestCase):
             'staff': factories.UserFactory(is_staff=True, agreement_date=timezone.now()),
             'owner': factories.UserFactory(agreement_date=timezone.now()),
             'not_owner': factories.UserFactory(agreement_date=timezone.now()),
+            'other': factories.UserFactory(agreement_date=timezone.now()),
         }
+        self.customer_permission = factories.CustomerPermissionFactory(user=self.users['owner'])
+        self.customer = self.customer_permission.customer
+        factories.CustomerPermissionFactory(customer=self.customer,
+                                            user=self.users['not_owner'],
+                                            role=CustomerRole.SUPPORT)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_accounts(self):
@@ -72,13 +79,19 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         self.assertIsNotNone(response.data['token'])
         self.assertIn('token_lifetime', response.data)
 
-    def test_owner_cannot_see_token_and_its_lifetime_of_the_other_user(self):
+    def test_owner_cannot_see_token_and_its_lifetime_of_the_not_owner(self):
         self.client.force_authenticate(self.users['owner'])
 
         response = self.client.get(factories.UserFactory.get_url(self.users['not_owner']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn('token', response.data)
         self.assertNotIn('token_lifetime', response.data)
+
+    def test_owner_cannot_see_other_user(self):
+        self.client.force_authenticate(self.users['owner'])
+
+        response = self.client.get(factories.UserFactory.get_url(self.users['other']))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_can_see_his_token_via_current_filter(self):
         self.client.force_authenticate(self.users['owner'])
@@ -279,6 +292,45 @@ class UserPermissionApiTest(test.APITransactionTestCase):
 
         response = self.client.delete(factories.UserFactory.get_url(account))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class UserPermissionApiListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.users = {
+            'staff': factories.UserFactory(is_staff=True, agreement_date=timezone.now()),
+            'owner': factories.UserFactory(agreement_date=timezone.now()),
+            'other': factories.UserFactory(agreement_date=timezone.now()),
+        }
+
+    def test_staff_can_view_all_users(self):
+        self.client.force_authenticate(self.users['staff'])
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), len(self.users))
+
+    def test_owner_can_view_other_users_in_organization(self):
+        self.client.force_authenticate(self.users['owner'])
+        customer_permission = factories.CustomerPermissionFactory(user=self.users['owner'])
+        customer = customer_permission.customer
+        factories.CustomerPermissionFactory(customer=customer,
+                                            user=self.users['other'],
+                                            role=CustomerRole.SUPPORT)
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), 2)
+
+    def test_owner_can_view_other_users_in_project(self):
+        self.client.force_authenticate(self.users['other'])
+
+        project_permission = factories.ProjectPermissionFactory(user=self.users['owner'])
+        project = project_permission.project
+        factories.ProjectPermissionFactory(project=project, user=self.users['other'])
+
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), 2)
+
+    def test_owner_cannot_view_other_users(self):
+        self.client.force_authenticate(self.users['owner'])
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), 1)
 
 
 class PasswordSerializerTest(unittest.TestCase):
