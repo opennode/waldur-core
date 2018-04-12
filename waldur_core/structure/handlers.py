@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
 import logging
+import re
 
 from django.conf import settings
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from waldur_core.core import utils
@@ -11,7 +13,7 @@ from waldur_core.core.tasks import send_task
 from waldur_core.structure import SupportedServices, signals
 from waldur_core.structure.log import event_logger
 from waldur_core.structure.models import (Customer, CustomerPermission, Project, ProjectPermission,
-                                          Service, ServiceSettings)
+                                          Service, ServiceSettings, CustomerRole)
 
 logger = logging.getLogger(__name__)
 
@@ -341,3 +343,40 @@ def clean_tags_cache_after_tagged_item_saved(sender, instance, **kwargs):
 
 def clean_tags_cache_before_tagged_item_deleted(sender, instance, **kwargs):
     instance.content_object.clean_tag_cache()
+
+
+def notify_about_user_profile_changes(sender, instance, created=False, **kwargs):
+    if created or not settings.WALDUR_CORE['NOTIFICATIONS_PROFILE_CHANGES']['ENABLED']:
+        return
+
+    user = instance
+    change_fields = settings.WALDUR_CORE['NOTIFICATIONS_PROFILE_CHANGES']['FIELDS']
+    organizations = Customer.objects.filter(
+        permissions__user=user,
+        permissions__is_active=True,
+        permissions__role=CustomerRole.OWNER)
+
+    if not ((set(change_fields) & set(user.tracker.changed())) and organizations):
+        return
+
+    fields = []
+    for field in change_fields:
+        if user.tracker.has_changed(field):
+            fields.append({
+                'name': field,
+                'old_value': user.tracker.previous(field),
+                'new_value': getattr(user, field, None)
+            })
+
+    msg = render_to_string('structure/notifications_profile_changes.html', {
+        'user': user,
+        'fields': fields,
+        'organizations': organizations
+    })
+
+    msg = re.sub(r'\s+', ' ', msg).strip()
+
+    event_logger.user.info(
+        msg,
+        event_type='user_profile_changed',
+        event_context={'affected_user': user})
