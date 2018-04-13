@@ -6,12 +6,12 @@ from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework import status
 from rest_framework import test
+from six.moves import mock
 
 from waldur_core.core.models import User
 from waldur_core.structure.models import CustomerRole
 from waldur_core.structure.serializers import PasswordSerializer
 from waldur_core.structure.tests import factories
-
 from . import fixtures
 
 
@@ -514,3 +514,47 @@ class UserUpdateTest(test.APITransactionTestCase):
         response = self.client.put(self.url, self.valid_payload)
         self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('token_lifetime', response.data)
+
+
+@mock.patch('waldur_core.structure.handlers.event_logger')
+class NotificationsProfileChangesTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.user = factories.UserFactory(full_name='John', email='john@example.org')
+
+    def test_sent_notification_if_change_owner_email(self, mock_event_logger):
+        factories.CustomerPermissionFactory(user=self.user, role=CustomerRole.OWNER)
+        old_email = self.user.email
+        new_email = 'new_email_' + old_email
+        self.user.email = new_email
+        self.user.save()
+        self.assertEqual(mock_event_logger.user.info.call_count, 1)
+
+    def test_notification_message(self, mock_event_logger):
+        customer = factories.CustomerFactory(name='Customer', abbreviation='ABC')
+        factories.CustomerPermissionFactory(
+            user=self.user,
+            role=CustomerRole.OWNER,
+            customer=customer
+        )
+        old_email = self.user.email
+        new_email = 'new_email_' + old_email
+        self.user.email = new_email
+        self.user.save()
+        msg = mock_event_logger.user.info.call_args[0][0]
+        test_msg = u'Owner of Customer (ABC) John (id={id}) ' \
+                   u'has changed email from john@example.org to new_email_john@example.org.'\
+            .format(id=self.user.id)
+        self.assertEqual(test_msg, msg)
+
+    def test_dont_sent_notification_if_change_owner_other_field(self, mock_event_logger):
+        factories.CustomerPermissionFactory(user=self.user, role=CustomerRole.OWNER)
+        token_lifetime = 100 + self.user.token_lifetime
+        self.user.token_lifetime = token_lifetime
+        self.user.save()
+        self.assertEqual(mock_event_logger.user.info.call_count, 0)
+
+    def test_dont_sent_notification_if_change_not_owner_email(self, mock_event_logger):
+        new_email = 'new_email_' + self.user.email
+        self.user.email = new_email
+        self.user.save()
+        self.assertEqual(mock_event_logger.user.info.call_count, 0)

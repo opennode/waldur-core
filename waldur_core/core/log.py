@@ -27,7 +27,8 @@ class UserEventLogger(EventLogger):
                        'user_password_updated',
                        'user_token_lifetime_updated',
                        'user_activated',
-                       'user_deactivated')
+                       'user_deactivated',
+                       'user_profile_changed')
         event_groups = {
             'users': event_types,
         }

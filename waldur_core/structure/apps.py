@@ -10,7 +10,7 @@ class StructureConfig(AppConfig):
     verbose_name = 'Structure'
 
     def ready(self):
-        from waldur_core.core.models import CoordinatesMixin
+        from waldur_core.core.models import CoordinatesMixin, User
         from waldur_core.structure.executors import check_cleanup_executors
         from waldur_core.structure.models import ResourceMixin, Service, TagMixin, VirtualMachine
         from waldur_core.structure import handlers
@@ -200,4 +200,10 @@ class StructureConfig(AppConfig):
             handlers.clean_tags_cache_before_tagged_item_deleted,
             sender=TagMixin.tags.through,
             dispatch_uid='waldur_core.structure.handlers.clean_tags_cache_after_tagged_item_created'
+        )
+
+        signals.post_save.connect(
+            handlers.notify_about_user_profile_changes,
+            sender=User,
+            dispatch_uid='waldur_core.structure.handlers.notify_about_user_profile_changes',
         )
