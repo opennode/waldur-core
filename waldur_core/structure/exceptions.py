@@ -1,4 +1,4 @@
-import pickle
+import pickle  # nosec
 
 import six
 
