@@ -6,12 +6,12 @@ from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework import status
 from rest_framework import test
+from six.moves import mock
 
 from waldur_core.core.models import User
 from waldur_core.structure.models import CustomerRole
 from waldur_core.structure.serializers import PasswordSerializer
 from waldur_core.structure.tests import factories
-
 from . import fixtures
 
 
@@ -21,7 +21,13 @@ class UserPermissionApiTest(test.APITransactionTestCase):
             'staff': factories.UserFactory(is_staff=True, agreement_date=timezone.now()),
             'owner': factories.UserFactory(agreement_date=timezone.now()),
             'not_owner': factories.UserFactory(agreement_date=timezone.now()),
+            'other': factories.UserFactory(agreement_date=timezone.now()),
         }
+        self.customer_permission = factories.CustomerPermissionFactory(user=self.users['owner'])
+        self.customer = self.customer_permission.customer
+        factories.CustomerPermissionFactory(customer=self.customer,
+                                            user=self.users['not_owner'],
+                                            role=CustomerRole.SUPPORT)
 
     # List filtration tests
     def test_anonymous_user_cannot_list_accounts(self):
@@ -73,13 +79,19 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         self.assertIsNotNone(response.data['token'])
         self.assertIn('token_lifetime', response.data)
 
-    def test_owner_cannot_see_token_and_its_lifetime_of_the_other_user(self):
+    def test_owner_cannot_see_token_and_its_lifetime_of_the_not_owner(self):
         self.client.force_authenticate(self.users['owner'])
 
         response = self.client.get(factories.UserFactory.get_url(self.users['not_owner']))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertNotIn('token', response.data)
         self.assertNotIn('token_lifetime', response.data)
+
+    def test_owner_cannot_see_other_user(self):
+        self.client.force_authenticate(self.users['owner'])
+
+        response = self.client.get(factories.UserFactory.get_url(self.users['other']))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_user_can_see_his_token_via_current_filter(self):
         self.client.force_authenticate(self.users['owner'])
@@ -156,23 +168,6 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         reread_user = User.objects.get(username=data['username'])
         self.assertEqual(reread_user.civil_number, user.civil_number,
                          "User's civil_number should be left intact")
-
-    @unittest.skip('Disabling as organization is temporary a read-only field.')
-    def test_user_can_change_his_account_organization(self):
-        data = {
-            'organization': 'test',
-            'email': 'example@example.com',
-        }
-
-        self._ensure_user_can_change_field(self.users['owner'], 'organization', data)
-
-    def test_user_cannot_change_other_account_organization(self):
-        data = {
-            'organization': 'test',
-            'email': 'example@example.com',
-        }
-
-        self._ensure_user_cannot_change_field(self.users['owner'], 'organization', data)
 
     def test_user_can_change_his_token_lifetime(self):
         data = {
@@ -299,6 +294,45 @@ class UserPermissionApiTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class UserPermissionApiListTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.users = {
+            'staff': factories.UserFactory(is_staff=True, agreement_date=timezone.now()),
+            'owner': factories.UserFactory(agreement_date=timezone.now()),
+            'other': factories.UserFactory(agreement_date=timezone.now()),
+        }
+
+    def test_staff_can_view_all_users(self):
+        self.client.force_authenticate(self.users['staff'])
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), len(self.users))
+
+    def test_owner_can_view_other_users_in_organization(self):
+        self.client.force_authenticate(self.users['owner'])
+        customer_permission = factories.CustomerPermissionFactory(user=self.users['owner'])
+        customer = customer_permission.customer
+        factories.CustomerPermissionFactory(customer=customer,
+                                            user=self.users['other'],
+                                            role=CustomerRole.SUPPORT)
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), 2)
+
+    def test_owner_can_view_other_users_in_project(self):
+        self.client.force_authenticate(self.users['other'])
+
+        project_permission = factories.ProjectPermissionFactory(user=self.users['owner'])
+        project = project_permission.project
+        factories.ProjectPermissionFactory(project=project, user=self.users['other'])
+
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), 2)
+
+    def test_owner_cannot_view_other_users(self):
+        self.client.force_authenticate(self.users['owner'])
+        response = self.client.get(factories.UserFactory.get_list_url())
+        self.assertEqual(len(response.data), 1)
+
+
 class PasswordSerializerTest(unittest.TestCase):
     def test_password_must_be_at_least_7_characters_long(self):
         data = {'password': '123abc'}
@@ -344,7 +378,6 @@ class UserFilterTest(test.APITransactionTestCase):
         supported_filters = [
             'full_name',
             'native_name',
-            'organization',
             'email',
             'phone_number',
             'description',
@@ -356,7 +389,6 @@ class UserFilterTest(test.APITransactionTestCase):
         user = factories.UserFactory(is_staff=True)
         user_that_should_be_found = factories.UserFactory(
             native_name='',
-            organization='',
             email='none@example.com',
             phone_number='',
             description='',
@@ -390,222 +422,6 @@ class UserFilterTest(test.APITransactionTestCase):
         for field in supported_filters:
             response = self.client.get(url, data={field: getattr(user, field)[:-1]})
             self.assertContains(response, user_url)
-
-
-# TODO: temporary flow. Remove once a proper solution is in place.
-class UserOrganizationApprovalApiTest(test.APITransactionTestCase):
-    def setUp(self):
-        self.users = {
-            'no_role': factories.UserFactory(organization=""),
-            'user_with_request_to_a_customer': factories.UserFactory(),
-            'owner': factories.UserFactory(),
-            'owner_of_another_customer': factories.UserFactory(),
-            'staff': factories.UserFactory(is_staff=True),
-        }
-        self.customer = factories.CustomerFactory()
-        self.customer.add_user(self.users['owner'], CustomerRole.OWNER)
-
-        self.another_customer = factories.CustomerFactory()
-        self.another_customer.add_user(self.users['owner_of_another_customer'], CustomerRole.OWNER)
-
-        self.users['user_with_request_to_a_customer'].organization = self.customer.abbreviation
-        self.users['user_with_request_to_a_customer'].organization_approved = False
-        self.users['user_with_request_to_a_customer'].save()
-
-    # positive
-    def test_user_can_claim_organization_membership_if_organization_is_empty(self):
-        user = self.users['no_role']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(user, action='claim_organization')
-        client_url = factories.UserFactory.get_url(user)
-
-        response = self.client.post(url, data={'organization': self.customer.abbreviation})
-        self.assertEquals(response.status_code, status.HTTP_200_OK, response.data)
-
-        # check the status of the claim
-        response = self.client.get(client_url)
-        self.assertDictContainsSubset(
-            {'organization': self.customer.abbreviation,
-             'organization_approved': False},
-            response.data
-        )
-
-    def test_user_can_remove_organization_before_it_is_approved(self):
-        user = self.users['user_with_request_to_a_customer']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(user, action='remove_organization')
-        client_url = factories.UserFactory.get_url(user)
-
-        response = self.client.post(url)
-        self.assertEquals(response.status_code, status.HTTP_200_OK, response.data)
-
-        # check the status of the claim
-        response = self.client.get(client_url)
-        self.assertDictContainsSubset(
-            {'organization': '',
-             'organization_approved': False},
-            response.data
-        )
-
-    def test_user_see_status_of_his_claim_for_organization_membership(self):
-        user = self.users['no_role']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(user)
-
-        response = self.client.get(url)
-        self.assertTrue(response.status_code, status.HTTP_200_OK)
-        self.assertDictContainsSubset(
-            {'organization': user.organization,
-             'organization_approved': user.organization_approved},
-            response.data
-        )
-
-    def test_user_who_is_customer_owner_can_see_requests_to_join_his_customer(self):
-        self._can_see_status_of_user_claim_for_organization_membership(self.users['owner'])
-
-    def test_user_who_is_customer_owner_can_approve_user_request_to_join_his_customer(self):
-        self._can_approve_user_request_to_join_a_customer(self.users['owner'])
-
-    def test_user_who_is_customer_owner_can_reject_user_request_to_join_his_customer(self):
-        self._can_reject_user_request_to_join_a_customer(self.users['owner'])
-
-    def test_user_who_is_customer_owner_can_remove_user_from_his_customer_organization(self):
-        self._can_remove_user_from_his_customer_organization(self.users['owner'])
-
-    # negative
-    def test_user_cannot_claim_organization_membership_if_he_has_approved_one(self):
-        user = self.users['user_with_request_to_a_customer']
-        user.organization_approved = True
-        user.save()
-
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(user, action='claim_organization')
-
-        response = self.client.post(url, data={'organization': self.customer.abbreviation})
-        self.assertEquals(response.status_code, status.HTTP_409_CONFLICT, response.data)
-
-    def test_user_cannot_claim_empty_organization_name(self):
-        user = self.users['no_role']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(user, action='claim_organization')
-
-        response = self.client.post(url, data={'organization': ''})
-        self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertDictContainsSubset({'organization': ['This field may not be blank.']}, response.data)
-
-    def test_user_who_is_not_staff_cannot_claim_organization_membership_of_another_user(self):
-        user = self.users['user_with_request_to_a_customer']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(self.users['no_role'], action='claim_organization')
-
-        response = self.client.post(url, data={'organization': self.customer.abbreviation})
-        self.assertEquals(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
-
-    def test_user_who_is_not_customer_owner_cannot_approve_user_request_to_join_customer(self):
-        user = self.users['no_role']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(self.users['user_with_request_to_a_customer'],
-                                            action='approve_organization')
-
-        response = self.client.post(url)
-        self.assertEquals(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
-
-    def test_user_who_is_not_customer_owner_cannot_reject_user_request_to_join_customer(self):
-        user = self.users['no_role']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(self.users['user_with_request_to_a_customer'],
-                                            action='reject_organization')
-
-        response = self.client.post(url)
-        self.assertEquals(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
-
-    def test_user_who_is_not_customer_owner_cannot_remove_user_from_customer_organization(self):
-        user = self.users['no_role']
-        self.client.force_authenticate(user)
-        url = factories.UserFactory.get_url(self.users['user_with_request_to_a_customer'],
-                                            action='remove_organization')
-
-        response = self.client.post(url)
-        self.assertEquals(response.status_code, status.HTTP_403_FORBIDDEN, response.data)
-
-    # staff
-    def test_staff_can_see_status_of_user_claim_for_organization_membership(self):
-        self._can_see_status_of_user_claim_for_organization_membership(self.users['staff'])
-
-    def test_staff_can_see_requests_to_join_customer(self):
-        user = self.users['staff']
-        self.client.force_authenticate(user)
-        user_url = factories.UserFactory.get_url(self.users['user_with_request_to_a_customer'])
-        user_list = factories.UserFactory.get_list_url()
-        response = self.client.get(user_list, data={
-            'organization': self.customer.abbreviation,
-            'organization_approved': False,
-        })
-        self.assertTrue(response.status_code, status.HTTP_200_OK)
-        self.assertContains(response, user_url)
-        self.assertTrue(len(response.data) == 1)
-
-    def test_staff_can_approve_user_request_to_join_customer(self):
-        self._can_approve_user_request_to_join_a_customer(self.users['staff'])
-
-    def test_staff_can_reject_user_request_to_join_customer(self):
-        self._can_reject_user_request_to_join_a_customer(self.users['staff'])
-
-    def test_staff_can_remove_user_from_customer_organization(self):
-        self._can_remove_user_from_his_customer_organization(self.users['staff'])
-
-    # helper methods
-    def _can_see_status_of_user_claim_for_organization_membership(self, request_user):
-        self.client.force_authenticate(request_user)
-        user = self.users['no_role']
-        url = factories.UserFactory.get_url(user)
-
-        response = self.client.get(url)
-        self.assertTrue(response.status_code, status.HTTP_200_OK)
-        self.assertDictContainsSubset(
-            {'organization': user.organization,
-             'organization_approved': user.organization_approved},
-            response.data
-        )
-
-    def _can_approve_user_request_to_join_a_customer(self, request_user):
-        self.client.force_authenticate(request_user)
-        url = factories.UserFactory.get_url(self.users['user_with_request_to_a_customer'],
-                                            action='approve_organization')
-        response = self.client.post(url)
-
-        self.assertEquals(response.status_code, status.HTTP_200_OK)
-
-        # reload user from db
-        candidate_user = User.objects.get(username=self.users['user_with_request_to_a_customer'].username)
-        self.assertTrue(candidate_user.organization == self.customer.abbreviation)
-        self.assertTrue(candidate_user.organization_approved, 'Organization is not approved')
-
-    def _can_reject_user_request_to_join_a_customer(self, request_user):
-        self.client.force_authenticate(request_user)
-        url = factories.UserFactory.get_url(self.users['user_with_request_to_a_customer'],
-                                            action='reject_organization')
-        response = self.client.post(url)
-
-        self.assertEquals(response.status_code, status.HTTP_200_OK)
-
-        # reload user from db
-        candidate_user = User.objects.get(username=self.users['user_with_request_to_a_customer'].username)
-        self.assertTrue(candidate_user.organization == "")
-        self.assertFalse(candidate_user.organization_approved, 'Organization is not approved')
-
-    def _can_remove_user_from_his_customer_organization(self, request_user):
-        self.client.force_authenticate(request_user)
-        url = factories.UserFactory.get_url(self.users['user_with_request_to_a_customer'],
-                                            action='remove_organization')
-        response = self.client.post(url)
-
-        self.assertEquals(response.status_code, status.HTTP_200_OK)
-
-        # reload user from db
-        candidate_user = User.objects.get(username=self.users['user_with_request_to_a_customer'].username)
-        self.assertTrue(candidate_user.organization == "")
-        self.assertFalse(candidate_user.organization_approved, 'Organization is not approved')
 
 
 class CustomUsersFilterTest(test.APITransactionTestCase):
@@ -698,3 +514,47 @@ class UserUpdateTest(test.APITransactionTestCase):
         response = self.client.put(self.url, self.valid_payload)
         self.assertEquals(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('token_lifetime', response.data)
+
+
+@mock.patch('waldur_core.structure.handlers.event_logger')
+class NotificationsProfileChangesTest(test.APITransactionTestCase):
+    def setUp(self):
+        self.user = factories.UserFactory(full_name='John', email='john@example.org')
+
+    def test_sent_notification_if_change_owner_email(self, mock_event_logger):
+        factories.CustomerPermissionFactory(user=self.user, role=CustomerRole.OWNER)
+        old_email = self.user.email
+        new_email = 'new_email_' + old_email
+        self.user.email = new_email
+        self.user.save()
+        self.assertEqual(mock_event_logger.user.info.call_count, 1)
+
+    def test_notification_message(self, mock_event_logger):
+        customer = factories.CustomerFactory(name='Customer', abbreviation='ABC')
+        factories.CustomerPermissionFactory(
+            user=self.user,
+            role=CustomerRole.OWNER,
+            customer=customer
+        )
+        old_email = self.user.email
+        new_email = 'new_email_' + old_email
+        self.user.email = new_email
+        self.user.save()
+        msg = mock_event_logger.user.info.call_args[0][0]
+        test_msg = u'Owner of Customer (ABC) John (id={id}) ' \
+                   u'has changed email from john@example.org to new_email_john@example.org.'\
+            .format(id=self.user.id)
+        self.assertEqual(test_msg, msg)
+
+    def test_dont_sent_notification_if_change_owner_other_field(self, mock_event_logger):
+        factories.CustomerPermissionFactory(user=self.user, role=CustomerRole.OWNER)
+        token_lifetime = 100 + self.user.token_lifetime
+        self.user.token_lifetime = token_lifetime
+        self.user.save()
+        self.assertEqual(mock_event_logger.user.info.call_count, 0)
+
+    def test_dont_sent_notification_if_change_not_owner_email(self, mock_event_logger):
+        new_email = 'new_email_' + self.user.email
+        self.user.email = new_email
+        self.user.save()
+        self.assertEqual(mock_event_logger.user.info.call_count, 0)

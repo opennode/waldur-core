@@ -108,3 +108,43 @@ def update_pulled_fields(instance, imported_instance, fields):
         modified = True
     if modified:
         instance.save()
+
+
+def handle_resource_not_found(resource):
+    """
+    Set resource state to ERRED and append/create "not found" error message.
+    """
+    resource.set_erred()
+    resource.runtime_state = ''
+    message = 'Does not exist at backend.'
+    if message not in resource.error_message:
+        if not resource.error_message:
+            resource.error_message = message
+        else:
+            resource.error_message += ' (%s)' % message
+    resource.save()
+    logger.warning('%s %s (PK: %s) does not exist at backend.' % (
+        resource.__class__.__name__, resource, resource.pk))
+
+
+def handle_resource_update_success(resource):
+    """
+    Recover resource if its state is ERRED and clear error message.
+    """
+    update_fields = []
+    if resource.state == resource.States.ERRED:
+        resource.recover()
+        update_fields.append('state')
+
+    if resource.state in (resource.States.UPDATING, resource.States.CREATING):
+        resource.set_ok()
+        update_fields.append('state')
+
+    if resource.error_message:
+        resource.error_message = ''
+        update_fields.append('error_message')
+
+    if update_fields:
+        resource.save(update_fields=update_fields)
+    logger.warning('%s %s (PK: %s) was successfully updated.' % (
+        resource.__class__.__name__, resource, resource.pk))

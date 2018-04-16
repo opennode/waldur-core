@@ -284,6 +284,7 @@ WALDUR_CORE = {
     'LOGIN_FAILED_URL': 'https://example.com/#/login_failed/',
     'LOGOUT_COMPLETED_URL': 'https://example.com/#/logout_completed/',
     'LOGOUT_FAILED_URL': 'https://example.com/#/logout_failed/',
+    'NOTIFICATIONS_PROFILE_CHANGES': {'ENABLED': True, 'FIELDS': ('email', 'phone_number', 'job_title')},
     # 'COUNTRIES': ['EE', 'LV', 'LT'],
 }
 

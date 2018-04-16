@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
-from collections import defaultdict
-from functools import partial
 import logging
 import time
+from collections import defaultdict
+from functools import partial
 
 from django.conf import settings as django_settings
 from django.contrib import auth
@@ -36,7 +36,6 @@ from waldur_core.quotas.models import QuotaModelMixin, Quota
 from waldur_core.structure import (
     SupportedServices, ServiceBackendError, ServiceBackendNotImplemented,
     filters, managers, models, permissions, serializers)
-from waldur_core.structure.log import event_logger
 from waldur_core.structure.managers import filter_queryset_for_user
 from waldur_core.structure.metadata import ActionsMetadata
 from waldur_core.structure.signals import resource_imported, structure_role_updated
@@ -392,75 +391,15 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'uuid'
     permission_classes = (
         rf_permissions.IsAuthenticated,
-        permissions.IsAdminOrOwnerOrOrganizationManager,
+        permissions.IsAdminOrOwner,
     )
     filter_backends = (
         filters.CustomerUserFilter,
         filters.ProjectUserFilter,
+        filters.UserFilterBackend,
         DjangoFilterBackend,
     )
     filter_class = filters.UserFilter
-
-    def get_queryset(self):
-        user = self.request.user
-        queryset = super(UserViewSet, self).get_queryset()
-
-        # ?current
-        current_user = self.request.query_params.get('current')
-        if current_user is not None and not user.is_anonymous:
-            queryset = User.objects.filter(uuid=user.uuid)
-
-        # TODO: refactor to a separate endpoint or structure
-        # a special query for all users with assigned privileges that the current user can remove privileges from
-        if (not django_settings.WALDUR_CORE.get('SHOW_ALL_USERS', True) and
-                not (user.is_staff or user.is_support)) or 'potential' in self.request.query_params:
-            connected_customers_query = models.Customer.objects.all()
-            # is user is not staff, allow only connected customers
-            if not (user.is_staff or user.is_support):
-                # XXX: Let the DB cry...
-                connected_customers_query = connected_customers_query.filter(
-                    Q(permissions__user=user, permissions__is_active=True) |
-                    Q(projects__permissions__user=user, projects__permissions__is_active=True)
-                ).distinct()
-
-            # check if we need to filter potential users by a customer
-            potential_customer = self.request.query_params.get('potential_customer')
-            if potential_customer:
-                connected_customers_query = connected_customers_query.filter(uuid=potential_customer)
-                connected_customers_query = filter_queryset_for_user(connected_customers_query, user)
-
-            connected_customers = list(connected_customers_query.all())
-            potential_organization = self.request.query_params.get('potential_organization')
-            if potential_organization is not None:
-                potential_organizations = potential_organization.split(',')
-            else:
-                potential_organizations = []
-
-            queryset = queryset.filter(is_staff=False).filter(
-                # customer users
-                Q(customerpermission__customer__in=connected_customers,
-                  customerpermission__is_active=True) |
-                Q(projectpermission__project__customer__in=connected_customers,
-                  projectpermission__is_active=True) |
-                # users with no role
-                Q(
-                    customerpermission=None,
-                    projectpermission=None,
-                    organization_approved=True,
-                    organization__in=potential_organizations,
-                )
-            ).distinct()
-
-        organization_claimed = self.request.query_params.get('organization_claimed')
-        if organization_claimed is not None:
-            queryset = queryset.exclude(organization__isnull=True).exclude(organization__exact='')
-
-        if not (user.is_staff or user.is_support):
-            queryset = queryset.filter(is_active=True)
-            # non-staff users cannot see staff through rest
-            queryset = queryset.filter(is_staff=False)
-
-        return queryset.order_by('username')
 
     def list(self, request, *args, **kwargs):
         """
@@ -476,14 +415,6 @@ class UserViewSet(viewsets.ModelViewSet):
         - ?current - filters out user making a request. Useful for getting information about a currently logged in user.
         - ?civil_number=XXX - filters out users with a specified civil number
         - ?is_active=True|False - show only active (non-active) users
-        - ?potential - shows users that have common connections to the customers and are potential collaborators.
-          Exclude staff users. Staff users can see all the customers.
-        - ?potential_customer=<Customer UUID> - optionally filter potential users by customer UUID
-        - ?potential_organization=<organization name> - optionally filter potential unconnected users by
-          their organization name
-          (deprecated, use `organization plugin <http://waldur_core-organization.readthedocs.org/en/stable/>`_ instead)
-        - ?organization_claimed - show only users with a non-empty organization
-          (deprecated, use `organization plugin <http://waldur_core-organization.readthedocs.org/en/stable/>`_ instead)
 
         The user can be created either through automated process on login with SAML token, or through a REST call by a user
         with staff privilege.
@@ -578,107 +509,6 @@ class UserViewSet(viewsets.ModelViewSet):
         user.save()
 
         return Response({'detail': _('Password has been successfully updated.')},
-                        status=status.HTTP_200_OK)
-
-    @detail_route(methods=['post'])
-    def claim_organization(self, request, uuid=None):
-        """
-        **Deprecated, use**
-        `organization plugin <http://waldur_core-organization.readthedocs.org/en/stable/>`_ **instead.**
-        """
-        instance = self.get_object()
-
-        # check if organization name is valid
-        serializer = serializers.UserOrganizationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        if instance.organization and instance.organization_approved:
-            return Response({'detail': _('User has approved organization. Remove it before claiming a new one.')},
-                            status=status.HTTP_409_CONFLICT)
-
-        organization = serializer.validated_data['organization']
-
-        instance.organization = organization
-        instance.organization_approved = False
-        instance.save()
-
-        event_logger.user_organization.info(
-            'User {affected_user_username} has claimed organization {affected_organization}.',
-            event_type='user_organization_claimed',
-            event_context={
-                'affected_user': instance,
-                'affected_organization': instance.organization,
-            })
-
-        return Response({'detail': _('User request for joining the organization has been successfully submitted.')},
-                        status=status.HTTP_200_OK)
-
-    @detail_route(methods=['post'])
-    def approve_organization(self, request, uuid=None):
-        """
-        **Deprecated, use**
-        `organization plugin <http://waldur_core-organization.readthedocs.org/en/stable/>`_ **instead.**
-        """
-        instance = self.get_object()
-
-        instance.organization_approved = True
-        instance.save()
-
-        event_logger.user_organization.info(
-            'User {affected_user_username} has been approved for organization {affected_organization}.',
-            event_type='user_organization_approved',
-            event_context={
-                'affected_user': instance,
-                'affected_organization': instance.organization,
-            })
-
-        return Response({'detail': _('User request for joining the organization has been successfully approved.')},
-                        status=status.HTTP_200_OK)
-
-    @detail_route(methods=['post'])
-    def reject_organization(self, request, uuid=None):
-        """
-        **Deprecated, use**
-        `organization plugin <http://waldur_core-organization.readthedocs.org/en/stable/>`_ **instead.**
-        """
-        instance = self.get_object()
-        old_organization = instance.organization
-        instance.organization = ""
-        instance.organization_approved = False
-        instance.save()
-
-        event_logger.user_organization.info(
-            'User {affected_user_username} claim for organization {affected_organization} has been rejected.',
-            event_type='user_organization_rejected',
-            event_context={
-                'affected_user': instance,
-                'affected_organization': old_organization,
-            })
-
-        return Response({'detail': _('User has been successfully rejected from the organization.')},
-                        status=status.HTTP_200_OK)
-
-    @detail_route(methods=['post'])
-    def remove_organization(self, request, uuid=None):
-        """
-        **Deprecated, use**
-        `organization plugin <http://waldur_core-organization.readthedocs.org/en/stable/>`_ **instead.**
-        """
-        instance = self.get_object()
-        old_organization = instance.organization
-        instance.organization_approved = False
-        instance.organization = ""
-        instance.save()
-
-        event_logger.user_organization.info(
-            'User {affected_user_username} has been removed from organization {affected_organization}.',
-            event_type='user_organization_removed',
-            event_context={
-                'affected_user': instance,
-                'affected_organization': old_organization,
-            })
-
-        return Response({'detail': _('User has been successfully removed from the organization.')},
                         status=status.HTTP_200_OK)
 
 
