@@ -21,5 +21,5 @@ CACHES = {
     }
 }
 
-BROKER_URL = 'sqla+sqlite:///:memory:'
+CELERY_BROKER_URL = 'sqla+sqlite:///:memory:'
 CELERY_RESULT_BACKEND = 'db+sqlite:///:memory:'

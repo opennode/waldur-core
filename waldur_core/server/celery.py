@@ -4,19 +4,18 @@ import os
 
 from celery import Celery
 from celery import signals
-from django.conf import settings
 
 from waldur_core.logging.middleware import get_event_context, set_event_context, reset_event_context
 
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'waldur_core.server.settings')  # XXX:
 
-app = Celery('waldur_core')
+app = Celery('waldur_core', namespace='CELERY', strict_typing=False)
 
 # Using a string here means the worker will not have to
 # pickle the object when using Windows.
 app.config_from_object('django.conf:settings')
-app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
+app.autodiscover_tasks()
 
 
 class PriorityRouter(object):
