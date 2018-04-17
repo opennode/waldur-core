@@ -1771,6 +1771,21 @@ class BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass, ResourceView
 
 
 class ImportableResourceViewSet(BaseResourceViewSet):
+    """
+    This viewset enables uniform implementation of resource import.
+
+    Comparing to the previous approach when import endpoint was defined in service viewset,
+    this class assumes that resource-specific import options are defined in resource viewset.
+
+    Consider the following example:
+
+    importable_resources_backend_method = 'get_tenants_for_import'
+    importable_resources_serializer_class = serializers.TenantImportableSerializer
+    importable_resources_permissions = [structure_permissions.is_staff]
+    import_resource_serializer_class = serializers.TenantImportSerializer
+    import_resource_permissions = [structure_permissions.is_staff]
+    import_resource_executor = executors.TenantImportExecutor
+    """
     import_resource_executor = None
 
     @list_route(methods=['get'])
