@@ -8,7 +8,7 @@ from jsoneditor.forms import JSONEditor
 import six
 
 from waldur_core.logging import models
-from waldur_core.logging.loggers import get_valid_events
+from waldur_core.logging.loggers import get_valid_events, get_event_groups
 
 
 class JSONMultipleChoiceField(forms.MultipleChoiceField):
@@ -19,10 +19,21 @@ class JSONMultipleChoiceField(forms.MultipleChoiceField):
         return value
 
 
-class SystemNotificationForm(forms.ModelForm):
+class BaseHookForm(forms.ModelForm):
     event_types = JSONMultipleChoiceField(
         choices=[(e, e) for e in get_valid_events()],
-        widget=forms.SelectMultiple(attrs={'size': '30'}))
+        widget=forms.SelectMultiple(attrs={'size': '30'}),
+        required=False,
+    )
+
+    event_groups = JSONMultipleChoiceField(
+        choices=[(g, g) for g in get_event_groups()],
+        widget=forms.SelectMultiple(attrs={'size': '30'}),
+        required=False,
+    )
+
+
+class SystemNotificationForm(BaseHookForm):
 
     class Meta:
         model = models.SystemNotification
@@ -54,6 +65,7 @@ class AlertAdmin(admin.ModelAdmin):
 
 
 class BaseHookAdmin(admin.ModelAdmin):
+    form = BaseHookForm
     list_display = ('uuid', 'user', 'is_active', 'event_types', 'event_groups')
 
 

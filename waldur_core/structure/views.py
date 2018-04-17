@@ -21,6 +21,7 @@ from rest_framework.decorators import detail_route, list_route
 from rest_framework.exceptions import PermissionDenied, MethodNotAllowed, NotFound, APIException, ValidationError
 from rest_framework.response import Response
 from reversion.models import Version
+import six
 
 from waldur_core.core import managers as core_managers
 from waldur_core.core import mixins as core_mixins
@@ -1763,6 +1764,59 @@ class ResourceViewSet(core_mixins.ExecutorMixin, core_views.ActionsViewSet):
 
     pull_executor = NotImplemented
     pull_validators = [core_validators.StateValidator(models.NewResource.States.OK, models.NewResource.States.ERRED)]
+
+
+class BaseResourceViewSet(six.with_metaclass(ResourceViewMetaclass, ResourceViewSet)):
+    pass
+
+
+class ImportableResourceViewSet(BaseResourceViewSet):
+    """
+    This viewset enables uniform implementation of resource import.
+
+    Comparing to the previous approach when import endpoint was defined in service viewset,
+    this class assumes that resource-specific import options are defined in resource viewset.
+
+    Consider the following example:
+
+    importable_resources_backend_method = 'get_tenants_for_import'
+    importable_resources_serializer_class = serializers.TenantImportableSerializer
+    importable_resources_permissions = [structure_permissions.is_staff]
+    import_resource_serializer_class = serializers.TenantImportSerializer
+    import_resource_permissions = [structure_permissions.is_staff]
+    import_resource_executor = executors.TenantImportExecutor
+
+    Note that there are only 3 mandatory parameters:
+    * importable_resources_backend_method
+    * importable_resources_serializer_class
+    * import_resource_serializer_class
+    """
+    import_resource_executor = None
+
+    @list_route(methods=['get'])
+    def importable_resources(self, request):
+        serializer = self.get_serializer(data=request.GET)
+        serializer.is_valid(raise_exception=True)
+        service_project_link = serializer.validated_data['service_project_link']
+
+        backend = service_project_link.get_backend()
+        resources = getattr(backend, self.importable_resources_backend_method)()
+        serializer = self.get_serializer(resources, many=True)
+        page = self.paginate_queryset(serializer.data)
+        if page is not None:
+            return self.get_paginated_response(page)
+
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+    @list_route(methods=['post'])
+    def import_resource(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        resource = serializer.save()
+        if self.import_resource_executor:
+            self.import_resource_executor.execute(resource)
+
+        return Response(data=serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ServiceCertificationViewSet(core_views.ActionsViewSet):
