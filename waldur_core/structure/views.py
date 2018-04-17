@@ -1785,6 +1785,11 @@ class ImportableResourceViewSet(BaseResourceViewSet):
     import_resource_serializer_class = serializers.TenantImportSerializer
     import_resource_permissions = [structure_permissions.is_staff]
     import_resource_executor = executors.TenantImportExecutor
+
+    Note that there are only 3 mandatory parameters:
+    * importable_resources_backend_method
+    * importable_resources_serializer_class
+    * import_resource_serializer_class
     """
     import_resource_executor = None
 
