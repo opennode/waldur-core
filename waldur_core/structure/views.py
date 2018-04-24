@@ -995,6 +995,8 @@ class ResourceSummaryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             'vms': models.VirtualMachine.get_all_models(),
             'private_clouds': models.PrivateCloud.get_all_models(),
             'storages': models.Storage.get_all_models(),
+            'volumes': models.Volume.get_all_models(),
+            'snapshots': models.Snapshot.get_all_models(),
         }
         category = self.request.query_params.get('resource_category')
         if not category:
