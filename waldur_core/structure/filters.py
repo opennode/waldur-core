@@ -305,8 +305,7 @@ class BaseUserFilter(django_filters.FilterSet):
 
 class UserFilter(BaseUserFilter):
     o = django_filters.OrderingFilter(
-        fields=('full_name', 'native_name', 'organization',
-                'organization_approved', 'email', 'phone_number',
+        fields=('full_name', 'native_name', 'email', 'phone_number',
                 'description', 'job_title', 'username',
                 'is_active', 'registration_method')
     )

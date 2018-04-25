@@ -602,10 +602,6 @@ class ProjectPermissionLogSerializer(ProjectPermissionSerializer):
         view_name = 'project_permission_log-detail'
 
 
-class UserOrganizationSerializer(serializers.Serializer):
-    organization = serializers.CharField(max_length=80)
-
-
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     email = serializers.EmailField()
     agree_with_policy = serializers.BooleanField(write_only=True, required=False,
