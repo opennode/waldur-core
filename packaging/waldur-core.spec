@@ -1,5 +1,3 @@
-# BuildRequiresRepo: https://opennodecloud.com/centos/7/waldur-release.rpm
-
 %define __conf_dir %{_sysconfdir}/waldur
 %define __conf_file %{__conf_dir}/core.ini
 %define __data_dir %{_datadir}/waldur
@@ -25,8 +23,6 @@ Summary: Waldur Core
 Version: 0.157.5
 Release: 1.el7
 License: MIT
-
-Obsoletes: nodeconductor
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # mailcap is required for /etc/mime.types of static files served by uwsgi
