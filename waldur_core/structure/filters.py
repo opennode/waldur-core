@@ -304,10 +304,13 @@ class BaseUserFilter(django_filters.FilterSet):
 
 
 class UserFilter(BaseUserFilter):
+    is_staff = django_filters.BooleanFilter(widget=BooleanWidget)
+    is_support = django_filters.BooleanFilter(widget=BooleanWidget)
+
     o = django_filters.OrderingFilter(
         fields=('full_name', 'native_name', 'email', 'phone_number',
                 'description', 'job_title', 'username',
-                'is_active', 'registration_method')
+                'is_active', 'registration_method', 'is_staff', 'is_support')
     )
 
 
