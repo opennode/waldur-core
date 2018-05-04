@@ -466,6 +466,25 @@ class BasePermissionSerializer(core_serializers.AugmentedSerializerMixin, serial
         }
 
 
+class BasicCustomerPermissionSerializer(BasePermissionSerializer):
+    class Meta(BasePermissionSerializer.Meta):
+        model = models.CustomerPermission
+        fields = (
+            'url', 'pk', 'role', 'customer_uuid', 'customer_name', 'customer_native_name', 'customer_abbreviation',
+        )
+        related_paths = dict(
+            customer=('name', 'native_name', 'abbreviation', 'uuid'),
+            **BasePermissionSerializer.Meta.related_paths
+        )
+        extra_kwargs = {
+            'customer': {
+                'view_name': 'customer-detail',
+                'lookup_field': 'uuid',
+                'queryset': models.Customer.objects.all(),
+            }
+        }
+
+
 class CustomerPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionSerializer):
     class Meta(BasePermissionSerializer.Meta):
         model = models.CustomerPermission
@@ -597,6 +616,25 @@ class ProjectPermissionSerializer(PermissionFieldFilteringMixin, BasePermissionS
         return ('project',)
 
 
+class BasicProjectPermissionSerializer(BasePermissionSerializer):
+    class Meta(BasePermissionSerializer.Meta):
+        model = models.ProjectPermission
+        fields = (
+            'url', 'pk', 'role', 'project_uuid', 'project_name',
+        )
+        related_paths = dict(
+            project=('name', 'uuid'),
+            **BasePermissionSerializer.Meta.related_paths
+        )
+        extra_kwargs = {
+            'project': {
+                'view_name': 'project-detail',
+                'lookup_field': 'uuid',
+                'queryset': models.Project.objects.all(),
+            }
+        }
+
+
 class ProjectPermissionLogSerializer(ProjectPermissionSerializer):
     class Meta(ProjectPermissionSerializer.Meta):
         view_name = 'project_permission_log-detail'
@@ -611,6 +649,20 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
                                          allow_blank=True,
                                          required=False)
     token = serializers.ReadOnlyField(source='auth_token.key')
+    customer_permissions = serializers.SerializerMethodField()
+    project_permissions = serializers.SerializerMethodField()
+
+    def get_customer_permissions(self, user):
+        permissions = models.CustomerPermission.objects.filter(user=user, is_active=True).select_related('customer')
+        serializer = BasicCustomerPermissionSerializer(instance=permissions, many=True,
+                                                       context=self.context)
+        return serializer.data
+
+    def get_project_permissions(self, user):
+        permissions = models.ProjectPermission.objects.filter(user=user, is_active=True).select_related('project')
+        serializer = BasicProjectPermissionSerializer(instance=permissions, many=True,
+                                                      context=self.context)
+        return serializer.data
 
     class Meta(object):
         model = User
@@ -628,7 +680,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'agree_with_policy',
             'agreement_date',
             'preferred_language',
-            'competence'
+            'competence',
+            'customer_permissions',
+            'project_permissions',
         )
         read_only_fields = (
             'uuid',
@@ -636,6 +690,8 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'registration_method',
             'date_joined',
             'agreement_date',
+            'customer_permissions',
+            'project_permissions',
         )
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
