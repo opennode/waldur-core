@@ -18,7 +18,6 @@ from rest_framework import exceptions, serializers
 from rest_framework.reverse import reverse
 import six
 
-from waldur_core.structure.models import CustomerPermission, ProjectPermission
 from waldur_core.core import (models as core_models, fields as core_fields, serializers as core_serializers,
                               utils as core_utils)
 from waldur_core.core.fields import MappedChoiceField
@@ -654,13 +653,13 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     project_permissions = serializers.SerializerMethodField()
 
     def get_customer_permissions(self, user):
-        permissions = CustomerPermission.objects.filter(user=user, is_active=True).select_related('customer')
+        permissions = models.CustomerPermission.objects.filter(user=user, is_active=True).select_related('customer')
         serializer = BasicCustomerPermissionSerializer(instance=permissions, many=True,
                                                        context=self.context)
         return serializer.data
 
     def get_project_permissions(self, user):
-        permissions = ProjectPermission.objects.filter(user=user, is_active=True).select_related('project')
+        permissions = models.ProjectPermission.objects.filter(user=user, is_active=True).select_related('project')
         serializer = BasicProjectPermissionSerializer(instance=permissions, many=True,
                                                       context=self.context)
         return serializer.data
