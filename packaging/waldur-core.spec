@@ -28,7 +28,7 @@ License: MIT
 # mailcap is required for /etc/mime.types of static files served by uwsgi
 Requires: logrotate
 Requires: mailcap
-Requires: python-celery >= 3.1.23, python-celery < 3.2
+Requires: python-celery >= 4.0.2, python-celery < 5.0.0
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-cryptography
@@ -52,7 +52,7 @@ Requires: python-iptools >= 0.6.1
 Requires: python-pillow >= 2.0.0
 Requires: python-prettytable >= 0.7.1, python-prettytable < 0.8
 Requires: python-psycopg2 >= 2.5.4
-Requires: python-redis = 2.10.3
+Requires: python-redis = 2.10.6
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
@@ -70,7 +70,6 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
-BuildRequires: python-celery >= 3.1.23, python-celery < 3.2
 BuildRequires: gettext
 BuildRequires: python-django >= 1.11, python-django < 2.0
 BuildRequires: python-django-filter = 1.0.2
