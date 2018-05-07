@@ -357,9 +357,9 @@ SESSION_COOKIE_AGE = config.getint('auth', 'session_lifetime')
 
 # Celery
 # See also:
-#  - http://docs.celeryproject.org/en/latest/getting-started/brokers/index.html#broker-instructions
-#  - http://docs.celeryproject.org/en/latest/configuration.html#broker-url
-#  - http://docs.celeryproject.org/en/latest/configuration.html#celery-result-backend
+#  - http://docs.celeryproject.org/en/latest/userguide/configuration.html
+#  - http://docs.celeryproject.org/en/latest/userguide/configuration.html#broker-settings
+#  - http://docs.celeryproject.org/en/latest/userguide/configuration.html#std:setting-result_backend
 CELERY_BROKER_URL = redis_url
 CELERY_RESULT_BACKEND = redis_url
 
