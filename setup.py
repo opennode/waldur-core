@@ -18,7 +18,7 @@ tests_requires = [
 ]
 
 install_requires = [
-    'Celery>=3.1.23,<3.2',
+    'Celery>=4.0.2,<5.0.0',
     'croniter>=0.3.4,<0.3.6',
     'cryptography',
     'Django>=1.11,<2.0',
@@ -43,14 +43,14 @@ install_requires = [
     'PyYAML>=3.10',
     'pycountry>=1.20,<2.0',
     'pyvat>=1.3.1,<2.0',
-    'redis==2.10.3',
+    'redis==2.10.6',
     'requests>=2.6.0,!=2.12.2,!=2.13.0',
     'sqlparse>=0.1.11',
 ]
 
 setup(
     name='waldur_core',
-    version='0.157.5',
+    version='0.158.0',
     author='OpenNode Team',
     author_email='info@opennodecloud.com',
     url='https://github.com/opennode/waldur-core',

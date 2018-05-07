@@ -33,7 +33,7 @@ class WaldurExtension(object):
 
     @staticmethod
     def celery_tasks():
-        """ Returns a dictionary with celery tasks which will be added to CELERYBEAT_SCHEDULE """
+        """ Returns a dictionary with celery tasks which will be added to CELERY_BEAT_SCHEDULE """
         return dict()
 
     @staticmethod

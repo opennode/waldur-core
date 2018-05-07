@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.db.models.functions import Concat
 from django_filters.filterset import FilterSetMetaclass
 from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.widgets import BooleanWidget
 from rest_framework.filters import BaseFilterBackend
 
 from waldur_core.core import filters as core_filters
@@ -284,7 +285,7 @@ class BaseUserFilter(django_filters.FilterSet):
     native_name = django_filters.CharFilter(lookup_expr='icontains')
     job_title = django_filters.CharFilter(lookup_expr='icontains')
     email = django_filters.CharFilter(lookup_expr='icontains')
-    is_active = django_filters.BooleanFilter()
+    is_active = django_filters.BooleanFilter(widget=BooleanWidget)
 
     class Meta(object):
         model = User
@@ -303,11 +304,13 @@ class BaseUserFilter(django_filters.FilterSet):
 
 
 class UserFilter(BaseUserFilter):
+    is_staff = django_filters.BooleanFilter(widget=BooleanWidget)
+    is_support = django_filters.BooleanFilter(widget=BooleanWidget)
+
     o = django_filters.OrderingFilter(
-        fields=('full_name', 'native_name', 'organization',
-                'organization_approved', 'email', 'phone_number',
+        fields=('full_name', 'native_name', 'email', 'phone_number',
                 'description', 'job_title', 'username',
-                'is_active', 'registration_method')
+                'is_active', 'registration_method', 'is_staff', 'is_support')
     )
 
 
@@ -455,7 +458,7 @@ class BaseServiceFilter(six.with_metaclass(ServiceFilterMetaclass, django_filter
     project = core_filters.URLFilter(view_name='project-detail', name='projects__uuid', distinct=True)
     project_uuid = django_filters.UUIDFilter(name='projects__uuid', distinct=True)
     settings = core_filters.URLFilter(view_name='servicesettings-detail', name='settings__uuid', distinct=True)
-    shared = django_filters.BooleanFilter(name='settings__shared', distinct=True)
+    shared = django_filters.BooleanFilter(name='settings__shared', distinct=True, widget=BooleanWidget)
     type = ServiceTypeFilter(name='settings__type')
     tag = django_filters.ModelMultipleChoiceFilter(
         name='settings__tags__name',

@@ -177,20 +177,16 @@ DEFENDER_REDIS_URL = 'redis://localhost:6379/0'
 STATIC_URL = '/static/'
 
 # Celery
-BROKER_URL = 'redis://localhost'
+CELERY_BROKER_URL = 'redis://localhost'
 CELERY_RESULT_BACKEND = 'redis://localhost'
 
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_RESULT_SERIALIZER = 'json'
-
-CELERY_QUEUES = {
+CELERY_TASK_QUEUES = {
     'tasks': {'exchange': 'tasks'},
     'heavy': {'exchange': 'heavy'},
     'background': {'exchange': 'background'},
 }
-CELERY_DEFAULT_QUEUE = 'tasks'
-CELERY_ROUTES = ('waldur_core.server.celery.PriorityRouter',)
+CELERY_TASK_DEFAULT_QUEUE = 'tasks'
+CELERY_TASK_ROUTES = ('waldur_core.server.celery.PriorityRouter',)
 
 CACHES = {
     'default': {
@@ -206,7 +202,7 @@ CACHES = {
 }
 
 # Regular tasks
-CELERYBEAT_SCHEDULE = {
+CELERY_BEAT_SCHEDULE = {
     'pull-service-settings': {
         'task': 'waldur_core.structure.ServiceSettingsListPullTask',
         'schedule': timedelta(minutes=30),
@@ -303,12 +299,12 @@ for ext in WaldurExtension.get_extensions():
     INSTALLED_APPS += (ext.django_app(),)
 
     for name, task in ext.celery_tasks().items():
-        if name in CELERYBEAT_SCHEDULE:
+        if name in CELERY_BEAT_SCHEDULE:
             warnings.warn(
                 "Celery beat task %s from Waldur extension %s "
                 "is overlapping with primary tasks definition" % (name, ext.django_app()))
         else:
-            CELERYBEAT_SCHEDULE[name] = task
+            CELERY_BEAT_SCHEDULE[name] = task
 
     for key, val in ext.Settings.__dict__.items():
         if not key.startswith('_'):

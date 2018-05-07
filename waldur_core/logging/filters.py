@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 import django_filters
+from django_filters.widgets import BooleanWidget
 from rest_framework import settings, filters
 from rest_framework.serializers import ValidationError
 
@@ -158,7 +159,7 @@ class EventFilterBackend(filters.BaseFilterBackend):
 class AlertFilter(django_filters.FilterSet):
     """ Basic filters for alerts """
 
-    acknowledged = django_filters.BooleanFilter(name='acknowledged', distinct=True)
+    acknowledged = django_filters.BooleanFilter(name='acknowledged', distinct=True, widget=BooleanWidget)
     closed_from = core_filters.TimestampFilter(name='closed', lookup_expr='gte')
     closed_to = core_filters.TimestampFilter(name='closed', lookup_expr='lt')
     created_from = core_filters.TimestampFilter(name='created', lookup_expr='gte')
@@ -256,7 +257,7 @@ class ExternalAlertFilterBackend(ExternalFilterBackend):
 
 class BaseHookFilter(django_filters.FilterSet):
     author_uuid = django_filters.UUIDFilter(name='user__uuid')
-    is_active = django_filters.BooleanFilter()
+    is_active = django_filters.BooleanFilter(widget=BooleanWidget)
     last_published = django_filters.DateTimeFilter()
 
 

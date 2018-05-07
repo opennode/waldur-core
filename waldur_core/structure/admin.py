@@ -170,18 +170,8 @@ class CustomerAdminForm(ModelForm):
         return accounting_start_date
 
 
-class BillingMixin(object):
-    def get_accounting_start_date(self, customer):
-        if not hasattr(customer, 'payment_details'):
-            return None
-        return customer.payment_details.accounting_start_date
-
-    get_accounting_start_date.short_description = _('Start day of accounting')
-
-
 class CustomerAdmin(FormRequestAdminMixin,
                     ResourceCounterFormMixin,
-                    BillingMixin,
                     NativeNameAdminMixin,
                     ProtectedModelMixin,
                     admin.ModelAdmin):
@@ -192,7 +182,7 @@ class CustomerAdmin(FormRequestAdminMixin,
               'type', 'address', 'postal', 'bank_name', 'bank_account',
               'accounting_start_date', 'default_tax_percent')
     list_display = ('name', 'uuid', 'abbreviation',
-                    'created', 'get_accounting_start_date',
+                    'created', 'accounting_start_date',
                     'get_vm_count', 'get_app_count', 'get_private_cloud_count')
     search_fields = ('name', 'uuid', 'abbreviation')
     readonly_fields = ('uuid',)
@@ -477,13 +467,17 @@ class ServiceAdmin(admin.ModelAdmin):
 
 
 class ServiceProjectLinkAdmin(admin.ModelAdmin):
-    readonly_fields = ('service', 'project')
     list_display = ('get_service_name', 'get_customer_name', 'get_project_name')
     list_filter = ('service__settings', 'project__name', 'service__settings__name')
     ordering = ('service__customer__name', 'project__name')
     list_display_links = ('get_service_name',)
     search_fields = ('service__customer__name', 'project__name', 'service__settings__name')
     inlines = [QuotaInline]
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return ('service', 'project')
+        return ()
 
     def get_queryset(self, request):
         queryset = super(ServiceProjectLinkAdmin, self).get_queryset(request)

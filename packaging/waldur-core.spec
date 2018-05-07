@@ -1,5 +1,3 @@
-# BuildRequiresRepo: https://opennodecloud.com/centos/7/waldur-release.rpm
-
 %define __conf_dir %{_sysconfdir}/waldur
 %define __conf_file %{__conf_dir}/core.ini
 %define __data_dir %{_datadir}/waldur
@@ -22,17 +20,15 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.157.5
+Version: 0.158.0
 Release: 1.el7
 License: MIT
-
-Obsoletes: nodeconductor
 
 # python-django-cors-headers is packaging-specific dependency; it is not required in upstream code
 # mailcap is required for /etc/mime.types of static files served by uwsgi
 Requires: logrotate
 Requires: mailcap
-Requires: python-celery >= 3.1.23, python-celery < 3.2
+Requires: python-celery >= 4.0.2, python-celery < 5.0.0
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-cryptography
@@ -56,7 +52,7 @@ Requires: python-iptools >= 0.6.1
 Requires: python-pillow >= 2.0.0
 Requires: python-prettytable >= 0.7.1, python-prettytable < 0.8
 Requires: python-psycopg2 >= 2.5.4
-Requires: python-redis = 2.10.3
+Requires: python-redis = 2.10.6
 Requires: python-requests >= 2.6.0
 Requires: python-sqlparse >= 0.1.11
 Requires: python-tlslite = 0.4.8
@@ -74,7 +70,6 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
 # python-django* packages are needed to generate static files
 # python-setuptools package is needed to run 'python setup.py <cmd>'
 # systemd package provides _unitdir RPM macro
-BuildRequires: python-celery >= 3.1.23, python-celery < 3.2
 BuildRequires: gettext
 BuildRequires: python-django >= 1.11, python-django < 2.0
 BuildRequires: python-django-filter = 1.0.2
@@ -253,6 +248,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Mon May 7 2018 Jenkins <jenkins@opennodecloud.com> - 0.158.0-1.el7
+- New upstream release
+
 * Tue Apr 17 2018 Jenkins <jenkins@opennodecloud.com> - 0.157.5-1.el7
 - New upstream release
 
