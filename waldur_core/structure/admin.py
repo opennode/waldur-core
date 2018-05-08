@@ -307,11 +307,12 @@ class ServiceSettingsAdminForm(ModelForm):
 
         # Check required extra fields of service type
         try:
-            options = json.loads(cleaned_data.get('options'))
-            unfilled = set(extra_fields_required[service_type]) - set(options.keys())
-            if unfilled:
-                self.add_error('options', _('This field must include keys: %s') %
-                               ', '.join(unfilled))
+            if 'options' in cleaned_data:
+                options = json.loads(cleaned_data.get('options'))
+                unfilled = set(extra_fields_required[service_type]) - set(options.keys())
+                if unfilled:
+                    self.add_error('options', _('This field must include keys: %s') %
+                                   ', '.join(unfilled))
         except ValueError:
             self.add_error('options', _('JSON is not valid'))
 
@@ -390,6 +391,8 @@ class PrivateServiceSettingsAdmin(ChangeReadonlyMixin, admin.ModelAdmin):
         fields = super(PrivateServiceSettingsAdmin, self).get_readonly_fields(request, obj)
         if not obj:
             return fields + ('state',)
+        elif obj.scope:
+            return fields + ('options',)
         return fields
 
     def get_urls(self):
