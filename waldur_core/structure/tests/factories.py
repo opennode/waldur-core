@@ -21,6 +21,7 @@ class UserFactory(factory.DjangoModelFactory):
     email = factory.LazyAttribute(lambda o: '%s@example.org' % o.username)
     full_name = factory.Sequence(lambda n: 'John Doe%s' % n)
     native_name = factory.Sequence(lambda n: 'Jöhn Dõe%s' % n)
+    organization = factory.Sequence(lambda n: 'Organization %s' % n)
     phone_number = factory.Sequence(lambda n: '555-555-%s-2' % n)
     description = factory.Sequence(lambda n: 'Description %s' % n)
     job_title = factory.Sequence(lambda n: 'Job %s' % n)

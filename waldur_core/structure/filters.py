@@ -292,6 +292,7 @@ class BaseUserFilter(django_filters.FilterSet):
         fields = [
             'full_name',
             'native_name',
+            'organization',
             'email',
             'phone_number',
             'description',
@@ -309,7 +310,7 @@ class UserFilter(BaseUserFilter):
 
     o = django_filters.OrderingFilter(
         fields=('full_name', 'native_name', 'email', 'phone_number',
-                'description', 'job_title', 'username',
+                'description', 'organization', 'job_title', 'username',
                 'is_active', 'registration_method', 'is_staff', 'is_support')
     )
 
