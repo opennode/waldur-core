@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
@@ -61,8 +62,14 @@ class InvitationViewSet(ProtectedViewSet):
                                                invitation.customer_role,
                                                invitation.project_role):
             raise PermissionDenied()
-        elif invitation.state != models.Invitation.State.PENDING:
-            raise ValidationError(_('Only pending invitation can be resent.'))
+        elif invitation.state == models.Invitation.State.ACCEPTED or \
+                invitation.state == models.Invitation.State.CANCELED:
+            raise ValidationError(_('Only pending and expired invitations can be resent.'))
+
+        if invitation.state == models.Invitation.State.EXPIRED:
+            invitation.state = models.Invitation.State.PENDING
+            invitation.created = timezone.now()
+            invitation.save()
 
         tasks.send_invitation.delay(invitation.uuid.hex, self.request.user.full_name or self.request.user.username)
         return Response({'detail': _('Invitation sending has been successfully scheduled.')},

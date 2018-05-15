@@ -3,6 +3,7 @@ from datetime import timedelta
 from ddt import ddt, data
 from django.conf import settings
 from django.utils import timezone
+from freezegun import freeze_time
 from rest_framework import test, status
 
 from waldur_core.core.tests.helpers import override_waldur_core_settings
@@ -22,6 +23,7 @@ class BaseInvitationTest(test.APITransactionTestCase):
         self.user = structure_factories.UserFactory()
 
         self.customer = structure_factories.CustomerFactory()
+        self.second_customer = structure_factories.CustomerFactory()
         self.customer.add_user(self.customer_owner, structure_models.CustomerRole.OWNER)
 
         self.customer_role = structure_models.CustomerRole.OWNER
@@ -297,6 +299,20 @@ class InvitationPermissionApiTest(BaseInvitationTest):
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)
+
+    @freeze_time('2018-05-15 00:00:00')
+    def test_user_can_resend_expired_invitation(self):
+        customer_expired_invitation = factories.CustomerInvitationFactory(
+            state=models.Invitation.State.EXPIRED)
+
+        self.client.force_authenticate(user=self.staff)
+        response = self.client.post(factories.CustomerInvitationFactory
+                                    .get_url(customer_expired_invitation, action='send'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        customer_expired_invitation.refresh_from_db()
+        self.assertEqual(customer_expired_invitation.state, models.Invitation.State.PENDING)
+        self.assertEqual(customer_expired_invitation.created, timezone.now())
 
     # Helper methods
     def _get_valid_project_invitation_payload(self, invitation=None, project_role=None):
