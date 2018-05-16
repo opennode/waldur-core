@@ -378,6 +378,7 @@ class UserFilterTest(test.APITransactionTestCase):
         supported_filters = [
             'full_name',
             'native_name',
+            'organization',
             'email',
             'phone_number',
             'description',
@@ -389,6 +390,7 @@ class UserFilterTest(test.APITransactionTestCase):
         user = factories.UserFactory(is_staff=True)
         user_that_should_be_found = factories.UserFactory(
             native_name='',
+            organization='',
             email='none@example.com',
             phone_number='',
             description='',

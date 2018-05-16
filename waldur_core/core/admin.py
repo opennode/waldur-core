@@ -158,7 +158,7 @@ class UserAdmin(NativeNameAdminMixin, auth_admin.UserAdmin):
             'civil_number', 'full_name', 'native_name', 'email',
             'preferred_language', 'competence', 'phone_number'
         )}),
-        (_('Organization'), {'fields': ('job_title',)}),
+        (_('Organization'), {'fields': ('organization', 'job_title',)}),
         (_('Permissions'), {'fields': ('is_active', 'is_staff', 'is_support', 'customer_roles', 'project_roles')}),
         (_('Important dates'), {'fields': ('last_login', 'date_joined', 'agreement_date')}),
     )

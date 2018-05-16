@@ -671,6 +671,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             'uuid', 'username',
             'full_name', 'native_name',
             'job_title', 'email', 'phone_number',
+            'organization',
             'civil_number',
             'description',
             'is_staff', 'is_active', 'is_support',
