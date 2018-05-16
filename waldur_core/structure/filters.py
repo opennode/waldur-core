@@ -283,6 +283,7 @@ class BaseUserFilter(django_filters.FilterSet):
     full_name = django_filters.CharFilter(lookup_expr='icontains')
     username = django_filters.CharFilter()
     native_name = django_filters.CharFilter(lookup_expr='icontains')
+    organization = django_filters.CharFilter(lookup_expr='icontains')
     job_title = django_filters.CharFilter(lookup_expr='icontains')
     email = django_filters.CharFilter(lookup_expr='icontains')
     is_active = django_filters.BooleanFilter(widget=BooleanWidget)
