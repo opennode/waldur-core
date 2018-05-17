@@ -4,17 +4,17 @@ import hashlib
 import json
 import logging
 
+import six
 from celery.execute import send_task as send_celery_task
+from celery.task import Task as CeleryTask
 from celery.worker.request import Request
 from django.core.cache import cache
 from django.db import IntegrityError, models as django_models
 from django.db.models import ObjectDoesNotExist
 from django_fsm import TransitionNotAllowed
-import six
 
 from waldur_core.core import models, utils
 from waldur_core.core.exceptions import RuntimeStateException
-from waldur_core.core.task_celery_old import CeleryTaskWithAutoRegister
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def send_task(app_label, task_name):
     return delay
 
 
-class Task(CeleryTaskWithAutoRegister):
+class Task(CeleryTask):
     """ Base class for tasks that are run by executors.
 
     Provides standard way for input data deserialization.
@@ -96,7 +96,7 @@ class Task(CeleryTaskWithAutoRegister):
         pass
 
 
-class EmptyTask(CeleryTaskWithAutoRegister):
+class EmptyTask(CeleryTask):
     def run(self, *args, **kwargs):
         pass
 
@@ -299,7 +299,7 @@ class ExecutorTask(Task):
         self.executor.execute(instance, async=False, **kwargs)
 
 
-class BackgroundTask(CeleryTaskWithAutoRegister):
+class BackgroundTask(CeleryTask):
     """ Task that is run in background via celerybeat.
 
         Background task features:
