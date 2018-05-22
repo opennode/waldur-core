@@ -18,7 +18,7 @@ tests_requires = [
 ]
 
 install_requires = [
-    'Celery>=4.0.2,<5.0.0',
+    'Celery==4.1.0',
     'croniter>=0.3.4,<0.3.6',
     'cryptography',
     'Django>=1.11,<2.0',

@@ -28,7 +28,7 @@ License: MIT
 # mailcap is required for /etc/mime.types of static files served by uwsgi
 Requires: logrotate
 Requires: mailcap
-Requires: python-celery >= 4.0.2, python-celery < 5.0.0
+Requires: python-celery = 4.1.0
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-cryptography
