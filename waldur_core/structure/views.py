@@ -7,7 +7,7 @@ from functools import partial
 
 from django.conf import settings as django_settings
 from django.contrib import auth
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Q
 from django.http import Http404
 from django.utils.functional import cached_property
@@ -1814,7 +1814,10 @@ class ImportableResourceViewSet(BaseResourceViewSet):
     def import_resource(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        resource = serializer.save()
+        try:
+            resource = serializer.save()
+        except IntegrityError:
+            raise rf_serializers.ValidationError(_('Resource is already registered.'))
         if self.import_resource_executor:
             self.import_resource_executor.execute(resource)
 

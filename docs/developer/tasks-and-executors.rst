@@ -24,31 +24,22 @@ There are 3 types of task queues: regular (used by default), heavy and backgroun
 Task registration
 -----
 
-For task registration use decorators or application method:
+For class based tasks use old Task base class for compatibility:
 
 .. code-block:: python
 
-    import celery
+    from celery.task import Task
 
-    app = celery.current_app
-
-
-    class CustomTask(Task):
-        def run(self):
-            print('running')
-    CustomTask = app.register_task(CustomTask())
-
-The best practice is to use custom task classes only for overriding general behavior, and then using the task decorator to realize the task:
+For functions use decorator shared_task:
 
 .. code-block:: python
 
-    import celery
+    from celery import shared_task
 
-    app = celery.current_app
 
-    @app.task(bind=True, base=CustomTask)
-    def custom(self):
-        print('running')
+    @shared_task
+    def add(x, y):
+        return x + y
 
 Regular tasks
 ^^^^^^^^^^^^^

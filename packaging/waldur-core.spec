@@ -20,7 +20,7 @@
 
 Name: waldur-core
 Summary: Waldur Core
-Version: 0.159.2
+Version: 0.160.0
 Release: 1.el7
 License: MIT
 
@@ -28,7 +28,7 @@ License: MIT
 # mailcap is required for /etc/mime.types of static files served by uwsgi
 Requires: logrotate
 Requires: mailcap
-Requires: python-celery >= 4.0.2, python-celery < 5.0.0
+Requires: python-celery = 4.1.0
 Requires: python-country >= 1.20, python-country < 2.0
 Requires: python-croniter >= 0.3.4, python-croniter < 0.3.6
 Requires: python-cryptography
@@ -248,6 +248,9 @@ EOF
 %systemd_postun_with_restart %{__uwsgi_service_name}.service
 
 %changelog
+* Tue May 22 2018 Jenkins <jenkins@opennodecloud.com> - 0.160.0-1.el7
+- New upstream release
+
 * Thu May 17 2018 Jenkins <jenkins@opennodecloud.com> - 0.159.2-1.el7
 - New upstream release
 
