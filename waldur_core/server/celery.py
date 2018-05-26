@@ -41,7 +41,9 @@ def pass_event_context(sender=None, body=None, **kwargs):
 
     event_context = get_event_context()
     if event_context:
-        body['kwargs']['event_context'] = event_context
+        # kwargs is the second item in body tuple with index equal 1.
+        # See also http://docs.celeryproject.org/en/v4.1.0/internals/protocol.html#version-2
+        body[1]['event_context'] = event_context
 
 
 @signals.task_prerun.connect
