@@ -148,7 +148,7 @@ class CustomerAdminForm(ModelForm):
 
         removed_users = field.exclude(pk__in=new_users)
         for user in removed_users:
-            customer.remove_user(user, role)
+            customer.remove_user(user, role, self.request.user)
 
         added_users = new_users.exclude(pk__in=field)
         for user in added_users:
@@ -235,7 +235,7 @@ class ProjectAdminForm(ModelForm):
 
         removed_users = field.exclude(pk__in=new_users)
         for user in removed_users:
-            project.remove_user(user, role)
+            project.remove_user(user, role, self.request.user)
 
         added_users = new_users.exclude(pk__in=field)
         for user in added_users:
