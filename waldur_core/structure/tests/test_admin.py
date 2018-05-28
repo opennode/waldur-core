@@ -263,4 +263,3 @@ class CustomerAdminTest(TestCase):
         # Act
         with self.assertRaises(ValueError):
             self.change_customer(support_users=[user1.pk, user2.pk], owners=[user1.pk, user2.pk])
-
