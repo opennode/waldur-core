@@ -1,3 +1,4 @@
+import itertools
 import json
 import logging
 
@@ -158,6 +159,17 @@ class CustomerAdminForm(ModelForm):
 
         self.save_m2m()
 
+    def clean(self):
+        cleaned_data = super(CustomerAdminForm, self).clean()
+        owners = self.cleaned_data['owners']
+        support_users = self.cleaned_data['support_users']
+        invalid_users = set(owners) & set(support_users)
+        if invalid_users:
+            invalid_users_list = ', '.join(map(six.text_type, invalid_users))
+            raise ValidationError(_('User role within customer must be unique. '
+                                    'The following users are not unique: %s.') % invalid_users_list)
+        return cleaned_data
+
     def clean_accounting_start_date(self):
         accounting_start_date = self.cleaned_data['accounting_start_date']
         if 'accounting_start_date' in self.changed_data and accounting_start_date < timezone.now():
@@ -216,6 +228,19 @@ class ProjectAdminForm(ModelForm):
         else:
             for field_name in ('admins', 'managers', 'support_users'):
                 setattr(self, field_name, User.objects.none())
+
+    def clean(self):
+        cleaned_data = super(ProjectAdminForm, self).clean()
+        admins = self.cleaned_data['admins']
+        managers = self.cleaned_data['managers']
+        support_users = self.cleaned_data['support_users']
+        for xs, ys in itertools.combinations([set(admins), set(managers), set(support_users)], 2):
+            invalid_users = xs & ys
+            if invalid_users:
+                invalid_users_list = ', '.join(map(six.text_type, invalid_users))
+                raise ValidationError(_('User role within project must be unique. '
+                                        'The following users are not unique: %s.') % invalid_users_list)
+        return cleaned_data
 
     def save(self, commit=True):
         project = super(ProjectAdminForm, self).save(commit=False)
