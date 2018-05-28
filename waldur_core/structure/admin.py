@@ -166,8 +166,8 @@ class CustomerAdminForm(ModelForm):
         invalid_users = set(owners) & set(support_users)
         if invalid_users:
             invalid_users_list = ', '.join(map(six.text_type, invalid_users))
-            raise ValidationError(_('User role within customer must be unique. '
-                                    'The following users are not unique: %s.') % invalid_users_list)
+            raise ValidationError(_('User role within organization must be unique. '
+                                    'Role assignment of The following users is invalid: %s.') % invalid_users_list)
         return cleaned_data
 
     def clean_accounting_start_date(self):
@@ -239,7 +239,7 @@ class ProjectAdminForm(ModelForm):
             if invalid_users:
                 invalid_users_list = ', '.join(map(six.text_type, invalid_users))
                 raise ValidationError(_('User role within project must be unique. '
-                                        'The following users are not unique: %s.') % invalid_users_list)
+                                        'Role assignment of The following users is invalid: %s.') % invalid_users_list)
         return cleaned_data
 
     def save(self, commit=True):
