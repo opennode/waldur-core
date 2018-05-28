@@ -571,7 +571,7 @@ class BasePermissionViewSet(viewsets.ModelViewSet):
         if not scope.can_manage_role(self.request.user, role, expiration_time):
             raise PermissionDenied()
 
-        scope.remove_user(affected_user, role)
+        scope.remove_user(affected_user, role, removed_by=self.request.user)
 
 
 class ProjectPermissionViewSet(BasePermissionViewSet):

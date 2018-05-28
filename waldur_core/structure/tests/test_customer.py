@@ -31,6 +31,7 @@ class CustomerTest(TransactionTestCase):
     def setUp(self):
         self.customer = factories.CustomerFactory()
         self.user = factories.UserFactory()
+        self.created_by = factories.UserFactory()
 
     def test_add_user_returns_created_if_grant_didnt_exist_before(self):
         _, created = self.customer.add_user(self.user, CustomerRole.OWNER)
@@ -57,7 +58,7 @@ class CustomerTest(TransactionTestCase):
 
     def test_add_user_emits_structure_role_granted_if_grant_didnt_exist_before(self):
         with mock_signal_receiver(signals.structure_role_granted) as receiver:
-            self.customer.add_user(self.user, CustomerRole.OWNER)
+            self.customer.add_user(self.user, CustomerRole.OWNER, self.created_by)
 
         receiver.assert_called_once_with(
             structure=self.customer,
@@ -66,6 +67,7 @@ class CustomerTest(TransactionTestCase):
 
             sender=Customer,
             signal=signals.structure_role_granted,
+            created_by=self.created_by
         )
 
     def test_add_user_doesnt_emit_structure_role_granted_if_grant_existed_before(self):
@@ -80,12 +82,13 @@ class CustomerTest(TransactionTestCase):
         self.customer.add_user(self.user, CustomerRole.OWNER)
 
         with mock_signal_receiver(signals.structure_role_revoked) as receiver:
-            self.customer.remove_user(self.user)
+            self.customer.remove_user(self.user, removed_by=self.created_by)
 
         receiver.assert_called_once_with(
             structure=self.customer,
             user=self.user,
             role=CustomerRole.OWNER,
+            removed_by=self.created_by,
 
             sender=Customer,
             signal=signals.structure_role_revoked,
@@ -95,12 +98,13 @@ class CustomerTest(TransactionTestCase):
         self.customer.add_user(self.user, CustomerRole.OWNER)
 
         with mock_signal_receiver(signals.structure_role_revoked) as receiver:
-            self.customer.remove_user(self.user, CustomerRole.OWNER)
+            self.customer.remove_user(self.user, CustomerRole.OWNER, self.created_by)
 
         receiver.assert_called_once_with(
             structure=self.customer,
             user=self.user,
             role=CustomerRole.OWNER,
+            removed_by=self.created_by,
 
             sender=Customer,
             signal=signals.structure_role_revoked,

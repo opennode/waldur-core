@@ -89,28 +89,34 @@ def log_project_delete(sender, instance, **kwargs):
         })
 
 
-def log_customer_role_granted(sender, structure, user, role, **kwargs):
+def log_customer_role_granted(sender, structure, user, role, created_by=None, **kwargs):
+    event_context = {
+        'customer': structure,
+        'affected_user': user,
+        'structure_type': 'customer',
+        'role_name': CustomerPermission(role=role).get_role_display(),
+    }
+    if created_by:
+        event_context['user'] = created_by
+
     event_logger.customer_role.info(
         'User {affected_user_username} has gained role of {role_name} in customer {customer_name}.',
-        event_type='role_granted',
-        event_context={
-            'customer': structure,
-            'affected_user': user,
-            'structure_type': 'customer',
-            'role_name': CustomerPermission(role=role).get_role_display(),
-        })
+        event_type='role_granted', event_context=event_context)
 
 
-def log_customer_role_revoked(sender, structure, user, role, **kwargs):
+def log_customer_role_revoked(sender, structure, user, role, removed_by=None, **kwargs):
+    event_context = {
+        'customer': structure,
+        'affected_user': user,
+        'structure_type': 'customer',
+        'role_name': CustomerPermission(role=role).get_role_display(),
+    }
+    if removed_by:
+        event_context['user'] = removed_by
+
     event_logger.customer_role.info(
         'User {affected_user_username} has lost role of {role_name} in customer {customer_name}.',
-        event_type='role_revoked',
-        event_context={
-            'customer': structure,
-            'affected_user': user,
-            'structure_type': 'customer',
-            'role_name': CustomerPermission(role=role).get_role_display(),
-        })
+        event_type='role_revoked', event_context=event_context)
 
 
 def log_customer_role_updated(sender, instance, user, **kwargs):
@@ -135,28 +141,34 @@ def log_customer_role_updated(sender, instance, user, **kwargs):
         })
 
 
-def log_project_role_granted(sender, structure, user, role, **kwargs):
+def log_project_role_granted(sender, structure, user, role, created_by=None, **kwargs):
+    event_context = {
+        'project': structure,
+        'affected_user': user,
+        'structure_type': 'project',
+        'role_name': ProjectPermission(role=role).get_role_display(),
+    }
+    if created_by:
+        event_context['user'] = created_by
+
     event_logger.project_role.info(
         'User {affected_user_username} has gained role of {role_name} in project {project_name}.',
-        event_type='role_granted',
-        event_context={
-            'project': structure,
-            'affected_user': user,
-            'structure_type': 'project',
-            'role_name': ProjectPermission(role=role).get_role_display(),
-        })
+        event_type='role_granted', event_context=event_context)
 
 
-def log_project_role_revoked(sender, structure, user, role, **kwargs):
+def log_project_role_revoked(sender, structure, user, role, removed_by=None, **kwargs):
+    event_context = {
+        'project': structure,
+        'affected_user': user,
+        'structure_type': 'project',
+        'role_name': ProjectPermission(role=role).get_role_display()
+    }
+    if removed_by:
+        event_context['user'] = removed_by
+
     event_logger.project_role.info(
         'User {affected_user_username} has revoked role of {role_name} in project {project_name}.',
-        event_type='role_revoked',
-        event_context={
-            'project': structure,
-            'affected_user': user,
-            'structure_type': 'project',
-            'role_name': ProjectPermission(role=role).get_role_display()
-        })
+        event_type='role_revoked', event_context=event_context)
 
 
 def log_project_role_updated(sender, instance, user, **kwargs):

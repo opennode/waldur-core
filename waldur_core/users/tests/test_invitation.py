@@ -4,10 +4,12 @@ from ddt import ddt, data
 from django.conf import settings
 from django.utils import timezone
 from freezegun import freeze_time
+from mock_django import mock_signal_receiver
 from rest_framework import test, status
 
 from waldur_core.core.tests.helpers import override_waldur_core_settings
 from waldur_core.structure import models as structure_models
+from waldur_core.structure import signals
 from waldur_core.structure.tests import factories as structure_factories
 from waldur_core.users import models, tasks
 from waldur_core.users.tests import factories
@@ -436,3 +438,25 @@ class InvitationAcceptTest(BaseInvitationTest):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, invitation.email)
+
+    def test_when_invitation_is_accepted_event_is_emitted(self):
+        # Arrange
+        self.project_invitation.created_by = self.customer_owner
+        self.project_invitation.save()
+
+        # Act
+        with mock_signal_receiver(signals.structure_role_granted) as mock_signal:
+            self.client.force_authenticate(user=self.user)
+            self.client.post(factories.ProjectInvitationFactory.get_url(
+                self.project_invitation, action='accept'))
+
+            # Assert
+            mock_signal.assert_called_once_with(
+                structure=self.project,
+                user=self.user,
+                role=self.project_role,
+
+                sender=structure_models.Project,
+                signal=signals.structure_role_granted,
+                created_by=self.customer_owner
+            )
