@@ -49,6 +49,7 @@ class ProjectPermissionGrantTest(TransactionTestCase):
             structure=self.project,
             user=self.user,
             role=ProjectRole.ADMINISTRATOR,
+            created_by=None,
 
             sender=Project,
             signal=signals.structure_role_granted,
@@ -67,18 +68,20 @@ class ProjectPermissionRevokeTest(TransactionTestCase):
     def setUp(self):
         self.project = factories.ProjectFactory()
         self.user = factories.UserFactory()
+        self.removed_by = factories.UserFactory()
 
     def test_remove_user_emits_structure_role_revoked_for_each_role_user_had_in_project(self):
         self.project.add_user(self.user, ProjectRole.ADMINISTRATOR)
         self.project.add_user(self.user, ProjectRole.MANAGER)
 
         with mock_signal_receiver(signals.structure_role_revoked) as receiver:
-            self.project.remove_user(self.user)
+            self.project.remove_user(self.user, removed_by=self.removed_by)
 
         calls = [
             mock.call(
                 structure=self.project,
                 user=self.user,
+                removed_by=self.removed_by,
                 role=ProjectRole.MANAGER,
 
                 sender=Project,
@@ -88,6 +91,7 @@ class ProjectPermissionRevokeTest(TransactionTestCase):
             mock.call(
                 structure=self.project,
                 user=self.user,
+                removed_by=self.removed_by,
                 role=ProjectRole.ADMINISTRATOR,
 
                 sender=Project,
@@ -106,7 +110,7 @@ class ProjectPermissionRevokeTest(TransactionTestCase):
         self.project.add_user(self.user, ProjectRole.MANAGER)
 
         with mock_signal_receiver(signals.structure_role_revoked) as receiver:
-            self.project.remove_user(self.user, ProjectRole.MANAGER)
+            self.project.remove_user(self.user, ProjectRole.MANAGER, self.removed_by)
 
         receiver.assert_called_once_with(
             structure=self.project,
@@ -115,6 +119,7 @@ class ProjectPermissionRevokeTest(TransactionTestCase):
 
             sender=Project,
             signal=signals.structure_role_revoked,
+            removed_by=self.removed_by,
         )
 
     def test_remove_user_doesnt_emit_structure_role_revoked_if_grant_didnt_exist_before(self):

@@ -32,6 +32,7 @@ class ProjectEventLogger(EventLogger):
 class CustomerRoleEventLogger(EventLogger):
     customer = models.Customer
     affected_user = User
+    user = User
     structure_type = six.text_type
     role_name = six.text_type
 
@@ -41,10 +42,12 @@ class CustomerRoleEventLogger(EventLogger):
             'customers': event_types,
             'users': event_types,
         }
+        nullable_fields = ['user']
 
 
 class ProjectRoleEventLogger(EventLogger):
     project = models.Project
+    user = User
     affected_user = User
     structure_type = six.text_type
     role_name = six.text_type
@@ -55,6 +58,7 @@ class ProjectRoleEventLogger(EventLogger):
             'projects': event_types,
             'users': event_types,
         }
+        nullable_fields = ['user']
 
 
 class ResourceEventLogger(EventLogger):

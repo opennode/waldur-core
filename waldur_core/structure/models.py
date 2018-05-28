@@ -227,12 +227,13 @@ class PermissionMixin(object):
             structure=self,
             user=user,
             role=role,
+            created_by=created_by,
         )
 
         return permission, True
 
     @transaction.atomic()
-    def remove_user(self, user, role=None):
+    def remove_user(self, user, role=None, removed_by=None):
         permissions = self.permissions.all().filter(user=user, is_active=True)
 
         if role is not None:
@@ -242,7 +243,7 @@ class PermissionMixin(object):
         permissions.update(is_active=None, expiration_time=timezone.now())
 
         for permission in affected_permissions:
-            self.log_role_revoked(permission)
+            self.log_role_revoked(permission, removed_by)
 
     @transaction.atomic()
     def remove_all_users(self):
@@ -250,12 +251,13 @@ class PermissionMixin(object):
             permission.delete()
             self.log_role_revoked(permission)
 
-    def log_role_revoked(self, permission):
+    def log_role_revoked(self, permission, removed_by=None):
         structure_role_revoked.send(
             sender=self.__class__,
             structure=self,
             user=permission.user,
             role=permission.role,
+            removed_by=removed_by,
         )
 
 
