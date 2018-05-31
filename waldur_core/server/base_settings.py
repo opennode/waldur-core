@@ -293,6 +293,7 @@ WALDUR_CORE_PUBLIC_SETTINGS = [
     'OWNERS_CAN_MANAGE_OWNERS',
     'COMPANY_TYPES',
     'NATIVE_NAME_ENABLED',
+    'ONLY_STAFF_MANAGES_SERVICES',
 ]
 
 for ext in WaldurExtension.get_extensions():
