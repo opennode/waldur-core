@@ -137,7 +137,7 @@ class BackgroundListPullTask(core_tasks.BackgroundTask):
     def run(self):
         for instance in self.get_pulled_objects():
             serialized = core_utils.serialize_instance(instance)
-            self.pull_task().delay(serialized)
+            self.pull_task().apply_async(args=(serialized,), kwargs={})
 
 
 class ServiceSettingsBackgroundPullTask(BackgroundPullTask):
