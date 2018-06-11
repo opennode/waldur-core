@@ -154,6 +154,7 @@ which selects objects necessary for serialization.
 Consider the following example:
 
 .. code-block:: python
+
     class BaseServiceViewSet(core_mixins.EagerLoadMixin, core_views.ActionsViewSet):
         pass
 
