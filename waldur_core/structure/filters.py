@@ -109,7 +109,8 @@ class CustomerFilter(django_filters.FilterSet):
     )
 
     o = django_filters.OrderingFilter(
-        fields=('name', 'abbreviation', 'contact_details', 'native_name', 'registration_code')
+        fields=('name', 'abbreviation', 'contact_details', 'native_name', 'registration_code',
+                'accounting_start_date', 'created',)
     )
 
     class Meta(object):
