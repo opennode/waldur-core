@@ -14,6 +14,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 from django.views.static import serve
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters as rf_filters
 from rest_framework import generics, mixins, views, viewsets, status
 from rest_framework import permissions as rf_permissions
 from rest_framework import serializers as rf_serializers
@@ -53,7 +54,17 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
     filter_backends = (filters.GenericUserFilter,
                        filters.GenericRoleFilter,
                        DjangoFilterBackend,
+                       rf_filters.OrderingFilter,
                        filters.ExternalCustomerFilterBackend,)
+    ordering_fields = (
+        'abbreviation',
+        'accounting_start_date',
+        'contact_details',
+        'created',
+        'name',
+        'native_name',
+        'registration_code',
+    )
     filter_class = filters.CustomerFilter
 
     def list(self, request, *args, **kwargs):
