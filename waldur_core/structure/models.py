@@ -1098,6 +1098,10 @@ class ResourceMixin(MonitoringModelMixin,
         # XXX: add special attribute to an instance in order to be tracked by signal handler
         setattr(self, 'PERFORM_UNLINK', True)
 
+    @property
+    def service_settings(self):
+        return self.service_project_link.service.settings
+
 
 # TODO: rename to Resource
 class NewResource(ResourceMixin, core_models.StateMixin):
