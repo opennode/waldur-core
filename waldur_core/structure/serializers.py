@@ -1474,12 +1474,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         return resource
 
 
-class PublishableResourceSerializer(BaseResourceSerializer):
-    class Meta(BaseResourceSerializer.Meta):
-        fields = BaseResourceSerializer.Meta.fields + ('publishing_state',)
-        read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
-
-
 class SummaryResourceSerializer(core_serializers.BaseSummarySerializer):
     @classmethod
     def get_serializer(cls, model):
