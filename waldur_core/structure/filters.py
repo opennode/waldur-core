@@ -108,10 +108,6 @@ class CustomerFilter(django_filters.FilterSet):
         lookup_expr='icontains',
     )
 
-    o = django_filters.OrderingFilter(
-        fields=('name', 'abbreviation', 'contact_details', 'native_name', 'registration_code')
-    )
-
     class Meta(object):
         model = models.Customer
         fields = [

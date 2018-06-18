@@ -86,6 +86,36 @@ class ResourceCreateTest(test.APITransactionTestCase):
         response = self.client.post(url, payload)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_user_may_specify_service_settings_and_project_instead_of_service_project_link(self):
+        payload = {
+            'service_settings': factories.ServiceSettingsFactory.get_url(self.fixture.service_settings),
+            'project': factories.ProjectFactory.get_url(self.fixture.project),
+            'name': 'resource name',
+        }
+        # Create SPL so that resource provision succeeds
+        spl_url = factories.TestServiceProjectLinkFactory.get_url(self.fixture.service_project_link)
+
+        url = factories.TestNewInstanceFactory.get_list_url()
+        self.client.force_authenticate(user=self.fixture.staff)
+        response = self.client.post(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(spl_url, response.data['service_project_link'])
+
+    def test_resource_provision_fails_if_matching_service_project_link_does_not_exist(self):
+        # Do not create SPL so that resource provision fails
+        payload = {
+            'service_settings': factories.ServiceSettingsFactory.get_url(self.fixture.service_settings),
+            'project': factories.ProjectFactory.get_url(self.fixture.project),
+            'name': 'resource name',
+        }
+
+        url = factories.TestNewInstanceFactory.get_list_url()
+        self.client.force_authenticate(user=self.fixture.staff)
+        response = self.client.post(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class ResourceTagsTest(test.APITransactionTestCase):
     def setUp(self):

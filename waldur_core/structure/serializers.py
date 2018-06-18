@@ -1356,17 +1356,22 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     state = serializers.ReadOnlyField(source='get_state_display')
 
     project = serializers.HyperlinkedRelatedField(
-        source='service_project_link.project',
+        queryset=models.Project.objects.all(),
         view_name='project-detail',
-        read_only=True,
-        lookup_field='uuid')
+        lookup_field='uuid',
+        allow_null=True,
+        required=False,
+    )
 
     project_name = serializers.ReadOnlyField(source='service_project_link.project.name')
     project_uuid = serializers.ReadOnlyField(source='service_project_link.project.uuid')
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name=NotImplemented,
-        queryset=NotImplemented)
+        queryset=NotImplemented,
+        allow_null=True,
+        required=False,
+    )
 
     service = serializers.HyperlinkedRelatedField(
         source='service_project_link.service',
@@ -1378,10 +1383,12 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
     service_uuid = serializers.ReadOnlyField(source='service_project_link.service.uuid')
 
     service_settings = serializers.HyperlinkedRelatedField(
-        source='service_project_link.service.settings',
+        queryset=models.ServiceSettings.objects.all(),
         view_name='servicesettings-detail',
-        read_only=True,
-        lookup_field='uuid')
+        lookup_field='uuid',
+        allow_null=True,
+        required=False,
+    )
     service_settings_uuid = serializers.ReadOnlyField(source='service_project_link.service.settings.uuid')
     service_settings_state = serializers.ReadOnlyField(
         source='service_project_link.service.settings.human_readable_state')
@@ -1421,7 +1428,7 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
             'resource_type', 'state', 'created', 'service_project_link', 'backend_id',
             'access_url', 'is_link_valid',
         )
-        protected_fields = ('service', 'service_project_link')
+        protected_fields = ('service', 'service_project_link', 'project', 'service_settings')
         read_only_fields = ('error_message', 'backend_id')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
@@ -1454,11 +1461,49 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
                                'service_project_link__project__certifications')
         )
 
-    def validate_service_project_link(self, service_project_link):
-        if not service_project_link.is_valid:
-            raise serializers.ValidationError(service_project_link.validation_message)
+    def get_fields(self):
+        fields = super(BaseResourceSerializer, self).get_fields()
+        # skip validation on object update
+        if not self.instance:
+            service_type = SupportedServices.get_model_key(self.Meta.model)
+            queryset = fields['service_settings'].queryset.filter(type=service_type)
+            fields['service_settings'].queryset = queryset
+        return fields
 
-        return service_project_link
+    def validate(self, attrs):
+        # skip validation on object update
+        if self.instance:
+            return attrs
+
+        service_settings = attrs.pop('service_settings', None)
+        project = attrs.pop('project', None)
+        service_project_link = attrs.get('service_project_link')
+
+        if not service_project_link:
+            if service_settings and project:
+                spl_model = self.Meta.model.service_project_link.field.remote_field.model
+                try:
+                    service_project_link = spl_model.objects.get(
+                        service__settings=service_settings,
+                        project=project,
+                    )
+                    attrs['service_project_link'] = service_project_link
+                except django_exceptions.ObjectDoesNotExist:
+                    raise serializers.ValidationError(
+                        _('You are not allowed to provision resource in current project using this provider. '
+                          'Please specify another value for project and service_settings fields.')
+                    )
+            else:
+                raise serializers.ValidationError(
+                    _('Either service_project_link or service_settings and project should be specified.')
+                )
+
+        if not service_project_link.is_valid:
+            raise serializers.ValidationError({
+                'service_project_link': service_project_link.validation_message
+            })
+
+        return attrs
 
     @transaction.atomic
     def create(self, validated_data):
@@ -1472,12 +1517,6 @@ class BaseResourceSerializer(six.with_metaclass(ResourceSerializerMetaclass,
         resource = super(BaseResourceSerializer, self).create(data)
         resource.increase_backend_quotas_usage()
         return resource
-
-
-class PublishableResourceSerializer(BaseResourceSerializer):
-    class Meta(BaseResourceSerializer.Meta):
-        fields = BaseResourceSerializer.Meta.fields + ('publishing_state',)
-        read_only_fields = BaseResourceSerializer.Meta.read_only_fields + ('publishing_state',)
 
 
 class SummaryResourceSerializer(core_serializers.BaseSummarySerializer):

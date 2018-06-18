@@ -33,7 +33,10 @@ class NewInstanceSerializer(structure_serializers.VirtualMachineSerializer):
 
     service_project_link = serializers.HyperlinkedRelatedField(
         view_name='test-spl-detail',
-        queryset=models.TestServiceProjectLink.objects.all())
+        queryset=models.TestServiceProjectLink.objects.all(),
+        allow_null=True,
+        required=False,
+    )
 
     class Meta(structure_serializers.BaseResourceSerializer.Meta):
         model = models.TestNewInstance
