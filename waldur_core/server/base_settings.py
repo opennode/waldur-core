@@ -283,6 +283,7 @@ WALDUR_CORE = {
     'LOGOUT_FAILED_URL': 'https://example.com/#/logout_failed/',
     'NOTIFICATIONS_PROFILE_CHANGES': {'ENABLED': True, 'FIELDS': ('email', 'phone_number', 'job_title')},
     # 'COUNTRIES': ['EE', 'LV', 'LT'],
+    'ENABLE_ACCOUNTING_START_DATE': False,
 }
 
 WALDUR_CORE_PUBLIC_SETTINGS = [
