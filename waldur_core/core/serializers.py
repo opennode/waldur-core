@@ -298,6 +298,8 @@ class RestrictedSerializerMixin(object):
 
     def get_fields(self):
         fields = super(RestrictedSerializerMixin, self).get_fields()
+        if 'request' not in self.context:
+            return fields
         query_params = self.context['request'].query_params
         keys = query_params.getlist(self.FIELDS_PARAM_NAME)
         keys = set(key for key in keys if key in fields.keys())

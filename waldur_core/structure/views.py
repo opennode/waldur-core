@@ -55,6 +55,7 @@ class CustomerViewSet(core_mixins.EagerLoadMixin, viewsets.ModelViewSet):
                        filters.GenericRoleFilter,
                        DjangoFilterBackend,
                        rf_filters.OrderingFilter,
+                       filters.AccountingStartDateFilter,
                        filters.ExternalCustomerFilterBackend,)
     ordering_fields = (
         'abbreviation',

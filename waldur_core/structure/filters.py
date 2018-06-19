@@ -5,11 +5,14 @@ import uuid
 import django_filters
 import six
 import taggit
+from django import forms
 from django.conf import settings as django_settings
 from django.contrib import auth
 from django.contrib.contenttypes.models import ContentType
+from django.core import exceptions
 from django.db.models import Q
 from django.db.models.functions import Concat
+from django.utils import timezone
 from django_filters.filterset import FilterSetMetaclass
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters.widgets import BooleanWidget
@@ -121,6 +124,31 @@ class CustomerFilter(django_filters.FilterSet):
 
 class ExternalCustomerFilterBackend(ExternalFilterBackend):
     pass
+
+
+class AccountingStartDateFilter(BaseFilterBackend):
+    def filter_queryset(self, request, queryset, view):
+
+        if not django_settings.WALDUR_CORE['ENABLE_ACCOUNTING_START_DATE']:
+            return queryset
+
+        value = request.query_params.get('accounting_is_running')
+        boolean_field = forms.NullBooleanField()
+
+        try:
+            value = boolean_field.to_python(value)
+        except exceptions.ValidationError:
+            value = None
+
+        if value is None:
+            return queryset
+
+        query = Q(accounting_start_date__gt=timezone.now())
+
+        if value:
+            return queryset.exclude(query)
+        else:
+            return queryset.filter(query)
 
 
 class ProjectTypeFilter(django_filters.FilterSet):

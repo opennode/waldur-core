@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from ddt import data, ddt
 from django.test import TransactionTestCase
 from django.urls import reverse
+from django.utils import timezone
 from freezegun import freeze_time
 from mock_django import mock_signal_receiver
 from rest_framework import status, test
@@ -604,3 +605,41 @@ class UserCustomersFilterTest(test.APITransactionTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual({customer['uuid'] for customer in response.data},
                          {customer.uuid.hex for customer in customers})
+
+
+@ddt
+class AccountingIsRunningFilterTest(test.APITransactionTestCase):
+
+    def setUp(self):
+        self.enabled_customers = factories.CustomerFactory.create_batch(2)
+        future_date = timezone.now() + timezone.timedelta(days=1)
+        self.disabled_customers = factories.CustomerFactory.create_batch(
+            3, accounting_start_date=future_date)
+        self.all_customers = self.enabled_customers + self.disabled_customers
+
+    def count_customers(self, accounting_is_running=None):
+        self.client.force_authenticate(factories.UserFactory(is_staff=True))
+        url = factories.CustomerFactory.get_list_url()
+        params = {}
+        if accounting_is_running in (True, False):
+            params['accounting_is_running'] = accounting_is_running
+        response = self.client.get(url, params)
+        return len(response.data)
+
+    @data(
+        (True, 'enabled_customers'),
+        (False, 'disabled_customers'),
+        (None, 'all_customers')
+    )
+    @override_waldur_core_settings(ENABLE_ACCOUNTING_START_DATE=True)
+    def test_feature_is_enabled(self, params):
+        actual = self.count_customers(params[0])
+        expected = len(getattr(self, params[1]))
+        self.assertEqual(expected, actual)
+
+    @data(True, False, None)
+    @override_waldur_core_settings(ENABLE_ACCOUNTING_START_DATE=False)
+    def test_feature_is_disabled(self, param):
+        actual = self.count_customers({'accounting_is_running': param})
+        expected = len(self.all_customers)
+        self.assertEqual(expected, actual)
