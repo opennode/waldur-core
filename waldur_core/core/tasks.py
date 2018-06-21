@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import hashlib
 import json
 import logging
+from uuid import uuid4
 
 import six
 from celery import group
@@ -365,7 +366,7 @@ class BackgroundTask(CeleryTask):
             message = 'Background task %s was not scheduled, because its predecessor is not completed yet.' % self.name
             logger.info(message)
             # It is expected by Celery that apply_async return AsyncResult, otherwise celerybeat dies
-            return self.AsyncResult(options.get('task_id'))
+            return self.AsyncResult(options.get('task_id') or str(uuid4()))
         return super(BackgroundTask, self).apply_async(args=args, kwargs=kwargs, **options)
 
 
@@ -409,7 +410,7 @@ class PenalizedBackgroundTask(BackgroundTask):
 
         cache.set(key, (counter - 1, penalty), self.CACHE_LIFETIME)
         logger.info('The task %s will not be executed due to the penalty.' % self.name)
-        return self.AsyncResult(options.get('task_id'))
+        return self.AsyncResult(options.get('task_id') or str(uuid4()))
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """
