@@ -852,9 +852,11 @@ class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
     queryset = models.ServiceSettings.objects.filter().order_by('type')
     serializer_class = serializers.ServiceSettingsSerializer
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,
-                       filters.ServiceSettingsScopeFilterBackend)
+                       filters.ServiceSettingsScopeFilterBackend,
+                       rf_filters.OrderingFilter)
     filter_class = filters.ServiceSettingsFilter
     lookup_field = 'uuid'
+    ordering_fields = ('type', 'name', 'state',)
     disabled_actions = ['create', 'destroy']
 
     def list(self, request, *args, **kwargs):

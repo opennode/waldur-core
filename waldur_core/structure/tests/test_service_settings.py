@@ -81,6 +81,38 @@ class ServiceSettingsListTest(test.APITransactionTestCase):
         response = self.client.get(factories.ServiceSettingsFactory.get_url(self.settings['shared']))
         self.assert_credentials_hidden(response.data)
 
+    def test_admin_can_see_settings_only_with_resources(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        instance = factories.TestNewInstanceFactory()
+        response = self.client.get(factories.ServiceSettingsFactory.get_list_url(), {'has_resources': 'true'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected = instance.service_project_link.service.settings.name
+        self.assertEqual(response.data[0]['name'], expected)
+
+    def test_admin_can_see_settings_without_resources(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        service_with_resource = factories.TestNewInstanceFactory()
+        service_without_resource = factories.ServiceSettingsFactory()
+        response = self.client.get(factories.ServiceSettingsFactory.get_list_url(), {'has_resources': 'false'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        uuid_expected = service_without_resource.uuid.hex
+        uuid_unexpected = service_with_resource.service_project_link.service.settings.uuid.hex
+        uuids_received = [d['uuid'] for d in response.data]
+        self.assertIn(uuid_expected, uuids_received)
+        self.assertNotIn(uuid_unexpected, uuids_received)
+
+    def test_settings_without_resources_are_filtered_out(self):
+        self.client.force_authenticate(user=self.users['staff'])
+
+        response = self.client.get(factories.ServiceSettingsFactory.get_list_url(), {'has_resources': 'true'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
     def assert_credentials_visible(self, data):
         for field in self.credentials:
             self.assertIn(field, data)
