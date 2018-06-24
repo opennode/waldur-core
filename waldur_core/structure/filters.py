@@ -450,10 +450,21 @@ class ServiceSettingsFilter(django_filters.FilterSet):
     name = django_filters.CharFilter(lookup_expr='icontains')
     type = ServiceTypeFilter()
     state = core_filters.StateFilter()
+    has_resources = django_filters.BooleanFilter(method='filter_has_resources', widget=BooleanWidget)
 
     class Meta(object):
         model = models.ServiceSettings
         fields = ('name', 'type', 'state', 'shared')
+
+    def filter_has_resources(self, queryset, name, value):
+        service_settings_with_resources = []
+        for model in SupportedServices.get_resource_models().values():
+            service_settings_with_resources \
+                += list(model.objects
+                        .values_list('service_project_link__service__settings__pk', flat=True))
+        if value is True:
+            return queryset.filter(pk__in=service_settings_with_resources)
+        return queryset.exclude(Q(pk__in=service_settings_with_resources))
 
 
 class ServiceSettingsScopeFilterBackend(core_filters.GenericKeyFilterBackend):
