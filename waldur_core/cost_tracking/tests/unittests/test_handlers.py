@@ -135,7 +135,7 @@ class ResourceUpdateTest(TransactionTestCase):
         expected = work_minutes * self.price_list_item.minute_rate * resource.disk
         for scope in [resource] + ancestors:
             estimate = models.PriceEstimate.objects.get(scope=scope, month=7, year=2016)
-            self.assertEqual(estimate.total, expected)
+            self.assertAlmostEqual(estimate.total, expected)
 
         # Check price estimates total calculation for month #8
         month_start = timezone.make_aware(datetime.datetime(2016, 8, 1))
