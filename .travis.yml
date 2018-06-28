@@ -16,5 +16,5 @@ deploy:
     secure: q7ACIxgHCX65u7Ny+mZ/5vDeMK8BeJ8ZRx9+xIc8UPYCsDpDx4XINN+VnIbl7HzZxAQdaOYAaXWXOout7ZBLu/UyCad9yt957pOFo25Udjpm2DWe029Ilc6LGXh7LPH4CTqjY4EWy4NhVLFj0l5W1CM4bDFJkgDbb4rpTH5iRsI=
   on:
     tags: true
-    distributions: sdist bdist_wheel
     repo: opennode/waldur-core
+  distributions: "sdist bdist_wheel"
