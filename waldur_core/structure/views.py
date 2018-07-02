@@ -850,7 +850,7 @@ class SshKeyViewSet(mixins.CreateModelMixin,
 
 class ServiceSettingsViewSet(core_mixins.EagerLoadMixin,
                              core_views.ActionsViewSet):
-    queryset = models.ServiceSettings.objects.filter().order_by('type')
+    queryset = models.ServiceSettings.objects.filter().order_by('pk')
     serializer_class = serializers.ServiceSettingsSerializer
     filter_backends = (filters.GenericRoleFilter, DjangoFilterBackend,
                        filters.ServiceSettingsScopeFilterBackend,
