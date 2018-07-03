@@ -689,8 +689,8 @@ class ServiceSettings(quotas_models.ExtendableQuotaModelMixin,
                                            'text/plain'],
                                        allowed_extensions=['pem'])])
     type = models.CharField(max_length=255, db_index=True, validators=[validate_service_type])
-    options = JSONField(default={}, help_text=_('Extra options'), blank=True)
-    geolocations = JSONField(default=[], blank=True,
+    options = JSONField(default=dict, help_text=_('Extra options'), blank=True)
+    geolocations = JSONField(default=list, blank=True,
                              help_text=_('List of latitudes and longitudes. For example: '
                                          '[{"latitude": 123, "longitude": 345}, {"latitude": 456, "longitude": 678}]'))
     shared = models.BooleanField(default=False, help_text=_('Anybody can use it'))
@@ -1175,7 +1175,7 @@ class VirtualMachine(CoordinatesMixin, core_models.RuntimeStateMixin, NewResourc
 
 
 class PrivateCloud(quotas_models.QuotaModelMixin, core_models.RuntimeStateMixin, NewResource):
-    extra_configuration = JSONField(default={},
+    extra_configuration = JSONField(default=dict,
                                     help_text=_('Configuration details that are not represented on backend.'))
 
     class Meta(object):

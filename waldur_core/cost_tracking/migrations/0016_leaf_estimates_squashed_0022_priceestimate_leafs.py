@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
     #replaces = [('cost_tracking', '0016_leaf_estimates'), ('cost_tracking', '0017_nullable_object_id'), ('cost_tracking', '0018_priceestimate_threshold'), ('cost_tracking', '0019_priceestimate_limit'), ('cost_tracking', '0020_reset_price_list_item'), ('cost_tracking', '0021_delete_applicationtype'), ('cost_tracking', '0022_priceestimate_leafs')]
 
     dependencies = [
-        ('structure', '__latest__'),
+        ('structure', '0001_squashed_0054'),
         ('contenttypes', '0002_remove_content_type_name'),
         ('cost_tracking', '0015_defaultpricelistitem_metadata'),
         ('contenttypes', '0001_initial'),
