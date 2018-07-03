@@ -112,7 +112,7 @@ class EventTypesMixin(models.Model):
         abstract = True
 
     event_types = JSONField('List of event types')
-    event_groups = JSONField('List of event groups', default=[])
+    event_groups = JSONField('List of event groups', default=list)
 
     @classmethod
     @lru_cache(maxsize=1)

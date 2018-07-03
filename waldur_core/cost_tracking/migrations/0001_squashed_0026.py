@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('structure', '__latest__'),
+        ('structure', '0001_squashed_0054'),
         ('contenttypes', '0002_remove_content_type_name'),
         ('contenttypes', '0001_initial'),
     ]
