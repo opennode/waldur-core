@@ -62,3 +62,15 @@ Configuration
 +++++++++++++
 
 Instructions are here: http://docs.waldur.com/MasterMind+configuration
+
+Caveats
++++++++
+
+By default Python package is installed in standalone mode.
+It means that its contents is copied to the ``site-packages`` directory.
+But for development you should install package as editable by passig
+``--editable`` or simply ``-e`` flag to the ``pip`` command.
+In this case package contents is not copied, only symbolic link is created.
+You may accidentally install the same package as standalone and editable simultaneously.
+In this case the following exception would be raised: ``ImportError: No module named settings``
+In order to fix it you should uninstall package and install it again as editable.

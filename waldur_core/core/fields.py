@@ -113,22 +113,6 @@ class NaturalChoiceField(MappedChoiceField):
             **kwargs)
 
 
-class JsonField(serializers.Field):
-    """
-    A read-write DRF field for the JSONField objects.
-    """
-
-    def to_representation(self, obj):
-        return obj if obj != "" else None
-
-    def to_internal_value(self, data):
-        try:
-            data = json.loads(data)
-        except ValueError:
-            raise serializers.ValidationError(_('This field should a be valid JSON string.'))
-        return data
-
-
 class TimestampField(serializers.Field):
     """
     Unix timestamp field mapped to datetime object.

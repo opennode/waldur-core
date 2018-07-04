@@ -46,7 +46,7 @@ class PriceEstimate(LoggableMixin, core_models.UuidMixin, core_models.Descendant
     content_type = models.ForeignKey(ContentType, null=True, related_name='+')
     object_id = models.PositiveIntegerField(null=True)
     scope = GenericForeignKey('content_type', 'object_id')
-    details = JSONField(default={}, help_text=_('Saved scope details. Field is populated on scope deletion.'))
+    details = JSONField(default=dict, help_text=_('Saved scope details. Field is populated on scope deletion.'))
     parents = models.ManyToManyField('PriceEstimate', related_name='children', help_text=_('Price estimate parents'))
 
     total = models.FloatField(default=0, help_text=_('Predicted price for scope for current month.'))
@@ -274,10 +274,10 @@ class ConsumptionDetails(core_models.UuidMixin, TimeStampedModel):
         do not update them manually.
     """
     price_estimate = models.OneToOneField(PriceEstimate, related_name='consumption_details')
-    configuration = ConsumableItemsField(default={}, help_text=_('Current resource configuration.'))
+    configuration = ConsumableItemsField(default=dict, help_text=_('Current resource configuration.'))
     last_update_time = models.DateTimeField(help_text=_('Last configuration change time.'))
     consumed_before_update = ConsumableItemsField(
-        default={}, help_text=_('How many consumables were used by resource before last update.'))
+        default=dict, help_text=_('How many consumables were used by resource before last update.'))
 
     objects = managers.ConsumptionDetailsManager()
 
@@ -362,10 +362,6 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
     key = models.CharField(
         max_length=255, help_text=_('Key that corresponds particular consumable. Example: name of flavor.'))
     resource_content_type = models.ForeignKey(ContentType, default=None)
-    # Field "metadata" is deprecated. We decided to store objects separately from their prices.
-    metadata = JSONField(default={},
-                         blank=True, help_text=_('Details of the item, that corresponds price list item. Example: details of flavor.'))
-
     tracker = FieldTracker()
 
     def __str__(self):
