@@ -2,7 +2,7 @@ from django.db import IntegrityError
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers
 
-from waldur_core.core.fields import MappedChoiceField, NaturalChoiceField, JsonField
+from waldur_core.core.fields import MappedChoiceField, NaturalChoiceField
 from waldur_core.core.serializers import GenericRelatedField
 from waldur_core.logging import models, utils, loggers
 
@@ -13,7 +13,7 @@ class AlertSerializer(serializers.HyperlinkedModelSerializer):
         choices=[(v, k) for k, v in models.Alert.SeverityChoices.CHOICES],
         choice_mappings={v: k for k, v in models.Alert.SeverityChoices.CHOICES},
     )
-    context = JsonField(read_only=True)
+    context = serializers.JSONField(read_only=True)
 
     class Meta(object):
         model = models.Alert
