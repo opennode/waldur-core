@@ -1010,7 +1010,7 @@ class BaseServiceSerializer(six.with_metaclass(ServiceSerializerMetaclass,
     error_message = serializers.ReadOnlyField(source='settings.error_message')
     terms_of_services = serializers.ReadOnlyField(source='settings.terms_of_services')
     homepage = serializers.ReadOnlyField(source='settings.homepage')
-    geolocations = core_serializers.JSONField(source='settings.geolocations', read_only=True)
+    geolocations = serializers.JSONField(source='settings.geolocations', read_only=True)
     certifications = NestedServiceCertificationSerializer(many=True, read_only=True, source='settings.certifications')
     name = serializers.ReadOnlyField(source='settings.name')
 
@@ -1688,7 +1688,7 @@ class AggregateSerializer(serializers.Serializer):
 
 
 class PrivateCloudSerializer(BaseResourceSerializer):
-    extra_configuration = core_serializers.JSONField(read_only=True)
+    extra_configuration = serializers.JSONField(read_only=True)
 
     class Meta(BaseResourceSerializer.Meta):
         fields = BaseResourceSerializer.Meta.fields + ('extra_configuration',)
