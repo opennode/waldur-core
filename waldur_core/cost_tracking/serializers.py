@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.reverse import reverse
 import six
 
-from waldur_core.core.serializers import GenericRelatedField, AugmentedSerializerMixin, JSONField
+from waldur_core.core.serializers import GenericRelatedField, AugmentedSerializerMixin
 from waldur_core.cost_tracking import models
 from waldur_core.structure import SupportedServices, models as structure_models
 from waldur_core.structure.filters import ScopeTypeFilterBackend
@@ -129,11 +129,10 @@ class PriceListItemSerializer(AugmentedSerializerMixin,
 
 class DefaultPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
     value = serializers.FloatField()
-    metadata = JSONField()
 
     class Meta:
         model = models.DefaultPriceListItem
-        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'resource_type', 'metadata')
+        fields = ('url', 'uuid', 'key', 'item_type', 'value', 'resource_type')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }
@@ -144,12 +143,11 @@ class MergedPriceListItemSerializer(serializers.HyperlinkedModelSerializer):
     units = serializers.SerializerMethodField()
     is_manually_input = serializers.SerializerMethodField()
     service_price_list_item_url = serializers.SerializerMethodField()
-    metadata = JSONField()
 
     class Meta:
         model = models.DefaultPriceListItem
         fields = ('url', 'uuid', 'key', 'item_type', 'units', 'value',
-                  'resource_type', 'metadata', 'is_manually_input', 'service_price_list_item_url')
+                  'resource_type', 'is_manually_input', 'service_price_list_item_url')
         extra_kwargs = {
             'url': {'lookup_field': 'uuid'},
         }

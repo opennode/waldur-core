@@ -9,7 +9,6 @@ from rest_framework.test import APIRequestFactory, APITransactionTestCase, force
 from rest_framework.views import APIView
 
 from waldur_core.core import utils
-from waldur_core.core.fields import JsonField
 from waldur_core.core.fields import TimestampField
 from waldur_core.core.serializers import Base64Field, RestrictedSerializerMixin, GenericRelatedField
 from waldur_core.logging.utils import get_loggable_models
@@ -80,36 +79,6 @@ class GenericRelatedFieldTest(APITransactionTestCase):
     def test_if_uuid_is_invalid_validation_error_is_raised(self):
         invalid_url = 'https://example.com/api/customers/invalid/'
         self.assertRaises(serializers.ValidationError, self.field.to_internal_value, invalid_url)
-
-
-class JsonSerializer(serializers.Serializer):
-    content = JsonField()
-
-
-class JsonFieldTest(unittest.TestCase):
-    def test_dict_gets_parsed_as_dict_on_serialization(self):
-        serializer = JsonSerializer(instance={'content': {u'key': u'value'}})
-        actual = serializer.data['content']
-
-        self.assertEqual({u'key': u'value'}, actual)
-
-    def test_text_gets_json_parsed_on_deserialization(self):
-        serializer = JsonSerializer(data={'content': '{"key": "value"}'})
-
-        self.assertTrue(serializer.is_valid())
-
-        actual = serializer.validated_data['content']
-
-        self.assertEqual({u'key': u'value'}, actual)
-
-    def test_deserialization_fails_validation_on_incorrect_json(self):
-        serializer = JsonSerializer(data={'content': '***NOT-JSON***'})
-
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('content', serializer.errors,
-                      'There should be errors for content field')
-        self.assertIn('This field should a be valid JSON string.',
-                      serializer.errors['content'])
 
 
 class TimestampSerializer(serializers.Serializer):
