@@ -362,10 +362,6 @@ class DefaultPriceListItem(core_models.UuidMixin, core_models.NameMixin, Abstrac
     key = models.CharField(
         max_length=255, help_text=_('Key that corresponds particular consumable. Example: name of flavor.'))
     resource_content_type = models.ForeignKey(ContentType, default=None)
-    # Field "metadata" is deprecated. We decided to store objects separately from their prices.
-    metadata = JSONField(default=dict,
-                         blank=True, help_text=_('Details of the item, that corresponds price list item. Example: details of flavor.'))
-
     tracker = FieldTracker()
 
     def __str__(self):

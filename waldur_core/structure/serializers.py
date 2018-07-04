@@ -864,7 +864,7 @@ class ServiceSettingsSerializer(PermissionFieldFilteringMixin,
     quotas = quotas_serializers.BasicQuotaSerializer(many=True, read_only=True)
     scope = core_serializers.GenericRelatedField(related_models=models.ResourceMixin.get_all_models(), required=False)
     certifications = NestedServiceCertificationSerializer(many=True, read_only=True)
-    geolocations = core_serializers.JSONField(read_only=True)
+    geolocations = serializers.JSONField(read_only=True)
 
     class Meta(object):
         model = models.ServiceSettings
