@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cost_tracking', '0001_squashed_0026'),
+        ('cost_tracking', '0002_immutable_default_json'),
     ]
 
     operations = [
