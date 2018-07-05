@@ -29,6 +29,11 @@ from waldur_core.structure.managers import filter_queryset_for_user
 User = auth.get_user_model()
 
 
+class NameFilterSet(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='icontains')
+    name_exact = django_filters.CharFilter(lookup_expr='exact')
+
+
 class ScopeTypeFilterBackend(DjangoFilterBackend):
     """ Scope filters:
 
@@ -97,19 +102,10 @@ class GenericUserFilter(BaseFilterBackend):
         return filter_queryset_for_user(queryset, user)
 
 
-class CustomerFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(
-        lookup_expr='icontains',
-    )
-    native_name = django_filters.CharFilter(
-        lookup_expr='icontains',
-    )
-    abbreviation = django_filters.CharFilter(
-        lookup_expr='icontains',
-    )
-    contact_details = django_filters.CharFilter(
-        lookup_expr='icontains',
-    )
+class CustomerFilter(NameFilterSet):
+    native_name = django_filters.CharFilter(lookup_expr='icontains')
+    abbreviation = django_filters.CharFilter(lookup_expr='icontains')
+    contact_details = django_filters.CharFilter(lookup_expr='icontains')
 
     class Meta(object):
         model = models.Customer
@@ -151,15 +147,14 @@ class AccountingStartDateFilter(BaseFilterBackend):
             return queryset.filter(query)
 
 
-class ProjectTypeFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(lookup_expr='icontains')
+class ProjectTypeFilter(NameFilterSet):
 
     class Meta(object):
         model = models.ProjectType
         fields = ['name']
 
 
-class ProjectFilter(django_filters.FilterSet):
+class ProjectFilter(NameFilterSet):
     customer = django_filters.UUIDFilter(
         name='customer__uuid',
         distinct=True,
@@ -182,8 +177,6 @@ class ProjectFilter(django_filters.FilterSet):
         distinct=True,
         lookup_expr='icontains'
     )
-
-    name = django_filters.CharFilter(lookup_expr='icontains')
 
     description = django_filters.CharFilter(lookup_expr='icontains')
 
@@ -422,10 +415,9 @@ class CustomerPermissionFilter(UserPermissionFilter):
     )
 
 
-class SshKeyFilter(django_filters.FilterSet):
+class SshKeyFilter(NameFilterSet):
     uuid = django_filters.UUIDFilter()
     user_uuid = django_filters.UUIDFilter(name='user__uuid')
-    name = django_filters.CharFilter(lookup_expr='icontains')
 
     o = django_filters.OrderingFilter(fields=('name',))
 
@@ -446,8 +438,7 @@ class ServiceTypeFilter(django_filters.Filter):
         return super(ServiceTypeFilter, self).filter(qs, value)
 
 
-class ServiceSettingsFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(lookup_expr='icontains')
+class ServiceSettingsFilter(NameFilterSet):
     type = ServiceTypeFilter()
     state = core_filters.StateFilter()
     has_resources = django_filters.BooleanFilter(method='filter_has_resources', widget=BooleanWidget)
@@ -541,7 +532,7 @@ class ResourceFilterMetaclass(FilterSetMetaclass):
 
 
 class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
-                                            django_filters.FilterSet)):
+                                            NameFilterSet)):
     def __init__(self, *args, **kwargs):
         super(BaseResourceFilter, self).__init__(*args, **kwargs)
         self.filters['o'] = django_filters.OrderingFilter(fields=self.ORDERING_FIELDS)
@@ -568,8 +559,6 @@ class BaseResourceFilter(six.with_metaclass(ResourceFilterMetaclass,
     service_settings_name = django_filters.CharFilter(name='service_project_link__service__settings__name',
                                                       lookup_expr='icontains')
     # resource
-    name = django_filters.CharFilter(lookup_expr='icontains')
-    name_exact = django_filters.CharFilter(name='name', lookup_expr='exact')
     description = django_filters.CharFilter(lookup_expr='icontains')
     state = core_filters.MappedMultipleChoiceFilter(
         choices=[(representation, representation) for db_value, representation in
@@ -688,9 +677,7 @@ class StartTimeFilter(BaseFilterBackend):
         return queryset
 
 
-class BaseServicePropertyFilter(django_filters.FilterSet):
-    name = django_filters.CharFilter(name='name', lookup_expr='icontains')
-    name_exact = django_filters.CharFilter(name='name', lookup_expr='exact')
+class BaseServicePropertyFilter(NameFilterSet):
 
     class Meta(object):
         fields = ('name', 'name_exact')
