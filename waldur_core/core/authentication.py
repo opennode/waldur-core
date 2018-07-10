@@ -102,5 +102,11 @@ def user_capturing_auth(auth):
     return CapturingAuthentication
 
 
-SessionAuthentication = user_capturing_auth(rest_framework.authentication.SessionAuthentication)
+class CsrfExemptSessionAuthentication(rest_framework.authentication.SessionAuthentication):
+
+    def enforce_csrf(self, request):
+        return  # Skip CSRF check
+
+
+SessionAuthentication = user_capturing_auth(CsrfExemptSessionAuthentication)
 TokenAuthentication = user_capturing_auth(TokenAuthentication)
