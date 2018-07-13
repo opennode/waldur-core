@@ -3,9 +3,11 @@ from collections import OrderedDict
 from django.utils.encoding import force_text
 from django.utils.http import urlencode
 from rest_framework import exceptions
+from rest_framework import serializers
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.request import clone_request
 from rest_framework.reverse import reverse
+from rest_framework.utils.field_mapping import ClassLookupDict
 
 from waldur_core.core.utils import sort_dict
 
@@ -62,6 +64,12 @@ class ActionSerializer(object):
         return base_url + self.name + '/'
 
 
+def merge_dictionaries(a, b):
+    new = a.copy()
+    new.update(b)
+    return new
+
+
 class ActionsMetadata(SimpleMetadata):
     """
     Difference from SimpleMetadata class:
@@ -69,6 +77,12 @@ class ActionsMetadata(SimpleMetadata):
     2) Don't expose choices for fields with queryset in order to reduce size of response.
     3) Attach actions metadata
     """
+
+    label_lookup = ClassLookupDict(
+        mapping=merge_dictionaries({
+            serializers.JSONField: 'text'
+        }, SimpleMetadata.label_lookup.mapping)
+    )
 
     def determine_metadata(self, request, view):
         self.request = request
